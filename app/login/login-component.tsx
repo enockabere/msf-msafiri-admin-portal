@@ -34,7 +34,7 @@ export default function LoginComponent() {
 
       // For demo purposes, redirect to dashboard
       console.log("Login attempted - will implement NextAuth later");
-      // router.push("/dashboard")
+      router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
     } finally {
@@ -179,7 +179,7 @@ export default function LoginComponent() {
                   <div className="space-y-6">
                     {/* Login Header */}
                     <div className="text-center space-y-2">
-                      <div className="w-50 h-26 flex items-center justify-center mx-auto">
+                      <div className="w-50 h-26  flex items-center justify-center mx-auto">
                         <Image
                           src="/icon/logo1.png"
                           alt="MSF Logo"
