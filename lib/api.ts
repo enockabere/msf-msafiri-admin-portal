@@ -1,4 +1,4 @@
-// lib/api.ts - Updated for NextAuth integration
+// lib/api.ts - Rewritten for NextAuth integration
 export interface User {
   id: number;
   email: string;
@@ -172,8 +172,10 @@ interface RequestOptions {
   method?: string;
   headers?: Record<string, string>;
   body?: string | URLSearchParams;
+  skipAuthError?: boolean; // Skip 401 error handling for login endpoints
 }
 
+// API Configuration
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://msafiri-visitor-api.onrender.com/api/v1";
@@ -186,7 +188,7 @@ class ApiClient {
     this.baseURL = API_BASE_URL;
   }
 
-  // UPDATED: Simplified token management - no localStorage
+  // Token management - simplified for NextAuth integration
   setToken(token: string): void {
     this.token = token;
   }
@@ -195,6 +197,12 @@ class ApiClient {
     return this.token;
   }
 
+  // Clear token (used by useApiClient hook)
+  clearToken(): void {
+    this.token = null;
+  }
+
+  // Core request method with improved error handling
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
@@ -204,22 +212,37 @@ class ApiClient {
       ...options.headers,
     };
 
-    if (token) {
+    // Add authorization header if token exists
+    if (token && token !== "") {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    const requestConfig: RequestInit = {
+      method: options.method || "GET",
+      headers,
+      ...(options.body && { body: options.body }),
+    };
+
     try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+      const response = await fetch(url, requestConfig);
 
       if (!response.ok) {
+        // Handle 401 errors differently for login vs authenticated endpoints
         if (response.status === 401) {
-          // UPDATED: Don't redirect directly, let NextAuth/components handle auth errors
-          throw new Error("Unauthorized - session may have expired");
+          // Skip auth error handling for login endpoints or when explicitly requested
+          if (options.skipAuthError || endpoint.includes("/auth/login")) {
+            const errorData = await response.json().catch(() => ({
+              detail: "Invalid credentials",
+              status_code: 401,
+            }));
+            throw new Error(errorData.detail || "Authentication failed");
+          }
+
+          // For authenticated endpoints, this indicates session expiry
+          throw new Error("Session expired - please log in again");
         }
 
+        // Handle other HTTP errors
         const errorData: ApiError = await response.json().catch(() => ({
           detail: response.statusText,
           status_code: response.status,
@@ -230,47 +253,62 @@ class ApiClient {
         );
       }
 
-      return await response.json();
+      // Parse JSON response
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error("API Request failed:", error);
+      // Log error for debugging
+      console.error(
+        `API Request failed [${options.method || "GET"} ${endpoint}]:`,
+        error
+      );
       throw error;
     }
   }
 
-  // REMOVED: clearToken method - NextAuth handles session clearing
-
-  // Authentication - Updated for NextAuth integration
+  // Authentication methods (not used by NextAuth, but available for direct API calls)
   async login(
     email: string,
     password: string,
     tenantSlug?: string
   ): Promise<LoginResponse> {
     const endpoint = tenantSlug ? "/auth/login/tenant" : "/auth/login";
-    const body = tenantSlug
-      ? JSON.stringify({ email, password, tenant_slug: tenantSlug })
-      : new URLSearchParams({ username: email, password });
+
+    let body: string | URLSearchParams;
+    let contentType: string;
+
+    if (tenantSlug) {
+      // JSON body for tenant login
+      body = JSON.stringify({
+        email,
+        password,
+        tenant_slug: tenantSlug,
+      });
+      contentType = "application/json";
+    } else {
+      // URLSearchParams for standard login
+      body = new URLSearchParams({
+        username: email,
+        password: password,
+      });
+      contentType = "application/x-www-form-urlencoded";
+    }
 
     const options: RequestOptions = {
       method: "POST",
-      headers: tenantSlug
-        ? {}
-        : { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { "Content-Type": contentType },
       body: body,
+      skipAuthError: true, // Don't treat 401 as session expiry during login
     };
 
-    const response = await this.request<LoginResponse>(endpoint, options);
-
-    // UPDATED: Don't automatically store token - NextAuth handles this
-    // The token will be set via useApiClient hook when needed
-
-    return response;
+    return await this.request<LoginResponse>(endpoint, options);
   }
 
   async getCurrentUser(): Promise<User> {
     return await this.request<User>("/auth/test-token");
   }
 
-  // Users
+  // User management methods
   async getUsers(tenantId?: string): Promise<User[]> {
     const headers: Record<string, string> = {};
     if (tenantId) {
@@ -282,6 +320,20 @@ class ApiClient {
   async createUser(userData: UserCreateRequest): Promise<User> {
     return await this.request<User>("/users/", {
       method: "POST",
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async getUser(userId: number): Promise<User> {
+    return await this.request<User>(`/users/${userId}`);
+  }
+
+  async updateUser(
+    userId: number,
+    userData: Partial<UserCreateRequest>
+  ): Promise<User> {
+    return await this.request<User>(`/users/${userId}`, {
+      method: "PUT",
       body: JSON.stringify(userData),
     });
   }
@@ -298,23 +350,41 @@ class ApiClient {
     });
   }
 
-  async changeUserRole(userId: number, newRole: UserRole): Promise<User> {
-    return await this.request<User>(
-      `/users/change-role/${userId}?new_role=${newRole}`,
-      {
-        method: "POST",
-      }
-    );
+  async deleteUser(userId: number): Promise<{ message: string }> {
+    return await this.request<{ message: string }>(`/users/${userId}`, {
+      method: "DELETE",
+    });
   }
 
-  // Tenants
+  async changeUserRole(userId: number, newRole: UserRole): Promise<User> {
+    return await this.request<User>(`/users/change-role/${userId}`, {
+      method: "POST",
+      body: JSON.stringify({ new_role: newRole }),
+    });
+  }
+
+  // Tenant management methods
   async getTenants(): Promise<Tenant[]> {
     return await this.request<Tenant[]>("/tenants/");
+  }
+
+  async getTenant(tenantId: number): Promise<Tenant> {
+    return await this.request<Tenant>(`/tenants/${tenantId}`);
   }
 
   async createTenant(tenantData: TenantCreateRequest): Promise<Tenant> {
     return await this.request<Tenant>("/tenants/", {
       method: "POST",
+      body: JSON.stringify(tenantData),
+    });
+  }
+
+  async updateTenant(
+    tenantId: number,
+    tenantData: Partial<TenantCreateRequest>
+  ): Promise<Tenant> {
+    return await this.request<Tenant>(`/tenants/${tenantId}`, {
+      method: "PUT",
       body: JSON.stringify(tenantData),
     });
   }
@@ -331,11 +401,20 @@ class ApiClient {
     });
   }
 
-  // Notifications
+  async deleteTenant(tenantId: number): Promise<{ message: string }> {
+    return await this.request<{ message: string }>(`/tenants/${tenantId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Notification methods
   async getNotifications(unreadOnly: boolean = false): Promise<Notification[]> {
-    return await this.request<Notification[]>(
-      `/notifications/?unread_only=${unreadOnly}`
-    );
+    const query = unreadOnly ? "?unread_only=true" : "";
+    return await this.request<Notification[]>(`/notifications/${query}`);
+  }
+
+  async getNotification(notificationId: number): Promise<Notification> {
+    return await this.request<Notification>(`/notifications/${notificationId}`);
   }
 
   async getNotificationStats(): Promise<NotificationStats> {
@@ -413,22 +492,35 @@ class ApiClient {
     );
   }
 
-  // Health check
+  // System health and utilities
   async healthCheck(): Promise<{
     status: string;
     environment: string;
     database: string;
+    timestamp: string;
   }> {
     return await this.request<{
       status: string;
       environment: string;
       database: string;
-    }>("/health", {
-      headers: { "Content-Type": "application/json" },
-    });
+      timestamp: string;
+    }>("/health");
+  }
+
+  // Get API base URL (useful for debugging)
+  getBaseUrl(): string {
+    return this.baseURL;
+  }
+
+  // Check if client has token
+  hasToken(): boolean {
+    return this.token !== null && this.token !== "";
   }
 }
 
-// Create singleton instance
+// Create and export singleton instance
 const apiClient = new ApiClient();
 export default apiClient;
+
+// Export the class for testing purposes
+export { ApiClient };

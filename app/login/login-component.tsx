@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -53,6 +54,7 @@ export default function LoginComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>(""); // Add success state
   const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">("sso");
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
@@ -64,28 +66,59 @@ export default function LoginComponent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
+  // Clear messages when switching tabs
+  const handleTabChange = (value: string) => {
+    setLoginMethod(value as "sso" | "credentials");
+    setError("");
+    setSuccess("");
+  };
+
   // Handle Microsoft SSO Login
   const handleMicrosoftLogin = async () => {
     try {
       setIsLoading(true);
       setError("");
+      setSuccess("");
 
       const result = await signIn("azure-ad", {
         redirect: false,
+        callbackUrl: redirectTo,
       });
 
       if (result?.error) {
-        throw new Error("Microsoft SSO authentication failed");
+        // More specific error handling
+        if (
+          result.error === "OAuthSignInError" ||
+          result.error === "OAuthCallbackError"
+        ) {
+          throw new Error(
+            "Microsoft SSO authentication failed. Please try again or contact your administrator."
+          );
+        } else if (result.error === "AccessDenied") {
+          throw new Error(
+            "Access denied. Your Microsoft account may not be authorized for this application."
+          );
+        } else {
+          throw new Error(
+            "Microsoft SSO authentication failed. Please try again."
+          );
+        }
       }
 
       if (result?.ok) {
-        // Check if this is a first login with type assertion
+        setSuccess("Successfully authenticated with Microsoft!");
+
+        // Check session and handle first login
         const session = (await getSession()) as ExtendedSession | null;
         if (session?.user?.firstLogin) {
           console.log("First login - show welcome message");
           // You can show a welcome modal/toast here
         }
-        router.push(redirectTo);
+
+        // Small delay to show success message
+        setTimeout(() => {
+          router.push(redirectTo);
+        }, 1000);
       }
     } catch (error) {
       console.error("SSO Login error:", error);
@@ -104,10 +137,17 @@ export default function LoginComponent() {
     try {
       setIsLoading(true);
       setError("");
+      setSuccess("");
 
       // Validate admin credentials
       if (!formData.email || !formData.password) {
         throw new Error("Please enter both email and password");
+      }
+
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        throw new Error("Please enter a valid email address");
       }
 
       const result = await signIn("admin-credentials", {
@@ -115,20 +155,44 @@ export default function LoginComponent() {
         password: formData.password,
         tenantSlug: formData.tenantSlug,
         redirect: false,
+        callbackUrl: redirectTo,
       });
 
       if (result?.error) {
-        throw new Error("Invalid credentials or unauthorized access");
+        // Enhanced error handling based on NextAuth error types
+        if (result.error === "CredentialsSignin") {
+          throw new Error(
+            "Invalid email or password. Please check your credentials and try again."
+          );
+        } else if (result.error === "AccessDenied") {
+          throw new Error(
+            "Access denied. Your account may not have admin privileges."
+          );
+        } else if (result.error === "Configuration") {
+          throw new Error(
+            "Authentication configuration error. Please contact support."
+          );
+        } else {
+          throw new Error(
+            "Login failed. Please check your credentials and try again."
+          );
+        }
       }
 
       if (result?.ok) {
-        // Check if this is a first login with type assertion
+        setSuccess("Login successful! Redirecting to dashboard...");
+
+        // Check session and handle first login
         const session = (await getSession()) as ExtendedSession | null;
         if (session?.user?.firstLogin) {
           console.log("First login - show welcome message");
           // You can show a welcome modal/toast here
         }
-        router.push(redirectTo);
+
+        // Small delay to show success message
+        setTimeout(() => {
+          router.push(redirectTo);
+        }, 1000);
       }
     } catch (error) {
       console.error("Credential login error:", error);
@@ -142,6 +206,8 @@ export default function LoginComponent() {
     (field: keyof LoginFormData) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+      // Clear errors when user starts typing
+      if (error) setError("");
     };
 
   return (
@@ -290,12 +356,20 @@ export default function LoginComponent() {
                       </Alert>
                     )}
 
+                    {/* Success Alert */}
+                    {success && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-800">
+                          {success}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {/* Login Methods Tabs */}
                     <Tabs
                       value={loginMethod}
-                      onValueChange={(value: string) =>
-                        setLoginMethod(value as "sso" | "credentials")
-                      }
+                      onValueChange={handleTabChange}
                       className="w-full"
                     >
                       <TabsList className="grid w-full grid-cols-2">
@@ -348,6 +422,9 @@ export default function LoginComponent() {
                               placeholder="admin@msafiri.org"
                               required
                               disabled={isLoading}
+                              className={
+                                error && !formData.email ? "border-red-300" : ""
+                              }
                             />
                           </div>
 
@@ -362,6 +439,11 @@ export default function LoginComponent() {
                                 placeholder="Enter your password"
                                 required
                                 disabled={isLoading}
+                                className={
+                                  error && !formData.password
+                                    ? "border-red-300"
+                                    : ""
+                                }
                               />
                               <Button
                                 type="button"
@@ -386,7 +468,7 @@ export default function LoginComponent() {
                               id="tenant"
                               value={formData.tenantSlug}
                               onChange={handleInputChange("tenantSlug")}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50"
                               disabled={isLoading}
                             >
                               <option value="">
@@ -401,7 +483,7 @@ export default function LoginComponent() {
                           <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-semibold text-base shadow-lg transition-all duration-200"
+                            className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-semibold text-base shadow-lg transition-all duration-200 disabled:opacity-50"
                           >
                             {isLoading && loginMethod === "credentials" ? (
                               <>

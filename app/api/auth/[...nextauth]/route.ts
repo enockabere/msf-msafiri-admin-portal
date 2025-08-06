@@ -2,7 +2,6 @@ import NextAuth from "next-auth";
 import { NextAuthOptions } from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import CredentialsProvider from "next-auth/providers/credentials";
-import apiClient from "@/lib/api";
 
 const authOptions: NextAuthOptions = {
   providers: [
@@ -18,7 +17,7 @@ const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Admin Credentials Provider
+    // Admin Credentials Provider - Fixed to handle API calls directly
     CredentialsProvider({
       id: "admin-credentials",
       name: "Admin Login",
@@ -33,16 +32,72 @@ const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Login through your API
-          const response = await apiClient.login(
-            credentials.email,
-            credentials.password,
-            credentials.tenantSlug || undefined
-          );
+          // Direct API call without using the singleton apiClient
+          const endpoint = credentials.tenantSlug
+            ? "/auth/login/tenant"
+            : "/auth/login";
+          const baseURL =
+            process.env.NEXT_PUBLIC_API_URL ||
+            "https://msafiri-visitor-api.onrender.com/api/v1";
 
-          // Get user details
-          apiClient.setToken(response.access_token);
-          const user = await apiClient.getCurrentUser();
+          let response;
+
+          if (credentials.tenantSlug) {
+            // JSON body for tenant login
+            response = await fetch(`${baseURL}${endpoint}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: credentials.email,
+                password: credentials.password,
+                tenant_slug: credentials.tenantSlug,
+              }),
+            });
+          } else {
+            // URLSearchParams for regular login
+            response = await fetch(`${baseURL}${endpoint}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({
+                username: credentials.email,
+                password: credentials.password,
+              }),
+            });
+          }
+
+          if (!response.ok) {
+            console.error(
+              "Login API error:",
+              response.status,
+              response.statusText
+            );
+            return null;
+          }
+
+          const loginResponse = await response.json();
+
+          // Get user details with the token
+          const userResponse = await fetch(`${baseURL}/auth/test-token`, {
+            headers: {
+              Authorization: `Bearer ${loginResponse.access_token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!userResponse.ok) {
+            console.error(
+              "User fetch error:",
+              userResponse.status,
+              userResponse.statusText
+            );
+            return null;
+          }
+
+          const user = await userResponse.json();
 
           return {
             id: user.id.toString(),
@@ -51,8 +106,8 @@ const authOptions: NextAuthOptions = {
             role: user.role,
             tenantId: user.tenant_id,
             isActive: user.is_active,
-            accessToken: response.access_token,
-            firstLogin: response.first_login || false,
+            accessToken: loginResponse.access_token,
+            firstLogin: loginResponse.first_login || false,
           };
         } catch (error) {
           console.error("Admin login failed:", error);
@@ -79,14 +134,37 @@ const authOptions: NextAuthOptions = {
           );
 
           if (!response.ok) {
+            console.error(
+              "SSO sync failed:",
+              response.status,
+              response.statusText
+            );
             return false;
           }
 
           const ssoResult = await response.json();
 
           // Get full user details
-          apiClient.setToken(ssoResult.access_token);
-          const fullUser = await apiClient.getCurrentUser();
+          const userResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/auth/test-token`,
+            {
+              headers: {
+                Authorization: `Bearer ${ssoResult.access_token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (!userResponse.ok) {
+            console.error(
+              "User fetch failed:",
+              userResponse.status,
+              userResponse.statusText
+            );
+            return false;
+          }
+
+          const fullUser = await userResponse.json();
 
           // Add data to user object for JWT callback
           user.role = fullUser.role;
@@ -141,6 +219,9 @@ const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+
+  // Enable debug in development
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);
