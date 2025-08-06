@@ -155,21 +155,6 @@ export default function LoginComponent() {
                   </div>
                 </div>
               </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <Shield className="w-4 h-4" />
-                  <span className="text-sm">Enterprise Security</span>
-                </div>
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-sm">System Online</span>
-                </div>
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <span className="text-sm">ISO 27001 Compliant</span>
-                </div>
-              </div>
             </div>
 
             {/* Right Side - Login Card */}
@@ -287,10 +272,10 @@ export default function LoginComponent() {
             <div className="flex items-center space-x-4">
               <Badge
                 variant="outline"
-                className="bg-green-50 text-green-700 border-green-200"
+                className="bg-red-50 text-red-700 border-red-200"
               >
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                All Systems Operational
+                Privacy Policy
               </Badge>
             </div>
           </div>
