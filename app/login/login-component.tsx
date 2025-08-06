@@ -33,7 +33,6 @@ const MicrosoftIcon = ({ className }: { className?: string }) => (
 interface LoginFormData {
   email: string;
   password: string;
-  tenantSlug: string;
 }
 
 // Extended session interface to handle our custom properties
@@ -54,12 +53,11 @@ export default function LoginComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>(""); // Add success state
+  const [success, setSuccess] = useState<string>("");
   const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">("sso");
   const [formData, setFormData] = useState<LoginFormData>({
     email: "",
     password: "",
-    tenantSlug: "msf-kenya", // Default tenant
   });
 
   const router = useRouter();
@@ -112,7 +110,6 @@ export default function LoginComponent() {
         const session = (await getSession()) as ExtendedSession | null;
         if (session?.user?.firstLogin) {
           console.log("First login - show welcome message");
-          // You can show a welcome modal/toast here
         }
 
         // Small delay to show success message
@@ -130,7 +127,7 @@ export default function LoginComponent() {
     }
   };
 
-  // Handle Traditional Login (Admin/Super Admin)
+  // Handle Super Admin Login (credentials only)
   const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -139,7 +136,7 @@ export default function LoginComponent() {
       setError("");
       setSuccess("");
 
-      // Validate admin credentials
+      // Validate credentials
       if (!formData.email || !formData.password) {
         throw new Error("Please enter both email and password");
       }
@@ -153,7 +150,6 @@ export default function LoginComponent() {
       const result = await signIn("admin-credentials", {
         email: formData.email,
         password: formData.password,
-        tenantSlug: formData.tenantSlug,
         redirect: false,
         callbackUrl: redirectTo,
       });
@@ -166,7 +162,7 @@ export default function LoginComponent() {
           );
         } else if (result.error === "AccessDenied") {
           throw new Error(
-            "Access denied. Your account may not have admin privileges."
+            "Access denied. Only Super Administrators can access this portal."
           );
         } else if (result.error === "Configuration") {
           throw new Error(
@@ -186,7 +182,6 @@ export default function LoginComponent() {
         const session = (await getSession()) as ExtendedSession | null;
         if (session?.user?.firstLogin) {
           console.log("First login - show welcome message");
-          // You can show a welcome modal/toast here
         }
 
         // Small delay to show success message
@@ -204,7 +199,7 @@ export default function LoginComponent() {
 
   const handleInputChange =
     (field: keyof LoginFormData) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
       // Clear errors when user starts typing
       if (error) setError("");
@@ -230,7 +225,9 @@ export default function LoginComponent() {
                 <h1 className="text-xl font-bold text-foreground">
                   MSF Msafiri
                 </h1>
-                <p className="text-sm text-muted-foreground">Admin Portal</p>
+                <p className="text-sm text-muted-foreground">
+                  Super Admin Portal
+                </p>
               </div>
             </div>
             <Badge variant="outline" className="bg-card">
@@ -247,18 +244,19 @@ export default function LoginComponent() {
               <div className="space-y-4">
                 <div className="inline-flex items-center space-x-2 bg-red-50 text-red-600 px-3 py-1 rounded-full text-sm font-medium">
                   <Shield className="w-4 h-4" />
-                  <span>Admin Access Only</span>
+                  <span>Super Admin Access Only</span>
                 </div>
 
                 <h1 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight">
                   Welcome to <span className="text-red-600">MSF Msafiri</span>{" "}
-                  Admin Portal
+                  Super Admin Portal
                 </h1>
 
                 <p className="text-lg text-muted-foreground leading-relaxed">
-                  Secure administrative access for MSF personnel. Manage visitor
-                  operations, events, and system administration with role-based
-                  permissions.
+                  Secure super administrative access for MSF system
+                  administrators. Manage all organizations, users, and
+                  system-wide configurations with full administrative
+                  privileges.
                 </p>
               </div>
 
@@ -270,10 +268,10 @@ export default function LoginComponent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      User Management
+                      Global User Management
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Manage staff and visitors
+                      Manage all users across organizations
                     </p>
                   </div>
                 </div>
@@ -284,10 +282,10 @@ export default function LoginComponent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      Analytics Dashboard
+                      System Analytics
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Real-time insights
+                      Complete system insights
                     </p>
                   </div>
                 </div>
@@ -298,10 +296,10 @@ export default function LoginComponent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      System Administration
+                      System Configuration
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Configure and manage
+                      Configure system-wide settings
                     </p>
                   </div>
                 </div>
@@ -312,17 +310,17 @@ export default function LoginComponent() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      Secure Access
+                      Full System Access
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Role-based permissions
+                      Complete administrative control
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Side - Enhanced Login Card */}
+            {/* Right Side - Login Card */}
             <div className="flex justify-center lg:justify-end">
               <Card className="w-full max-w-md bg-white/90 backdrop-blur-xl border-gray-200 shadow-2xl">
                 <CardContent className="p-8">
@@ -339,7 +337,7 @@ export default function LoginComponent() {
                         />
                       </div>
                       <h2 className="text-2xl font-bold text-foreground">
-                        Admin Sign In
+                        Super Admin Sign In
                       </h2>
                       <p className="text-muted-foreground">
                         Choose your authentication method
@@ -375,7 +373,7 @@ export default function LoginComponent() {
                       <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="sso">Microsoft SSO</TabsTrigger>
                         <TabsTrigger value="credentials">
-                          Admin Login
+                          Super Admin Login
                         </TabsTrigger>
                       </TabsList>
 
@@ -406,20 +404,20 @@ export default function LoginComponent() {
                         </div>
                       </TabsContent>
 
-                      {/* Admin Credentials Tab */}
+                      {/* Super Admin Credentials Tab */}
                       <TabsContent value="credentials" className="space-y-4">
                         <form
                           onSubmit={handleCredentialLogin}
                           className="space-y-4"
                         >
                           <div className="space-y-2">
-                            <Label htmlFor="email">Admin Email</Label>
+                            <Label htmlFor="email">Super Admin Email</Label>
                             <Input
                               id="email"
                               type="email"
                               value={formData.email}
                               onChange={handleInputChange("email")}
-                              placeholder="admin@msafiri.org"
+                              placeholder="superadmin@msafiri.org"
                               required
                               disabled={isLoading}
                               className={
@@ -462,24 +460,6 @@ export default function LoginComponent() {
                             </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label htmlFor="tenant">Organization</Label>
-                            <select
-                              id="tenant"
-                              value={formData.tenantSlug}
-                              onChange={handleInputChange("tenantSlug")}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 disabled:opacity-50"
-                              disabled={isLoading}
-                            >
-                              <option value="">
-                                Super Admin (All Organizations)
-                              </option>
-                              <option value="msf-kenya">MSF Kenya</option>
-                              <option value="msf-uganda">MSF Uganda</option>
-                              <option value="msf-somalia">MSF Somalia</option>
-                            </select>
-                          </div>
-
                           <Button
                             type="submit"
                             disabled={isLoading}
@@ -493,7 +473,7 @@ export default function LoginComponent() {
                             ) : (
                               <>
                                 <Shield className="w-5 h-5 mr-3" />
-                                Sign In as Admin
+                                Sign In as Super Admin
                               </>
                             )}
                           </Button>
@@ -507,45 +487,46 @@ export default function LoginComponent() {
                         <Shield className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                         <div className="space-y-1">
                           <h4 className="text-sm font-semibold text-foreground">
-                            Secure Admin Access
+                            Super Admin Access Only
                           </h4>
                           <p className="text-xs text-muted-foreground">
-                            This portal is restricted to authorized MSF
-                            administrators only. All login attempts are logged
-                            and monitored.
+                            This portal is restricted to Super Administrators
+                            only. You have full system access across all
+                            organizations. All login attempts are logged and
+                            monitored.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Admin Roles */}
+                    {/* Super Admin Privileges */}
                     <div className="space-y-3">
                       <h4 className="text-sm font-semibold text-foreground">
-                        Admin Access Levels
+                        Super Admin Privileges
                       </h4>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2">
                         <div className="flex items-center space-x-2">
                           <div className="w-2 h-2 bg-red-500 rounded-full" />
                           <span className="text-xs text-muted-foreground">
-                            Super Admin
+                            Full System Administration
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+                          <div className="w-2 h-2 bg-red-500 rounded-full" />
                           <span className="text-xs text-muted-foreground">
-                            MT Admin
+                            All Organization Management
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full" />
+                          <div className="w-2 h-2 bg-red-500 rounded-full" />
                           <span className="text-xs text-muted-foreground">
-                            HR Admin
+                            Global User & Role Management
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                          <div className="w-2 h-2 bg-red-500 rounded-full" />
                           <span className="text-xs text-muted-foreground">
-                            Event Admin
+                            System Configuration Control
                           </span>
                         </div>
                       </div>
@@ -575,7 +556,7 @@ export default function LoginComponent() {
                 className="bg-red-50 text-red-700 border-red-200"
               >
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                Admin Portal
+                Super Admin Portal
               </Badge>
             </div>
           </div>
