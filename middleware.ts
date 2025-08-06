@@ -1,25 +1,75 @@
-import { withAuth } from 'next-auth/middleware'
+// middleware.ts - Fixed NextAuth middleware
+import { withAuth } from "next-auth/middleware";
+import type { NextRequestWithAuth } from "next-auth/middleware";
 
 export default withAuth(
-  function middleware(req) {
-    // Additional middleware logic here if needed
+  // Optional middleware function - can be omitted if not needed
+  function middleware(request: NextRequestWithAuth) {
+    // Additional middleware logic if needed
+    // You can access request.nextauth.token here
+    console.log("Token:", request.nextauth.token);
+    console.log("Pathname:", request.nextUrl.pathname);
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Protect admin routes
-        const { pathname } = req.nextUrl
+        const { pathname } = req.nextUrl;
 
-        if (pathname.startsWith('/admin') || pathname.startsWith('/dashboard')) {
-          return token?.role && ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'].includes(token.role as string)
+        // Public routes that don't require authentication
+        if (pathname === "/" || pathname === "/login") {
+          return true;
         }
 
-        return !!token
+        // All other routes require authentication
+        if (!token) {
+          return false;
+        }
+
+        // Admin routes require admin roles
+        if (
+          pathname.startsWith("/dashboard") ||
+          pathname.startsWith("/users") ||
+          pathname.startsWith("/admin")
+        ) {
+          const adminRoles = [
+            "SUPER_ADMIN",
+            "MT_ADMIN",
+            "HR_ADMIN",
+            "EVENT_ADMIN",
+          ];
+          return !!(token?.role && adminRoles.includes(token.role as string));
+        }
+
+        // Super admin only routes
+        if (
+          pathname.startsWith("/tenants") ||
+          pathname.startsWith("/settings/system")
+        ) {
+          return token?.role === "SUPER_ADMIN";
+        }
+
+        // Default: user needs to be authenticated (already checked above)
+        return true;
       },
     },
+    // Optional: customize pages
+    pages: {
+      signIn: "/login",
+    },
   }
-)
+);
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/users/:path*', '/admin/:path*']
-}
+  matcher: [
+    // Protected routes
+    "/dashboard/:path*",
+    "/users/:path*",
+    "/admin/:path*",
+    "/tenants/:path*",
+    "/settings/:path*",
+    "/notifications/:path*",
+
+    // Add any other protected routes
+    "/profile/:path*",
+  ],
+};

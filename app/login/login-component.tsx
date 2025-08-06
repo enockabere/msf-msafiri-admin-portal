@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, getSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import apiClient, { LoginResponse, UserRole } from "@/lib/api";
 
 // Microsoft icon as SVG component
 const MicrosoftIcon = ({ className }: { className?: string }) => (
@@ -35,6 +35,20 @@ interface LoginFormData {
   tenantSlug: string;
 }
 
+// Extended session interface to handle our custom properties
+interface ExtendedSession {
+  user: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    role?: string;
+    tenantId?: string;
+    isActive?: boolean;
+    accessToken?: string;
+    firstLogin?: boolean;
+  };
+}
+
 export default function LoginComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +61,8 @@ export default function LoginComponent() {
   });
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   // Handle Microsoft SSO Login
   const handleMicrosoftLogin = async () => {
@@ -54,40 +70,23 @@ export default function LoginComponent() {
       setIsLoading(true);
       setError("");
 
-      // Simulate Microsoft OAuth flow
-      // In production, you would use Microsoft Graph or MSAL
-      const mockMicrosoftToken = "mock-microsoft-access-token";
+      const result = await signIn("azure-ad", {
+        redirect: false,
+      });
 
-      // Call your API's SSO endpoint
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/sso/microsoft`,
-        {
-          method: "POST",
-          headers: {
-            "X-Microsoft-Token": mockMicrosoftToken,
-            "Content-Type": "application/json",
-          },
+      if (result?.error) {
+        throw new Error("Microsoft SSO authentication failed");
+      }
+
+      if (result?.ok) {
+        // Check if this is a first login with type assertion
+        const session = (await getSession()) as ExtendedSession | null;
+        if (session?.user?.firstLogin) {
+          console.log("First login - show welcome message");
+          // You can show a welcome modal/toast here
         }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "SSO authentication failed");
+        router.push(redirectTo);
       }
-
-      const loginResponse: LoginResponse = await response.json();
-
-      // Store token and create session
-      await createUserSession(loginResponse);
-
-      // Handle first login
-      if (loginResponse.first_login) {
-        // Show welcome message or redirect to onboarding
-        console.log("First login:", loginResponse.welcome_message);
-      }
-
-      // Redirect to dashboard
-      router.push("/dashboard");
     } catch (error) {
       console.error("SSO Login error:", error);
       setError(
@@ -111,56 +110,31 @@ export default function LoginComponent() {
         throw new Error("Please enter both email and password");
       }
 
-      // Use tenant login for non-super admins, regular login for super admins
-      const loginResponse = await apiClient.login(
-        formData.email,
-        formData.password,
-        formData.tenantSlug || undefined
-      );
+      const result = await signIn("admin-credentials", {
+        email: formData.email,
+        password: formData.password,
+        tenantSlug: formData.tenantSlug,
+        redirect: false,
+      });
 
-      // Create session
-      await createUserSession(loginResponse);
-
-      // Handle first login
-      if (loginResponse.first_login) {
-        console.log("First login:", loginResponse.welcome_message);
+      if (result?.error) {
+        throw new Error("Invalid credentials or unauthorized access");
       }
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      if (result?.ok) {
+        // Check if this is a first login with type assertion
+        const session = (await getSession()) as ExtendedSession | null;
+        if (session?.user?.firstLogin) {
+          console.log("First login - show welcome message");
+          // You can show a welcome modal/toast here
+        }
+        router.push(redirectTo);
+      }
     } catch (error) {
       console.error("Credential login error:", error);
       setError(error instanceof Error ? error.message : "Login failed");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Create user session and store in localStorage/cookies
-  const createUserSession = async (loginResponse: LoginResponse) => {
-    // Store access token
-    apiClient.setToken(loginResponse.access_token);
-
-    try {
-      // Get user details
-      const user = await apiClient.getCurrentUser();
-
-      // Store session data
-      const sessionData = {
-        user,
-        token: loginResponse.access_token,
-        loginTime: new Date().toISOString(),
-        firstLogin: loginResponse.first_login || false,
-        welcomeMessage: loginResponse.welcome_message,
-      };
-
-      // Store in localStorage (consider using secure cookies in production)
-      localStorage.setItem("msafiri_session", JSON.stringify(sessionData));
-      localStorage.setItem("msafiri_user", JSON.stringify(user));
-
-      console.log("Session created for:", user.full_name, "Role:", user.role);
-    } catch (error) {
-      console.error("Failed to create session:", error);
     }
   };
 
@@ -222,7 +196,7 @@ export default function LoginComponent() {
                 </p>
               </div>
 
-              {/* Feature Highlights - Same as before */}
+              {/* Feature Highlights */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
                   <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">

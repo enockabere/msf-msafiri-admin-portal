@@ -1,239 +1,179 @@
-// File: lib/auth.ts (Session management utilities)
+// lib/auth.ts - NextAuth integration utilities
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import apiClient, { UserRole } from "@/lib/api";
 
-import { User, UserRole } from './api';
-
-export interface SessionData {
-  user: User;
-  token: string;
-  loginTime: string;
+// Define the user type that comes from NextAuth session
+interface SessionUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role: string;
+  tenantId?: string;
+  isActive: boolean;
+  accessToken: string;
   firstLogin: boolean;
-  welcomeMessage?: string;
-  expiresAt?: string;
 }
 
-export class SessionManager {
-  private static readonly SESSION_KEY = 'msafiri_session';
-  private static readonly USER_KEY = 'msafiri_user';
-  private static readonly TOKEN_KEY = 'access_token';
+// Main authentication hook
+export function useAuth() {
+  const { data: session, status } = useSession();
 
-  // Create and store session
-  static createSession(sessionData: SessionData): void {
-    if (typeof window === 'undefined') return;
+  const adminRoles = [
+    UserRole.SUPER_ADMIN,
+    UserRole.MT_ADMIN,
+    UserRole.HR_ADMIN,
+    UserRole.EVENT_ADMIN,
+  ];
 
-    // Set expiration time (24 hours from now)
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-    
-    const fullSessionData = {
-      ...sessionData,
-      expiresAt: expiresAt.toISOString()
-    };
+  return {
+    // User data
+    user: session?.user || null,
 
-    localStorage.setItem(this.SESSION_KEY, JSON.stringify(fullSessionData));
-    localStorage.setItem(this.USER_KEY, JSON.stringify(sessionData.user));
-    localStorage.setItem(this.TOKEN_KEY, sessionData.token);
-  }
+    // Authentication state
+    isAuthenticated: status === "authenticated",
+    loading: status === "loading",
 
-  // Get current session
-  static getSession(): SessionData | null {
-    if (typeof window === 'undefined') return null;
+    // Role-based permissions
+    isAdmin: session?.user?.role
+      ? adminRoles.includes(session.user.role as UserRole)
+      : false,
+    isSuperAdmin: session?.user?.role === UserRole.SUPER_ADMIN,
 
-    try {
-      const sessionStr = localStorage.getItem(this.SESSION_KEY);
-      if (!sessionStr) return null;
+    // Role checking utilities
+    hasRole: (role: UserRole) => session?.user?.role === role,
+    hasAnyRole: (roles: UserRole[]) =>
+      session?.user?.role
+        ? roles.includes(session.user.role as UserRole)
+        : false,
 
-      const session: SessionData = JSON.parse(sessionStr);
-      
-      // Check if session is expired
-      if (session.expiresAt && new Date() > new Date(session.expiresAt)) {
-        this.clearSession();
-        return null;
-      }
+    // Session data
+    accessToken: session?.user?.accessToken,
+    firstLogin: session?.user?.firstLogin || false,
+    tenantId: session?.user?.tenantId,
 
-      return session;
-    } catch {
-      this.clearSession();
-      return null;
+    // Additional user info
+    isActive: session?.user?.isActive || false,
+  };
+}
+
+// Hook that automatically sets API client token from NextAuth session
+export function useApiClient() {
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.user?.accessToken) {
+      apiClient.setToken(session.user.accessToken);
+    } else {
+      // Clear token if no session
+      apiClient.setToken("");
     }
-  }
+  }, [session?.user?.accessToken]);
 
-  // Get current user
-  static getCurrentUser(): User | null {
-    if (typeof window === 'undefined') return null;
+  return apiClient;
+}
 
-    try {
-      const userStr = localStorage.getItem(this.USER_KEY);
-      return userStr ? JSON.parse(userStr) : null;
-    } catch {
-      return null;
-    }
-  }
+// Hook for making authenticated API calls with ready state
+export function useAuthenticatedApi() {
+  const apiClientInstance = useApiClient();
+  const { isAuthenticated, loading } = useAuth();
 
-  // Get current token
-  static getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
+  return {
+    apiClient: apiClientInstance,
+    isReady: isAuthenticated && !loading,
+    isLoading: loading,
+  };
+}
 
-  // Check if user is authenticated
-  static isAuthenticated(): boolean {
-    const session = this.getSession();
-    return session !== null && session.token !== null;
-  }
-
-  // Check if user has specific role
-  static hasRole(role: UserRole): boolean {
-    const user = this.getCurrentUser();
-    return user?.role === role;
-  }
-
-  // Check if user has any of the specified roles
-  static hasAnyRole(roles: UserRole[]): boolean {
-    const user = this.getCurrentUser();
-    return user ? roles.includes(user.role) : false;
-  }
-
-  // Check if user is admin (any admin role)
-  static isAdmin(): boolean {
-    return this.hasAnyRole([
+// Utility functions for role-based access
+export const AuthUtils = {
+  // Check if role is admin
+  isAdminRole: (role: string): boolean => {
+    const adminRoles = [
       UserRole.SUPER_ADMIN,
       UserRole.MT_ADMIN,
       UserRole.HR_ADMIN,
-      UserRole.EVENT_ADMIN
-    ]);
-  }
+      UserRole.EVENT_ADMIN,
+    ];
+    return adminRoles.includes(role as UserRole);
+  },
 
-  // Check if user is super admin
-  static isSuperAdmin(): boolean {
-    return this.hasRole(UserRole.SUPER_ADMIN);
-  }
+  // Check if role is super admin
+  isSuperAdminRole: (role: string): boolean => {
+    return role === UserRole.SUPER_ADMIN;
+  },
 
-  // Update session with new data
-  static updateSession(updates: Partial<SessionData>): void {
-    const currentSession = this.getSession();
-    if (!currentSession) return;
-
-    const updatedSession = { ...currentSession, ...updates };
-    this.createSession(updatedSession);
-  }
-
-  // Clear session (logout)
-  static clearSession(): void {
-    if (typeof window === 'undefined') return;
-
-    localStorage.removeItem(this.SESSION_KEY);
-    localStorage.removeItem(this.USER_KEY);
-    localStorage.removeItem(this.TOKEN_KEY);
-  }
-
-  // Refresh session expiration
-  static refreshSession(): void {
-    const session = this.getSession();
-    if (session) {
-      this.createSession(session); // This will update the expiration time
+  // Get role display name
+  getRoleDisplayName: (role: string): string => {
+    switch (role as UserRole) {
+      case UserRole.SUPER_ADMIN:
+        return "Super Administrator";
+      case UserRole.MT_ADMIN:
+        return "MT Administrator";
+      case UserRole.HR_ADMIN:
+        return "HR Administrator";
+      case UserRole.EVENT_ADMIN:
+        return "Event Administrator";
+      case UserRole.STAFF:
+        return "Staff";
+      case UserRole.VISITOR:
+        return "Visitor";
+      case UserRole.GUEST:
+        return "Guest";
+      default:
+        return "Unknown Role";
     }
-  }
+  },
 
-  // Get session status
-  static getSessionStatus(): {
-    isAuthenticated: boolean;
-    isAdmin: boolean;
-    isSuperAdmin: boolean;
-    user: User | null;
-    timeRemaining?: number; // minutes
-  } {
-    const session = this.getSession();
-    const user = this.getCurrentUser();
-    
-    let timeRemaining: number | undefined;
-    if (session?.expiresAt) {
-      const remaining = new Date(session.expiresAt).getTime() - Date.now();
-      timeRemaining = Math.max(0, Math.floor(remaining / (1000 * 60))); // minutes
+  // Get role color classes for UI
+  getRoleColor: (role: string): string => {
+    switch (role as UserRole) {
+      case UserRole.SUPER_ADMIN:
+        return "bg-red-100 text-red-800";
+      case UserRole.MT_ADMIN:
+        return "bg-yellow-100 text-yellow-800";
+      case UserRole.HR_ADMIN:
+        return "bg-orange-100 text-orange-800";
+      case UserRole.EVENT_ADMIN:
+        return "bg-blue-100 text-blue-800";
+      case UserRole.STAFF:
+        return "bg-green-100 text-green-800";
+      case UserRole.VISITOR:
+        return "bg-purple-100 text-purple-800";
+      case UserRole.GUEST:
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
-
-    return {
-      isAuthenticated: this.isAuthenticated(),
-      isAdmin: this.isAdmin(),
-      isSuperAdmin: this.isSuperAdmin(),
-      user,
-      timeRemaining
-    };
-  }
-}
-
-// File: middleware.ts (Next.js middleware for route protection)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-// Define protected routes that require admin access
-const PROTECTED_ROUTES = [
-  '/dashboard',
-  '/users',
-  '/tenants',
-  '/notifications',
-  '/settings',
-  '/reports',
-  '/admin'
-];
-
-// Define routes that require super admin access
-const SUPER_ADMIN_ROUTES = [
-  '/tenants',
-  '/settings/system',
-  '/admin/system'
-];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Skip middleware for static files, API routes, and public routes
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/icon') ||
-    pathname.startsWith('/images') ||
-    pathname === '/' ||
-    pathname === '/login'
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check if route requires protection
-  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
-    pathname.startsWith(route)
-  );
-
-  if (!isProtectedRoute) {
-    return NextResponse.next();
-  }
-
-  // Get session data from request headers (you might need to adjust this)
-  const sessionToken = request.cookies.get('msafiri_token')?.value ||
-                      request.headers.get('authorization')?.replace('Bearer ', '');
-
-  if (!sessionToken) {
-    // Redirect to login if no token
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // For super admin routes, you might want additional checks
-  const requiresSuperAdmin = SUPER_ADMIN_ROUTES.some(route =>
-    pathname.startsWith(route)
-  );
-
-  if (requiresSuperAdmin) {
-    // You could decode the token here to check user role
-    // For now, we'll let the component handle role-based rendering
-  }
-
-  return NextResponse.next();
-}
-
-export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|icon|images).*)',
-  ],
+  },
 };
 
+// Session status type for components that need detailed session info
+export interface SessionStatus {
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  user: SessionUser | null;
+  loading: boolean;
+  hasRole: (role: UserRole) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
+}
+
+// Hook to get session status object
+export function useSessionStatus(): SessionStatus {
+  const auth = useAuth();
+
+  return {
+    isAuthenticated: auth.isAuthenticated,
+    isAdmin: auth.isAdmin,
+    isSuperAdmin: auth.isSuperAdmin,
+    user: auth.user as SessionUser | null,
+    loading: auth.loading,
+    hasRole: auth.hasRole,
+    hasAnyRole: auth.hasAnyRole,
+  };
+}
+
+// Export types for use in other files
+export type { SessionUser };

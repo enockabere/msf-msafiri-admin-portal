@@ -1,3 +1,4 @@
+// lib/api.ts - Updated for NextAuth integration
 export interface User {
   id: number;
   email: string;
@@ -185,17 +186,12 @@ class ApiClient {
     this.baseURL = API_BASE_URL;
   }
 
+  // UPDATED: Simplified token management - no localStorage
   setToken(token: string): void {
     this.token = token;
-    if (typeof window !== "undefined") {
-      localStorage.setItem("access_token", token);
-    }
   }
 
   getToken(): string | null {
-    if (typeof window !== "undefined" && !this.token) {
-      this.token = localStorage.getItem("access_token");
-    }
     return this.token;
   }
 
@@ -220,11 +216,8 @@ class ApiClient {
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Token expired, redirect to login
-          this.clearToken();
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
+          // UPDATED: Don't redirect directly, let NextAuth/components handle auth errors
+          throw new Error("Unauthorized - session may have expired");
         }
 
         const errorData: ApiError = await response.json().catch(() => ({
@@ -244,14 +237,9 @@ class ApiClient {
     }
   }
 
-  clearToken(): void {
-    this.token = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("access_token");
-    }
-  }
+  // REMOVED: clearToken method - NextAuth handles session clearing
 
-  // Authentication
+  // Authentication - Updated for NextAuth integration
   async login(
     email: string,
     password: string,
@@ -272,9 +260,8 @@ class ApiClient {
 
     const response = await this.request<LoginResponse>(endpoint, options);
 
-    if (response.access_token) {
-      this.setToken(response.access_token);
-    }
+    // UPDATED: Don't automatically store token - NextAuth handles this
+    // The token will be set via useApiClient hook when needed
 
     return response;
   }

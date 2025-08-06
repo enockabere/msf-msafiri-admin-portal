@@ -16,18 +16,9 @@ const authOptions: NextAuthOptions = {
           scope: "openid profile email User.Read",
         },
       },
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          role: "staff", // Default role, will be updated from your API
-        };
-      },
     }),
 
-    // Admin Credentials Provider (for Super Admins)
+    // Admin Credentials Provider
     CredentialsProvider({
       id: "admin-credentials",
       name: "Admin Login",
@@ -42,7 +33,7 @@ const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Use your existing API client
+          // Login through your API
           const response = await apiClient.login(
             credentials.email,
             credentials.password,
@@ -50,6 +41,7 @@ const authOptions: NextAuthOptions = {
           );
 
           // Get user details
+          apiClient.setToken(response.access_token);
           const user = await apiClient.getCurrentUser();
 
           return {
@@ -71,11 +63,10 @@ const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // For Microsoft SSO, sync with your API
       if (account?.provider === "azure-ad") {
         try {
-          // Call your SSO endpoint to create/update user
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/auth/sso/microsoft`,
             {
@@ -88,23 +79,21 @@ const authOptions: NextAuthOptions = {
           );
 
           if (!response.ok) {
-            console.error("SSO sync failed");
             return false;
           }
 
           const ssoResult = await response.json();
 
-          // Add API data to user object
-          user.accessToken = ssoResult.access_token;
-          user.firstLogin = ssoResult.first_login || false;
-
-          // Get full user details from your API
+          // Get full user details
           apiClient.setToken(ssoResult.access_token);
           const fullUser = await apiClient.getCurrentUser();
 
+          // Add data to user object for JWT callback
           user.role = fullUser.role;
           user.tenantId = fullUser.tenant_id;
           user.isActive = fullUser.is_active;
+          user.accessToken = ssoResult.access_token;
+          user.firstLogin = ssoResult.first_login || false;
 
           return true;
         } catch (error) {
@@ -113,12 +102,11 @@ const authOptions: NextAuthOptions = {
         }
       }
 
-      // For admin credentials, user is already validated
       return true;
     },
 
-    async jwt({ token, user, account }) {
-      // Store additional user data in JWT
+    async jwt({ token, user }) {
+      // First time JWT callback is run, user object is available
       if (user) {
         token.role = user.role;
         token.tenantId = user.tenantId;
@@ -126,27 +114,25 @@ const authOptions: NextAuthOptions = {
         token.accessToken = user.accessToken;
         token.firstLogin = user.firstLogin;
       }
-
       return token;
     },
 
     async session({ session, token }) {
       // Send properties to the client
-      if (token) {
+      if (session.user) {
         session.user.role = token.role as string;
         session.user.tenantId = token.tenantId as string;
         session.user.isActive = token.isActive as boolean;
         session.user.accessToken = token.accessToken as string;
         session.user.firstLogin = token.firstLogin as boolean;
       }
-
       return session;
     },
   },
 
   pages: {
-    signIn: "/login", // Custom login page
-    error: "/auth/error", // Error page
+    signIn: "/login",
+    error: "/auth/error",
   },
 
   session: {
