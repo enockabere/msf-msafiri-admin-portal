@@ -1,4 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +22,11 @@ import {
   Home,
   ChevronLeft,
   ChevronRight,
+  LogOut,
+  Settings,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useAuth, AuthUtils } from "@/lib/auth";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -113,7 +120,28 @@ const navigationItems = [
 ];
 
 export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
-  const [activeItem, setActiveItem] = useState("/dashboard");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, isSuperAdmin } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+
+      // Sign out with NextAuth
+      await signOut({
+        redirect: false,
+      });
+
+      // Manual redirect to login page
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div
@@ -122,6 +150,7 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
         collapsed ? "w-20" : "w-80"
       )}
     >
+      {/* Header */}
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -137,7 +166,7 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
             {!collapsed && (
               <div>
                 <h1 className="text-lg font-bold">MSF Msafiri</h1>
-                <p className="text-xs opacity-80">Admin Portal</p>
+                <p className="text-xs opacity-80">Super Admin Portal</p>
               </div>
             )}
           </div>
@@ -156,6 +185,26 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
         </div>
       </div>
 
+      {/* User Info */}
+      {!collapsed && user && (
+        <div className="p-4 border-b border-white/10">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <Shield className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {user.name || user.email}
+              </p>
+              <p className="text-xs opacity-70 truncate">
+                {AuthUtils.getRoleDisplayName(user.role || "")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
       <div className="flex-1 overflow-y-auto py-4">
         {navigationItems.map((section, idx) => (
           <div key={idx} className="mb-6">
@@ -168,35 +217,89 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
             )}
             <div className="space-y-1">
               {section.items.map((item, index) => (
-                <button
-                  key={index}
-                  onClick={() => setActiveItem(item.href)}
-                  className={cn(
-                    "w-full flex items-center px-6 py-3 text-left transition-all duration-200 border-l-3 group",
-                    activeItem === item.href
-                      ? "bg-white/10 border-l-white"
-                      : "border-l-transparent hover:bg-white/5 hover:border-l-white/50"
-                  )}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!collapsed && (
-                    <>
-                      <span className="ml-3 font-medium">{item.label}</span>
-                      {item.badge && (
-                        <Badge
-                          variant="secondary"
-                          className="ml-auto bg-yellow-400 text-gray-900 text-xs"
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </>
-                  )}
-                </button>
+                <Link key={index} href={item.href}>
+                  <button
+                    className={cn(
+                      "w-full flex items-center px-6 py-3 text-left transition-all duration-200 border-l-3 group",
+                      pathname === item.href
+                        ? "bg-white/10 border-l-white"
+                        : "border-l-transparent hover:bg-white/5 hover:border-l-white/50"
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {!collapsed && (
+                      <>
+                        <span className="ml-3 font-medium">{item.label}</span>
+                        {item.badge && (
+                          <Badge
+                            variant="secondary"
+                            className="ml-auto bg-yellow-400 text-gray-900 text-xs"
+                          >
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </button>
+                </Link>
               ))}
             </div>
           </div>
         ))}
+
+        {/* System Settings for Super Admin */}
+        {isSuperAdmin && (
+          <div className="mb-6">
+            {!collapsed && (
+              <div className="px-6 mb-2">
+                <p className="text-xs uppercase tracking-wider opacity-70 font-semibold">
+                  System
+                </p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Link href="/admin/system">
+                <button
+                  className={cn(
+                    "w-full flex items-center px-6 py-3 text-left transition-all duration-200 border-l-3 group",
+                    pathname === "/admin/system"
+                      ? "bg-white/10 border-l-white"
+                      : "border-l-transparent hover:bg-white/5 hover:border-l-white/50"
+                  )}
+                >
+                  <Settings className="h-5 w-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="ml-3 font-medium">System Settings</span>
+                  )}
+                </button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer with Logout */}
+      <div className="p-4 border-t border-white/10">
+        <Button
+          variant="ghost"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={cn(
+            "w-full justify-start text-white hover:bg-red-500/20 hover:text-white transition-colors",
+            collapsed ? "px-2" : "px-4"
+          )}
+        >
+          {isLoggingOut ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <LogOut className="h-5 w-5" />
+          )}
+          {!collapsed && (
+            <span className="ml-3">
+              {isLoggingOut ? "Signing out..." : "Sign Out"}
+            </span>
+          )}
+        </Button>
       </div>
     </div>
   );

@@ -16,7 +16,6 @@ interface SessionUser {
   firstLogin: boolean;
 }
 
-// Union type for all possible role values
 type ValidRole = UserRole | "super_admin";
 
 // Main authentication hook

@@ -305,7 +305,7 @@ class ApiClient {
   }
 
   async getCurrentUser(): Promise<User> {
-    return await this.request<User>("/auth/test-token");
+    return await this.request<User>("/users/me");
   }
 
   // User management methods

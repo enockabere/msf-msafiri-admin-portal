@@ -8,7 +8,6 @@ import RecentActivities from "@/components/dashboard/recent-activities";
 import QuickActions from "@/components/dashboard/quick-actions";
 import { useAuth, AuthUtils } from "@/lib/auth";
 
-// Loading component
 function DashboardLoading() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -20,7 +19,6 @@ function DashboardLoading() {
   );
 }
 
-// Unauthorized access component
 function UnauthorizedAccess() {
   const router = useRouter();
 
