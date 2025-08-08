@@ -1,19 +1,20 @@
-// middleware.ts - Fixed NextAuth middleware
 import { withAuth } from "next-auth/middleware";
 import type { NextRequestWithAuth } from "next-auth/middleware";
 
 export default withAuth(
-  // Optional middleware function - can be omitted if not needed
+  // Optional middleware function
   function middleware(request: NextRequestWithAuth) {
-    // Additional middleware logic if needed
-    // You can access request.nextauth.token here
-    console.log("Token:", request.nextauth.token);
-    console.log("Pathname:", request.nextUrl.pathname);
+    // Debug logging
+    console.log("Middleware - Token role:", request.nextauth.token?.role);
+    console.log("Middleware - Pathname:", request.nextUrl.pathname);
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
+
+        console.log("Authorized callback - Token role:", token?.role);
+        console.log("Authorized callback - Pathname:", pathname);
 
         // Public routes that don't require authentication
         if (pathname === "/" || pathname === "/login") {
@@ -22,10 +23,11 @@ export default withAuth(
 
         // All other routes require authentication
         if (!token) {
+          console.log("No token found, denying access");
           return false;
         }
 
-        // Admin routes require admin roles
+        // Admin routes require admin roles - Updated to include super_admin
         if (
           pathname.startsWith("/dashboard") ||
           pathname.startsWith("/users") ||
@@ -33,26 +35,44 @@ export default withAuth(
         ) {
           const adminRoles = [
             "SUPER_ADMIN",
+            "super_admin", // Add the actual role from your API
             "MT_ADMIN",
             "HR_ADMIN",
             "EVENT_ADMIN",
           ];
-          return !!(token?.role && adminRoles.includes(token.role as string));
+
+          const hasAdminRole = !!(
+            token?.role && adminRoles.includes(token.role as string)
+          );
+          console.log(
+            "Admin route check:",
+            hasAdminRole,
+            "for role:",
+            token.role
+          );
+          return hasAdminRole;
         }
 
-        // Super admin only routes
+        // Super admin only routes - Updated to include super_admin
         if (
           pathname.startsWith("/tenants") ||
           pathname.startsWith("/settings/system")
         ) {
-          return token?.role === "SUPER_ADMIN";
+          const isSuperAdmin =
+            token?.role === "SUPER_ADMIN" || token?.role === "super_admin";
+          console.log(
+            "Super admin route check:",
+            isSuperAdmin,
+            "for role:",
+            token.role
+          );
+          return isSuperAdmin;
         }
 
         // Default: user needs to be authenticated (already checked above)
         return true;
       },
     },
-    // Optional: customize pages
     pages: {
       signIn: "/login",
     },
@@ -61,15 +81,12 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Protected routes
     "/dashboard/:path*",
     "/users/:path*",
     "/admin/:path*",
     "/tenants/:path*",
     "/settings/:path*",
     "/notifications/:path*",
-
-    // Add any other protected routes
     "/profile/:path*",
   ],
 };

@@ -154,6 +154,9 @@ export default function LoginComponent() {
         callbackUrl: redirectTo,
       });
 
+      console.log("SignIn result:", result);
+      console.log("Redirect to:", redirectTo);
+
       if (result?.error) {
         // Enhanced error handling based on NextAuth error types
         if (result.error === "CredentialsSignin") {
@@ -178,16 +181,21 @@ export default function LoginComponent() {
       if (result?.ok) {
         setSuccess("Login successful! Redirecting to dashboard...");
 
-        // Check session and handle first login
+        // Force refresh the session to get updated data
         const session = (await getSession()) as ExtendedSession | null;
         if (session?.user?.firstLogin) {
           console.log("First login - show welcome message");
         }
 
-        // Small delay to show success message
+        // Immediate redirect without delay
+        router.push(redirectTo);
+
+        // Also try window.location as backup
         setTimeout(() => {
-          router.push(redirectTo);
-        }, 1000);
+          if (window.location.pathname === "/login") {
+            window.location.href = redirectTo;
+          }
+        }, 500);
       }
     } catch (error) {
       console.error("Credential login error:", error);

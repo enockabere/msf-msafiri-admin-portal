@@ -1,4 +1,4 @@
-// lib/auth.ts - NextAuth integration utilities
+// lib/auth.ts - Updated with proper TypeScript types
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import apiClient, { UserRole } from "@/lib/api";
@@ -16,12 +16,17 @@ interface SessionUser {
   firstLogin: boolean;
 }
 
+// Union type for all possible role values
+type ValidRole = UserRole | "super_admin";
+
 // Main authentication hook
 export function useAuth() {
   const { data: session, status } = useSession();
 
-  const adminRoles = [
+  // Updated to include both formats of super admin role
+  const adminRoles: ValidRole[] = [
     UserRole.SUPER_ADMIN,
+    "super_admin", // Add the actual role from your API
     UserRole.MT_ADMIN,
     UserRole.HR_ADMIN,
     UserRole.EVENT_ADMIN,
@@ -35,17 +40,21 @@ export function useAuth() {
     isAuthenticated: status === "authenticated",
     loading: status === "loading",
 
-    // Role-based permissions
+    // Role-based permissions - Updated to handle super_admin
     isAdmin: session?.user?.role
-      ? adminRoles.includes(session.user.role as UserRole)
+      ? adminRoles.includes(session.user.role as ValidRole)
       : false,
-    isSuperAdmin: session?.user?.role === UserRole.SUPER_ADMIN,
+
+    // Updated super admin check to handle both formats
+    isSuperAdmin:
+      session?.user?.role === UserRole.SUPER_ADMIN ||
+      session?.user?.role === "super_admin",
 
     // Role checking utilities
-    hasRole: (role: UserRole) => session?.user?.role === role,
-    hasAnyRole: (roles: UserRole[]) =>
+    hasRole: (role: ValidRole) => session?.user?.role === role,
+    hasAnyRole: (roles: ValidRole[]) =>
       session?.user?.role
-        ? roles.includes(session.user.role as UserRole)
+        ? roles.includes(session.user.role as ValidRole)
         : false,
 
     // Session data
@@ -86,28 +95,30 @@ export function useAuthenticatedApi() {
   };
 }
 
-// Utility functions for role-based access
+// Utility functions for role-based access - Updated to handle super_admin
 export const AuthUtils = {
-  // Check if role is admin
+  // Check if role is admin - Updated to include super_admin
   isAdminRole: (role: string): boolean => {
-    const adminRoles = [
+    const adminRoles: ValidRole[] = [
       UserRole.SUPER_ADMIN,
+      "super_admin", // Add the actual role from your API
       UserRole.MT_ADMIN,
       UserRole.HR_ADMIN,
       UserRole.EVENT_ADMIN,
     ];
-    return adminRoles.includes(role as UserRole);
+    return adminRoles.includes(role as ValidRole);
   },
 
-  // Check if role is super admin
+  // Check if role is super admin - Updated to handle both formats
   isSuperAdminRole: (role: string): boolean => {
-    return role === UserRole.SUPER_ADMIN;
+    return role === UserRole.SUPER_ADMIN || role === "super_admin";
   },
 
-  // Get role display name
+  // Get role display name - Updated to handle super_admin
   getRoleDisplayName: (role: string): string => {
-    switch (role as UserRole) {
+    switch (role) {
       case UserRole.SUPER_ADMIN:
+      case "super_admin":
         return "Super Administrator";
       case UserRole.MT_ADMIN:
         return "MT Administrator";
@@ -126,10 +137,11 @@ export const AuthUtils = {
     }
   },
 
-  // Get role color classes for UI
+  // Get role color classes for UI - Updated to handle super_admin
   getRoleColor: (role: string): string => {
-    switch (role as UserRole) {
+    switch (role) {
       case UserRole.SUPER_ADMIN:
+      case "super_admin":
         return "bg-red-100 text-red-800";
       case UserRole.MT_ADMIN:
         return "bg-yellow-100 text-yellow-800";
@@ -156,8 +168,8 @@ export interface SessionStatus {
   isSuperAdmin: boolean;
   user: SessionUser | null;
   loading: boolean;
-  hasRole: (role: UserRole) => boolean;
-  hasAnyRole: (roles: UserRole[]) => boolean;
+  hasRole: (role: ValidRole) => boolean;
+  hasAnyRole: (roles: ValidRole[]) => boolean;
 }
 
 // Hook to get session status object
@@ -176,4 +188,4 @@ export function useSessionStatus(): SessionStatus {
 }
 
 // Export types for use in other files
-export type { SessionUser };
+export type { SessionUser, ValidRole };

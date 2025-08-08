@@ -1,3 +1,4 @@
+// app/api/auth/[...nextauth]/route.ts - Fixed for Super Admin only
 import NextAuth from "next-auth";
 import { NextAuthOptions } from "next-auth";
 import AzureADProvider from "next-auth/providers/azure-ad";
@@ -17,14 +18,13 @@ const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Admin Credentials Provider - Fixed to handle API calls directly
+    // Super Admin Credentials Provider - Fixed to use correct endpoints
     CredentialsProvider({
       id: "admin-credentials",
-      name: "Admin Login",
+      name: "Super Admin Login",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        tenantSlug: { label: "Organization", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -32,56 +32,44 @@ const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Direct API call without using the singleton apiClient
-          const endpoint = credentials.tenantSlug
-            ? "/auth/login/tenant"
-            : "/auth/login";
           const baseURL =
             process.env.NEXT_PUBLIC_API_URL ||
             "https://msafiri-visitor-api.onrender.com/api/v1";
 
-          let response;
+          console.log(
+            "Attempting super admin login to:",
+            `${baseURL}/auth/login`
+          );
 
-          if (credentials.tenantSlug) {
-            // JSON body for tenant login
-            response = await fetch(`${baseURL}${endpoint}`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: credentials.email,
-                password: credentials.password,
-                tenant_slug: credentials.tenantSlug,
-              }),
-            });
-          } else {
-            // URLSearchParams for regular login
-            response = await fetch(`${baseURL}${endpoint}`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
-              body: new URLSearchParams({
-                username: credentials.email,
-                password: credentials.password,
-              }),
-            });
-          }
+          // Super Admin login - ALWAYS use /auth/login (not /auth/login/tenant)
+          const response = await fetch(`${baseURL}/auth/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              username: credentials.email,
+              password: credentials.password,
+            }),
+          });
 
           if (!response.ok) {
+            const errorText = await response.text();
             console.error(
               "Login API error:",
               response.status,
-              response.statusText
+              response.statusText,
+              errorText
             );
             return null;
           }
 
           const loginResponse = await response.json();
+          console.log("Login successful, getting user details...");
 
-          // Get user details with the token
+          // Get user details with the token - Use POST method for test-token
           const userResponse = await fetch(`${baseURL}/auth/test-token`, {
+            method: "POST", // Changed from GET to POST
             headers: {
               Authorization: `Bearer ${loginResponse.access_token}`,
               "Content-Type": "application/json",
@@ -94,10 +82,36 @@ const authOptions: NextAuthOptions = {
               userResponse.status,
               userResponse.statusText
             );
+            const errorText = await userResponse.text();
+            console.error("Error details:", errorText);
             return null;
           }
 
           const user = await userResponse.json();
+          console.log("User details fetched:", user.email, user.role);
+
+          // Validate that this is actually a super admin
+          // Handle both possible role formats: 'SUPER_ADMIN' and 'super_admin'
+          const validSuperAdminRoles = ["SUPER_ADMIN", "super_admin"];
+          if (!validSuperAdminRoles.includes(user.role)) {
+            console.error(
+              "Access denied: User role is",
+              user.role,
+              "but super admin role is required"
+            );
+            return null;
+          }
+
+          // Validate that super admin doesn't have tenant restrictions
+          if (user.tenant_id) {
+            console.error(
+              "Super admin should not have tenant restrictions, but tenant_id is:",
+              user.tenant_id
+            );
+            return null;
+          }
+
+          console.log("Super admin login successful for:", user.email);
 
           return {
             id: user.id.toString(),
@@ -110,7 +124,7 @@ const authOptions: NextAuthOptions = {
             firstLogin: loginResponse.first_login || false,
           };
         } catch (error) {
-          console.error("Admin login failed:", error);
+          console.error("Super admin login failed:", error);
           return null;
         }
       },
@@ -144,10 +158,11 @@ const authOptions: NextAuthOptions = {
 
           const ssoResult = await response.json();
 
-          // Get full user details
+          // Get full user details - Use POST method
           const userResponse = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/auth/test-token`,
             {
+              method: "POST", // Changed from GET to POST
               headers: {
                 Authorization: `Bearer ${ssoResult.access_token}`,
                 "Content-Type": "application/json",
@@ -157,7 +172,7 @@ const authOptions: NextAuthOptions = {
 
           if (!userResponse.ok) {
             console.error(
-              "User fetch failed:",
+              "SSO user fetch failed:",
               userResponse.status,
               userResponse.statusText
             );
@@ -165,6 +180,17 @@ const authOptions: NextAuthOptions = {
           }
 
           const fullUser = await userResponse.json();
+
+          // For SSO, also validate super admin role
+          const validSuperAdminRoles = ["SUPER_ADMIN", "super_admin"];
+          if (!validSuperAdminRoles.includes(fullUser.role)) {
+            console.error(
+              "SSO Access denied: User role is",
+              fullUser.role,
+              "but super admin role is required"
+            );
+            return false;
+          }
 
           // Add data to user object for JWT callback
           user.role = fullUser.role;
@@ -220,7 +246,7 @@ const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
-  // Enable debug in development
+  // Enable debug in development to see detailed logs
   debug: process.env.NODE_ENV === "development",
 };
 
