@@ -7,6 +7,7 @@ import StatsCards from "@/components/dashboard/stats-cards";
 import RecentActivities from "@/components/dashboard/recent-activities";
 import QuickActions from "@/components/dashboard/quick-actions";
 import { useAuth, AuthUtils } from "@/lib/auth";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 
 function DashboardLoading() {
   return (
@@ -100,6 +101,9 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        {/* Session Timeout Warning */}
+        <SessionTimeoutWarning warningMinutes={5} sessionDurationMinutes={30} />
+
         {/* Welcome header with user info */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">

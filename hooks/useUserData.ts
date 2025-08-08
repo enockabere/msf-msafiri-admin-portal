@@ -1,6 +1,6 @@
-// hooks/useUserData.ts
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { signOut } from "next-auth/react";
 import apiClient, { User } from "@/lib/api";
 
 export function useUserData() {
@@ -8,6 +8,19 @@ export function useUserData() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleSessionExpiry = async () => {
+    console.warn("Session expired in useUserData - logging out");
+    setUser(null);
+    setError("Session expired");
+    
+    await signOut({
+      redirect: false,
+      callbackUrl: '/login'
+    });
+    
+    window.location.href = '/login?sessionExpired=true';
+  };
 
   useEffect(() => {
     async function fetchUserData() {
@@ -19,18 +32,24 @@ export function useUserData() {
       try {
         setLoading(true);
         setError(null);
-
+        
         // Set token in API client
         apiClient.setToken(accessToken);
-
+        
         // Fetch current user data from the API
         const userData = await apiClient.getCurrentUser();
         setUser(userData);
       } catch (err) {
         console.error("Failed to fetch user data:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch user data"
-        );
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch user data";
+        
+        // Check if it's a session expiry error
+        if (errorMessage.includes("Session expired") || errorMessage.includes("please log in again")) {
+          await handleSessionExpiry();
+          return;
+        }
+        
+        setError(errorMessage);
         setUser(null);
       } finally {
         setLoading(false);
@@ -42,16 +61,21 @@ export function useUserData() {
 
   const refetchUser = async () => {
     if (!isAuthenticated || !accessToken) return;
-
+    
     try {
       setError(null);
       apiClient.setToken(accessToken);
       const userData = await apiClient.getCurrentUser();
       setUser(userData);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch user data"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch user data";
+      
+      if (errorMessage.includes("Session expired") || errorMessage.includes("please log in again")) {
+        await handleSessionExpiry();
+        return;
+      }
+      
+      setError(errorMessage);
     }
   };
 

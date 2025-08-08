@@ -1,4 +1,5 @@
-// lib/api.ts - Rewritten for NextAuth integration
+import { signOut } from "next-auth/react";
+
 export interface User {
   id: number;
   email: string;
@@ -180,9 +181,95 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://msafiri-visitor-api.onrender.com/api/v1";
 
+// Session expiry handler
+const handleSessionExpiry = async (): Promise<void> => {
+  console.warn("Session expired - initiating logout sequence");
+
+  try {
+    // Clear any browser storage
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear any cached data
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map((cacheName) => caches.delete(cacheName))
+        );
+      }
+    }
+
+    // Sign out with NextAuth
+    await signOut({
+      redirect: false,
+      callbackUrl: "/login",
+    });
+
+    // Force redirect to login with session expiry flag
+    if (typeof window !== "undefined") {
+      const loginUrl = new URL("/login", window.location.origin);
+      loginUrl.searchParams.set("sessionExpired", "true");
+      loginUrl.searchParams.set("reason", "inactivity");
+      window.location.href = loginUrl.toString();
+    }
+  } catch (error) {
+    console.error("Error during session expiry handling:", error);
+    // Fallback: force page reload to clear any cached state
+    if (typeof window !== "undefined") {
+      window.location.href = "/login?sessionExpired=true&reason=error";
+    }
+  }
+};
+
+// Retry mechanism for failed requests
+const retryRequest = async <T>(
+  requestFn: () => Promise<T>,
+  maxRetries: number = 2,
+  baseDelay: number = 1000
+): Promise<T> => {
+  let lastError: Error;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await requestFn();
+    } catch (error) {
+      lastError = error as Error;
+
+      // Don't retry on authentication errors or client errors (4xx)
+      if (
+        error instanceof Error &&
+        (error.message.includes("Session expired") ||
+          error.message.includes("Authentication failed") ||
+          error.message.includes("4"))
+      ) {
+        throw error;
+      }
+
+      // Don't retry on the last attempt
+      if (attempt === maxRetries) {
+        break;
+      }
+
+      // Exponential backoff with jitter
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
+      console.warn(
+        `Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${
+          maxRetries + 1
+        })`
+      );
+    }
+  }
+
+  throw lastError!;
+};
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
+  private isHandlingSessionExpiry: boolean = false;
 
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -197,65 +284,130 @@ class ApiClient {
     return this.token;
   }
 
-  // Clear token (used by useApiClient hook)
+  // Clear token (used by hooks)
   clearToken(): void {
     this.token = null;
   }
 
-  // Core request method with improved error handling
+  // Check if currently handling session expiry to prevent multiple simultaneous logouts
+  private isHandlingExpiry(): boolean {
+    return this.isHandlingSessionExpiry;
+  }
+
+  // Core request method with enhanced error handling and retry logic
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const token = this.getToken();
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...options.headers,
-    };
-
-    // Add authorization header if token exists
-    if (token && token !== "") {
-      headers.Authorization = `Bearer ${token}`;
+    // Prevent requests if we're already handling session expiry
+    if (this.isHandlingExpiry() && !options.skipAuthError) {
+      throw new Error("Session expired - logout in progress");
     }
 
-    const requestConfig: RequestInit = {
-      method: options.method || "GET",
-      headers,
-      ...(options.body && { body: options.body }),
+    const makeRequest = async (): Promise<T> => {
+      const url = `${this.baseURL}${endpoint}`;
+      const token = this.getToken();
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...options.headers,
+      };
+
+      // Add authorization header if token exists
+      if (token && token !== "") {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Add request ID for debugging
+      const requestId = Math.random().toString(36).substring(7);
+      headers["X-Request-ID"] = requestId;
+
+      const requestConfig: RequestInit = {
+        method: options.method || "GET",
+        headers,
+        ...(options.body && { body: options.body }),
+        // Add timeout for requests
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      };
+
+      console.debug(
+        `API Request [${requestId}]: ${options.method || "GET"} ${endpoint}`
+      );
+
+      try {
+        const response = await fetch(url, requestConfig);
+
+        if (!response.ok) {
+          // Handle 401 errors (authentication/authorization issues)
+          if (response.status === 401) {
+            // Skip auth error handling for login endpoints or when explicitly requested
+            if (options.skipAuthError || endpoint.includes("/auth/login")) {
+              const errorData = await response.json().catch(() => ({
+                detail: "Invalid credentials",
+                status_code: 401,
+              }));
+              throw new Error(errorData.detail || "Authentication failed");
+            }
+
+            // For authenticated endpoints, this indicates session expiry
+            console.error(`Session expired [${requestId}]: ${endpoint}`);
+
+            // Set flag to prevent concurrent session expiry handling
+            this.isHandlingSessionExpiry = true;
+
+            // Handle session expiry asynchronously to avoid blocking the current request
+            setTimeout(() => handleSessionExpiry(), 100);
+
+            throw new Error("Session expired - please log in again");
+          }
+
+          // Handle 403 errors (insufficient permissions)
+          if (response.status === 403) {
+            const errorData = await response.json().catch(() => ({
+              detail: "Access denied",
+              status_code: 403,
+            }));
+            throw new Error(errorData.detail || "Insufficient permissions");
+          }
+
+          // Handle other HTTP errors
+          const errorData: ApiError = await response.json().catch(() => ({
+            detail: response.statusText,
+            status_code: response.status,
+          }));
+
+          const errorMessage =
+            errorData.detail ||
+            `HTTP ${response.status}: ${response.statusText}`;
+          console.error(`API Error [${requestId}]:`, errorMessage);
+
+          throw new Error(errorMessage);
+        }
+
+        // Parse JSON response
+        const data = await response.json();
+        console.debug(
+          `API Success [${requestId}]:`,
+          typeof data === "object" ? Object.keys(data) : "primitive"
+        );
+        return data;
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.name === "AbortError") {
+            throw new Error("Request timeout - please try again");
+          }
+          if (error.name === "TypeError" && error.message.includes("fetch")) {
+            throw new Error("Network error - please check your connection");
+          }
+        }
+        throw error;
+      }
     };
 
     try {
-      const response = await fetch(url, requestConfig);
-
-      if (!response.ok) {
-        // Handle 401 errors differently for login vs authenticated endpoints
-        if (response.status === 401) {
-          // Skip auth error handling for login endpoints or when explicitly requested
-          if (options.skipAuthError || endpoint.includes("/auth/login")) {
-            const errorData = await response.json().catch(() => ({
-              detail: "Invalid credentials",
-              status_code: 401,
-            }));
-            throw new Error(errorData.detail || "Authentication failed");
-          }
-
-          // For authenticated endpoints, this indicates session expiry
-          throw new Error("Session expired - please log in again");
-        }
-
-        // Handle other HTTP errors
-        const errorData: ApiError = await response.json().catch(() => ({
-          detail: response.statusText,
-          status_code: response.status,
-        }));
-
-        throw new Error(
-          errorData.detail || `HTTP ${response.status}: ${response.statusText}`
-        );
+      // Use retry mechanism for non-authentication requests
+      if (options.skipAuthError || endpoint.includes("/auth/login")) {
+        return await makeRequest();
+      } else {
+        return await retryRequest(makeRequest, 1, 1000); // Reduced retries for authenticated requests
       }
-
-      // Parse JSON response
-      const data = await response.json();
-      return data;
     } catch (error) {
       // Log error for debugging
       console.error(
@@ -507,14 +659,29 @@ class ApiClient {
     }>("/health");
   }
 
-  // Get API base URL (useful for debugging)
+  // Utility methods
   getBaseUrl(): string {
     return this.baseURL;
   }
 
-  // Check if client has token
   hasToken(): boolean {
     return this.token !== null && this.token !== "";
+  }
+
+  // Reset session expiry flag (useful for testing)
+  resetSessionExpiryFlag(): void {
+    this.isHandlingSessionExpiry = false;
+  }
+
+  // Check API connection
+  async checkConnection(): Promise<boolean> {
+    try {
+      await this.healthCheck();
+      return true;
+    } catch (error) {
+      console.warn("API connection check failed:", error);
+      return false;
+    }
   }
 }
 

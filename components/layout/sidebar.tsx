@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   BarChart3,
   Users,
@@ -20,17 +21,79 @@ import {
   Shield,
   FileText,
   Home,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
   Settings,
   Loader2,
+  Building2,
+  User,
+  Clock,
+  ChevronDown,
+  X,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react";
 import { useAuth, AuthUtils } from "@/lib/auth";
+import { useUserData } from "@/hooks/useUserData";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface SidebarProps {
   collapsed: boolean;
   toggleCollapse: () => void;
+  onMobileClose?: () => void;
+  isMobile?: boolean;
+}
+
+// Enhanced Tooltip component with better z-index and positioning
+interface TooltipProps {
+  children: React.ReactNode;
+  content: string;
+  side?: "right" | "left";
+}
+
+function Tooltip({ children, content, side = "right" }: TooltipProps) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div
+      className="relative group"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      {isVisible && (
+        <>
+          {/* Backdrop to ensure tooltip appears above everything */}
+          <div className="fixed inset-0 pointer-events-none z-[9999]">
+            <div
+              className={cn(
+                "absolute px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-xl whitespace-nowrap border border-gray-700",
+                "animate-in fade-in-0 zoom-in-95 duration-150",
+                side === "right"
+                  ? "left-[calc(100%+12px)] top-1/2 -translate-y-1/2"
+                  : "right-[calc(100%+12px)] top-1/2 -translate-y-1/2"
+              )}
+              style={{
+                position: "fixed",
+                left: side === "right" ? "92px" : "auto",
+                right: side === "left" ? "92px" : "auto",
+                top: "50%",
+                transform: "translateY(-50%)",
+              }}
+            >
+              {content}
+              {/* Arrow */}
+              <div
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45 border-l border-t border-gray-700",
+                  side === "right" ? "-left-1" : "-right-1"
+                )}
+              />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 const navigationItems = [
@@ -49,13 +112,13 @@ const navigationItems = [
   {
     title: "User Management",
     items: [
-      { icon: Users, label: "Visitors", href: "/visitors", badge: 24 },
+      { icon: Users, label: "Visitors", href: "/visitors", badge: "dynamic" },
       { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
       {
         icon: FileText,
         label: "Document Review",
         href: "/documents",
-        badge: 8,
+        badge: "dynamic",
       },
     ],
   },
@@ -113,28 +176,39 @@ const navigationItems = [
         icon: Bell,
         label: "Notifications",
         href: "/notifications",
-        badge: null,
+        badge: "notifications",
       },
     ],
   },
 ];
 
-export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
+export default function Sidebar({
+  collapsed,
+  toggleCollapse,
+  onMobileClose,
+  isMobile = false,
+}: SidebarProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { user, isSuperAdmin } = useAuth();
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const {
+    user: fullUserData,
+    loading: userDataLoading,
+    error: userError,
+    refetchUser,
+  } = useUserData();
+
+  // Use real notifications
+  const { stats } = useNotifications();
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-
-      // Sign out with NextAuth
       await signOut({
         redirect: false,
       });
-
-      // Manual redirect to login page
       router.push("/login");
     } catch (error) {
       console.error("Logout error:", error);
@@ -143,164 +217,460 @@ export default function Sidebar({ collapsed, toggleCollapse }: SidebarProps) {
     }
   };
 
+  const handleNavItemClick = () => {
+    if (isMobile && onMobileClose) {
+      onMobileClose();
+    }
+  };
+
+  // Get user initials
+  const getUserInitials = (name: string | null | undefined): string => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase())
+      .slice(0, 2)
+      .join("");
+  };
+
+  // Format last login
+  const formatLastLogin = (dateString: string | null | undefined) => {
+    if (!dateString) return "Never";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffInDays === 0) return "Today";
+    if (diffInDays === 1) return "Yesterday";
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getBadgeCount = (badgeType: string | null) => {
+    if (!badgeType) return null;
+
+    switch (badgeType) {
+      case "notifications":
+        return stats?.unread || 0;
+      case "dynamic":
+        return Math.floor(Math.random() * 20);
+      default:
+        return null;
+    }
+  };
+
+  const displayUser = fullUserData || user;
+  const displayName = fullUserData?.full_name || user?.name || user?.email;
+
   return (
-    <div
-      className={cn(
-        "bg-gradient-msf text-white transition-all duration-300 flex flex-col shadow-xl",
-        collapsed ? "w-20" : "w-80"
-      )}
-    >
-      {/* Header */}
-      <div className="p-6 border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-1">
-              <Image
-                src="/icon/favicon.png"
-                alt="MSF Logo"
-                width={32}
-                height={32}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {!collapsed && (
-              <div>
-                <h1 className="text-lg font-bold">MSF Msafiri</h1>
-                <p className="text-xs opacity-80">Super Admin Portal</p>
-              </div>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleCollapse}
-            className="text-white hover:bg-white/10 p-1 h-8 w-8"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* User Info */}
-      {!collapsed && user && (
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-              <Shield className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user.name || user.email}
-              </p>
-              <p className="text-xs opacity-70 truncate">
-                {AuthUtils.getRoleDisplayName(user.role || "")}
-              </p>
-            </div>
-          </div>
-        </div>
+    <>
+      {isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
       )}
 
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4">
-        {navigationItems.map((section, idx) => (
-          <div key={idx} className="mb-6">
-            {!collapsed && (
-              <div className="px-6 mb-2">
-                <p className="text-xs uppercase tracking-wider opacity-70 font-semibold">
-                  {section.title}
-                </p>
+      <div
+        className={cn(
+          "bg-gradient-to-b from-red-900 via-red-800 to-red-900 text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50",
+          "border-r border-red-700/50",
+          isMobile
+            ? "fixed left-0 top-0 h-full w-80"
+            : collapsed
+            ? "w-20"
+            : "w-80"
+        )}
+      >
+        {/* Header */}
+        <div className="p-4 lg:p-6 border-b border-red-700/50 bg-red-900/50">
+          <div className="flex items-center justify-between">
+            {/* Logo and Title - Hidden when collapsed */}
+            {(!collapsed || isMobile) && (
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 p-2 backdrop-blur-sm border border-red-300/40">
+                  <Image
+                    src="/icon/favicon.png"
+                    alt="MSF Logo"
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-contain"
+                    style={{ width: "auto", height: "auto" }}
+                  />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-white">MSF Msafiri</h1>
+                  <p className="text-xs text-red-200">Admin Portal</p>
+                </div>
               </div>
             )}
-            <div className="space-y-1">
-              {section.items.map((item, index) => (
-                <Link key={index} href={item.href}>
-                  <button
-                    className={cn(
-                      "w-full flex items-center px-6 py-3 text-left transition-all duration-200 border-l-3 group",
-                      pathname === item.href
-                        ? "bg-white/10 border-l-white"
-                        : "border-l-transparent hover:bg-white/5 hover:border-l-white/50"
-                    )}
+
+            {/* Expand button when collapsed (desktop only) */}
+            {collapsed && !isMobile && (
+              <div className="w-full flex justify-center">
+                <Tooltip content="Expand sidebar">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleCollapse}
+                    className="text-white hover:bg-white/20 p-2 h-10 w-10 border border-white/20 bg-white/10 backdrop-blur-sm rounded-lg"
                   >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
-                    {!collapsed && (
-                      <>
-                        <span className="ml-3 font-medium">{item.label}</span>
-                        {item.badge && (
-                          <Badge
-                            variant="secondary"
-                            className="ml-auto bg-yellow-400 text-gray-900 text-xs"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </button>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* System Settings for Super Admin */}
-        {isSuperAdmin && (
-          <div className="mb-6">
-            {!collapsed && (
-              <div className="px-6 mb-2">
-                <p className="text-xs uppercase tracking-wider opacity-70 font-semibold">
-                  System
-                </p>
+                    <PanelLeftOpen className="h-5 w-5" />
+                  </Button>
+                </Tooltip>
               </div>
             )}
-            <div className="space-y-1">
-              <Link href="/admin/system">
-                <button
-                  className={cn(
-                    "w-full flex items-center px-6 py-3 text-left transition-all duration-200 border-l-3 group",
-                    pathname === "/admin/system"
-                      ? "bg-white/10 border-l-white"
-                      : "border-l-transparent hover:bg-white/5 hover:border-l-white/50"
-                  )}
+
+            {/* Collapse button when expanded (desktop only) */}
+            {!collapsed && !isMobile && (
+              <Tooltip content="Collapse sidebar">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleCollapse}
+                  className="text-white hover:bg-white/20 p-1 h-8 w-8 border border-white/20 bg-white/10 backdrop-blur-sm"
                 >
-                  <Settings className="h-5 w-5 flex-shrink-0" />
-                  {!collapsed && (
-                    <span className="ml-3 font-medium">System Settings</span>
-                  )}
-                </button>
-              </Link>
-            </div>
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </Tooltip>
+            )}
+
+            {/* Mobile close button */}
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onMobileClose}
+                className="text-white hover:bg-white/10 p-1 h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* User Info */}
+        {(!collapsed || isMobile) && (
+          <div className="p-4 border-b border-red-700/50 bg-red-800/30">
+            {authLoading || userDataLoading ? (
+              <div className="animate-pulse">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 rounded-full bg-white/20"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-white/20 rounded mb-2"></div>
+                    <div className="h-3 bg-white/20 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </div>
+            ) : displayUser ? (
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-12 w-12 border-2 border-red-500/50">
+                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                      {getUserInitials(displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {displayName || "User"}
+                    </p>
+                    <div className="flex items-center space-x-1 mt-1">
+                      <Shield className="h-3 w-3 text-red-200" />
+                      <p className="text-xs text-red-200 truncate">
+                        {AuthUtils.getRoleDisplayName(user?.role || "")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUserDetails(!showUserDetails)}
+                    className="text-red-200 hover:bg-white/10 p-1 h-6 w-6"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 transition-transform",
+                        showUserDetails && "rotate-180"
+                      )}
+                    />
+                  </Button>
+                </div>
+
+                {/* Expandable user details */}
+                {showUserDetails && (
+                  <div className="pt-3 border-t border-red-600/30 space-y-2">
+                    {fullUserData?.department && (
+                      <div className="flex items-center space-x-2 text-xs">
+                        <Building2 className="h-3 w-3 text-red-300" />
+                        <span className="text-red-100">
+                          {fullUserData.department}
+                        </span>
+                      </div>
+                    )}
+
+                    {fullUserData?.job_title && (
+                      <div className="flex items-center space-x-2 text-xs">
+                        <User className="h-3 w-3 text-red-300" />
+                        <span className="text-red-100">
+                          {fullUserData.job_title}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center space-x-2 text-xs">
+                      <Clock className="h-3 w-3 text-red-300" />
+                      <span className="text-red-100">
+                        Last login: {formatLastLogin(fullUserData?.last_login)}
+                      </span>
+                    </div>
+
+                    {userError && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-red-300">
+                          Profile load failed
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={refetchUser}
+                          className="text-red-300 hover:bg-red-500/10 p-1 h-5"
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center text-red-200 text-sm py-2">
+                No user data available
+              </div>
+            )}
           </div>
         )}
-      </div>
 
-      {/* Footer with Logout */}
-      <div className="p-4 border-t border-white/10">
-        <Button
-          variant="ghost"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className={cn(
-            "w-full justify-start text-white hover:bg-red-500/20 hover:text-white transition-colors",
-            collapsed ? "px-2" : "px-4"
+        {/* Collapsed user avatar */}
+        {collapsed && !isMobile && user && (
+          <div className="p-3 border-b border-red-700/50 flex justify-center">
+            <Tooltip content={displayName || "User Profile"}>
+              <Avatar className="h-10 w-10 border-2 border-red-500/50">
+                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
+                  {getUserInitials(displayName)}
+                </AvatarFallback>
+              </Avatar>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-transparent">
+          {navigationItems.map((section, idx) => (
+            <div key={idx} className="mb-6">
+              {(!collapsed || isMobile) && (
+                <div className="px-4 lg:px-6 mb-3">
+                  <p className="text-xs uppercase tracking-wider text-red-300 font-semibold">
+                    {section.title}
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1 px-2 lg:px-3">
+                {section.items.map((item, index) => {
+                  const isActive = pathname === item.href;
+                  const badgeCount = getBadgeCount(item.badge);
+
+                  const navButton = (
+                    <button
+                      onClick={handleNavItemClick}
+                      className={cn(
+                        "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
+                        "hover:bg-white/10 hover:backdrop-blur-sm",
+                        isActive
+                          ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                          : "text-red-100 hover:text-white"
+                      )}
+                    >
+                      {/* Active indicator */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
+                      )}
+
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5 flex-shrink-0 transition-colors",
+                          isActive
+                            ? "text-white"
+                            : "text-red-200 group-hover:text-white"
+                        )}
+                      />
+
+                      {(!collapsed || isMobile) && (
+                        <>
+                          <span className="ml-3 font-medium text-sm">
+                            {item.label}
+                          </span>
+                          {badgeCount !== null && badgeCount > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="ml-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-red-900 text-xs font-semibold px-2 py-1 shadow-sm"
+                            >
+                              {badgeCount > 99 ? "99+" : badgeCount}
+                            </Badge>
+                          )}
+                        </>
+                      )}
+
+                      {/* Collapsed state badge indicator */}
+                      {collapsed &&
+                        !isMobile &&
+                        badgeCount !== null &&
+                        badgeCount > 0 && (
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-red-900">
+                            {badgeCount > 9 ? "9+" : badgeCount}
+                          </div>
+                        )}
+                    </button>
+                  );
+
+                  return (
+                    <Link key={index} href={item.href}>
+                      {collapsed && !isMobile ? (
+                        <Tooltip content={item.label}>{navButton}</Tooltip>
+                      ) : (
+                        navButton
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* System Settings for Super Admin */}
+          {isSuperAdmin && (
+            <div className="mb-6">
+              {(!collapsed || isMobile) && (
+                <div className="px-4 lg:px-6 mb-3">
+                  <p className="text-xs uppercase tracking-wider text-red-300 font-semibold">
+                    System
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1 px-2 lg:px-3">
+                <Link href="/admin/system">
+                  {collapsed && !isMobile ? (
+                    <Tooltip content="System Settings">
+                      <button
+                        onClick={handleNavItemClick}
+                        className={cn(
+                          "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
+                          "hover:bg-white/10 hover:backdrop-blur-sm",
+                          pathname === "/admin/system"
+                            ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                            : "text-red-100 hover:text-white"
+                        )}
+                      >
+                        {pathname === "/admin/system" && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
+                        )}
+
+                        <Settings
+                          className={cn(
+                            "h-5 w-5 flex-shrink-0 transition-colors",
+                            pathname === "/admin/system"
+                              ? "text-white"
+                              : "text-red-200 group-hover:text-white"
+                          )}
+                        />
+                      </button>
+                    </Tooltip>
+                  ) : (
+                    <button
+                      onClick={handleNavItemClick}
+                      className={cn(
+                        "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
+                        "hover:bg-white/10 hover:backdrop-blur-sm",
+                        pathname === "/admin/system"
+                          ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
+                          : "text-red-100 hover:text-white"
+                      )}
+                    >
+                      {pathname === "/admin/system" && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
+                      )}
+
+                      <Settings
+                        className={cn(
+                          "h-5 w-5 flex-shrink-0 transition-colors",
+                          pathname === "/admin/system"
+                            ? "text-white"
+                            : "text-red-200 group-hover:text-white"
+                        )}
+                      />
+
+                      {(!collapsed || isMobile) && (
+                        <span className="ml-3 font-medium text-sm">
+                          System Settings
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </Link>
+              </div>
+            </div>
           )}
-        >
-          {isLoggingOut ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+
+        {/* Footer with Logout */}
+        <div className="p-4 border-t border-red-700/50 bg-red-900/50">
+          {collapsed && !isMobile ? (
+            <Tooltip content="Sign Out">
+              <Button
+                variant="ghost"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className={cn(
+                  "w-full justify-center text-red-200 hover:bg-red-500/20 hover:text-red-100 transition-colors rounded-lg",
+                  "border border-transparent hover:border-red-500/30",
+                  "px-2"
+                )}
+              >
+                {isLoggingOut ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <LogOut className="h-5 w-5" />
+                )}
+              </Button>
+            </Tooltip>
           ) : (
-            <LogOut className="h-5 w-5" />
+            <Button
+              variant="ghost"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className={cn(
+                "w-full justify-start text-red-200 hover:bg-red-500/20 hover:text-red-100 transition-colors rounded-lg",
+                "border border-transparent hover:border-red-500/30",
+                "px-4"
+              )}
+            >
+              {isLoggingOut ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <LogOut className="h-5 w-5" />
+              )}
+              <span className="ml-3 font-medium text-sm">
+                {isLoggingOut ? "Signing out..." : "Sign Out"}
+              </span>
+            </Button>
           )}
-          {!collapsed && (
-            <span className="ml-3">
-              {isLoggingOut ? "Signing out..." : "Sign Out"}
-            </span>
-          )}
-        </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
