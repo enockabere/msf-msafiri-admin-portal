@@ -13,13 +13,13 @@ export function useUserData() {
     console.warn("Session expired in useUserData - logging out");
     setUser(null);
     setError("Session expired");
-    
+
     await signOut({
       redirect: false,
-      callbackUrl: '/login'
+      callbackUrl: "/login",
     });
-    
-    window.location.href = '/login?sessionExpired=true';
+
+    window.location.href = "/login?sessionExpired=true";
   };
 
   useEffect(() => {
@@ -32,23 +32,24 @@ export function useUserData() {
       try {
         setLoading(true);
         setError(null);
-        
-        // Set token in API client
+
         apiClient.setToken(accessToken);
-        
-        // Fetch current user data from the API
+
         const userData = await apiClient.getCurrentUser();
         setUser(userData);
       } catch (err) {
         console.error("Failed to fetch user data:", err);
-        const errorMessage = err instanceof Error ? err.message : "Failed to fetch user data";
-        
-        // Check if it's a session expiry error
-        if (errorMessage.includes("Session expired") || errorMessage.includes("please log in again")) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch user data";
+
+        if (
+          errorMessage.includes("Session expired") ||
+          errorMessage.includes("please log in again")
+        ) {
           await handleSessionExpiry();
           return;
         }
-        
+
         setError(errorMessage);
         setUser(null);
       } finally {
@@ -61,20 +62,24 @@ export function useUserData() {
 
   const refetchUser = async () => {
     if (!isAuthenticated || !accessToken) return;
-    
+
     try {
       setError(null);
       apiClient.setToken(accessToken);
       const userData = await apiClient.getCurrentUser();
       setUser(userData);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch user data";
-      
-      if (errorMessage.includes("Session expired") || errorMessage.includes("please log in again")) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to fetch user data";
+
+      if (
+        errorMessage.includes("Session expired") ||
+        errorMessage.includes("please log in again")
+      ) {
         await handleSessionExpiry();
         return;
       }
-      
+
       setError(errorMessage);
     }
   };

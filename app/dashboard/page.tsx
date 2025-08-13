@@ -8,6 +8,9 @@ import RecentActivities from "@/components/dashboard/recent-activities";
 import QuickActions from "@/components/dashboard/quick-actions";
 import { useAuth, AuthUtils } from "@/lib/auth";
 import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
+import { TenantSelector } from "@/components/TenantSelector";
+import { useTenant } from "@/context/TenantContext";
+import SuperAdminDashboard from "@/components/layout/SuperAdminDashboard";
 
 function DashboardLoading() {
   return (
@@ -63,48 +66,81 @@ function UnauthorizedAccess() {
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isAdmin, loading } = useAuth();
+  const { selectedTenant, isAllTenantsSelected } = useTenant();
   const router = useRouter();
 
-  // Handle authentication and authorization
+  // Add debugging
+  useEffect(() => {
+    console.log("🐛 Dashboard Debug Info:");
+    console.log("User object:", user);
+    console.log("User role:", user?.role);
+    console.log("Is super admin check:", user?.role === "super_admin");
+    console.log("Type of role:", typeof user?.role);
+    console.log("Is authenticated:", isAuthenticated);
+    console.log("Is admin:", isAdmin);
+    console.log("Loading:", loading);
+  }, [user, isAuthenticated, isAdmin, loading]);
+
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
-        // Redirect to login if not authenticated
         router.push("/login?redirect=/dashboard");
         return;
       }
 
       if (!isAdmin) {
-        // Don't redirect, just show unauthorized message
-        // The UnauthorizedAccess component will handle this
         return;
       }
     }
   }, [isAuthenticated, isAdmin, loading, router]);
 
-  // Show loading state
   if (loading) {
     return <DashboardLoading />;
   }
 
-  // Show unauthorized if not authenticated (while redirect happens)
   if (!isAuthenticated) {
-    return <DashboardLoading />; // Show loading while redirecting
+    return <DashboardLoading />;
   }
 
-  // Show unauthorized if not admin
   if (!isAdmin) {
     return <UnauthorizedAccess />;
   }
 
-  // Render dashboard for authorized admin users
+  // Debug the super admin check
+  const isSuperAdmin = user?.role === "super_admin";
+  console.log("🎯 Super Admin Check:", {
+    userRole: user?.role,
+    isSuperAdmin,
+    comparison: `"${user?.role}" === "super_admin"`,
+  });
+
+  // Super admins get the specialized dashboard
+  if (isSuperAdmin) {
+    console.log("✅ Rendering SuperAdminDashboard");
+    return <SuperAdminDashboard />;
+  }
+
+  console.log("❌ Rendering regular admin dashboard");
+
+  // Regular admins get the traditional dashboard with sidebar
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Session Timeout Warning */}
         <SessionTimeoutWarning warningMinutes={5} sessionDurationMinutes={30} />
 
-        {/* Welcome header with user info */}
+        {/* Debug info visible on page */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <h3 className="text-sm font-medium text-yellow-800">Debug Info:</h3>
+          <p className="text-xs text-yellow-700">User Role: {user?.role}</p>
+          <p className="text-xs text-yellow-700">
+            Is Super Admin: {String(isSuperAdmin)}
+          </p>
+          <p className="text-xs text-yellow-700">
+            Should show SuperAdminDashboard:{" "}
+            {String(user?.role === "super_admin")}
+          </p>
+        </div>
+
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -117,32 +153,32 @@ export default function DashboardPage() {
                   ? AuthUtils.getRoleDisplayName(user.role)
                   : "Unknown"}
               </p>
+              {(selectedTenant || isAllTenantsSelected) && (
+                <p className="text-sm text-indigo-600 mt-1">
+                  {isAllTenantsSelected
+                    ? "Viewing: All Tenants"
+                    : `Active Tenant: ${selectedTenant?.name}`}
+                </p>
+              )}
             </div>
-            <div className="flex items-center space-x-3">
-              {user?.role && (
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${AuthUtils.getRoleColor(
-                    user.role
-                  )}`}
-                >
-                  {user.role}
-                </span>
-              )}
-              {user?.firstLogin && (
-                <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  First Login
-                </span>
-              )}
+            <div className="flex items-center space-x-4">
+              {user?.role === "super_admin" && <TenantSelector />}
+
+              <div className="flex items-center space-x-3">
+                {user?.firstLogin && (
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    First Login
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Dashboard content */}
         <StatsCards />
         <RecentActivities />
         <QuickActions />
 
-        {/* First login welcome message */}
         {user?.firstLogin && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
             <div className="flex items-start space-x-3">
