@@ -17,14 +17,21 @@ function LoginLoading() {
   );
 }
 
-export default function LoginPage() {
+// Wrapper component that contains everything that might use client-side hooks
+function LoginPageContent() {
   return (
     <>
       <SessionExpiryHandler />
-      <Suspense fallback={<LoginLoading />}>
-        <LoginComponent />
-      </Suspense>
+      <LoginComponent />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
 
