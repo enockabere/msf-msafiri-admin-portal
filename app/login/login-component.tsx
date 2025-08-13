@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -28,6 +28,38 @@ const MicrosoftIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// FIXED: Robust API URL detection
+const getApiUrl = (): string => {
+  // Try environment variable first
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log("🔧 Using API URL from env:", process.env.NEXT_PUBLIC_API_URL);
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Client-side fallback logic
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    console.log("🔧 Detecting API URL for hostname:", hostname);
+
+    // Local development
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      const localUrl = "http://localhost:8000/api/v1";
+      console.log("🏠 Using local API URL:", localUrl);
+      return localUrl;
+    }
+
+    // Vercel deployment or other production
+    const prodUrl = "https://msafiri-visitor-api.onrender.com/api/v1";
+    console.log("🌐 Using production API URL:", prodUrl);
+    return prodUrl;
+  }
+
+  // Server-side fallback
+  const fallbackUrl = "https://msafiri-visitor-api.onrender.com/api/v1";
+  console.log("🔄 Using server-side fallback:", fallbackUrl);
+  return fallbackUrl;
+};
+
 interface LoginFormData {
   email: string;
   password: string;
@@ -47,11 +79,14 @@ export default function SimplifiedLoginComponent() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">("sso");
+  const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">(
+    "credentials"
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("login");
-  
+  const [apiUrl, setApiUrl] = useState<string>("");
+
   const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
+    email: "abereenock95@gmail.com", // Pre-fill for convenience
     password: "",
   });
 
@@ -64,16 +99,29 @@ export default function SimplifiedLoginComponent() {
   const redirectTo = searchParams.get("redirect") || "/dashboard";
   const resetToken = searchParams.get("token");
 
+  // Initialize API URL and handle reset token
+  useEffect(() => {
+    const url = getApiUrl();
+    setApiUrl(url);
+    console.log("🎯 API URL initialized:", url);
+
+    // Handle reset token from URL
+    if (resetToken) {
+      console.log("🔐 Reset token detected, switching to reset password view");
+      setViewMode("resetPassword");
+      setResetData((prev) => ({ ...prev, token: resetToken }));
+    }
+  }, [resetToken]);
+
   // Handle view mode changes
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
     setError("");
     setSuccess("");
-    
-    // If coming with a reset token, go directly to reset password
-    if (resetToken && mode === "login") {
-      setViewMode("resetPassword");
-      setResetData(prev => ({ ...prev, token: resetToken }));
+
+    // Clear form data when switching views
+    if (mode === "login") {
+      setResetData({ email: "" });
     }
   };
 
@@ -90,7 +138,9 @@ export default function SimplifiedLoginComponent() {
       });
 
       if (result?.error) {
-        throw new Error("Microsoft SSO authentication failed. Please try again.");
+        throw new Error(
+          "Microsoft SSO authentication failed. Please try again."
+        );
       }
 
       if (result?.ok) {
@@ -98,7 +148,9 @@ export default function SimplifiedLoginComponent() {
         setTimeout(() => router.push(redirectTo), 1000);
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Microsoft SSO login failed");
+      setError(
+        error instanceof Error ? error.message : "Microsoft SSO login failed"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +194,7 @@ export default function SimplifiedLoginComponent() {
     }
   };
 
-  // Handle Password Reset Request
+  // FIXED: Handle Password Reset Request with robust error handling
   const handlePasswordResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -151,28 +203,84 @@ export default function SimplifiedLoginComponent() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/password/request-reset`, {
+      if (!resetData.email) {
+        throw new Error("Please enter your email address");
+      }
+
+      if (!apiUrl) {
+        throw new Error("API configuration error. Please refresh the page.");
+      }
+
+      const requestUrl = `${apiUrl}/password/request-reset`;
+      console.log("🔧 Sending password reset request to:", requestUrl);
+
+      const response = await fetch(requestUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({ email: resetData.email }),
       });
 
-      const data = await response.json();
+      console.log("📡 Response status:", response.status);
+      console.log(
+        "📡 Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
 
-      if (!response.ok) {
-        throw new Error(data.detail || "Failed to send reset email");
+      let data;
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+        console.log("📡 Response data:", data);
+      } else {
+        const textData = await response.text();
+        console.log("📡 Response text:", textData);
+        data = { message: textData };
       }
 
-      setSuccess("If an account exists with that email, a reset link has been sent.");
-      setTimeout(() => setViewMode("login"), 3000);
+      if (!response.ok) {
+        const errorMessage =
+          data?.detail || data?.message || `Server error: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const successMessage =
+        data?.message ||
+        "If an account exists with that email, a reset link has been sent.";
+      setSuccess(successMessage);
+
+      // Clear the email field and switch back to login after a delay
+      setTimeout(() => {
+        setResetData({ email: "" });
+        setViewMode("login");
+      }, 4000);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to send reset email");
+      console.error("🚨 Password reset request error:", error);
+
+      let errorMessage = "Failed to send reset email";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      // Provide helpful error messages
+      if (errorMessage.includes("fetch")) {
+        errorMessage =
+          "Network error. Please check your internet connection and try again.";
+      } else if (errorMessage.includes("404")) {
+        errorMessage =
+          "Password reset service is not available. Please contact support.";
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Password Reset
+  // FIXED: Handle Password Reset with Token with enhanced validation
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -181,48 +289,117 @@ export default function SimplifiedLoginComponent() {
       setError("");
       setSuccess("");
 
+      // Validate inputs
+      if (!resetData.newPassword || !resetData.confirmPassword) {
+        throw new Error("Please fill in both password fields");
+      }
+
       if (resetData.newPassword !== resetData.confirmPassword) {
         throw new Error("Passwords do not match");
       }
 
-      if (!resetData.newPassword || resetData.newPassword.length < 8) {
+      if (resetData.newPassword.length < 8) {
         throw new Error("Password must be at least 8 characters long");
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/password/reset-password`, {
+      // Check for password strength
+      const hasUppercase = /[A-Z]/.test(resetData.newPassword);
+      const hasLowercase = /[a-z]/.test(resetData.newPassword);
+      const hasNumbers = /\d/.test(resetData.newPassword);
+
+      if (!hasUppercase || !hasLowercase || !hasNumbers) {
+        throw new Error(
+          "Password must contain uppercase, lowercase, and numeric characters"
+        );
+      }
+
+      const tokenToUse = resetData.token || resetToken;
+      if (!tokenToUse) {
+        throw new Error(
+          "Invalid or missing reset token. Please request a new password reset link."
+        );
+      }
+
+      if (!apiUrl) {
+        throw new Error("API configuration error. Please refresh the page.");
+      }
+
+      const requestUrl = `${apiUrl}/password/reset-password`;
+      console.log("🔧 Resetting password with token to:", requestUrl);
+
+      const response = await fetch(requestUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
-          token: resetData.token || resetToken,
+          token: tokenToUse,
           new_password: resetData.newPassword,
           confirm_password: resetData.confirmPassword,
         }),
       });
 
-      const data = await response.json();
+      console.log("📡 Reset response status:", response.status);
 
-      if (!response.ok) {
-        throw new Error(data.detail || "Failed to reset password");
+      let data;
+      const contentType = response.headers.get("content-type");
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+        console.log("📡 Reset response data:", data);
+      } else {
+        const textData = await response.text();
+        console.log("📡 Reset response text:", textData);
+        data = { message: textData };
       }
 
-      setSuccess("Password reset successfully! You can now log in.");
-      setTimeout(() => setViewMode("login"), 2000);
+      if (!response.ok) {
+        const errorMessage =
+          data?.detail || data?.message || `Server error: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      const successMessage =
+        data?.message || "Password reset successfully! You can now log in.";
+      setSuccess(successMessage);
+
+      // Clear form and redirect to login
+      setTimeout(() => {
+        setResetData({ email: "" });
+        setViewMode("login");
+        // Clear URL parameters
+        const url = new URL(window.location.href);
+        url.searchParams.delete("token");
+        window.history.replaceState({}, "", url.toString());
+      }, 2000);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to reset password");
+      console.error("🚨 Password reset error:", error);
+
+      let errorMessage = "Failed to reset password";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInputChange = (field: keyof LoginFormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    if (error) setError("");
-  };
+  const handleInputChange =
+    (field: keyof LoginFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+      if (error) setError("");
+    };
 
-  const handleResetInputChange = (field: keyof PasswordResetData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setResetData(prev => ({ ...prev, [field]: e.target.value }));
-    if (error) setError("");
-  };
+  const handleResetInputChange =
+    (field: keyof PasswordResetData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setResetData((prev) => ({ ...prev, [field]: e.target.value }));
+      if (error) setError("");
+    };
 
   const renderLoginContent = () => (
     <>
@@ -234,10 +411,17 @@ export default function SimplifiedLoginComponent() {
             width={150}
             height={104}
             className="w-full h-full object-contain"
+            priority
           />
         </div>
         <CardTitle className="text-2xl font-bold">MSF Msafiri Admin</CardTitle>
-        <p className="text-sm text-muted-foreground">Super Admin Portal Access</p>
+        <p className="text-sm text-muted-foreground">
+          Super Admin Portal Access
+        </p>
+        {/* Debug info in development */}
+        {process.env.NODE_ENV === "development" && (
+          <p className="text-xs text-gray-400">API: {apiUrl}</p>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -245,19 +429,28 @@ export default function SimplifiedLoginComponent() {
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
         {success && (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+            <AlertDescription className="text-green-800">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
         {/* Login Methods */}
-        <Tabs value={loginMethod} onValueChange={(value) => setLoginMethod(value as "sso" | "credentials")}>
+        <Tabs
+          value={loginMethod}
+          onValueChange={(value) =>
+            setLoginMethod(value as "sso" | "credentials")
+          }
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sso">Microsoft SSO</TabsTrigger>
             <TabsTrigger value="credentials">Super Admin</TabsTrigger>
@@ -297,7 +490,7 @@ export default function SimplifiedLoginComponent() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange("email")}
-                  placeholder="superadmin@msafiri.org"
+                  placeholder="abereenock95@gmail.com"
                   required
                   disabled={isLoading}
                 />
@@ -322,7 +515,11 @@ export default function SimplifiedLoginComponent() {
                     className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -375,14 +572,18 @@ export default function SimplifiedLoginComponent() {
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
         {success && (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+            <AlertDescription className="text-green-800">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -394,15 +595,18 @@ export default function SimplifiedLoginComponent() {
               type="email"
               value={resetData.email}
               onChange={handleResetInputChange("email")}
-              placeholder="superadmin@msafiri.org"
+              placeholder="abereenock95@gmail.com"
               required
               disabled={isLoading}
             />
+            <p className="text-xs text-gray-500">
+              Enter the email address associated with your admin account
+            </p>
           </div>
 
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !apiUrl}
             className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isLoading ? (
@@ -446,14 +650,18 @@ export default function SimplifiedLoginComponent() {
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
         {success && (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+            <AlertDescription className="text-green-800">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -469,6 +677,10 @@ export default function SimplifiedLoginComponent() {
               required
               disabled={isLoading}
             />
+            <p className="text-xs text-gray-500">
+              Must be at least 8 characters with uppercase, lowercase, and
+              numbers
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -486,8 +698,8 @@ export default function SimplifiedLoginComponent() {
 
           <Button
             type="submit"
-            disabled={isLoading}
-            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
+            disabled={isLoading || !apiUrl}
+            className="w-full h-12 bg-green-600 hover:green-700 text-white"
           >
             {isLoading ? (
               <>
