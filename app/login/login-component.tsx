@@ -28,7 +28,7 @@ const MicrosoftIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// FIXED: Robust API URL detection
+// FIXED: Robust API URL detection with better logging
 const getApiUrl = (): string => {
   // Try environment variable first
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -74,7 +74,7 @@ interface PasswordResetData {
 
 type ViewMode = "login" | "resetRequest" | "resetPassword";
 
-export default function SimplifiedLoginComponent() {
+export default function LoginComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
@@ -194,7 +194,7 @@ export default function SimplifiedLoginComponent() {
     }
   };
 
-  // FIXED: Handle Password Reset Request with robust error handling
+  // ENHANCED: Handle Password Reset Request with robust error handling
   const handlePasswordResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -272,6 +272,11 @@ export default function SimplifiedLoginComponent() {
       } else if (errorMessage.includes("404")) {
         errorMessage =
           "Password reset service is not available. Please contact support.";
+      } else if (
+        errorMessage.includes("NetworkError") ||
+        errorMessage.includes("TypeError")
+      ) {
+        errorMessage = "Unable to connect to server. Please try again later.";
       }
 
       setError(errorMessage);
@@ -280,7 +285,7 @@ export default function SimplifiedLoginComponent() {
     }
   };
 
-  // FIXED: Handle Password Reset with Token with enhanced validation
+  // ENHANCED: Handle Password Reset with Token with enhanced validation
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -369,9 +374,11 @@ export default function SimplifiedLoginComponent() {
         setResetData({ email: "" });
         setViewMode("login");
         // Clear URL parameters
-        const url = new URL(window.location.href);
-        url.searchParams.delete("token");
-        window.history.replaceState({}, "", url.toString());
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("token");
+          window.history.replaceState({}, "", url.toString());
+        }
       }, 2000);
     } catch (error) {
       console.error("🚨 Password reset error:", error);
@@ -699,7 +706,7 @@ export default function SimplifiedLoginComponent() {
           <Button
             type="submit"
             disabled={isLoading || !apiUrl}
-            className="w-full h-12 bg-green-600 hover:green-700 text-white"
+            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
           >
             {isLoading ? (
               <>
