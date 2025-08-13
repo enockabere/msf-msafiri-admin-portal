@@ -46,7 +46,8 @@ const getNextAuthUrl = () => {
   return "http://localhost:3000";
 };
 
-export const authOptions: NextAuthOptions = {
+// MOVED: authOptions is now internal to this file only
+const authOptions: NextAuthOptions = {
   providers: [
     // Super Admin Credentials Provider - SIMPLIFIED
     CredentialsProvider({
@@ -241,11 +242,12 @@ export const authOptions: NextAuthOptions = {
   // FIXED: Ensure secret is properly configured
   secret: process.env.NEXTAUTH_SECRET,
 
-  // trustHost is not a valid AuthOptions property and has been removed
-
   // Enable debug in development only
   debug: process.env.NODE_ENV === "development",
 };
 
+// FIXED: Create NextAuth handler and only export GET/POST
 const handler = NextAuth(authOptions);
+
+// FIXED: Only export the required HTTP method handlers
 export { handler as GET, handler as POST };
