@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,12 @@ const getErrorMessage = (
         message: "You need to be signed in to access this page.",
         canRetry: true,
       };
+    case "auth_failed":
+      return {
+        title: "Authentication Failed",
+        message: "Login failed. Please check your credentials and try again.",
+        canRetry: true,
+      };
     default:
       return {
         title: "Authentication Error",
@@ -99,7 +105,8 @@ const getErrorMessage = (
   }
 };
 
-export default function AuthErrorPage() {
+// FIXED: Separate component that uses useSearchParams
+function AuthErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [countdown, setCountdown] = useState(10);
@@ -189,7 +196,7 @@ export default function AuthErrorPage() {
                   onClick={handleContactSupport}
                   className="w-full h-12 bg-orange-600 hover:bg-orange-700 text-white"
                 >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  <AlertTriangle className="w-4 mr-2" />
                   Contact Support
                 </Button>
               )}
@@ -212,5 +219,46 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// FIXED: Loading fallback component
+function AuthErrorLoading() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="bg-white/90 backdrop-blur-sm border shadow-xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="w-40 h-16 mx-auto">
+              <Image
+                src="/icon/logo1.png"
+                alt="MSF Logo"
+                width={150}
+                height={104}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
+            <CardTitle className="text-xl font-bold text-red-600">
+              Loading...
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// FIXED: Main component wrapped with Suspense
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<AuthErrorLoading />}>
+      <AuthErrorContent />
+    </Suspense>
   );
 }
