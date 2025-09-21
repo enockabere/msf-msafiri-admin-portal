@@ -1,22 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { TenantProvider } from "@/context/TenantContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
   title: "MSF Admin Portal",
   description: "MSF Msafiri Admin Dashboard",
+  icons: {
+    icon: "/icon/MSF_Logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -26,12 +24,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <SessionProvider>
-          <TenantProvider>{children}</TenantProvider>
-        </SessionProvider>
+      <body className={`${inter.variable} font-sans antialiase`}>
+        {/* Content on top */}
+        <div className="relative z-10">
+          <SessionProvider>
+            <TenantProvider>{children}</TenantProvider>
+          </SessionProvider>
+        </div>
       </body>
     </html>
   );

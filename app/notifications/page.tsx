@@ -1,0 +1,407 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
+import { NotificationProvider } from "@/context/NotificationContext";
+
+import {
+  Bell,
+  Search,
+  Filter,
+  CheckCheck,
+  AlertTriangle,
+  Info,
+  Check,
+  X,
+  Clock,
+  RefreshCw,
+  Loader2,
+  MessageCircle,
+  Archive,
+  ArrowLeft,
+} from "lucide-react";
+import Link from "next/link";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useNotificationContext } from "@/context/NotificationContext";
+import { NotificationPriority } from "@/lib/api";
+
+function NotificationsContent() {
+  const { notifications, stats, loading, markAsRead: markAsReadHook, markAllAsRead: markAllAsReadHook, refetch } =
+    useNotifications();
+  const { decrementUnread, markAllRead: markAllReadContext } = useNotificationContext();
+
+  const markAsRead = async (notificationId: number) => {
+    await markAsReadHook(notificationId);
+    decrementUnread();
+  };
+
+  const markAllAsRead = async () => {
+    await markAllAsReadHook();
+    markAllReadContext();
+  };
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setTimeout(() => setRefreshing(false), 500);
+    }
+  };
+
+  const getNotificationIcon = (priority: string) => {
+    switch (priority) {
+      case NotificationPriority.URGENT:
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case NotificationPriority.HIGH:
+        return <X className="h-4 w-4 text-orange-500" />;
+      case NotificationPriority.LOW:
+        return <Check className="h-4 w-4 text-green-500" />;
+      default:
+        return <Info className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case NotificationPriority.URGENT:
+        return (
+          <Badge className="bg-red-100 text-red-800 border-red-200 text-xs">
+            Urgent
+          </Badge>
+        );
+      case NotificationPriority.HIGH:
+        return (
+          <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs">
+            High
+          </Badge>
+        );
+      case NotificationPriority.LOW:
+        return (
+          <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+            Low
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-100 text-gray-800 border-gray-200 text-xs">
+            Medium
+          </Badge>
+        );
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  };
+
+  const filteredNotifications = notifications.filter((notification) => {
+    const matchesSearch =
+      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesPriority =
+      filterPriority === "all" || notification.priority === filterPriority;
+
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "read" && notification.is_read) ||
+      (filterStatus === "unread" && !notification.is_read);
+
+    return matchesSearch && matchesPriority && matchesStatus;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-200">
+              <Bell className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Notifications
+              </h1>
+              <p className="text-xs text-gray-500">
+                Manage system alerts and updates
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading || refreshing}
+            className="gap-2 hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading || refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          {(stats?.unread ?? 0) > 0 && (
+            <Button
+              onClick={markAllAsRead}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Mark All Read
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100">
+                <Bell className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Total</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {stats?.total || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-100">
+                <MessageCircle className="h-4 w-4 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Unread</p>
+                <p className="text-xl font-bold text-red-600">
+                  {stats?.unread || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-orange-100">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Urgent</p>
+                <p className="text-xl font-bold text-orange-600">
+                  {stats?.urgent || 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-gray-200 bg-white shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <Archive className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Read</p>
+                <p className="text-xl font-bold text-green-600">
+                  {(stats?.total || 0) - (stats?.unread || 0)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters Section */}
+      <Card className="border-gray-200 bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Filter className="h-4 w-4" />
+            Filters & Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search notifications..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-9 text-sm"
+              />
+            </div>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Priorities</option>
+              <option value={NotificationPriority.URGENT}>Urgent</option>
+              <option value={NotificationPriority.HIGH}>High</option>
+              <option value={NotificationPriority.MEDIUM}>Medium</option>
+              <option value={NotificationPriority.LOW}>Low</option>
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value="unread">Unread</option>
+              <option value="read">Read</option>
+            </select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notifications List */}
+      <Card className="border-gray-200 bg-white shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">
+              Recent Notifications
+            </CardTitle>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              {filteredNotifications.length} items
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-3" />
+                <p className="text-sm text-gray-500">
+                  Loading notifications...
+                </p>
+              </div>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Bell className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                No notifications found
+              </p>
+              <p className="text-xs text-gray-500">
+                {searchTerm
+                  ? "Try adjusting your search criteria"
+                  : "You're all caught up!"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`group p-4 border rounded-lg transition-all duration-200 hover:shadow-sm hover:border-gray-300 ${
+                    !notification.is_read
+                      ? "bg-blue-50/50 border-blue-200"
+                      : "bg-white border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getNotificationIcon(notification.priority)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
+                              {notification.title}
+                            </h3>
+                            {!notification.is_read && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                            {notification.message}
+                          </p>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              <span>
+                                {formatTimeAgo(notification.created_at)}
+                              </span>
+                            </div>
+                            <span>•</span>
+                            <span className="capitalize">
+                              {notification.notification_type.replace("_", " ")}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {getPriorityBadge(notification.priority)}
+                          {!notification.is_read && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => markAsRead(notification.id)}
+                              className="text-xs h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              Mark Read
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <NotificationProvider>
+      <SuperAdminLayout>
+        <NotificationsContent />
+      </SuperAdminLayout>
+    </NotificationProvider>
+  );
+}

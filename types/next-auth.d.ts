@@ -14,6 +14,7 @@ declare module "next-auth" {
       isActive: boolean;
       accessToken: string;
       firstLogin: boolean;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 
@@ -23,6 +24,7 @@ declare module "next-auth" {
     isActive?: boolean;
     accessToken?: string;
     firstLogin?: boolean;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -33,5 +35,6 @@ declare module "next-auth/jwt" {
     isActive?: boolean;
     accessToken?: string;
     firstLogin?: boolean;
+    mustChangePassword?: boolean;
   }
 }

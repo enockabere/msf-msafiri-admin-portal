@@ -112,7 +112,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
       !isAuthenticated ||
       !accessToken ||
       !user?.role ||
-      user.role !== "super_admin"
+      (user.role !== "super_admin" && user.role !== "SUPER_ADMIN")
     ) {
       console.log(
         "Skipping tenant refresh - not super admin or not authenticated"
@@ -183,11 +183,11 @@ export function TenantProvider({ children }: TenantProviderProps) {
       isAuthenticated
     );
 
-    if (user?.role === "super_admin" && isAuthenticated && accessToken) {
+    if ((user?.role === "super_admin" || user?.role === "SUPER_ADMIN") && isAuthenticated && accessToken) {
       console.log("User is super admin, fetching tenants...");
       // Only fetch tenants, don't clear the selection
       refreshTenants();
-    } else if (isAuthenticated && user && user.role !== "super_admin") {
+    } else if (isAuthenticated && user && user.role !== "super_admin" && user.role !== "SUPER_ADMIN") {
       // Only clear if we have a confirmed user who is NOT a super admin
       console.log(
         "User is authenticated but not super admin, clearing tenant selection"

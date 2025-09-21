@@ -1,80 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  /* MSF Color Palette */
-  --color-msf-red: #e53e3e;
-  --color-msf-red-dark: #c53030;
+  --color-msf-red: #ee0000;
+  --color-msf-red-dark: #cc0000;
   --color-msf-red-light: #fee2e2;
-  --color-msf-yellow: #ecc94b;
-  --color-msf-orange: #ff9500;
-  --color-msf-blue: #3182ce;
-  --color-msf-green: #4caf50;
-  --color-msf-purple: #9c27b0;
-
-  /* Primary Colors (MSF Red) */
-  --color-primary-50: #fef2f2;
-  --color-primary-100: #fee2e2;
-  --color-primary-200: #fecaca;
-  --color-primary-300: #fca5a5;
-  --color-primary-400: #f87171;
-  --color-primary-500: #e53e3e;
-  --color-primary-600: #dc2626;
-  --color-primary-700: #b91c1c;
-  --color-primary-800: #991b1b;
-  --color-primary-900: #7f1d1d;
-  --color-primary-950: #450a0a;
-
-  /* Semantic Colors */
   --color-background: #ffffff;
   --color-foreground: #1a202c;
   --color-muted: #f7fafc;
   --color-muted-foreground: #718096;
   --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #e53e3e;
-
-  /* Card Colors */
-  --color-card: #ffffff;
-  --color-card-foreground: #1a202c;
-
-  /* Secondary Colors */
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #1e293b;
-
-  /* Accent Colors */
-  --color-accent: #f1f5f9;
-  --color-accent-foreground: #1e293b;
-
-  /* Destructive */
-  --color-destructive: #e53e3e;
-  --color-destructive-foreground: #ffffff;
-
-  /* Success, Warning, Info */
-  --color-success: #4caf50;
-  --color-warning: #ff9500;
-  --color-info: #3182ce;
-
-  /* Border Radius */
   --radius: 0.5rem;
-
-  /* Gradients */
-  --gradient-msf: linear-gradient(180deg, #e53e3e 0%, #c53030 100%);
-  --gradient-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-.dark {
-  --color-background: #0f172a;
-  --color-foreground: #f8fafc;
-  --color-muted: #1e293b;
-  --color-muted-foreground: #94a3b8;
-  --color-border: #334155;
-  --color-input: #334155;
-  --color-card: #1e293b;
-  --color-card-foreground: #f8fafc;
-  --color-secondary: #334155;
-  --color-secondary-foreground: #f8fafc;
-  --color-accent: #334155;
-  --color-accent-foreground: #f8fafc;
 }
 
 @layer base {
@@ -85,53 +20,40 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-inter), sans-serif;
+  }
+
+  .card-title {
+    @apply text-lg font-semibold;
+  }
+
+  .card-subtitle {
+    @apply text-sm;
+  }
+
+  .card-footer {
+    @apply text-xs;
+  }
+
+  .table-header {
+    @apply text-sm font-semibold uppercase;
+  }
+
+  .table-row {
+    @apply text-[15px] font-medium;
+  }
+
+  .table-subtext {
+    @apply text-xs font-normal;
   }
 }
 
 @layer utilities {
-  /* Custom background gradient */
-  .bg-gradient-bg {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  }
-
-  .bg-gradient-msf {
-    background: linear-gradient(180deg, #e53e3e 0%, #c53030 100%);
-  }
-
-  /* Glass effect utility */
-  .glass-effect {
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  /* MSF specific utilities */
-  .text-msf-red {
-    color: var(--color-msf-red);
-  }
-
   .bg-msf-red {
     background-color: var(--color-msf-red);
   }
 
-  .border-msf-red {
-    border-color: var(--color-msf-red);
-  }
-
-  /* Role-based text colors */
-  .text-role-super-admin {
+  .text-msf-red {
     color: var(--color-msf-red);
-  }
-
-  .text-role-mt-admin {
-    color: var(--color-msf-yellow);
-  }
-
-  .text-role-hr-admin {
-    color: var(--color-msf-orange);
-  }
-
-  .text-role-event-admin {
-    color: var(--color-msf-blue);
   }
 }

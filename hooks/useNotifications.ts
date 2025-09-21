@@ -11,7 +11,6 @@ export function useNotifications() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSessionExpiry = async () => {
-    console.warn("Session expired in useNotifications - logging out");
     setNotifications([]);
     setStats(null);
     setError("Session expired");
@@ -30,7 +29,6 @@ export function useNotifications() {
     try {
       setError(null);
 
-      // Set token in API client
       apiClient.setToken(accessToken);
 
       const [notificationsData, statsData] = await Promise.all([
@@ -45,7 +43,6 @@ export function useNotifications() {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch notifications";
 
-      // Check if it's a session expiry error
       if (
         errorMessage.includes("Session expired") ||
         errorMessage.includes("please log in again")
@@ -62,6 +59,26 @@ export function useNotifications() {
 
   useEffect(() => {
     fetchNotifications();
+    
+    const handleRefresh = () => {
+      setTimeout(() => {
+        fetchNotifications();
+      }, 500);
+    };
+    
+    const handleRefreshPending = () => {
+      setTimeout(() => {
+        fetchNotifications();
+      }, 500);
+    };
+    
+    window.addEventListener('refreshNotifications', handleRefresh);
+    window.addEventListener('refreshPendingInvitations', handleRefreshPending);
+    
+    return () => {
+      window.removeEventListener('refreshNotifications', handleRefresh);
+      window.removeEventListener('refreshPendingInvitations', handleRefreshPending);
+    };
   }, [fetchNotifications]);
 
   const markAsRead = async (notificationId: number) => {
@@ -71,7 +88,6 @@ export function useNotifications() {
       apiClient.setToken(accessToken);
       await apiClient.markNotificationRead(notificationId);
 
-      // Update local state
       setNotifications((prev) =>
         prev.map((notification) =>
           notification.id === notificationId
@@ -84,7 +100,6 @@ export function useNotifications() {
         )
       );
 
-      // Update stats
       setStats((prev) =>
         prev ? { ...prev, unread: Math.max(0, prev.unread - 1) } : null
       );
@@ -111,7 +126,6 @@ export function useNotifications() {
       apiClient.setToken(accessToken);
       await apiClient.markAllNotificationsRead();
 
-      // Update local state
       setNotifications((prev) =>
         prev.map((notification) => ({
           ...notification,
@@ -120,7 +134,6 @@ export function useNotifications() {
         }))
       );
 
-      // Update stats
       setStats((prev) => (prev ? { ...prev, unread: 0 } : null));
     } catch (err) {
       console.error("Failed to mark all notifications as read:", err);

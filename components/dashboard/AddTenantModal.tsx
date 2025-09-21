@@ -50,6 +50,7 @@ export function AddTenantModal({
         .replace(/[^a-z0-9\s-]/g, "")
         .replace(/\s+/g, "-")
         .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
         .trim();
       setFormData((prev) => ({ ...prev, slug }));
     }
@@ -118,10 +119,32 @@ export function AddTenantModal({
       });
       setErrors({});
 
+      // Show success notification
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('showNotification', {
+          detail: {
+            type: 'success',
+            message: `Tenant "${formData.name}" has been successfully created!`
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
       onSuccess();
     } catch (error) {
       console.error("Failed to create tenant:", error);
       if (error instanceof Error) {
+        // Show error notification
+        if (typeof window !== 'undefined') {
+          const event = new CustomEvent('showNotification', {
+            detail: {
+              type: 'error',
+              message: `Failed to create tenant: ${error.message}`
+            }
+          });
+          window.dispatchEvent(event);
+        }
+
         if (error.message.includes("slug")) {
           setErrors({
             slug: "This slug is already taken. Please choose a different one.",
@@ -203,26 +226,21 @@ export function AddTenantModal({
               )}
             </div>
 
-            {/* Slug */}
+            {/* Slug - Read-only, auto-generated */}
             <div className="space-y-2">
               <Label htmlFor="slug" className="text-gray-700">
                 URL Slug *
               </Label>
               <Input
                 id="slug"
-                placeholder="e.g., msf-kenya"
+                placeholder="Auto-generated from name"
                 value={formData.slug}
-                onChange={(e) => handleInputChange("slug", e.target.value)}
-                className={`bg-white border-gray-300 ${
-                  errors.slug ? "border-red-300" : ""
-                }`}
-                disabled={isSubmitting}
+                className="bg-gray-100 border-gray-300 text-gray-600"
+                disabled={true}
+                readOnly
               />
-              {errors.slug && (
-                <p className="text-sm text-red-600">{errors.slug}</p>
-              )}
               <p className="text-xs text-gray-500">
-                Used in URLs. Auto-generated from organization name.
+                Automatically generated from organization name. Used in URLs.
               </p>
             </div>
           </div>
@@ -307,7 +325,7 @@ export function AddTenantModal({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isSubmitting ? (
                 <>

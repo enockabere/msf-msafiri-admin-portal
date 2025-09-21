@@ -88,5 +88,6 @@ export const config = {
     "/settings/:path*",
     "/notifications/:path*",
     "/profile/:path*",
+    "/change-password",
   ],
 };

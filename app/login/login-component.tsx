@@ -1,32 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
+import Image from "next/image";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Shield,
-  Loader2,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  CheckCircle,
   ArrowLeft,
   Mail,
+  Shield,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
-// Microsoft icon as SVG component
-const MicrosoftIcon = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z" />
-  </svg>
-);
 
 // FIXED: Robust API URL detection with better logging
 const getApiUrl = (): string => {
@@ -43,19 +35,19 @@ const getApiUrl = (): string => {
 
     // Local development
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      const localUrl = "http://localhost:8000/api/v1";
+      const localUrl = "http://localhost:8000";
       console.log("🏠 Using local API URL:", localUrl);
       return localUrl;
     }
 
     // Vercel deployment or other production
-    const prodUrl = "https://msafiri-visitor-api.onrender.com/api/v1";
+    const prodUrl = "https://msafiri-visitor-api.onrender.com";
     console.log("🌐 Using production API URL:", prodUrl);
     return prodUrl;
   }
 
   // Server-side fallback
-  const fallbackUrl = "https://msafiri-visitor-api.onrender.com/api/v1";
+  const fallbackUrl = "https://msafiri-visitor-api.onrender.com";
   console.log("🔄 Using server-side fallback:", fallbackUrl);
   return fallbackUrl;
 };
@@ -74,19 +66,99 @@ interface PasswordResetData {
 
 type ViewMode = "login" | "resetRequest" | "resetPassword";
 
+// Travel and Events Illustration component
+const TravelEventsIllustration = () => (
+  <div className="relative flex justify-center items-center space-x-6 mb-8">
+    {/* Plane */}
+    <div className="relative">
+      <div className="w-20 h-8 bg-white rounded-full shadow-lg relative overflow-hidden border-2 border-gray-200">
+        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-12 h-4 bg-red-500 rounded-full"></div>
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-gray-300 rounded-full"></div>
+      </div>
+      {/* Wings */}
+      <div className="absolute top-2 left-8 w-8 h-2 bg-gray-300 rounded-full"></div>
+      <div className="absolute bottom-2 left-8 w-8 h-2 bg-gray-300 rounded-full"></div>
+      {/* Flight path dots */}
+      <div className="absolute -right-8 top-1 flex space-x-1">
+        <div className="w-1 h-1 bg-red-400 rounded-full"></div>
+        <div className="w-1 h-1 bg-red-300 rounded-full"></div>
+        <div className="w-1 h-1 bg-red-200 rounded-full"></div>
+      </div>
+    </div>
+
+    {/* Event venue/building */}
+    <div className="flex flex-col items-center">
+      {/* Building */}
+      <div className="w-16 h-20 bg-gray-700 rounded-t-lg relative">
+        {/* Windows */}
+        <div className="absolute top-2 left-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        <div className="absolute top-6 left-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        <div className="absolute top-6 right-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        <div className="absolute top-10 left-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        <div className="absolute top-10 right-2 w-2 h-2 bg-yellow-300 rounded-sm"></div>
+        {/* Entrance */}
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-8 bg-red-500 rounded-t-lg"></div>
+      </div>
+      {/* Base */}
+      <div className="w-20 h-4 bg-gray-600 rounded-b-lg"></div>
+    </div>
+
+    {/* Calendar/Event icon */}
+    <div className="flex flex-col items-center">
+      <div className="w-14 h-16 bg-white rounded-lg shadow-lg border-2 border-gray-200 relative">
+        {/* Calendar header */}
+        <div className="w-full h-4 bg-red-500 rounded-t-lg"></div>
+        {/* Calendar rings */}
+        <div className="absolute -top-1 left-2 w-2 h-3 bg-gray-400 rounded-full"></div>
+        <div className="absolute -top-1 right-2 w-2 h-3 bg-gray-400 rounded-full"></div>
+        {/* Calendar content */}
+        <div className="mt-2 px-2 space-y-1">
+          <div className="flex justify-between">
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          </div>
+          <div className="flex justify-between">
+            <div className="w-1 h-1 bg-red-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+          </div>
+          <div className="flex justify-center">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Globe/World icon */}
+    <div className="relative">
+      <div className="w-16 h-16 bg-blue-400 rounded-full relative overflow-hidden shadow-lg">
+        {/* Continents */}
+        <div className="absolute top-3 left-2 w-4 h-3 bg-green-400 rounded-lg transform rotate-12"></div>
+        <div className="absolute bottom-3 right-1 w-3 h-4 bg-green-400 rounded-lg"></div>
+        <div className="absolute top-6 right-3 w-2 h-2 bg-green-400 rounded-full"></div>
+        {/* Grid lines */}
+        <div className="absolute inset-0 border-2 border-blue-300 rounded-full"></div>
+        <div className="absolute top-0 left-1/2 w-px h-full bg-blue-300"></div>
+        <div className="absolute top-1/2 left-0 w-full h-px bg-blue-300"></div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function LoginComponent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">(
-    "credentials"
-  );
+  const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">("sso");
   const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [apiUrl, setApiUrl] = useState<string>("");
+  const [isApiConnected, setIsApiConnected] = useState<boolean>(true);
 
   const [formData, setFormData] = useState<LoginFormData>({
-    email: "abereenock95@gmail.com", // Pre-fill for convenience
+    email: "abereenock95@gmail.com",
     password: "",
   });
 
@@ -98,6 +170,9 @@ export default function LoginComponent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
   const resetToken = searchParams.get("token");
+  const message = searchParams.get("message");
+  const emailParam = searchParams.get("email");
+  const forgotParam = searchParams.get("forgot");
 
   // Initialize API URL and handle reset token
   useEffect(() => {
@@ -105,32 +180,80 @@ export default function LoginComponent() {
     setApiUrl(url);
     console.log("🎯 API URL initialized:", url);
 
-    // Handle reset token from URL
     if (resetToken) {
       console.log("🔐 Reset token detected, switching to reset password view");
       setViewMode("resetPassword");
       setResetData((prev) => ({ ...prev, token: resetToken }));
     }
-  }, [resetToken]);
 
-  // Handle view mode changes
+    if (forgotParam === "true") {
+      console.log("🔐 Forgot password mode detected");
+      setViewMode("resetRequest");
+    }
+
+    if (message === "email-changed" && emailParam) {
+      setSuccess(
+        `Your email has been successfully changed to ${emailParam}. Please sign in with your new email address.`
+      );
+      setFormData((prev) => ({ ...prev, email: emailParam }));
+    }
+
+    if (message === "password-reset" && emailParam) {
+      setSuccess(
+        `Your password has been successfully reset. Please sign in with your new password.`
+      );
+      setFormData((prev) => ({ ...prev, email: emailParam }));
+    }
+
+    if (message === "password-changed") {
+      setSuccess(
+        `Your password has been successfully changed. Please sign in with your new password.`
+      );
+    }
+
+    checkApiConnectivity(url);
+  }, [resetToken, message, emailParam, forgotParam]);
+
+  const checkApiConnectivity = async (url: string) => {
+    try {
+      console.log("🔍 Testing API connectivity to:", url);
+      const healthUrl = `${url.replace("/api/v1", "")}/health`;
+      console.log("🔍 Health check URL:", healthUrl);
+
+      const response = await fetch(healthUrl, {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (response.ok) {
+        setIsApiConnected(true);
+        console.log("✅ API server is reachable");
+      } else {
+        setIsApiConnected(false);
+        console.warn("⚠️ API health check failed:", response.status);
+      }
+    } catch (error) {
+      console.warn("⚠️ API server appears to be offline:", error);
+      setIsApiConnected(false);
+    }
+  };
+
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
     setError("");
     setSuccess("");
 
-    // Clear form data when switching views
     if (mode === "login") {
       setResetData({ email: "" });
     }
   };
 
-  // Handle Microsoft SSO Login
   const handleMicrosoftLogin = async () => {
     try {
       setIsLoading(true);
       setError("");
       setSuccess("");
+      setLoginMethod("sso");
 
       const result = await signIn("azure-ad", {
         redirect: false,
@@ -138,9 +261,9 @@ export default function LoginComponent() {
       });
 
       if (result?.error) {
-        throw new Error(
-          "Microsoft SSO authentication failed. Please try again."
-        );
+        const errorMessage = "Microsoft SSO authentication failed";
+        // ... error handling logic remains the same
+        throw new Error(errorMessage);
       }
 
       if (result?.ok) {
@@ -148,56 +271,70 @@ export default function LoginComponent() {
         setTimeout(() => router.push(redirectTo), 1000);
       }
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Microsoft SSO login failed"
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Microsoft SSO login failed";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Credential Login
   const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       setIsLoading(true);
       setError("");
       setSuccess("");
+      setLoginMethod("credentials");
 
       if (!formData.email || !formData.password) {
         throw new Error("Please enter both email and password");
       }
 
-      const result = await signIn("admin-credentials", {
+      // Determine callback URL based on password
+      const callbackUrl = formData.password === "password@1234" 
+        ? "/change-password?required=true&default=true"
+        : redirectTo;
+
+      const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
-        callbackUrl: redirectTo,
+        callbackUrl: callbackUrl,
       });
 
       if (result?.error) {
         if (result.error === "CredentialsSignin") {
-          throw new Error("Invalid email or password");
+          throw new Error(
+            "Invalid email or password. Please check your credentials."
+          );
         }
-        throw new Error("Login failed. Please check your credentials");
+        throw new Error("Login failed. Please try again.");
       }
 
       if (result?.ok) {
         setSuccess("Login successful! Redirecting...");
-        router.push(redirectTo);
+        
+        // Use NextAuth's built-in callback URL mechanism
+        setTimeout(() => {
+          if (formData.password === "password@1234") {
+            router.push("/change-password?required=true&default=true");
+          } else {
+            router.push(redirectTo);
+          }
+        }, 1000);
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Login failed");
+      const errorMessage =
+        error instanceof Error ? error.message : "Login failed";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ENHANCED: Handle Password Reset Request with robust error handling
   const handlePasswordResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       setIsLoading(true);
       setError("");
@@ -207,187 +344,73 @@ export default function LoginComponent() {
         throw new Error("Please enter your email address");
       }
 
-      if (!apiUrl) {
-        throw new Error("API configuration error. Please refresh the page.");
-      }
-
-      const requestUrl = `${apiUrl}/password/request-reset`;
-      console.log("🔧 Sending password reset request to:", requestUrl);
-
-      const response = await fetch(requestUrl, {
+      const response = await fetch(`${apiUrl}/auth/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({ email: resetData.email }),
       });
 
-      console.log("📡 Response status:", response.status);
-      console.log(
-        "📡 Response headers:",
-        Object.fromEntries(response.headers.entries())
-      );
-
-      let data;
-      const contentType = response.headers.get("content-type");
-
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-        console.log("📡 Response data:", data);
-      } else {
-        const textData = await response.text();
-        console.log("📡 Response text:", textData);
-        data = { message: textData };
-      }
-
       if (!response.ok) {
-        const errorMessage =
-          data?.detail || data?.message || `Server error: ${response.status}`;
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to send reset email");
       }
 
-      const successMessage =
-        data?.message ||
-        "If an account exists with that email, a reset link has been sent.";
-      setSuccess(successMessage);
-
-      // Clear the email field and switch back to login after a delay
-      setTimeout(() => {
-        setResetData({ email: "" });
-        setViewMode("login");
-      }, 4000);
+      setSuccess("Password reset link has been sent to your email address.");
     } catch (error) {
-      console.error("🚨 Password reset request error:", error);
-
-      let errorMessage = "Failed to send reset email";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      // Provide helpful error messages
-      if (errorMessage.includes("fetch")) {
-        errorMessage =
-          "Network error. Please check your internet connection and try again.";
-      } else if (errorMessage.includes("404")) {
-        errorMessage =
-          "Password reset service is not available. Please contact support.";
-      } else if (
-        errorMessage.includes("NetworkError") ||
-        errorMessage.includes("TypeError")
-      ) {
-        errorMessage = "Unable to connect to server. Please try again later.";
-      }
-
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to send reset email";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ENHANCED: Handle Password Reset with Token with enhanced validation
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       setIsLoading(true);
       setError("");
       setSuccess("");
 
-      // Validate inputs
       if (!resetData.newPassword || !resetData.confirmPassword) {
-        throw new Error("Please fill in both password fields");
+        throw new Error("Please fill in all password fields");
       }
 
       if (resetData.newPassword !== resetData.confirmPassword) {
         throw new Error("Passwords do not match");
       }
 
-      if (resetData.newPassword.length < 8) {
-        throw new Error("Password must be at least 8 characters long");
+      if (resetData.newPassword.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
       }
 
-      // Check for password strength
-      const hasUppercase = /[A-Z]/.test(resetData.newPassword);
-      const hasLowercase = /[a-z]/.test(resetData.newPassword);
-      const hasNumbers = /\d/.test(resetData.newPassword);
-
-      if (!hasUppercase || !hasLowercase || !hasNumbers) {
-        throw new Error(
-          "Password must contain uppercase, lowercase, and numeric characters"
-        );
-      }
-
-      const tokenToUse = resetData.token || resetToken;
-      if (!tokenToUse) {
-        throw new Error(
-          "Invalid or missing reset token. Please request a new password reset link."
-        );
-      }
-
-      if (!apiUrl) {
-        throw new Error("API configuration error. Please refresh the page.");
-      }
-
-      const requestUrl = `${apiUrl}/password/reset-password`;
-      console.log("🔧 Resetting password with token to:", requestUrl);
-
-      const response = await fetch(requestUrl, {
+      const response = await fetch(`${apiUrl}/auth/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
         body: JSON.stringify({
-          token: tokenToUse,
-          new_password: resetData.newPassword,
-          confirm_password: resetData.confirmPassword,
+          token: resetData.token,
+          newPassword: resetData.newPassword,
         }),
       });
 
-      console.log("📡 Reset response status:", response.status);
-
-      let data;
-      const contentType = response.headers.get("content-type");
-
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-        console.log("📡 Reset response data:", data);
-      } else {
-        const textData = await response.text();
-        console.log("📡 Reset response text:", textData);
-        data = { message: textData };
-      }
-
       if (!response.ok) {
-        const errorMessage =
-          data?.detail || data?.message || `Server error: ${response.status}`;
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to reset password");
       }
 
-      const successMessage =
-        data?.message || "Password reset successfully! You can now log in.";
-      setSuccess(successMessage);
-
-      // Clear form and redirect to login
+      setSuccess(
+        "Password has been successfully reset. Redirecting to login..."
+      );
       setTimeout(() => {
-        setResetData({ email: "" });
-        setViewMode("login");
-        // Clear URL parameters
-        if (typeof window !== "undefined") {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("token");
-          window.history.replaceState({}, "", url.toString());
-        }
+        router.push("/login?message=password-reset");
       }, 2000);
     } catch (error) {
-      console.error("🚨 Password reset error:", error);
-
-      let errorMessage = "Failed to reset password";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to reset password";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -409,132 +432,132 @@ export default function LoginComponent() {
     };
 
   const renderLoginContent = () => (
-    <>
-      <CardHeader className="text-center space-y-4">
-        <div className="w-40 h-16 mx-auto">
-          <Image
-            src="/icon/logo1.png"
-            alt="MSF Logo"
-            width={150}
-            height={104}
-            className="w-full h-full object-contain"
-            priority
-          />
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex">
+      {/* Left side - Branding and illustration */}
+      <div className="flex-1 flex flex-col justify-center items-center p-12 bg-white/80 backdrop-blur-sm">
+        {/* Logo */}
+        <div>
+          <div className="flex items-center justify-center mb-4">
+            <Image
+              src="/icon/MSF_logo_square.png"
+              alt="MSF Logo"
+              width={200}
+              height={200}
+              className="w-40 h-40"
+              priority
+            />
+          </div>
         </div>
-        <CardTitle className="text-2xl font-bold">MSF Msafiri Admin</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Super Admin Portal Access
-        </p>
-        {/* Debug info in development */}
-        {process.env.NODE_ENV === "development" && (
-          <p className="text-xs text-gray-400">API: {apiUrl}</p>
-        )}
-      </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Error/Success Alerts */}
-        {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Heading */}
+        <div className="text-center mb-8 max-w-md">
+          <h3 className="text-4xl font-bold text-gray-800 mb-4">
+            Visitor Travel & Events Management
+          </h3>
+          <p className="text-gray-600 text-md">
+            Manage tenants, streamline event planning, invite and track
+            visitors, allocate rooms and transport, and approve per diem—all in
+            one secure platform.
+          </p>
+        </div>
 
-        {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              {success}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Travel and Events Illustration */}
+        <TravelEventsIllustration />
+      </div>
 
-        {/* Login Methods */}
-        <Tabs
-          value={loginMethod}
-          onValueChange={(value) =>
-            setLoginMethod(value as "sso" | "credentials")
-          }
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="sso">Microsoft SSO</TabsTrigger>
-            <TabsTrigger value="credentials">Super Admin</TabsTrigger>
-          </TabsList>
-
-          {/* Microsoft SSO */}
-          <TabsContent value="sso" className="space-y-4">
-            <p className="text-sm text-center text-muted-foreground">
-              For MSF staff with Microsoft work accounts
+      {/* Right side - Login form */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
+          <CardHeader className="text-center space-y-4 pb-2">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Welcome to MSF Msafiri
+            </h2>
+            <p className="text-sm text-gray-600">
+              Travel & Events Admin Portal
             </p>
-            <Button
-              onClick={handleMicrosoftLogin}
-              disabled={isLoading}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isLoading && loginMethod === "sso" ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <MicrosoftIcon className="w-4 h-4 mr-2" />
-                  Sign in with Microsoft
-                </>
-              )}
-            </Button>
-          </TabsContent>
+          </CardHeader>
 
-          {/* Super Admin Login */}
-          <TabsContent value="credentials" className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Alert Messages */}
+            {error && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  {success}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Login Form */}
             <form onSubmit={handleCredentialLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-gray-600">
+                  Email address
+                </Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange("email")}
-                  placeholder="abereenock95@gmail.com"
+                  placeholder="admin@msafiri.com"
+                  className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
                   required
                   disabled={isLoading}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-gray-600">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleInputChange("password")}
-                    placeholder="Enter your password"
+                    placeholder="Enter password"
+                    className="h-12 pr-10 border-gray-200 focus:border-red-600 focus:ring-red-600"
                     required
                     disabled={isLoading}
                   />
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
                     onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="w-4 h-4" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="w-4 h-4" />
                     )}
-                  </Button>
+                  </button>
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleViewChange("resetRequest")}
+                  className="text-sm text-gray-600 hover:text-red-600 hover:underline"
+                >
+                  Forgot password?
+                </button>
               </div>
 
               <Button
                 type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-red-600 hover:bg-red-700 text-white"
+                disabled={isLoading || !isApiConnected}
+                className="w-full h-12 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
               >
                 {isLoading && loginMethod === "credentials" ? (
                   <>
@@ -542,214 +565,229 @@ export default function LoginComponent() {
                     Signing in...
                   </>
                 ) : (
-                  <>
-                    <Shield className="w-4 h-4 mr-2" />
-                    Sign In
-                  </>
+                  "Admin Login"
                 )}
               </Button>
-
-              {/* Forgot Password Link */}
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => handleViewChange("resetRequest")}
-                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-                >
-                  Forgot your password?
-                </button>
-              </div>
             </form>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </>
-  );
 
-  const renderResetRequestContent = () => (
-    <>
-      <CardHeader className="text-center space-y-4">
-        <CardTitle className="text-xl font-bold">Reset Password</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Enter your email address and we&apos;ll send you a reset link
-        </p>
-      </CardHeader>
+            {/* Microsoft SSO Button */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
 
-      <CardContent className="space-y-6">
-        {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              {success}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handlePasswordResetRequest} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="resetEmail">Email Address</Label>
-            <Input
-              id="resetEmail"
-              type="email"
-              value={resetData.email}
-              onChange={handleResetInputChange("email")}
-              placeholder="abereenock95@gmail.com"
-              required
-              disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500">
-              Enter the email address associated with your admin account
-            </p>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading || !apiUrl}
-            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="w-4 h-4 mr-2" />
-                Send Reset Link
-              </>
-            )}
-          </Button>
-
-          <div className="text-center">
-            <button
+            <Button
               type="button"
-              onClick={() => handleViewChange("login")}
-              className="text-sm text-gray-600 hover:text-gray-700 hover:underline inline-flex items-center"
-            >
-              <ArrowLeft className="w-3 h-3 mr-1" />
-              Back to Login
-            </button>
-          </div>
-        </form>
-      </CardContent>
-    </>
-  );
-
-  const renderResetPasswordContent = () => (
-    <>
-      <CardHeader className="text-center space-y-4">
-        <CardTitle className="text-xl font-bold">Set New Password</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Enter your new password below
-        </p>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              {success}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handlePasswordReset} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={resetData.newPassword || ""}
-              onChange={handleResetInputChange("newPassword")}
-              placeholder="Enter new password"
-              required
+              onClick={handleMicrosoftLogin}
               disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500">
-              Must be at least 8 characters with uppercase, lowercase, and
-              numbers
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={resetData.confirmPassword || ""}
-              onChange={handleResetInputChange("confirmPassword")}
-              placeholder="Confirm new password"
-              required
-              disabled={isLoading}
-            />
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading || !apiUrl}
-            className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              <>
-                <Shield className="w-4 h-4 mr-2" />
-                Update Password
-              </>
-            )}
-          </Button>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => handleViewChange("login")}
-              className="text-sm text-gray-600 hover:text-gray-700 hover:underline inline-flex items-center"
+              variant="outline"
+              className="w-full h-12 border-gray-200 hover:bg-gray-50"
             >
-              <ArrowLeft className="w-3 h-3 mr-1" />
-              Back to Login
-            </button>
-          </div>
-        </form>
-      </CardContent>
-    </>
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="bg-white/90 backdrop-blur-sm border shadow-xl">
-          {viewMode === "login" && renderLoginContent()}
-          {viewMode === "resetRequest" && renderResetRequestContent()}
-          {viewMode === "resetPassword" && renderResetPasswordContent()}
+              {isLoading && loginMethod === "sso" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                    <path fill="#00a1f1" d="M0 0h11v11H0z" />
+                    <path fill="#00a1f1" d="M13 0h11v11H13z" />
+                    <path fill="#00a1f1" d="M0 13h11v11H0z" />
+                    <path fill="#00a1f1" d="M13 13h11v11H13z" />
+                  </svg>
+                  Microsoft SSO
+                </>
+              )}
+            </Button>
+          </CardContent>
         </Card>
-
-        {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-500">
-          © 2025 MSF Msafiri. All rights reserved.
-        </div>
       </div>
     </div>
   );
+
+  const renderResetRequestContent = () => (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-8">
+      <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
+        <CardHeader className="text-center space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
+          <p className="text-sm text-gray-600">
+            Enter your email address and we&apos;ll send you a reset link
+          </p>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {error && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                {success}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handlePasswordResetRequest} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="resetEmail" className="text-gray-600">
+                Email Address
+              </Label>
+              <Input
+                id="resetEmail"
+                type="email"
+                value={resetData.email}
+                onChange={handleResetInputChange("email")}
+                placeholder="admin@msafiri.com"
+                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !apiUrl}
+              className="w-full h-12 bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Reset Link
+                </>
+              )}
+            </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => handleViewChange("login")}
+                className="text-sm text-gray-600 hover:text-red-600 hover:underline inline-flex items-center"
+              >
+                <ArrowLeft className="w-3 h-3 mr-1" />
+                Back to Login
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderResetPasswordContent = () => (
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-8">
+      <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
+        <CardHeader className="text-center space-y-4">
+          <h2 className="text-2xl font-bold text-gray-800">Set New Password</h2>
+          <p className="text-sm text-gray-600">Enter your new password below</p>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {error && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {success && (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                {success}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handlePasswordReset} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-gray-600">
+                New Password
+              </Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={resetData.newPassword || ""}
+                onChange={handleResetInputChange("newPassword")}
+                placeholder="Enter new password"
+                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-gray-600">
+                Confirm Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={resetData.confirmPassword || ""}
+                onChange={handleResetInputChange("confirmPassword")}
+                placeholder="Confirm new password"
+                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading || !apiUrl}
+              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Update Password
+                </>
+              )}
+            </Button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => handleViewChange("login")}
+                className="text-sm text-gray-600 hover:text-red-600 hover:underline inline-flex items-center"
+              >
+                <ArrowLeft className="w-3 h-3 mr-1" />
+                Back to Login
+              </button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (viewMode === "resetRequest") return renderResetRequestContent();
+  if (viewMode === "resetPassword") return renderResetPasswordContent();
+
+  return renderLoginContent();
 }

@@ -14,7 +14,7 @@ import SuperAdminDashboard from "@/components/layout/SuperAdminDashboard";
 
 function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
         <p className="text-gray-600">Loading dashboard...</p>
@@ -27,8 +27,8 @@ function UnauthorizedAccess() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center space-y-6 max-w-md mx-auto p-6">
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center space-y-6 max-w-md mx-auto p-6 bg-white/90 backdrop-blur-sm border shadow-xl rounded-lg">
         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
           <svg
             className="w-10 h-10 text-red-600"

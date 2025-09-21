@@ -141,7 +141,7 @@ export const AuthUtils = {
     switch (role) {
       case UserRole.SUPER_ADMIN:
       case "super_admin":
-        return "bg-red-100 text-red-800";
+        return "bg-[#fee2e2] text-[#ee0000]";
       case UserRole.MT_ADMIN:
         return "bg-yellow-100 text-yellow-800";
       case UserRole.HR_ADMIN:

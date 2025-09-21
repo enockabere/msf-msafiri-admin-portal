@@ -31,6 +31,8 @@ export interface Tenant {
   description?: string;
   created_at: string;
   updated_at?: string;
+  last_modified_by?: string;
+  created_by?: string;
 }
 
 export interface Notification {
@@ -168,6 +170,88 @@ export interface ApiError {
   status_code: number;
 }
 
+export interface UserProfile {
+  id: number;
+  email: string;
+  full_name: string;
+  role: string;
+  status: string;
+  tenant_id?: string;
+
+  // Profile information
+  date_of_birth?: string;
+  nationality?: string;
+  passport_number?: string;
+  passport_issue_date?: string;
+  passport_expiry_date?: string;
+  whatsapp_number?: string;
+  email_work?: string;
+  email_personal?: string;
+  phone_number?: string;
+  department?: string;
+  job_title?: string;
+
+  // Metadata
+  auth_provider: string;
+  last_login?: string;
+  profile_updated_at?: string;
+  email_verified_at?: string;
+  created_at: string;
+
+  // Security indicators
+  has_strong_password: boolean;
+  password_age_days?: number;
+}
+
+export interface UserProfileUpdate {
+  full_name?: string;
+  email?: string;
+  date_of_birth?: string;
+  nationality?: string;
+  passport_number?: string;
+  passport_issue_date?: string;
+  passport_expiry_date?: string;
+  whatsapp_number?: string;
+  email_personal?: string;
+  phone_number?: string;
+  department?: string;
+  job_title?: string;
+}
+
+export interface EditableFieldsResponse {
+  basic_fields: string[];
+  enhanced_fields: string[];
+  readonly_fields: string[];
+  can_change_password: boolean;
+  profile_completion: {
+    percentage: number;
+    completed_fields: number;
+    total_basic_fields: number;
+    missing_fields: string[];
+  };
+}
+
+export interface ProfileStatsResponse {
+  account_age_days: number;
+  last_login?: string;
+  profile_completion: {
+    percentage: number;
+    completed_fields: number;
+    total_basic_fields: number;
+    missing_fields: string[];
+  };
+  security_status: {
+    auth_method: string;
+    has_password: boolean;
+    password_age_days?: number;
+    email_verified: boolean;
+  };
+  activity: {
+    profile_last_updated?: string;
+    password_last_changed?: string;
+  };
+}
+
 // Request options type
 interface RequestOptions {
   method?: string;
@@ -179,11 +263,15 @@ interface RequestOptions {
 // API Configuration
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://msafiri-visitor-api.onrender.com/api/v1";
+  "https://msafiri-visitor-api.onrender.com";
 
-// Session expiry handler
+// Add /api/v1 prefix to all endpoints
+const getApiUrl = (endpoint: string): string => {
+  const baseUrl = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL : `${API_BASE_URL}/api/v1`;
+  return `${baseUrl}${endpoint}`;
+};
+
 const handleSessionExpiry = async (): Promise<void> => {
-  console.warn("Session expired - initiating logout sequence");
 
   try {
     // Clear any browser storage
@@ -214,7 +302,6 @@ const handleSessionExpiry = async (): Promise<void> => {
       window.location.href = loginUrl.toString();
     }
   } catch (error) {
-    console.error("Error during session expiry handling:", error);
     // Fallback: force page reload to clear any cached state
     if (typeof window !== "undefined") {
       window.location.href = "/login?sessionExpired=true&reason=error";
@@ -255,11 +342,7 @@ const retryRequest = async <T>(
       const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
       await new Promise((resolve) => setTimeout(resolve, delay));
 
-      console.warn(
-        `Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${
-          maxRetries + 1
-        })`
-      );
+
     }
   }
 
@@ -272,7 +355,7 @@ class ApiClient {
   private isHandlingSessionExpiry: boolean = false;
 
   constructor() {
-    this.baseURL = API_BASE_URL;
+    this.baseURL = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.replace('/api/v1', '') : API_BASE_URL;
   }
 
   // Token management - simplified for NextAuth integration
@@ -302,7 +385,7 @@ class ApiClient {
     }
 
     const makeRequest = async (): Promise<T> => {
-      const url = `${this.baseURL}${endpoint}`;
+      const url = getApiUrl(endpoint);
       const token = this.getToken();
 
       const headers: Record<string, string> = {
@@ -327,9 +410,7 @@ class ApiClient {
         signal: AbortSignal.timeout(30000), // 30 second timeout
       };
 
-      console.debug(
-        `API Request [${requestId}]: ${options.method || "GET"} ${endpoint}`
-      );
+
 
       try {
         const response = await fetch(url, requestConfig);
@@ -347,7 +428,7 @@ class ApiClient {
             }
 
             // For authenticated endpoints, this indicates session expiry
-            console.error(`Session expired [${requestId}]: ${endpoint}`);
+
 
             // Set flag to prevent concurrent session expiry handling
             this.isHandlingSessionExpiry = true;
@@ -368,25 +449,30 @@ class ApiClient {
           }
 
           // Handle other HTTP errors
-          const errorData: ApiError = await response.json().catch(() => ({
+          const errorData: unknown = await response.json().catch(() => ({
             detail: response.statusText,
             status_code: response.status,
           }));
 
-          const errorMessage =
-            errorData.detail ||
+
+
+          // Handle array of errors (validation errors)
+          if (Array.isArray(errorData)) {
+            const errorMessages = errorData.map(err => err.msg || err.detail || JSON.stringify(err)).join(', ');
+            throw new Error(`Validation errors: ${errorMessages}`);
+          }
+
+          const errorMessage = 
+            (errorData && typeof errorData === 'object' && 'detail' in errorData ? (errorData as { detail: string }).detail : null) ||
+            (errorData && typeof errorData === 'object' && 'message' in errorData ? (errorData as { message: string }).message : null) ||
             `HTTP ${response.status}: ${response.statusText}`;
-          console.error(`API Error [${requestId}]:`, errorMessage);
 
           throw new Error(errorMessage);
         }
 
         // Parse JSON response
         const data = await response.json();
-        console.debug(
-          `API Success [${requestId}]:`,
-          typeof data === "object" ? Object.keys(data) : "primitive"
-        );
+
         return data;
       } catch (error) {
         if (error instanceof Error) {
@@ -409,11 +495,7 @@ class ApiClient {
         return await retryRequest(makeRequest, 1, 1000); // Reduced retries for authenticated requests
       }
     } catch (error) {
-      // Log error for debugging
-      console.error(
-        `API Request failed [${options.method || "GET"} ${endpoint}]:`,
-        error
-      );
+
       throw error;
     }
   }
@@ -515,6 +597,128 @@ class ApiClient {
     });
   }
 
+  async getSuperAdmins(): Promise<User[]> {
+    return await this.request<User[]>("/super-admin/super-admins");
+  }
+
+  async inviteSuperAdmin(email: string, full_name: string): Promise<any> {
+    return await this.request("/super-admin/invite-super-admin", {
+      method: "POST",
+      body: JSON.stringify({ email, full_name }),
+    });
+  }
+
+  async getPendingInvitations(): Promise<any[]> {
+    const response = await fetch('/api/super-admin/pending-invitations');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch pending invitations' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  async resendInvitation(invitationId: number): Promise<any> {
+    const response = await fetch('/api/super-admin/resend-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitationId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to resend invitation' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  async cancelInvitation(invitationId: number): Promise<any> {
+    const response = await fetch('/api/super-admin/cancel-invitation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invitationId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to cancel invitation' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  async acceptInvitation(token: string, password?: string): Promise<any> {
+    return await this.request("/super-admin/accept-invitation", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
+  async requestEmailChange(newEmail: string): Promise<any> {
+    return await this.request("/profile/request-email-change", {
+      method: "POST",
+      body: JSON.stringify({ new_email: newEmail }),
+    });
+  }
+
+  async confirmEmailChange(token: string): Promise<any> {
+    return await this.request("/profile/confirm-email-change", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  async getMyProfile(): Promise<UserProfile> {
+    // Use Next.js API route instead of direct external API call
+    const response = await fetch('/api/profile/me');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch profile' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  async updateMyProfile(profileData: UserProfileUpdate): Promise<User> {
+    try {
+      // Use Next.js API route instead of direct external API call
+      const response = await fetch('/api/profile/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData),
+      });
+
+
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getEditableFields(): Promise<EditableFieldsResponse> {
+    const response = await fetch('/api/profile/editable-fields');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch editable fields' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
+  async getProfileStats(): Promise<ProfileStatsResponse> {
+    const response = await fetch('/api/profile/stats');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch profile stats' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  }
+
   // Tenant management methods
   async getTenants(): Promise<Tenant[]> {
     return await this.request<Tenant[]>("/tenants/");
@@ -533,11 +737,18 @@ class ApiClient {
 
   async updateTenant(
     tenantId: number,
-    tenantData: Partial<TenantCreateRequest>
+    tenantData: Partial<TenantCreateRequest>,
+    reason: string = "Updated via admin portal",
+    notifyAdmins: boolean = true
   ): Promise<Tenant> {
+    const requestBody = {
+      changes: tenantData,
+      reason,
+      notify_admins: notifyAdmins
+    };
     return await this.request<Tenant>(`/tenants/${tenantId}`, {
       method: "PUT",
-      body: JSON.stringify(tenantData),
+      body: JSON.stringify(requestBody),
     });
   }
 
@@ -562,7 +773,12 @@ class ApiClient {
   // Notification methods
   async getNotifications(unreadOnly: boolean = false): Promise<Notification[]> {
     const query = unreadOnly ? "?unread_only=true" : "";
-    return await this.request<Notification[]>(`/notifications/${query}`);
+    const response = await fetch(`/api/notifications${query}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch notifications' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
   }
 
   async getNotification(notificationId: number): Promise<Notification> {
@@ -570,27 +786,39 @@ class ApiClient {
   }
 
   async getNotificationStats(): Promise<NotificationStats> {
-    return await this.request<NotificationStats>("/notifications/stats");
+    const response = await fetch('/api/notifications/stats');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch notification stats' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
   }
 
   async markNotificationRead(
     notificationId: number
   ): Promise<{ message: string }> {
-    return await this.request<{ message: string }>(
-      `/notifications/mark-read/${notificationId}`,
-      {
-        method: "POST",
-      }
-    );
+    const response = await fetch('/api/notifications/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notificationId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to mark notification as read' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
   }
 
   async markAllNotificationsRead(): Promise<{ message: string }> {
-    return await this.request<{ message: string }>(
-      "/notifications/mark-all-read",
-      {
-        method: "POST",
-      }
-    );
+    const response = await fetch('/api/notifications/mark-all-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to mark all notifications as read' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
   }
 
   async sendNotificationToUser(
@@ -605,10 +833,16 @@ class ApiClient {
   async sendBroadcastNotification(
     notificationData: BroadcastNotificationRequest
   ): Promise<Notification> {
-    return await this.request<Notification>("/notifications/send-to-tenant", {
-      method: "POST",
+    const response = await fetch('/api/notifications/broadcast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(notificationData),
     });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Failed to send broadcast notification' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
   }
 
   async getSentNotifications(): Promise<Notification[]> {
@@ -651,12 +885,13 @@ class ApiClient {
     database: string;
     timestamp: string;
   }> {
-    return await this.request<{
-      status: string;
-      environment: string;
-      database: string;
-      timestamp: string;
-    }>("/health");
+    // Health endpoint is at root level, not under /api/v1
+    const url = `${this.baseURL}/health`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Health check failed: ${response.status}`);
+    }
+    return await response.json();
   }
 
   // Utility methods
@@ -679,7 +914,6 @@ class ApiClient {
       await this.healthCheck();
       return true;
     } catch (error) {
-      console.warn("API connection check failed:", error);
       return false;
     }
   }
