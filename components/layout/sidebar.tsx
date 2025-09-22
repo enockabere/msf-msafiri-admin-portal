@@ -96,91 +96,123 @@ function Tooltip({ children, content, side = "right" }: TooltipProps) {
   );
 }
 
-const navigationItems = [
-  {
-    title: "Overview",
-    items: [
-      { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
+const getNavigationItems = (isTenantAdmin: boolean) => {
+  if (isTenantAdmin) {
+    return [
       {
-        icon: BarChart3,
-        label: "Analytics & Reports",
-        href: "/analytics",
-        badge: null,
-      },
-    ],
-  },
-  {
-    title: "User Management",
-    items: [
-      { icon: Users, label: "Visitors", href: "/visitors", badge: "dynamic" },
-      { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
-      {
-        icon: FileText,
-        label: "Document Review",
-        href: "/documents",
-        badge: "dynamic",
-      },
-    ],
-  },
-  {
-    title: "Operations",
-    items: [
-      {
-        icon: Calendar,
-        label: "Event Management",
-        href: "/events",
-        badge: null,
+        title: "Overview",
+        items: [
+          { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
+        ],
       },
       {
-        icon: Car,
-        label: "Transport & Movement",
-        href: "/transport",
-        badge: null,
+        title: "User Management",
+        items: [
+          { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
+          { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
+        ],
       },
       {
-        icon: Hotel,
-        label: "Accommodation",
-        href: "/accommodation",
-        badge: null,
+        title: "Communication",
+        items: [
+          {
+            icon: Bell,
+            label: "Notifications",
+            href: "/notifications",
+            badge: "notifications",
+          },
+        ],
       },
-      { icon: Ticket, label: "Item Distribution", href: "/items", badge: null },
-    ],
-  },
-  {
-    title: "Finance & HR",
-    items: [
-      {
-        icon: Coins,
-        label: "PerDiem Management",
-        href: "/perdiem",
-        badge: null,
-      },
-      {
-        icon: CreditCard,
-        label: "Reimbursements",
-        href: "/reimbursements",
-        badge: null,
-      },
-    ],
-  },
-  {
-    title: "Communication",
-    items: [
-      {
-        icon: MessageSquare,
-        label: "Chat Management",
-        href: "/chat",
-        badge: null,
-      },
-      {
-        icon: Bell,
-        label: "Notifications",
-        href: "/notifications",
-        badge: "notifications",
-      },
-    ],
-  },
-];
+    ];
+  }
+
+  return [
+    {
+      title: "Overview",
+      items: [
+        { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
+        {
+          icon: BarChart3,
+          label: "Analytics & Reports",
+          href: "/analytics",
+          badge: null,
+        },
+      ],
+    },
+    {
+      title: "User Management",
+      items: [
+        { icon: Users, label: "Visitors", href: "/visitors", badge: "dynamic" },
+        { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
+        { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
+        {
+          icon: FileText,
+          label: "Document Review",
+          href: "/documents",
+          badge: "dynamic",
+        },
+      ],
+    },
+    {
+      title: "Operations",
+      items: [
+        {
+          icon: Calendar,
+          label: "Event Management",
+          href: "/events",
+          badge: null,
+        },
+        {
+          icon: Car,
+          label: "Transport & Movement",
+          href: "/transport",
+          badge: null,
+        },
+        {
+          icon: Hotel,
+          label: "Accommodation",
+          href: "/accommodation",
+          badge: null,
+        },
+        { icon: Ticket, label: "Item Distribution", href: "/items", badge: null },
+      ],
+    },
+    {
+      title: "Finance & HR",
+      items: [
+        {
+          icon: Coins,
+          label: "PerDiem Management",
+          href: "/perdiem",
+          badge: null,
+        },
+        {
+          icon: CreditCard,
+          label: "Reimbursements",
+          href: "/reimbursements",
+          badge: null,
+        },
+      ],
+    },
+    {
+      title: "Communication",
+      items: [
+        {
+          icon: MessageSquare,
+          label: "Chat Management",
+          href: "/chat",
+          badge: null,
+        },
+        {
+          icon: Bell,
+          label: "Notifications",
+          href: "/notifications",
+          badge: "notifications",
+        },
+      ],
+    },
+  ];
+};
 
 export default function Sidebar({
   collapsed,
@@ -255,7 +287,7 @@ export default function Sidebar({
       case "notifications":
         return stats?.unread || 0;
       case "dynamic":
-        return Math.floor(Math.random() * 20);
+        return 0;
       default:
         return null;
     }
@@ -263,6 +295,29 @@ export default function Sidebar({
 
   const displayUser = fullUserData || user;
   const displayName = fullUserData?.full_name || user?.name || user?.email;
+  const isTenantAdmin = pathname?.startsWith('/tenant/');
+  const tenantSlugMatch = pathname?.match(/\/tenant\/([^/]+)/);
+  const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : null;
+  
+  const getNavigationItemsWithTenantContext = (isTenantAdmin: boolean, tenantSlug: string | null) => {
+    const items = getNavigationItems(isTenantAdmin);
+    if (isTenantAdmin && tenantSlug) {
+      return items.map(section => ({
+        ...section,
+        items: section.items.map(item => ({
+          ...item,
+          href: item.href === '/dashboard' ? `/tenant/${tenantSlug}/dashboard` :
+                item.href === '/admin-users' ? `/tenant/${tenantSlug}/admin-users` :
+                item.href === '/admin-roles' ? `/tenant/${tenantSlug}/admin-roles` :
+                item.href === '/notifications' ? `/tenant/${tenantSlug}/notifications` :
+                item.href
+        }))
+      }));
+    }
+    return items;
+  };
+  
+  const navigationItems = getNavigationItemsWithTenantContext(isTenantAdmin, tenantSlug);
 
   return (
     <>
@@ -275,8 +330,9 @@ export default function Sidebar({
 
       <div
         className={cn(
-          "bg-gradient-to-b from-red-900 via-red-800 to-red-900 text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50",
+          "text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50",
           "border-r border-red-700/50",
+          "bg-[#ee0000]",
           isMobile
             ? "fixed left-0 top-0 h-full w-80"
             : collapsed
@@ -285,7 +341,7 @@ export default function Sidebar({
         )}
       >
         {/* Header */}
-        <div className="p-4 lg:p-6 border-b border-red-700/50 bg-red-900/50">
+        <div className="p-4 lg:p-6 border-b border-red-700/50 bg-black/10">
           <div className="flex items-center justify-between">
             {/* Logo and Title - Hidden when collapsed */}
             {(!collapsed || isMobile) && (
@@ -353,7 +409,7 @@ export default function Sidebar({
 
         {/* User Info */}
         {(!collapsed || isMobile) && (
-          <div className="p-4 border-b border-red-700/50 bg-red-800/30">
+          <div className="p-4 border-b border-red-700/50 bg-black/10">
             {authLoading || userDataLoading ? (
               <div className="animate-pulse">
                 <div className="flex items-center space-x-3">
@@ -551,8 +607,8 @@ export default function Sidebar({
             </div>
           ))}
 
-          {/* System Settings for Super Admin */}
-          {isSuperAdmin && (
+          {/* System Settings for Super Admin or Tenant Admin */}
+          {(isSuperAdmin || isTenantAdmin) && (
             <div className="mb-6">
               {(!collapsed || isMobile) && (
                 <div className="px-4 lg:px-6 mb-3">
@@ -628,7 +684,7 @@ export default function Sidebar({
         </div>
 
         {/* Footer with Logout */}
-        <div className="p-4 border-t border-red-700/50 bg-red-900/50">
+        <div className="p-4 border-t border-red-700/50 bg-black/10">
           {collapsed && !isMobile ? (
             <Tooltip content="Sign Out">
               <Button

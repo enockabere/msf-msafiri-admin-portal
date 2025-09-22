@@ -28,6 +28,7 @@ export interface Tenant {
   domain?: string;
   is_active: boolean;
   contact_email: string;
+  admin_email: string;
   description?: string;
   created_at: string;
   updated_at?: string;
@@ -141,6 +142,7 @@ export interface TenantCreateRequest {
   name: string;
   slug: string;
   contact_email: string;
+  admin_email: string;
   domain?: string;
   description?: string;
 }
@@ -644,9 +646,8 @@ class ApiClient {
   }
 
   async acceptInvitation(token: string, password?: string): Promise<any> {
-    return await this.request("/super-admin/accept-invitation", {
+    return await this.request(`/invitations/accept/${token}`, {
       method: "POST",
-      body: JSON.stringify({ token, password }),
     });
   }
 
@@ -916,6 +917,53 @@ class ApiClient {
     } catch (error) {
       return false;
     }
+  }
+
+  // Tenant statistics
+  async getTenantStats(tenantSlug: string): Promise<{
+    totalUsers: number;
+    activeEvents: number;
+    totalRoles: number;
+    totalVisitors: number;
+    tenantStatus: string;
+    trends: {
+      usersChange: number;
+      eventsChange: number;
+      rolesChange: number;
+      visitorsChange: number;
+    };
+  }> {
+    const [users, events, roles] = await Promise.all([
+      this.request<any[]>(`/users/`, { headers: { "X-Tenant-ID": tenantSlug } }),
+      this.request<any[]>(`/events/`),
+      this.request<any[]>(`/roles/tenant/${tenantSlug}`)
+    ]);
+
+    // Get all participants for all events
+    const allParticipants = await Promise.all(
+      events.map(event => 
+        this.request<any[]>(`/events/${event.id}/participants`).catch(() => [])
+      )
+    );
+    const totalVisitors = allParticipants.flat().length;
+
+    // Calculate trends (mock data for now - would need historical data from API)
+    const currentMonth = new Date().getMonth();
+    const lastMonth = currentMonth - 1;
+    
+    return {
+      totalUsers: users.length,
+      activeEvents: events.filter(e => e.is_active).length,
+      totalRoles: roles.length,
+      totalVisitors,
+      tenantStatus: "Active",
+      trends: {
+        usersChange: Math.floor(Math.random() * 20) - 10, // Mock trend data
+        eventsChange: Math.floor(Math.random() * 10) - 5,
+        rolesChange: Math.floor(Math.random() * 5) - 2,
+        visitorsChange: Math.floor(Math.random() * 50) - 25
+      }
+    };
   }
 }
 

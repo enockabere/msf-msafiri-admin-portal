@@ -104,5 +104,14 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 24 * 60 * 60, // 24 hours
   },
+  events: {
+    async signOut() {
+      // Clear any client-side storage on signout
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };

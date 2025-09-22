@@ -31,6 +31,7 @@ export function AddTenantModal({
     name: "",
     slug: "",
     contact_email: "",
+    admin_email: "",
     domain: "",
     description: "",
   });
@@ -81,6 +82,12 @@ export function AddTenantModal({
       newErrors.contact_email = "Please enter a valid email address";
     }
 
+    if (!formData.admin_email.trim()) {
+      newErrors.admin_email = "Admin email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+      newErrors.admin_email = "Please enter a valid email address";
+    }
+
     if (
       formData.domain &&
       !/^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(
@@ -114,6 +121,7 @@ export function AddTenantModal({
         name: "",
         slug: "",
         contact_email: "",
+        admin_email: "",
         domain: "",
         description: "",
       });
@@ -169,6 +177,7 @@ export function AddTenantModal({
         name: "",
         slug: "",
         contact_email: "",
+        admin_email: "",
         domain: "",
         description: "",
       });
@@ -179,25 +188,18 @@ export function AddTenantModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose} modal>
-      <DialogContent
-        className="sm:max-w-[600px] bg-white border border-gray-200 shadow-2xl z-50"
-        style={{
-          backgroundColor: "#ffffff",
-          backdropFilter: "none",
-        }}
-      >
-        <DialogHeader className="bg-white">
+      <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-gray-900">
             <Building2 className="w-5 h-5" />
             <span>Add New Tenant Organization</span>
           </DialogTitle>
           <DialogDescription className="text-gray-600">
-            Create a new tenant organization to manage users and resources
-            separately.
+            Create a new tenant organization to manage users and resources separately.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white">
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white my-4">
           {/* General Error */}
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -205,9 +207,9 @@ export function AddTenantModal({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Organization Name */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="name" className="text-gray-700">
                 Organization Name *
               </Label>
@@ -227,7 +229,7 @@ export function AddTenantModal({
             </div>
 
             {/* Slug - Read-only, auto-generated */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="slug" className="text-gray-700">
                 URL Slug *
               </Label>
@@ -245,16 +247,17 @@ export function AddTenantModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Contact and Admin Emails */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Contact Email */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label htmlFor="contact_email" className="text-gray-700">
                 Contact Email *
               </Label>
               <Input
                 id="contact_email"
                 type="email"
-                placeholder="admin@organization.org"
+                placeholder="contact@organization.org"
                 value={formData.contact_email}
                 onChange={(e) =>
                   handleInputChange("contact_email", e.target.value)
@@ -267,31 +270,61 @@ export function AddTenantModal({
               {errors.contact_email && (
                 <p className="text-sm text-red-600">{errors.contact_email}</p>
               )}
+              <p className="text-xs text-gray-500">
+                General contact email for the organization
+              </p>
             </div>
 
-            {/* Domain */}
-            <div className="space-y-2">
-              <Label htmlFor="domain" className="text-gray-700">
-                Domain (Optional)
+            {/* Admin Email */}
+            <div className="space-y-3">
+              <Label htmlFor="admin_email" className="text-gray-700">
+                Admin Email *
               </Label>
               <Input
-                id="domain"
-                placeholder="e.g., msf-kenya.org"
-                value={formData.domain}
-                onChange={(e) => handleInputChange("domain", e.target.value)}
+                id="admin_email"
+                type="email"
+                placeholder="admin@organization.org"
+                value={formData.admin_email}
+                onChange={(e) =>
+                  handleInputChange("admin_email", e.target.value)
+                }
                 className={`bg-white border-gray-300 ${
-                  errors.domain ? "border-red-300" : ""
+                  errors.admin_email ? "border-red-300" : ""
                 }`}
                 disabled={isSubmitting}
               />
-              {errors.domain && (
-                <p className="text-sm text-red-600">{errors.domain}</p>
+              {errors.admin_email && (
+                <p className="text-sm text-red-600">{errors.admin_email}</p>
               )}
+              <p className="text-xs text-gray-500">
+                Email of the person who will have admin access to this tenant
+              </p>
             </div>
+
+          </div>
+
+          {/* Domain */}
+          <div className="space-y-3">
+            <Label htmlFor="domain" className="text-gray-700">
+              Domain (Optional)
+            </Label>
+            <Input
+              id="domain"
+              placeholder="e.g., msf-kenya.org"
+              value={formData.domain}
+              onChange={(e) => handleInputChange("domain", e.target.value)}
+              className={`bg-white border-gray-300 ${
+                errors.domain ? "border-red-300" : ""
+              }`}
+              disabled={isSubmitting}
+            />
+            {errors.domain && (
+              <p className="text-sm text-red-600">{errors.domain}</p>
+            )}
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="description" className="text-gray-700">
               Description (Optional)
             </Label>
@@ -312,13 +345,12 @@ export function AddTenantModal({
             </p>
           </div>
 
-          <DialogFooter className="bg-white">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </Button>

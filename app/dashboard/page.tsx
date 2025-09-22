@@ -12,15 +12,10 @@ import { TenantSelector } from "@/components/TenantSelector";
 import { useTenant } from "@/context/TenantContext";
 import SuperAdminDashboard from "@/components/layout/SuperAdminDashboard";
 
+import { LoadingScreen } from "@/components/ui/loading";
+
 function DashboardLoading() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-        <p className="text-gray-600">Loading dashboard...</p>
-      </div>
-    </div>
-  );
+  return <LoadingScreen message="Loading dashboard..." />;
 }
 
 function UnauthorizedAccess() {

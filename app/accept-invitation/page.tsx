@@ -17,15 +17,6 @@ export default function AcceptInvitationPage() {
   const [error, setError] = useState<string | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
-  useEffect(() => {
-    if (!token) {
-      setError("Invalid invitation link");
-      return;
-    }
-
-    acceptInvitation();
-  }, [token, acceptInvitation]);
-
   const acceptInvitation = useCallback(async () => {
     if (!token) return;
 
@@ -44,6 +35,15 @@ export default function AcceptInvitationPage() {
       setLoading(false);
     }
   }, [token, router]);
+
+  useEffect(() => {
+    if (!token) {
+      setError("Invalid invitation link");
+      return;
+    }
+
+    acceptInvitation();
+  }, [token, acceptInvitation]);
 
   if (loading) {
     return (

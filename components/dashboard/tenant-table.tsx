@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Edit, Power, PowerOff, Search, Download } from "lucide-react";
+import { MoreHorizontal, Edit, Power, PowerOff, Search, Download, Eye, Loader2 } from "lucide-react";
 import { Tenant } from "@/lib/api";
 import { format } from "date-fns";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
@@ -31,11 +31,16 @@ interface TenantTableProps {
   onEdit: (tenant: Tenant) => void;
   onActivate: (tenant: Tenant) => void;
   onDeactivate: (tenant: Tenant) => void;
+  onViewTenant?: (tenant: Tenant) => void;
+  currentUserEmail?: string;
+  currentUserRoles?: string[];
   superAdminCount?: number;
+  navigationLoading?: boolean;
 }
 
-export function TenantTable({ data, loading = false, onEdit, onActivate, onDeactivate, superAdminCount = 0 }: TenantTableProps) {
-  const showActions = superAdminCount > 1;
+export function TenantTable({ data, loading = false, onEdit, onActivate, onDeactivate, onViewTenant, currentUserEmail, currentUserRoles = [], superAdminCount = 0, navigationLoading = false }: TenantTableProps) {
+  console.log('TenantTable Debug:', { currentUserRoles, currentUserEmail, superAdminCount });
+  const showActions = superAdminCount >= 1;
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Tenant>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -48,6 +53,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
   const filteredData = data.filter(tenant =>
     tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     tenant.contact_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (tenant.admin_email && tenant.admin_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
     tenant.slug.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -71,13 +77,14 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
   };
 
   const exportToCSV = () => {
-    const headers = ["Name", "Slug", "Contact Email", "Domain", "Status", "Created"];
+    const headers = ["Name", "Slug", "Contact Email", "Admin Email", "Domain", "Status", "Created"];
     const csvData = [
       headers.join(","),
       ...sortedData.map(tenant => [
         `"${tenant.name}"`,
         `"${tenant.slug}"`,
         `"${tenant.contact_email}"`,
+        `"${tenant.admin_email || ''}"`,
         `"${tenant.domain || ''}"`,
         tenant.is_active ? "Active" : "Inactive",
         format(new Date(tenant.created_at), "MMM dd, yyyy")
@@ -116,7 +123,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search by name, email or slug..."
+            placeholder="Search by name, contact email, admin email or slug..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 h-9 text-sm border-gray-200"
@@ -228,6 +235,11 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
                       <div className="text-xs text-gray-500">
                         Primary contact
                       </div>
+                      {tenant.admin_email && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Admin: {tenant.admin_email}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       {tenant.domain ? (
@@ -290,6 +302,23 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-200 shadow-lg rounded-md">
+                            {onViewTenant && currentUserEmail && tenant.admin_email === currentUserEmail && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => onViewTenant(tenant)}
+                                  className="gap-2 hover:bg-gray-50 cursor-pointer"
+                                  disabled={navigationLoading}
+                                >
+                                  {navigationLoading ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Eye className="w-4 h-4" />
+                                  )}
+                                  {navigationLoading ? "Loading..." : "View Tenant Dashboard"}
+                                </DropdownMenuItem>
+                                <div className="border-t border-gray-100 my-1"></div>
+                              </>
+                            )}
                             <DropdownMenuItem
                               onClick={() => onEdit(tenant)}
                               className="gap-2 hover:bg-gray-50 cursor-pointer"

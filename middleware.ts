@@ -31,7 +31,8 @@ export default withAuth(
         if (
           pathname.startsWith("/dashboard") ||
           pathname.startsWith("/users") ||
-          pathname.startsWith("/admin")
+          pathname.startsWith("/admin") ||
+          pathname.startsWith("/tenant")
         ) {
           const adminRoles = [
             "SUPER_ADMIN",
@@ -84,6 +85,9 @@ export const config = {
     "/dashboard/:path*",
     "/users/:path*",
     "/admin/:path*",
+    "/admin-roles/:path*",
+    "/admin-users/:path*",
+    "/tenant/:path*",
     "/tenants/:path*",
     "/settings/:path*",
     "/notifications/:path*",

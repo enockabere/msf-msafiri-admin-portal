@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
-import { useAuthenticatedApi } from "@/lib/auth";
+import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { Tenant, User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,23 +30,40 @@ export default function TenantManagement({
   filter,
   onTenantUpdate,
 }: TenantManagementProps) {
+  const router = useRouter();
+  const { user } = useAuth();
   const { tenants, loading, error, refreshTenants } = useTenant();
   const { apiClient } = useAuthenticatedApi();
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   const [superAdminCount, setSuperAdminCount] = useState(0);
+  const [currentUserRoles, setCurrentUserRoles] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchSuperAdminCount = async () => {
+    const fetchData = async () => {
       try {
-        const superAdmins = await apiClient.getSuperAdmins();
+        const [superAdmins, userRoles] = await Promise.all([
+          apiClient.getSuperAdmins(),
+          user?.id ? apiClient.request<any[]>(`/user-roles/user/${user.id}`).catch(() => []) : Promise.resolve([])
+        ]);
         setSuperAdminCount(superAdmins.length);
+        
+        // Extract role names and include primary role
+        const roles = userRoles.map(r => r.role);
+        if (user?.role) {
+          roles.push(user.role);
+        }
+        setCurrentUserRoles([...new Set(roles)]); // Remove duplicates
       } catch (error) {
-        console.error('Error fetching super admin count:', error);
+        console.error('Error fetching data:', error);
       }
     };
-    fetchSuperAdminCount();
-  }, [apiClient]);
+    
+    if (user?.id) {
+      fetchData();
+    }
+  }, [apiClient, user?.id, user?.role]);
 
   // Filter tenants based on the filter prop
   const filteredTenants = useMemo(() => {
@@ -98,7 +116,12 @@ export default function TenantManagement({
     }
   };
 
-
+  const handleViewTenant = (tenant: Tenant) => {
+    setNavigationLoading(true);
+    localStorage.setItem('selectedTenantId', tenant.id.toString());
+    localStorage.setItem('selectedTenantSlug', tenant.slug);
+    router.push(`/tenant/${tenant.slug}/dashboard`);
+  };
 
   const handleEditSuccess = () => {
     setEditingTenant(null);
@@ -149,7 +172,11 @@ export default function TenantManagement({
         onEdit={setEditingTenant}
         onActivate={handleActivate}
         onDeactivate={handleDeactivate}
+        onViewTenant={handleViewTenant}
+        currentUserEmail={user?.email}
+        currentUserRoles={currentUserRoles}
         superAdminCount={superAdminCount}
+        navigationLoading={navigationLoading}
       />
 
       {/* Edit Modal */}

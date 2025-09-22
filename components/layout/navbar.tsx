@@ -242,13 +242,13 @@ export default function Navbar() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200"
                   >
                     <Bell className="h-4 w-4 text-gray-600" />
                     {unreadCount > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white border-2 border-white"
                       >
                         {unreadCount > 99 ? "99+" : unreadCount}
                       </Badge>
@@ -377,14 +377,14 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100"
+                className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 border border-gray-200"
                 onClick={() => router.push("/notifications")}
               >
                 <Bell className="h-4 w-4 text-gray-600" />
                 {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs"
+                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white border-2 border-white"
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </Badge>
@@ -397,30 +397,13 @@ export default function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 rounded-lg px-2 sm:px-3 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200"
                 >
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
-                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
-                        {getUserInitials(displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    {/* User info - hidden on mobile */}
-                    <div className="hidden sm:block text-left min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                        {displayName?.split(" ")[0] || "User"}
-                      </p>
-                      <div className="flex items-center space-x-1">
-                        <Shield className="h-3 w-3 text-gray-400" />
-                        <p className="text-xs text-gray-500 truncate max-w-[100px]">
-                          {AuthUtils.getRoleDisplayName(user.role || "")}
-                        </p>
-                      </div>
-                    </div>
-
-                    <ChevronDown className="h-3 w-3 text-gray-400" />
-                  </div>
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
+                      {getUserInitials(displayName)}
+                    </AvatarFallback>
+                  </Avatar>
                 </Button>
               </DropdownMenuTrigger>
 

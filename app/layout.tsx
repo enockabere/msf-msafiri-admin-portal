@@ -3,6 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { TenantProvider } from "@/context/TenantContext";
+import SessionTimeoutHandler from "@/components/auth/SessionTimeoutHandler";
+import { ToastContainer } from "@/components/ui/toast";
+import { NavigationLoader } from "@/components/ui/loading";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,7 +31,12 @@ export default function RootLayout({
         {/* Content on top */}
         <div className="relative z-10">
           <SessionProvider>
-            <TenantProvider>{children}</TenantProvider>
+            <TenantProvider>
+              <SessionTimeoutHandler />
+              <NavigationLoader />
+              {children}
+              <ToastContainer />
+            </TenantProvider>
           </SessionProvider>
         </div>
       </body>

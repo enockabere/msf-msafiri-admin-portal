@@ -11,6 +11,7 @@ import { DashboardHeader } from "../dashboard/dashboard-header";
 import { DashboardContent } from "../dashboard/dashboard-content";
 import { SuperAdminFooter } from "./SuperAdminFooter";
 import { ToastContainer } from "@/components/ui/toast";
+import { LoadingScreen } from "@/components/ui/loading";
 import { useProfile } from "@/hooks/useProfile";
 import { NotificationProvider } from "@/context/NotificationContext";
 import type { AuthUser } from "@/types/auth";
@@ -59,14 +60,7 @@ export default function SuperAdminDashboard() {
 
   // Show loading if user is not loaded yet
   if (!typedUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Loading dashboard..." />;
   }
 
   return (

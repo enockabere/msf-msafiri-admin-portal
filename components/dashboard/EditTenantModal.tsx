@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -29,6 +30,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
   const [formData, setFormData] = useState({
     name: "",
     contact_email: "",
+    admin_email: "",
     domain: "",
     description: "",
   });
@@ -39,6 +41,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
       setFormData({
         name: tenant.name,
         contact_email: tenant.contact_email,
+        admin_email: tenant.admin_email || "",
         domain: tenant.domain || "",
         description: tenant.description || "",
       });
@@ -61,7 +64,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update tenant",
+        description: error instanceof Error ? error.message : "Failed to update tenant",
         variant: "destructive",
       });
     } finally {
@@ -71,12 +74,12 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-white">
+      <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Tenant</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-6 my-4">
+          <div className="space-y-3">
             <Label htmlFor="name">Name</Label>
             <Input
               id="name"
@@ -85,7 +88,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
               required
             />
           </div>
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="contact_email">Contact Email</Label>
             <Input
               id="contact_email"
@@ -95,7 +98,21 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
               required
             />
           </div>
-          <div>
+          <div className="space-y-3">
+            <Label htmlFor="admin_email">Admin Email</Label>
+            <Input
+              id="admin_email"
+              type="email"
+              value={formData.admin_email}
+              onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
+              required
+              placeholder="Email of the tenant administrator"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Only this email address will have access to the tenant dashboard
+            </p>
+          </div>
+          <div className="space-y-3">
             <Label htmlFor="domain">Domain</Label>
             <Input
               id="domain"
@@ -103,7 +120,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
               onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
             />
           </div>
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
@@ -111,7 +128,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
           </div>
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="reason">Reason for Change</Label>
             <Input
               id="reason"
@@ -120,15 +137,15 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
               placeholder="Brief reason for this update"
             />
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} className="border-black text-black hover:bg-gray-50">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Changes
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
