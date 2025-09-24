@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +21,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Plus, Edit, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import {
+  Shield,
+  Plus,
+  Edit,
+  Loader2,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
 
@@ -54,25 +60,41 @@ export default function TenantAdminRolesPage() {
 
   const tenantSlug = params.slug as string;
 
-  useEffect(() => {
-    if (!authLoading && user?.email) {
-      checkAccess();
-    }
-  }, [user?.email, authLoading]);
+  const fetchRoles = useCallback(async () => {
+    try {
+      const rolesData = await apiClient.request<Role[]>(
+        `/roles?tenant=${tenantSlug}`,
+        {
+          headers: { "X-Tenant-ID": tenantSlug },
+        }
+      );
 
-  const checkAccess = async () => {
+      setRoles(rolesData);
+    } catch (error) {
+      console.error("Fetch roles error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch roles",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [apiClient, tenantSlug]);
+
+  const checkAccess = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // If user is super admin, allow access to any tenant
       if (user?.role === "SUPER_ADMIN" || user?.role === "super_admin") {
         await fetchRoles();
         return;
       }
-      
+
       const tenants = await apiClient.getTenants();
-      const tenant = tenants.find(t => t.slug === tenantSlug);
-      
+      const tenant = tenants.find((t) => t.slug === tenantSlug);
+
       if (!tenant) {
         toast({
           title: "Error",
@@ -85,7 +107,8 @@ export default function TenantAdminRolesPage() {
       if (tenant.admin_email !== user?.email) {
         toast({
           title: "Access Denied",
-          description: "You don't have permission to access this tenant's roles",
+          description:
+            "You don't have permission to access this tenant's roles",
           variant: "destructive",
         });
         return;
@@ -100,29 +123,13 @@ export default function TenantAdminRolesPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [user?.role, user?.email, apiClient, tenantSlug, fetchRoles]);
 
-  const fetchRoles = async () => {
-    try {
-      const rolesData = await apiClient.request<Role[]>(`/roles/tenant/${tenantSlug}`, {
-        headers: { "X-Tenant-ID": tenantSlug }
-      });
-      console.log("Roles data:", rolesData);
-      rolesData.forEach(role => {
-        console.log(`Role: ${role.name}, created_by: ${role.created_by}, updated_by: ${role.updated_by}`);
-      });
-      setRoles(rolesData);
-    } catch (error) {
-      console.error("Fetch roles error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch roles",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (!authLoading && user?.email) {
+      checkAccess();
     }
-  };
+  }, [user?.email, authLoading, checkAccess]);
 
   const handleCreateRole = async () => {
     if (!formData.name.trim()) {
@@ -145,19 +152,19 @@ export default function TenantAdminRolesPage() {
           tenant_id: tenantSlug,
         }),
       });
-      
+
       setRoles([...roles, newRole]);
       setShowCreateModal(false);
       setFormData({ name: "", description: "" });
-      
-      console.log("Role created successfully, showing toast");
+
       toast({
         title: "Success",
         description: "Role created successfully",
       });
     } catch (error) {
       console.error("Role creation error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to create role";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create role";
       toast({
         title: "Error",
         description: errorMessage,
@@ -170,7 +177,7 @@ export default function TenantAdminRolesPage() {
 
   const handleUpdateRole = async () => {
     if (!editingRole) return;
-    
+
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -179,30 +186,34 @@ export default function TenantAdminRolesPage() {
       });
       return;
     }
-    
+
     try {
       setSubmitting(true);
-      const updatedRole = await apiClient.request<Role>(`/roles/${editingRole.id}`, {
-        method: "PUT",
-        headers: { "X-Tenant-ID": tenantSlug },
-        body: JSON.stringify({
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-        }),
-      });
-      
-      setRoles(roles.map(role => role.id === editingRole.id ? updatedRole : role));
+      const updatedRole = await apiClient.request<Role>(
+        `/roles/${editingRole.id}`,
+        {
+          method: "PUT",
+          headers: { "X-Tenant-ID": tenantSlug },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            description: formData.description.trim(),
+          }),
+        }
+      );
+
+      setRoles(
+        roles.map((role) => (role.id === editingRole.id ? updatedRole : role))
+      );
       setEditingRole(null);
       setFormData({ name: "", description: "" });
-      
-      console.log("Role updated successfully, showing toast");
       toast({
         title: "Success",
         description: "Role updated successfully",
       });
     } catch (error) {
       console.error("Role update error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to update role";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update role";
       toast({
         title: "Error",
         description: errorMessage,
@@ -228,17 +239,17 @@ export default function TenantAdminRolesPage() {
   };
 
   const handleDeleteRole = async (roleId: number) => {
-    const { default: Swal } = await import('sweetalert2');
-    
+    const { default: Swal } = await import("sweetalert2");
+
     const result = await Swal.fire({
-      title: 'Delete Role?',
-      text: 'This action cannot be undone. Are you sure you want to delete this role?',
-      icon: 'warning',
+      title: "Delete Role?",
+      text: "This action cannot be undone. Are you sure you want to delete this role?",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
     });
 
     if (!result.isConfirmed) {
@@ -251,16 +262,17 @@ export default function TenantAdminRolesPage() {
         method: "DELETE",
         headers: { "X-Tenant-ID": tenantSlug },
       });
-      
-      setRoles(roles.filter(role => role.id !== roleId));
-      
+
+      setRoles(roles.filter((role) => role.id !== roleId));
+
       toast({
         title: "Success",
         description: "Role deleted successfully",
       });
     } catch (error) {
       console.error("Role deletion error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to delete role";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to delete role";
       toast({
         title: "Error",
         description: errorMessage,
@@ -283,10 +295,12 @@ export default function TenantAdminRolesPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Admin Roles</h1>
-              <p className="text-gray-600">Manage custom roles for your organization</p>
+              <p className="text-gray-600">
+                Manage custom roles for your organization
+              </p>
             </div>
-            <Button 
-              onClick={() => setShowCreateModal(true)} 
+            <Button
+              onClick={() => setShowCreateModal(true)}
               className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
             >
               <Plus className="w-4 h-4" />
@@ -336,7 +350,10 @@ export default function TenantAdminRolesPage() {
                     </tr>
                   ) : (
                     roles.map((role) => (
-                      <tr key={role.id} className="hover:bg-gray-50 transition-colors">
+                      <tr
+                        key={role.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-indigo-200 rounded-full flex items-center justify-center">
@@ -354,35 +371,47 @@ export default function TenantAdminRolesPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-900">
-                            {role.created_by === 'system' ? (
-                              <span className="text-blue-600 font-medium">System</span>
-                            ) : role.created_by === null || role.created_by === undefined ? (
-                              <span className="text-green-600 font-medium">{user?.email || 'Current User'}</span>
-                            ) : (
-                              role.updated_by && role.updated_by !== role.created_by ? (
-                                <div>
-                                  <div className="text-xs text-gray-500">Modified by:</div>
-                                  <div>{role.updated_by}</div>
+                            {role.created_by === "system" ? (
+                              <span className="text-blue-600 font-medium">
+                                System
+                              </span>
+                            ) : role.created_by === null ||
+                              role.created_by === undefined ? (
+                              <span className="text-green-600 font-medium">
+                                {user?.email || "Current User"}
+                              </span>
+                            ) : role.updated_by &&
+                              role.updated_by !== role.created_by ? (
+                              <div>
+                                <div className="text-xs text-gray-500">
+                                  Modified by:
                                 </div>
-                              ) : (
-                                role.created_by
-                              )
+                                <div>{role.updated_by}</div>
+                              </div>
+                            ) : (
+                              role.created_by
                             )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-900">
-                            {new Date(role.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric', 
-                              year: 'numeric'
-                            })}
+                            {new Date(role.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              }
+                            )}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {new Date(role.created_at).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                            {new Date(role.created_at).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -396,7 +425,10 @@ export default function TenantAdminRolesPage() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 bg-white border border-gray-200 shadow-lg rounded-md">
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-48 bg-white border border-gray-200 shadow-lg rounded-md"
+                            >
                               <DropdownMenuItem
                                 onClick={() => handleEditRole(role)}
                                 className="gap-2 hover:bg-gray-50 cursor-pointer"
@@ -414,7 +446,9 @@ export default function TenantAdminRolesPage() {
                                 ) : (
                                   <Trash2 className="w-4 h-4" />
                                 )}
-                                {deletingRoleId === role.id ? "Deleting..." : "Delete Role"}
+                                {deletingRoleId === role.id
+                                  ? "Deleting..."
+                                  : "Delete Role"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -431,15 +465,16 @@ export default function TenantAdminRolesPage() {
           <div className="flex items-center justify-between text-xs text-gray-500 px-1">
             <div>
               Showing{" "}
-              <span className="font-medium text-gray-900">
-                {roles.length}
-              </span>{" "}
+              <span className="font-medium text-gray-900">{roles.length}</span>{" "}
               roles
             </div>
           </div>
         </div>
 
-        <Dialog open={showCreateModal || !!editingRole} onOpenChange={closeModal}>
+        <Dialog
+          open={showCreateModal || !!editingRole}
+          onOpenChange={closeModal}
+        >
           <DialogContent className="bg-white border border-gray-200 shadow-lg">
             <DialogHeader>
               <DialogTitle className="text-gray-900">
@@ -448,21 +483,29 @@ export default function TenantAdminRolesPage() {
             </DialogHeader>
             <div className="space-y-4 bg-white">
               <div>
-                <Label htmlFor="name" className="text-gray-700">Role Name</Label>
+                <Label htmlFor="name" className="text-gray-700">
+                  Role Name
+                </Label>
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="Enter role name"
                   className="mt-2 bg-white border-gray-300"
                 />
               </div>
               <div>
-                <Label htmlFor="description" className="text-gray-700">Description</Label>
+                <Label htmlFor="description" className="text-gray-700">
+                  Description
+                </Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Enter role description"
                   rows={3}
                   className="mt-2 bg-white border-gray-300"
@@ -470,7 +513,11 @@ export default function TenantAdminRolesPage() {
               </div>
             </div>
             <DialogFooter className="bg-white">
-              <Button variant="outline" onClick={closeModal} className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={closeModal}
+                className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
                 Cancel
               </Button>
               <Button
@@ -483,8 +530,10 @@ export default function TenantAdminRolesPage() {
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     {editingRole ? "Updating..." : "Creating..."}
                   </>
+                ) : editingRole ? (
+                  "Update"
                 ) : (
-                  editingRole ? "Update" : "Create"
+                  "Create"
                 )}
               </Button>
             </DialogFooter>

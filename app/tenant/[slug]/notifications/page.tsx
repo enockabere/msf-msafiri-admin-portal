@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { NotificationProvider } from "@/context/NotificationContext";
-import { useAuth } from "@/lib/auth";
 
 import {
   Bell,
@@ -26,11 +24,15 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationContext } from "@/context/NotificationContext";
 import { NotificationPriority } from "@/lib/api";
 
 function NotificationsContent() {
+  const params = useParams();
+  const tenantSlug = params.slug as string;
+  
   const { notifications, stats, loading, markAsRead: markAsReadHook, markAllAsRead: markAllAsReadHook, refetch } =
     useNotifications();
   const { decrementUnread, markAllRead: markAllReadContext } = useNotificationContext();
@@ -131,11 +133,10 @@ function NotificationsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard">
+            <Link href={`/tenant/${tenantSlug}/dashboard`}>
               <Button variant="outline" size="sm" className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
                 Back to Dashboard
@@ -179,7 +180,6 @@ function NotificationsContent() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-gray-200 bg-white shadow-sm">
           <CardContent className="p-4">
@@ -246,7 +246,6 @@ function NotificationsContent() {
         </Card>
       </div>
 
-      {/* Filters Section */}
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -289,7 +288,6 @@ function NotificationsContent() {
         </CardContent>
       </Card>
 
-      {/* Notifications List */}
       <Card className="border-gray-200 bg-white shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -397,22 +395,14 @@ function NotificationsContent() {
   );
 }
 
-export default function NotificationsPage() {
-  const { isSuperAdmin } = useAuth();
-  
+export default function TenantNotificationsPage() {
   return (
     <NotificationProvider>
-      {isSuperAdmin ? (
-        <SuperAdminLayout>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6">
           <NotificationsContent />
-        </SuperAdminLayout>
-      ) : (
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-6">
-            <NotificationsContent />
-          </div>
         </div>
-      )}
+      </div>
     </NotificationProvider>
   );
 }

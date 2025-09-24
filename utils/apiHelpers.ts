@@ -1,8 +1,4 @@
-// utils/apiHelpers.ts - Helper functions for API type conversions
 
-/**
- * Safely converts API null values to TypeScript compatible types
- */
 export function safeString(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return value;

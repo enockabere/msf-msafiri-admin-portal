@@ -1,4 +1,3 @@
-// utils/userUtils.ts - Enhanced utilities for user data handling
 import type {
   AuthUser,
   UserProfile,

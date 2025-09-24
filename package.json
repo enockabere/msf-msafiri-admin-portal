@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
@@ -32,6 +34,7 @@
     "next-auth": "^4.24.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-perfect-scrollbar": "^1.5.8",
     "sonner": "^2.0.7",
     "sweetalert2": "^11.23.0",
     "tailwind-merge": "^3.3.1"

@@ -20,15 +20,11 @@ import {
   Mail,
   Shield,
   Calendar,
-  Building2,
   Phone,
-  Briefcase,
   Save,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Globe,
-  MapPin,
   Clock,
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
@@ -82,7 +78,9 @@ export function SuperAdminProfile({
     Record<string, string>
   >({});
   const [emailChangeRequested, setEmailChangeRequested] = useState(false);
-  const [pendingEmailChange, setPendingEmailChange] = useState<string | null>(null);
+  const [pendingEmailChange, setPendingEmailChange] = useState<string | null>(
+    null
+  );
 
   // Use profile data when available, fallback to user prop
   const displayUser = profile || user;
@@ -168,8 +166,6 @@ export function SuperAdminProfile({
         return;
       }
 
-      console.log("Saving profile changes:", changedFields);
-
       // Check if email is being changed
       const newEmail = editData.email;
       if (newEmail && isEmailBeingChanged(newEmail)) {
@@ -183,21 +179,20 @@ export function SuperAdminProfile({
           );
           setIsEditing(false);
           setEditData({});
-          
+
           // Show toast notification
-          if (typeof window !== 'undefined') {
-            const event = new CustomEvent('showToast', {
+          if (typeof window !== "undefined") {
+            const event = new CustomEvent("showToast", {
               detail: {
                 message: `Verification email sent to ${newEmail}`,
-                type: 'info'
-              }
+                type: "info",
+              },
             });
             window.dispatchEvent(event);
           }
           return;
         } catch (emailError) {
           console.error("Failed to request email change:", emailError);
-          setError("Failed to send email verification. Please try again.");
           return;
         }
       }
@@ -215,12 +210,12 @@ export function SuperAdminProfile({
           setEditData({});
 
           // Show toast notification
-          if (typeof window !== 'undefined') {
-            const event = new CustomEvent('showToast', {
+          if (typeof window !== "undefined") {
+            const event = new CustomEvent("showToast", {
               detail: {
-                message: 'Your information has been updated successfully!',
-                type: 'success'
-              }
+                message: "Your information has been updated successfully!",
+                type: "success",
+              },
             });
             window.dispatchEvent(event);
           }
@@ -322,9 +317,23 @@ export function SuperAdminProfile({
         <div className="space-y-6 bg-white">
           {/* Success Message */}
           {successMessage && (
-            <Alert className={emailChangeRequested ? "border-blue-300 bg-blue-50" : "border-green-300 bg-green-50"}>
-              <CheckCircle className={`h-4 w-4 ${emailChangeRequested ? "text-blue-600" : "text-green-600"}`} />
-              <AlertDescription className={emailChangeRequested ? "text-blue-700" : "text-green-700"}>
+            <Alert
+              className={
+                emailChangeRequested
+                  ? "border-blue-300 bg-blue-50"
+                  : "border-green-300 bg-green-50"
+              }
+            >
+              <CheckCircle
+                className={`h-4 w-4 ${
+                  emailChangeRequested ? "text-blue-600" : "text-green-600"
+                }`}
+              />
+              <AlertDescription
+                className={
+                  emailChangeRequested ? "text-blue-700" : "text-green-700"
+                }
+              >
                 {successMessage}
               </AlertDescription>
             </Alert>
@@ -335,9 +344,11 @@ export function SuperAdminProfile({
             <Alert className="border-yellow-300 bg-yellow-50">
               <Mail className="h-4 w-4 text-yellow-600" />
               <AlertDescription className="text-yellow-700">
-                <strong>Email Change Pending:</strong> A verification email has been sent to {pendingEmailChange}. 
-                Please check your email and click the verification link to complete the change. 
-                You will be automatically logged out after verification to refresh your session.
+                <strong>Email Change Pending:</strong> A verification email has
+                been sent to {pendingEmailChange}. Please check your email and
+                click the verification link to complete the change. You will be
+                automatically logged out after verification to refresh your
+                session.
               </AlertDescription>
             </Alert>
           )}
@@ -429,7 +440,10 @@ export function SuperAdminProfile({
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="full_name" className="text-gray-700 mb-2 block">
+                      <Label
+                        htmlFor="full_name"
+                        className="text-gray-700 mb-2 block"
+                      >
                         Full Name *
                       </Label>
                       <Input
@@ -449,7 +463,10 @@ export function SuperAdminProfile({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone_number" className="text-gray-700 mb-2 block">
+                      <Label
+                        htmlFor="phone_number"
+                        className="text-gray-700 mb-2 block"
+                      >
                         Phone Number
                       </Label>
                       <Input
@@ -462,7 +479,8 @@ export function SuperAdminProfile({
                         className="bg-white border-gray-300 mt-2"
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Please include country code (e.g., +254 for Kenya, +31 for Netherlands)
+                        Please include country code (e.g., +254 for Kenya, +31
+                        for Netherlands)
                       </p>
                       {validationErrors.phone_number && (
                         <p className="text-sm text-red-600 mt-1">
@@ -484,7 +502,8 @@ export function SuperAdminProfile({
                       className="bg-gray-100 border-gray-300 mt-2 text-gray-500 cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Email cannot be changed. Contact system administrator if needed.
+                      Email cannot be changed. Contact system administrator if
+                      needed.
                     </p>
                   </div>
                 </div>
@@ -536,8 +555,6 @@ export function SuperAdminProfile({
                       </span>
                     </div>
                   )}
-
-
                 </div>
 
                 {/* Timestamps */}

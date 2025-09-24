@@ -11,9 +11,10 @@ interface PendingInvitation {
   id: number;
   email: string;
   full_name: string;
-  invited_at: string;
-  expires_at: string;
-  status: string;
+  created_at: string;
+  invited_at?: string;
+  expires_at?: string;
+  status?: string;
 }
 
 export default function PendingInvitations() {
@@ -24,15 +25,30 @@ export default function PendingInvitations() {
   const [cancelingId, setCancelingId] = useState<number | null>(null);
 
   useEffect(() => {
+    const fetchPendingInvitations = async () => {
+      setLoading(true);
+      try {
+        const data = await apiClient.getPendingInvitations();
+        setInvitations(data);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load pending invitations",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchPendingInvitations();
-  }, []);
+  }, [apiClient]);
 
   const fetchPendingInvitations = async () => {
     setLoading(true);
     try {
       const data = await apiClient.getPendingInvitations();
       setInvitations(data);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to load pending invitations",
@@ -57,7 +73,7 @@ export default function PendingInvitations() {
       }));
       
       fetchPendingInvitations();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to resend invitation",
@@ -105,7 +121,7 @@ export default function PendingInvitations() {
         window.dispatchEvent(new CustomEvent('refreshPendingInvitations'));
         window.dispatchEvent(new CustomEvent('refreshNotifications'));
       }, 2000);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to cancel invitation",
@@ -133,7 +149,8 @@ export default function PendingInvitations() {
     });
   };
 
-  const isExpired = (expiresAt: string) => {
+  const isExpired = (expiresAt?: string) => {
+    if (!expiresAt) return false;
     return new Date(expiresAt) < new Date();
   };
 
@@ -205,12 +222,12 @@ export default function PendingInvitations() {
                   <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      <span>Sent: {formatDate(invitation.invited_at)}</span>
+                      <span>Sent: {formatDate(invitation.invited_at || invitation.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       <span>
-                        Expires: {formatDate(invitation.expires_at)}
+                        Expires: {formatDate(invitation.expires_at || '')}
                       </span>
                     </div>
                   </div>

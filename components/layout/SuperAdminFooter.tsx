@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, Shield, Globe } from "lucide-react";
+import { Shield } from "lucide-react";
 
 export function SuperAdminFooter() {
   const currentYear = new Date().getFullYear();

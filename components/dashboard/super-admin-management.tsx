@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,17 +27,12 @@ export default function SuperAdminManagement() {
     full_name: "",
   });
 
-  useEffect(() => {
-    fetchSuperAdmins();
-  }, []);
-
-  const fetchSuperAdmins = async () => {
+  const fetchSuperAdmins = useCallback(async () => {
     setLoading(true);
     try {
       const users = await apiClient.getSuperAdmins();
       setSuperAdmins(users);
-    } catch (error) {
-      console.error("Error fetching super admins:", error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to load super admins",
@@ -46,7 +41,13 @@ export default function SuperAdminManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiClient]);
+
+  useEffect(() => {
+    fetchSuperAdmins();
+  }, [fetchSuperAdmins]);
+
+
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +58,7 @@ export default function SuperAdminManagement() {
       
       // Send notification to all super admins about new invitation
       try {
-        console.log('🔔 Sending notification to super admins about new invitation');
+
         const notifResponse = await fetch('/api/notifications/send-to-super-admins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -69,14 +70,11 @@ export default function SuperAdminManagement() {
         });
         
         if (notifResponse.ok) {
-          const notifResult = await notifResponse.json();
-          console.log('✅ Notification sent successfully:', notifResult);
+          await notifResponse.json();
         } else {
-          const notifError = await notifResponse.json();
-          console.error('❌ Notification failed:', notifError);
+          await notifResponse.json();
         }
-      } catch (notifError) {
-        console.error("💥 Failed to send notification:", notifError);
+      } catch {
       }
 
       toast({
@@ -95,10 +93,10 @@ export default function SuperAdminManagement() {
       fetchSuperAdmins();
       
       // Refresh pending invitations count and notifications
-      console.log('🔄 Triggering refresh events for pending invitations and notifications');
+
       window.dispatchEvent(new CustomEvent('refreshPendingInvitations'));
       window.dispatchEvent(new CustomEvent('refreshNotifications'));
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to send invitation",
@@ -164,10 +162,10 @@ export default function SuperAdminManagement() {
         <SuperAdminTable
           data={superAdmins}
           loading={loading}
-          onEdit={(user) => console.log("Edit user:", user)}
-          onActivate={(user) => console.log("Activate user:", user)}
-          onDeactivate={(user) => console.log("Deactivate user:", user)}
-          onResendInvite={(user) => console.log("Resend invite:", user)}
+          onEdit={() => {}}
+          onActivate={() => {}}
+          onDeactivate={() => {}}
+          onResendInvite={() => {}}
         />
       </div>
 

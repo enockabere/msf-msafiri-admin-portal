@@ -64,30 +64,18 @@ export default function DashboardPage() {
   const { selectedTenant, isAllTenantsSelected } = useTenant();
   const router = useRouter();
 
-  // Add debugging
-  useEffect(() => {
-    console.log("🐛 Dashboard Debug Info:");
-    console.log("User object:", user);
-    console.log("User role:", user?.role);
-    console.log("Is super admin check:", user?.role === "super_admin");
-    console.log("Type of role:", typeof user?.role);
-    console.log("Is authenticated:", isAuthenticated);
-    console.log("Is admin:", isAdmin);
-    console.log("Loading:", loading);
-  }, [user, isAuthenticated, isAdmin, loading]);
+
 
   useEffect(() => {
-    if (!loading) {
-      if (!isAuthenticated) {
-        router.push("/login?redirect=/dashboard");
-        return;
-      }
+    if (!loading && isAuthenticated && user) {
+      // Redirect non-super-admin users to their tenant dashboard
+      if (user.role !== "super_admin" && user.tenantId) {
 
-      if (!isAdmin) {
+        router.push(`/tenant/${user.tenantId}/dashboard`);
         return;
       }
     }
-  }, [isAuthenticated, isAdmin, loading, router]);
+  }, [loading, isAuthenticated, user, router]);
 
   if (loading) {
     return <DashboardLoading />;
@@ -97,25 +85,26 @@ export default function DashboardPage() {
     return <DashboardLoading />;
   }
 
-  if (!isAdmin) {
+  // Only show unauthorized for non-admin users, but allow tenant admins to be redirected
+  if (!isAdmin && user?.role !== "hr_admin" && user?.role !== "mt_admin" && user?.role !== "event_admin") {
     return <UnauthorizedAccess />;
   }
 
-  // Debug the super admin check
+  // If user is a tenant admin but not super admin, they should be redirected (handled in useEffect)
+  if (user?.role !== "super_admin" && user?.tenantId) {
+    return <DashboardLoading />; // Show loading while redirecting
+  }
+
+  // Check if user is super admin
   const isSuperAdmin = user?.role === "super_admin";
-  console.log("🎯 Super Admin Check:", {
-    userRole: user?.role,
-    isSuperAdmin,
-    comparison: `"${user?.role}" === "super_admin"`,
-  });
 
   // Super admins get the specialized dashboard
   if (isSuperAdmin) {
-    console.log("✅ Rendering SuperAdminDashboard");
+
     return <SuperAdminDashboard />;
   }
 
-  console.log("❌ Rendering regular admin dashboard");
+
 
   // Regular admins get the traditional dashboard with sidebar
   return (
@@ -123,18 +112,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <SessionTimeoutWarning warningMinutes={5} sessionDurationMinutes={30} />
 
-        {/* Debug info visible on page */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-          <h3 className="text-sm font-medium text-yellow-800">Debug Info:</h3>
-          <p className="text-xs text-yellow-700">User Role: {user?.role}</p>
-          <p className="text-xs text-yellow-700">
-            Is Super Admin: {String(isSuperAdmin)}
-          </p>
-          <p className="text-xs text-yellow-700">
-            Should show SuperAdminDashboard:{" "}
-            {String(user?.role === "super_admin")}
-          </p>
-        </div>
+
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center justify-between">

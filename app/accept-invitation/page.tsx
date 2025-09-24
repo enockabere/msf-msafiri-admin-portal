@@ -7,6 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import apiClient from "@/lib/api";
 
+interface AcceptInvitationResponse {
+  message: string;
+  must_change_password?: boolean;
+}
+
 export default function AcceptInvitationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,9 +27,9 @@ export default function AcceptInvitationPage() {
 
     setLoading(true);
     try {
-      const response = await apiClient.acceptInvitation(token);
+      const response = await apiClient.acceptInvitation(token) as AcceptInvitationResponse;
       setSuccess(true);
-      setMustChangePassword(response.must_change_password);
+      setMustChangePassword(response.must_change_password || false);
       
       setTimeout(() => {
         router.push("/login?message=invitation-accepted");

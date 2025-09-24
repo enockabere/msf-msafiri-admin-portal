@@ -1,7 +1,7 @@
 // lib/auth.ts - Updated with proper TypeScript types
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
-import apiClient, { UserRole } from "@/lib/api";
+import apiClient from "@/lib/api";
 
 // Define the user type that comes from NextAuth session
 interface SessionUser {
@@ -16,19 +16,19 @@ interface SessionUser {
   firstLogin: boolean;
 }
 
-type ValidRole = UserRole | "super_admin";
+// Use actual API role strings instead of enum
+type ValidRole = "super_admin" | "mt_admin" | "hr_admin" | "event_admin" | "staff" | "visitor" | "guest";
 
 // Main authentication hook
 export function useAuth() {
   const { data: session, status } = useSession();
 
-  // Updated to include both formats of super admin role
+  // Use actual API role strings
   const adminRoles: ValidRole[] = [
-    UserRole.SUPER_ADMIN,
-    "super_admin", // Add the actual role from your API
-    UserRole.MT_ADMIN,
-    UserRole.HR_ADMIN,
-    UserRole.EVENT_ADMIN,
+    "super_admin",
+    "mt_admin", 
+    "hr_admin",
+    "event_admin",
   ];
 
   return {
@@ -39,15 +39,13 @@ export function useAuth() {
     isAuthenticated: status === "authenticated",
     loading: status === "loading",
 
-    // Role-based permissions - Updated to handle super_admin
+    // Role-based permissions
     isAdmin: session?.user?.role
       ? adminRoles.includes(session.user.role as ValidRole)
       : false,
 
-    // Updated super admin check to handle both formats
-    isSuperAdmin:
-      session?.user?.role === UserRole.SUPER_ADMIN ||
-      session?.user?.role === "super_admin",
+    // Super admin check using actual API role
+    isSuperAdmin: session?.user?.role === "super_admin",
 
     // Role checking utilities
     hasRole: (role: ValidRole) => session?.user?.role === role,
@@ -94,65 +92,62 @@ export function useAuthenticatedApi() {
   };
 }
 
-// Utility functions for role-based access - Updated to handle super_admin
+// Utility functions for role-based access using actual API roles
 export const AuthUtils = {
-  // Check if role is admin - Updated to include super_admin
+  // Check if role is admin
   isAdminRole: (role: string): boolean => {
     const adminRoles: ValidRole[] = [
-      UserRole.SUPER_ADMIN,
-      "super_admin", // Add the actual role from your API
-      UserRole.MT_ADMIN,
-      UserRole.HR_ADMIN,
-      UserRole.EVENT_ADMIN,
+      "super_admin",
+      "mt_admin", 
+      "hr_admin",
+      "event_admin",
     ];
     return adminRoles.includes(role as ValidRole);
   },
 
-  // Check if role is super admin - Updated to handle both formats
+  // Check if role is super admin
   isSuperAdminRole: (role: string): boolean => {
-    return role === UserRole.SUPER_ADMIN || role === "super_admin";
+    return role === "super_admin";
   },
 
-  // Get role display name - Updated to handle super_admin
+  // Get role display name using actual API roles
   getRoleDisplayName: (role: string): string => {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
       case "super_admin":
         return "Super Administrator";
-      case UserRole.MT_ADMIN:
+      case "mt_admin":
         return "MT Administrator";
-      case UserRole.HR_ADMIN:
+      case "hr_admin":
         return "HR Administrator";
-      case UserRole.EVENT_ADMIN:
+      case "event_admin":
         return "Event Administrator";
-      case UserRole.STAFF:
+      case "staff":
         return "Staff";
-      case UserRole.VISITOR:
+      case "visitor":
         return "Visitor";
-      case UserRole.GUEST:
+      case "guest":
         return "Guest";
       default:
         return "Unknown Role";
     }
   },
 
-  // Get role color classes for UI - Updated to handle super_admin
+  // Get role color classes for UI using actual API roles
   getRoleColor: (role: string): string => {
     switch (role) {
-      case UserRole.SUPER_ADMIN:
       case "super_admin":
         return "bg-[#fee2e2] text-[#ee0000]";
-      case UserRole.MT_ADMIN:
+      case "mt_admin":
         return "bg-yellow-100 text-yellow-800";
-      case UserRole.HR_ADMIN:
+      case "hr_admin":
         return "bg-orange-100 text-orange-800";
-      case UserRole.EVENT_ADMIN:
+      case "event_admin":
         return "bg-blue-100 text-blue-800";
-      case UserRole.STAFF:
+      case "staff":
         return "bg-green-100 text-green-800";
-      case UserRole.VISITOR:
+      case "visitor":
         return "bg-purple-100 text-purple-800";
-      case UserRole.GUEST:
+      case "guest":
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";

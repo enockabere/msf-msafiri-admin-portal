@@ -25,14 +25,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Regular admins get the traditional sidebar layout
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         collapsed={sidebarCollapsed}
         toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

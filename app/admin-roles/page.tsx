@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,18 +54,12 @@ export default function AdminRolesPage() {
   const tenantSlugMatch = pathname.match(/\/tenant\/([^/]+)/);
   const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : user?.tenantId || "default";
 
-  useEffect(() => {
-    if (!authLoading && user?.email) {
-      fetchRoles();
-    }
-  }, [user?.email, authLoading]);
-
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
       setLoading(true);
       const rolesData = await apiClient.request<Role[]>(`/roles/tenant/${tenantSlug}`);
       setRoles(rolesData);
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to fetch roles",
@@ -74,7 +68,13 @@ export default function AdminRolesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiClient, tenantSlug]);
+
+  useEffect(() => {
+    if (!authLoading && user?.email) {
+      fetchRoles();
+    }
+  }, [user?.email, authLoading, fetchRoles]);
 
   const handleCreateRole = async () => {
     try {

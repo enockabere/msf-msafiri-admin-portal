@@ -25,9 +25,10 @@ interface PendingInvitation {
   id: number;
   email: string;
   full_name: string;
-  invited_at: string;
-  expires_at: string;
-  status: string;
+  created_at: string;
+  invited_at?: string;
+  expires_at?: string;
+  status?: string;
 }
 
 interface TenantStats {
@@ -138,7 +139,7 @@ export default function EnhancedStatsCards({
       ).length;
 
       setSuperAdminStats({ current, previous });
-    } catch (error) {
+    } catch {
     } finally {
       setSuperAdminsLoading(false);
     }
@@ -149,7 +150,7 @@ export default function EnhancedStatsCards({
     try {
       const data = await apiClient.getPendingInvitations();
       setPendingInvitations(data);
-    } catch (error) {
+    } catch {
     } finally {
       setPendingInvitationsLoading(false);
     }
@@ -194,7 +195,7 @@ export default function EnhancedStatsCards({
       };
 
       setTenantStats({ current, previous });
-    } catch (error) {
+    } catch {
     }
   }, [apiClient]);
 

@@ -238,7 +238,7 @@ export function DataTable<TData, TValue>({
 }
 
 export function createSortableHeader(title: string) {
-  return ({ column }: { column: any }) => {
+  const SortableHeader = ({ column }: { column: { toggleSorting: (asc?: boolean) => void; getIsSorted: () => string | false } }) => {
     return (
       <Button
         variant="ghost"
@@ -250,4 +250,6 @@ export function createSortableHeader(title: string) {
       </Button>
     );
   };
+  SortableHeader.displayName = `SortableHeader_${title}`;
+  return SortableHeader;
 }

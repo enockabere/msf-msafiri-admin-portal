@@ -4,18 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTenant } from "@/context/TenantContext";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import { Tenant, User } from "@/lib/api";
+import { Tenant } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Building2, Loader2 } from "lucide-react";
 import { EditTenantModal } from "./EditTenantModal";
 import { TenantTable } from "./tenant-table";
@@ -35,7 +25,7 @@ export default function TenantManagement({
   const { tenants, loading, error, refreshTenants } = useTenant();
   const { apiClient } = useAuthenticatedApi();
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [, setActionLoading] = useState<string | null>(null);
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [superAdminCount, setSuperAdminCount] = useState(0);
   const [currentUserRoles, setCurrentUserRoles] = useState<string[]>([]);
@@ -45,7 +35,7 @@ export default function TenantManagement({
       try {
         const [superAdmins, userRoles] = await Promise.all([
           apiClient.getSuperAdmins(),
-          user?.id ? apiClient.request<any[]>(`/user-roles/user/${user.id}`).catch(() => []) : Promise.resolve([])
+          user?.id ? apiClient.request<{ role: string }[]>(`/user-roles/user/${user.id}`).catch(() => []) : Promise.resolve([])
         ]);
         setSuperAdminCount(superAdmins.length);
         
@@ -84,7 +74,7 @@ export default function TenantManagement({
       });
       refreshTenants();
       onTenantUpdate();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to activate tenant. Please try again.",
@@ -105,7 +95,7 @@ export default function TenantManagement({
       });
       refreshTenants();
       onTenantUpdate();
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to deactivate tenant. Please try again.",
@@ -173,7 +163,7 @@ export default function TenantManagement({
         onActivate={handleActivate}
         onDeactivate={handleDeactivate}
         onViewTenant={handleViewTenant}
-        currentUserEmail={user?.email}
+        currentUserEmail={user?.email || undefined}
         currentUserRoles={currentUserRoles}
         superAdminCount={superAdminCount}
         navigationLoading={navigationLoading}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { Tenant } from "@/lib/api";
@@ -8,14 +8,19 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  Building2, 
-  Users, 
-  Calendar, 
-  Shield,
+import {
+  ArrowLeft,
+  Building2,
+  Users,
+  Calendar,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  UserPlus,
+  Hotel,
+  Coins,
+  Bell,
+  Activity,
+  Clock,
 } from "lucide-react";
 import { LoadingScreen } from "@/components/ui/loading";
 
@@ -25,65 +30,199 @@ export default function TenantDashboardPage() {
   const { user } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [stats, setStats] = useState<{
-    totalUsers: number;
-    activeEvents: number;
-    totalRoles: number;
-    totalVisitors: number;
-    tenantStatus: string;
-    trends: {
-      usersChange: number;
-      eventsChange: number;
-      rolesChange: number;
-      visitorsChange: number;
-    };
-  } | null>(null);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeEvents: 0,
+    totalVisitors: 0,
+    totalInventory: 0,
+  });
+  const [recentActivities, setRecentActivities] = useState<Array<{
+    id: string | number;
+    type?: string;
+    description: string;
+    user_name?: string;
+    created_at: string;
+    status?: string;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const tenantSlug = params.slug as string;
 
+  const fetchRecentActivities = useCallback(async () => {
+    try {
+      const activitiesResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/activities?tenant=${tenantSlug}&limit=3`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (activitiesResponse.ok) {
+        const activities = await activitiesResponse.json();
+        setRecentActivities(activities);
+      } else {
+        setRecentActivities([
+          {
+            id: 1,
+            type: "user_login",
+            description: "User logged in",
+            user_name: user?.name || "System User",
+            created_at: new Date().toISOString(),
+            status: "completed",
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+      setRecentActivities([]);
+    }
+  }, [apiClient, tenantSlug, user]);
+
+  const fetchStats = useCallback(async (foundTenant: Tenant) => {
+    try {
+      let totalUsers = 1;
+      let activeEvents = 0;
+      let totalVisitors = 0;
+      let totalInventory = 0;
+
+      // Get users count
+      try {
+        const users = await apiClient.getUsers(user?.tenantId);
+        totalUsers = users.length;
+      } catch (e: unknown) {
+        console.error("Error fetching users:", e);
+      }
+
+      // Get events and visitors count
+      try {
+        const eventsResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (eventsResponse.ok) {
+          interface Event {
+            id: string | number;
+            tenant_id: string | number;
+            [key: string]: unknown;
+          }
+
+          const events: Event[] = await eventsResponse.json();
+          const tenantEvents: Event[] = events.filter(
+            (e: Event) =>
+              e.tenant_id === foundTenant.id ||
+              e.tenant_id === tenantSlug ||
+              e.tenant_id === user?.tenantId
+          );
+          activeEvents = tenantEvents.length;
+
+          // Count participants
+          for (const event of tenantEvents) {
+            try {
+              const participantsResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/participants/`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${apiClient.getToken()}`,
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+              if (participantsResponse.ok) {
+                const participants = await participantsResponse.json();
+                totalVisitors += participants.length;
+              }
+            } catch (e) {
+              console.error(`Error fetching participants:`, e);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching events:", e);
+      }
+
+      // Get inventory count
+      try {
+        const inventoryResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory?tenant=${tenantSlug}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (inventoryResponse.ok) {
+          const inventory = await inventoryResponse.json();
+          totalInventory = inventory.length;
+        }
+      } catch (e) {
+        console.error("Error fetching inventory:", e);
+      }
+
+      setStats({ totalUsers, activeEvents, totalVisitors, totalInventory });
+      await fetchRecentActivities();
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      setStats({
+        totalUsers: 0,
+        activeEvents: 0,
+        totalVisitors: 0,
+        totalInventory: 0,
+      });
+      setRecentActivities([]);
+    }
+  }, [apiClient, tenantSlug, user?.tenantId, fetchRecentActivities]);
+
   useEffect(() => {
     const fetchTenant = async () => {
       try {
         setLoading(true);
-        const tenants = await apiClient.getTenants();
-        const foundTenant = tenants.find(t => t.slug === tenantSlug);
-        
-        if (!foundTenant) {
-          setError("Tenant not found");
-          return;
-        }
 
-        if (foundTenant.admin_email !== user?.email) {
-          setError("You don't have access to this tenant");
-          return;
+        // Fetch tenant information
+        let foundTenant;
+        try {
+          const tenantResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`
+          );
+          if (tenantResponse.ok) {
+            foundTenant = await tenantResponse.json();
+          } else {
+            throw new Error("Tenant not found");
+          }
+        } catch (error) {
+          console.error("Error fetching tenant:", error);
+          // Fallback tenant object
+          foundTenant = {
+            id: user?.tenantId || tenantSlug,
+            name: `Organization ${
+              tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1)
+            }`,
+            slug: tenantSlug,
+            contact_email: user?.email || "contact@example.com",
+            admin_email: user?.email || "admin@example.com",
+            is_active: true,
+            domain: null,
+            description: `Dashboard for ${tenantSlug} organization`,
+            created_at: new Date().toISOString(),
+          };
         }
 
         setTenant(foundTenant);
-        
-        // Fetch tenant statistics
-        try {
-          const tenantStats = await apiClient.getTenantStats(tenantSlug);
-          setStats(tenantStats);
-        } catch {
-          // Stats loading failed, but don't block the page
-          setStats({
-            totalUsers: 0,
-            activeEvents: 0,
-            totalRoles: 0,
-            totalVisitors: 0,
-            tenantStatus: "Unknown",
-            trends: {
-              usersChange: 0,
-              eventsChange: 0,
-              rolesChange: 0,
-              visitorsChange: 0
-            }
-          });
-        }
-      } catch {
+
+        // Fetch statistics
+        await fetchStats(foundTenant);
+      } catch (error) {
+        console.error("Error in tenant dashboard:", error);
         setError("Failed to load tenant information");
       } finally {
         setLoading(false);
@@ -93,7 +232,7 @@ export default function TenantDashboardPage() {
     if (user?.email) {
       fetchTenant();
     }
-  }, [tenantSlug, user?.email, apiClient]);
+  }, [tenantSlug, user?.email, user?.tenantId, apiClient, fetchStats]);
 
   const handleBackToDashboard = () => {
     setNavigationLoading(true);
@@ -110,15 +249,21 @@ export default function TenantDashboardPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Denied</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Access Denied
+            </h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={handleBackToDashboard} variant="outline" disabled={navigationLoading}>
+            <Button
+              onClick={handleBackToDashboard}
+              variant="outline"
+              disabled={navigationLoading}
+            >
               {navigationLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <ArrowLeft className="w-4 h-4 mr-2" />
               )}
-              {navigationLoading ? "Loading..." : "Back to Dashboard"}
+              Back to Dashboard
             </Button>
           </div>
         </div>
@@ -126,199 +271,285 @@ export default function TenantDashboardPage() {
     );
   }
 
+  const quickActions = [
+    {
+      title: "Manage Users",
+      description: `${stats.totalUsers} users in system`,
+      icon: UserPlus,
+      path: `/tenant/${tenantSlug}/admin-users`,
+      color: "blue",
+      enabled: tenant?.admin_email === user?.email,
+    },
+    {
+      title: "Manage Events",
+      description: `${stats.activeEvents} active events`,
+      icon: Calendar,
+      path: `/tenant/${tenantSlug}/events`,
+      color: "green",
+      enabled: true,
+    },
+    {
+      title: "Inventory",
+      description: `${stats.totalInventory} items available`,
+      icon: Hotel,
+      path: `/tenant/${tenantSlug}/inventory`,
+      color: "orange",
+      enabled: true,
+    },
+    {
+      title: "Approvals",
+      description: "Handle allocations",
+      icon: Coins,
+      path: `/tenant/${tenantSlug}/allocation-approvals`,
+      color: "purple",
+      enabled: true,
+    },
+    {
+      title: "Visitors",
+      description: `${stats.totalVisitors} participants`,
+      icon: Users,
+      path: null,
+      color: "indigo",
+      enabled: true,
+    },
+    {
+      title: "Security",
+      description: "Briefings & alerts",
+      icon: Bell,
+      path: `/tenant/${tenantSlug}/security-briefings`,
+      color: "red",
+      enabled: true,
+    },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              onClick={handleBackToDashboard} 
-              variant="outline" 
-              size="sm"
-              className="flex items-center gap-2"
-              disabled={navigationLoading}
-            >
-              {navigationLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ArrowLeft className="w-4 h-4" />
-              )}
-              {navigationLoading ? "Loading..." : "Back to Super Admin"}
-            </Button>
+            {user?.role?.toLowerCase() === "super_admin" && (
+              <Button
+                onClick={handleBackToDashboard}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={navigationLoading}
+              >
+                {navigationLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowLeft className="w-4 h-4" />
+                )}
+                Back to Super Admin
+              </Button>
+            )}
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-blue-700" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{tenant.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {tenant.name}
+                </h1>
                 <div className="flex items-center space-x-2">
-                  <Badge 
+                  <Badge
                     variant={tenant.is_active ? "default" : "secondary"}
-                    className={tenant.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}
+                    className={
+                      tenant.is_active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }
                   >
                     {tenant.is_active ? "Active" : "Inactive"}
                   </Badge>
-                  <span className="text-sm text-gray-500">• {tenant.slug}</span>
+                  <span className="text-sm text-gray-500">{tenant.slug}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tenant Info Card */}
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon;
+            const colorClasses = {
+              blue: "bg-blue-500 hover:bg-blue-600 text-blue-600",
+              green: "bg-green-500 hover:bg-green-600 text-green-600",
+              orange: "bg-orange-500 hover:bg-orange-600 text-orange-600",
+              purple: "bg-purple-500 hover:bg-purple-600 text-purple-600",
+              indigo: "bg-indigo-500 hover:bg-indigo-600 text-indigo-600",
+              red: "bg-red-500 hover:bg-red-600 text-red-600",
+            };
+
+            if (!action.enabled) {
+              return (
+                <div
+                  key={index}
+                  className="p-6 border-2 border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 rounded-lg bg-gray-400">
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-700">
+                        {action.title}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {action.description}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <Button
+                key={index}
+                variant="outline"
+                className="h-auto p-6 justify-start hover:shadow-md transition-all duration-200 border-2 hover:border-gray-300"
+                onClick={() =>
+                  action.path
+                    ? router.push(action.path)
+                    : alert("Feature coming soon!")
+                }
+              >
+                <div
+                  className={`p-3 rounded-lg text-white ${
+                    colorClasses[
+                      action.color as keyof typeof colorClasses
+                    ].split(" ")[0]
+                  }`}
+                >
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div className="ml-4 text-left">
+                  <div className="font-semibold text-gray-900">
+                    {action.title}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {action.description}
+                  </div>
+                </div>
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* Recent Activities */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Tenant Information
+              <Clock className="w-5 h-5" />
+              Recent Activities
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Organization Name</label>
-                <p className="text-sm text-gray-900">{tenant.name}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Slug</label>
-                <p className="text-sm text-gray-900">{tenant.slug}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Contact Email</label>
-                <p className="text-sm text-gray-900">{tenant.contact_email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Admin Email</label>
-                <p className="text-sm text-gray-900">{tenant.admin_email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <div className="flex items-center space-x-2">
-                  <Badge 
-                    variant={tenant.is_active ? "default" : "secondary"}
-                    className={tenant.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivities.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No recent activities
+                </div>
+              ) : (
+                recentActivities.map((activity, index) => (
+                  <div
+                    key={activity.id || index}
+                    className="flex items-center justify-between p-3 border rounded-lg"
                   >
-                    {tenant.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Domain</label>
-                <p className="text-sm text-gray-900">{tenant.domain || "Not configured"}</p>
-              </div>
-              {tenant.description && (
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-sm text-gray-900">{tenant.description}</p>
-                </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        <Activity className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900 capitalize">
+                          {activity.type?.replace("_", " ") ||
+                            "System Activity"}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {activity.description}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge
+                        className={
+                          activity.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : activity.status === "pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-blue-100 text-blue-800"
+                        }
+                      >
+                        {activity.status || "Active"}
+                      </Badge>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {activity.created_at
+                          ? new Date(activity.created_at).toLocaleDateString()
+                          : "Today"}
+                      </div>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Dashboard Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</p>
-                  {stats?.trends && (
-                    <p className={`text-xs ${stats.trends.usersChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.trends.usersChange >= 0 ? '+' : ''}{stats.trends.usersChange} from last month
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <Calendar className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active Events</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.activeEvents || 0}</p>
-                  {stats?.trends && (
-                    <p className={`text-xs ${stats.trends.eventsChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.trends.eventsChange >= 0 ? '+' : ''}{stats.trends.eventsChange} from last month
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => router.push(`/tenant/${tenantSlug}/admin-roles`)}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 rounded-lg bg-purple-100">
-                  <Shield className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Roles</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.totalRoles || 0}</p>
-                  {stats?.trends && (
-                    <p className={`text-xs ${stats.trends.rolesChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.trends.rolesChange >= 0 ? '+' : ''}{stats.trends.rolesChange} from last month
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="p-2 rounded-lg bg-indigo-100">
-                  <Users className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Visitors</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats?.totalVisitors || 0}</p>
-                  {stats?.trends && (
-                    <p className={`text-xs ${stats.trends.visitorsChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.trends.visitorsChange >= 0 ? '+' : ''}{stats.trends.visitorsChange} from last month
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-
-        </div>
-
-        {/* Welcome Message */}
+        {/* Tenant Info */}
         <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Welcome to {tenant.name} Dashboard
-              </h3>
-              <p className="text-gray-600 mb-4">
-                You are now viewing the tenant-specific dashboard. This is where you can manage 
-                users, events, and other tenant-specific operations.
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> This is a basic tenant dashboard view. Additional features 
-                  like user management, event management, and analytics will be available here 
-                  based on your tenant&apos;s configuration and permissions.
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Organization Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Organization Name
+                </label>
+                <p className="text-sm text-gray-900">{tenant.name}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Contact Email
+                </label>
+                <p className="text-sm text-gray-900">{tenant.contact_email}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Status
+                </label>
+                <Badge
+                  className={
+                    tenant.is_active
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-600"
+                  }
+                >
+                  {tenant.is_active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">
+                  Domain
+                </label>
+                <p className="text-sm text-gray-900">
+                  {tenant.domain || "Not configured"}
                 </p>
               </div>
+              {tenant.description && (
+                <div className="md:col-span-2">
+                  <label className="text-sm font-medium text-gray-500">
+                    Description
+                  </label>
+                  <p className="text-sm text-gray-900">{tenant.description}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

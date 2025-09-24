@@ -38,8 +38,8 @@ interface TenantTableProps {
   navigationLoading?: boolean;
 }
 
-export function TenantTable({ data, loading = false, onEdit, onActivate, onDeactivate, onViewTenant, currentUserEmail, currentUserRoles = [], superAdminCount = 0, navigationLoading = false }: TenantTableProps) {
-  console.log('TenantTable Debug:', { currentUserRoles, currentUserEmail, superAdminCount });
+export function TenantTable({ data, loading = false, onEdit, onActivate, onDeactivate, onViewTenant, currentUserEmail, superAdminCount = 0, navigationLoading = false }: TenantTableProps) {
+
   const showActions = superAdminCount >= 1;
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Tenant>("name");
@@ -61,6 +61,10 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
   const sortedData = [...filteredData].sort((a, b) => {
     const aValue = a[sortField];
     const bValue = b[sortField];
+    
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return sortDirection === "asc" ? -1 : 1;
+    if (bValue == null) return sortDirection === "asc" ? 1 : -1;
     
     if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
     if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;

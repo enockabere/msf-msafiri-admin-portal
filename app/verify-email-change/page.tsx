@@ -19,36 +19,42 @@ export default function VerifyEmailChangePage() {
   const [newEmail, setNewEmail] = useState<string>("");
 
   useEffect(() => {
-    if (!token) {
-      setError("Invalid verification link");
-      return;
-    }
+    const verifyEmailChange = async () => {
+      if (!token) {
+        setError("Invalid verification link");
+        return;
+      }
+
+      setLoading(true);
+      let extractedEmail = "your new email";
+      try {
+        const response = await apiClient.confirmEmailChange(token);
+        setSuccess(true);
+        // Extract email from response message or use a default
+        const emailMatch = response.message.match(/changed to ([^\s]+)/);
+        extractedEmail = emailMatch ? emailMatch[1] : "your new email";
+        setNewEmail(extractedEmail);
+        
+        // Log out the user after successful email change to refresh session
+        setTimeout(async () => {
+          await signOut({
+            redirect: true,
+            callbackUrl: "/login?message=email-changed&email=" + encodeURIComponent(extractedEmail)
+          });
+        }, 3000);
+      } catch (error: unknown) {
+        if (typeof error === "object" && error !== null && "message" in error && typeof (error as { message?: unknown }).message === "string") {
+          setError((error as { message: string }).message);
+        } else {
+          setError("Failed to verify email change");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
 
     verifyEmailChange();
   }, [token]);
-
-  const verifyEmailChange = async () => {
-    if (!token) return;
-
-    setLoading(true);
-    try {
-      const response = await apiClient.confirmEmailChange(token);
-      setSuccess(true);
-      setNewEmail(response.new_email);
-      
-      // Log out the user after successful email change to refresh session
-      setTimeout(async () => {
-        await signOut({
-          redirect: true,
-          callbackUrl: "/login?message=email-changed&email=" + encodeURIComponent(response.new_email)
-        });
-      }, 3000);
-    } catch (error: any) {
-      setError(error.message || "Failed to verify email change");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleLogoutNow = async () => {
     await signOut({

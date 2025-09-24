@@ -22,7 +22,7 @@ export default function SessionTimeoutHandler() {
         });
         
         router.push('/login?sessionExpired=true');
-      } catch (error) {
+      } catch  {
         window.location.href = '/login?sessionExpired=true';
       }
     };
@@ -39,7 +39,7 @@ export default function SessionTimeoutHandler() {
           if (!response.ok) {
             await handleSessionTimeout();
           }
-        } catch (error) {
+        } catch {
           await handleSessionTimeout();
         }
       }

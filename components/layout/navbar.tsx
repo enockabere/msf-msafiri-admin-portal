@@ -21,14 +21,12 @@ import {
   Settings,
   Shield,
   Loader2,
-  ChevronDown,
   Check,
   Clock,
   AlertTriangle,
   Info,
   X,
   RefreshCw,
-  Building2,
   Calendar,
 } from "lucide-react";
 import { useAuth, AuthUtils } from "@/lib/auth";
@@ -199,15 +197,7 @@ export default function Navbar() {
                   {getCurrentDate()}
                 </div>
 
-                {fullUserData?.department && (
-                  <Badge
-                    variant="outline"
-                    className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
-                  >
-                    <Building2 className="h-3 w-3 mr-1" />
-                    {fullUserData.department}
-                  </Badge>
-                )}
+
 
                 {user.firstLogin && (
                   <Badge
@@ -219,17 +209,7 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Mobile secondary info */}
-              <div className="sm:hidden flex items-center space-x-2 mt-1">
-                {fullUserData?.department && (
-                  <Badge
-                    variant="outline"
-                    className="bg-blue-50 text-blue-700 border-blue-200 text-xs"
-                  >
-                    {fullUserData.department}
-                  </Badge>
-                )}
-              </div>
+
             </div>
           </div>
 
@@ -361,7 +341,14 @@ export default function Navbar() {
                         <Button
                           variant="ghost"
                           className="w-full justify-center text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                          onClick={() => router.push("/notifications")}
+                          onClick={() => {
+                            const pathname = window.location.pathname;
+                            const tenantMatch = pathname.match(/\/tenant\/([^/]+)/);
+                            const notificationsUrl = tenantMatch 
+                              ? `/tenant/${tenantMatch[1]}/notifications` 
+                              : "/notifications";
+                            router.push(notificationsUrl);
+                          }}
                         >
                           View all notifications
                         </Button>
@@ -378,7 +365,14 @@ export default function Navbar() {
                 variant="ghost"
                 size="sm"
                 className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 border border-gray-200"
-                onClick={() => router.push("/notifications")}
+                onClick={() => {
+                  const pathname = window.location.pathname;
+                  const tenantMatch = pathname.match(/\/tenant\/([^/]+)/);
+                  const notificationsUrl = tenantMatch 
+                    ? `/tenant/${tenantMatch[1]}/notifications` 
+                    : "/notifications";
+                  router.push(notificationsUrl);
+                }}
               >
                 <Bell className="h-4 w-4 text-gray-600" />
                 {unreadCount > 0 && (

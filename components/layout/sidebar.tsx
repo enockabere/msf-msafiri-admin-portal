@@ -1,25 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  BarChart3,
   Users,
   Calendar,
-  Car,
-  Hotel,
-  Ticket,
-  Coins,
-  CreditCard,
   MessageSquare,
   Bell,
   Shield,
-  FileText,
   Home,
   LogOut,
   Settings,
@@ -31,10 +24,14 @@ import {
   X,
   PanelLeftOpen,
   PanelLeftClose,
+  Package,
+  CheckCircle,
 } from "lucide-react";
-import { useAuth, AuthUtils } from "@/lib/auth";
+import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useAllocations } from "@/hooks/useAllocations";
+import { useEffect, useState } from "react";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -96,122 +93,83 @@ function Tooltip({ children, content, side = "right" }: TooltipProps) {
   );
 }
 
-const getNavigationItems = (isTenantAdmin: boolean) => {
-  if (isTenantAdmin) {
-    return [
-      {
-        title: "Overview",
-        items: [
-          { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
-        ],
-      },
-      {
-        title: "User Management",
-        items: [
-          { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
-          { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
-        ],
-      },
-      {
-        title: "Communication",
-        items: [
-          {
-            icon: Bell,
-            label: "Notifications",
-            href: "/notifications",
-            badge: "notifications",
-          },
-        ],
-      },
-    ];
-  }
-
-  return [
+const getNavigationItems = () => {
+  // Show all menu items to all users for now
+  const sections = [];
+  
+  // Overview - All roles
+  sections.push({
+    title: "Overview",
+    items: [
+      { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
+    ],
+  });
+  
+  // User Management - All roles
+  sections.push({
+    title: "User Management",
+    items: [
+      { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
+      { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
+    ],
+  });
+  
+  // Operations - Show to all users for now
+  const operationsItems = [
     {
-      title: "Overview",
-      items: [
-        { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
-        {
-          icon: BarChart3,
-          label: "Analytics & Reports",
-          href: "/analytics",
-          badge: null,
-        },
-      ],
+      icon: Calendar,
+      label: "Event Management",
+      href: "/events",
+      badge: null,
     },
     {
-      title: "User Management",
-      items: [
-        { icon: Users, label: "Visitors", href: "/visitors", badge: "dynamic" },
-        { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
-        { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
-        {
-          icon: FileText,
-          label: "Document Review",
-          href: "/documents",
-          badge: "dynamic",
-        },
-      ],
+      icon: Package,
+      label: "Stationary & Equipment",
+      href: "/inventory",
+      badge: null,
     },
     {
-      title: "Operations",
-      items: [
-        {
-          icon: Calendar,
-          label: "Event Management",
-          href: "/events",
-          badge: null,
-        },
-        {
-          icon: Car,
-          label: "Transport & Movement",
-          href: "/transport",
-          badge: null,
-        },
-        {
-          icon: Hotel,
-          label: "Accommodation",
-          href: "/accommodation",
-          badge: null,
-        },
-        { icon: Ticket, label: "Item Distribution", href: "/items", badge: null },
-      ],
+      icon: Shield,
+      label: "Security Briefings",
+      href: "/security-briefings",
+      badge: null,
     },
     {
-      title: "Finance & HR",
-      items: [
-        {
-          icon: Coins,
-          label: "PerDiem Management",
-          href: "/perdiem",
-          badge: null,
-        },
-        {
-          icon: CreditCard,
-          label: "Reimbursements",
-          href: "/reimbursements",
-          badge: null,
-        },
-      ],
-    },
-    {
-      title: "Communication",
-      items: [
-        {
-          icon: MessageSquare,
-          label: "Chat Management",
-          href: "/chat",
-          badge: null,
-        },
-        {
-          icon: Bell,
-          label: "Notifications",
-          href: "/notifications",
-          badge: "notifications",
-        },
-      ],
+      icon: CheckCircle,
+      label: "Allocation Approvals",
+      href: "/allocation-approvals",
+      badge: "allocations",
     },
   ];
+  
+  sections.push({
+    title: "Operations",
+    items: operationsItems,
+  });
+  
+  // Communication - Show all to all users for now
+  const communicationItems = [
+    {
+      icon: Bell,
+      label: "Notifications",
+      href: "/notifications",
+      badge: "notifications",
+    },
+    {
+      icon: MessageSquare,
+      label: "Chat Management",
+      href: "/chat",
+      badge: null,
+    },
+  ];
+  
+  sections.push({
+    title: "Communication",
+    items: communicationItems,
+  });
+  
+  return sections;
+
 };
 
 export default function Sidebar({
@@ -222,7 +180,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
   const { user, isSuperAdmin, loading: authLoading } = useAuth();
+  const { apiClient } = useAuthenticatedApi();
   const router = useRouter();
   const pathname = usePathname();
   const {
@@ -232,8 +192,32 @@ export default function Sidebar({
     refetchUser,
   } = useUserData();
 
-  // Use real notifications
+  // Use real notifications and allocations
   const { stats } = useNotifications();
+  const { pendingCount } = useAllocations();
+
+  // Fetch user roles
+  useEffect(() => {
+    const fetchUserRoles = async () => {
+      if (user?.id) {
+        try {
+          const roles = await apiClient.request<Array<{ role: string }>>(`/user-roles/user/${user.id}`).catch(() => []);
+          const roleNames = roles.map((r: { role: string }) => r.role);
+          if (user.role) {
+            roleNames.push(user.role);
+          }
+          const uniqueRoles = [...new Set(roleNames)];
+        
+          setUserRoles(uniqueRoles);
+        } catch (error) {
+          console.error('Error fetching user roles:', error);
+          setUserRoles(user.role ? [user.role] : []);
+        }
+      }
+    };
+    
+    fetchUserRoles();
+  }, [user?.id, user?.role, apiClient]);
 
   const handleLogout = async () => {
     try {
@@ -286,6 +270,8 @@ export default function Sidebar({
     switch (badgeType) {
       case "notifications":
         return stats?.unread || 0;
+      case "allocations":
+        return pendingCount || 0;
       case "dynamic":
         return 0;
       default:
@@ -295,13 +281,15 @@ export default function Sidebar({
 
   const displayUser = fullUserData || user;
   const displayName = fullUserData?.full_name || user?.name || user?.email;
-  const isTenantAdmin = pathname?.startsWith('/tenant/');
+  const isTenantPath = pathname?.startsWith('/tenant/');
   const tenantSlugMatch = pathname?.match(/\/tenant\/([^/]+)/);
   const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : null;
   
-  const getNavigationItemsWithTenantContext = (isTenantAdmin: boolean, tenantSlug: string | null) => {
-    const items = getNavigationItems(isTenantAdmin);
-    if (isTenantAdmin && tenantSlug) {
+  // userRoles is now fetched from the API
+  
+  const getNavigationItemsWithTenantContext = (userRoles: string[], isTenantPath: boolean, tenantSlug: string | null) => {
+    const items = getNavigationItems();
+    if (isTenantPath && tenantSlug) {
       return items.map(section => ({
         ...section,
         items: section.items.map(item => ({
@@ -310,6 +298,11 @@ export default function Sidebar({
                 item.href === '/admin-users' ? `/tenant/${tenantSlug}/admin-users` :
                 item.href === '/admin-roles' ? `/tenant/${tenantSlug}/admin-roles` :
                 item.href === '/notifications' ? `/tenant/${tenantSlug}/notifications` :
+                item.href === '/events' ? `/tenant/${tenantSlug}/events` :
+                item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
+                item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
+                item.href === '/allocation-approvals' ? `/tenant/${tenantSlug}/allocation-approvals` :
+                item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href
         }))
       }));
@@ -317,7 +310,7 @@ export default function Sidebar({
     return items;
   };
   
-  const navigationItems = getNavigationItemsWithTenantContext(isTenantAdmin, tenantSlug);
+  const navigationItems = getNavigationItemsWithTenantContext(userRoles, isTenantPath, tenantSlug);
 
   return (
     <>
@@ -330,7 +323,7 @@ export default function Sidebar({
 
       <div
         className={cn(
-          "text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50",
+          "text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50 h-screen",
           "border-r border-red-700/50",
           "bg-[#ee0000]",
           isMobile
@@ -346,7 +339,7 @@ export default function Sidebar({
             {/* Logo and Title - Hidden when collapsed */}
             {(!collapsed || isMobile) && (
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 p-2 backdrop-blur-sm border border-red-300/40">
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-2 shadow-sm">
                   <Image
                     src="/icon/favicon.png"
                     alt="MSF Logo"
@@ -524,7 +517,7 @@ export default function Sidebar({
         )}
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-red-600 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
           {navigationItems.map((section, idx) => (
             <div key={idx} className="mb-6">
               {(!collapsed || isMobile) && (
@@ -608,7 +601,7 @@ export default function Sidebar({
           ))}
 
           {/* System Settings for Super Admin or Tenant Admin */}
-          {(isSuperAdmin || isTenantAdmin) && (
+          {(isSuperAdmin || isTenantPath) && (
             <div className="mb-6">
               {(!collapsed || isMobile) && (
                 <div className="px-4 lg:px-6 mb-3">

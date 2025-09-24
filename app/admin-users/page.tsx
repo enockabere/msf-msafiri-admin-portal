@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,13 +44,7 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && user?.email) {
-      fetchUsers();
-    }
-  }, [user?.email, authLoading]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const usersData = await apiClient.request<AdminUser[]>("/users/", {
@@ -63,7 +57,7 @@ export default function AdminUsersPage() {
       );
       
       setUsers(adminUsers);
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to fetch admin users",
@@ -72,7 +66,13 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [apiClient, user?.tenantId]);
+
+  useEffect(() => {
+    if (!authLoading && user?.email) {
+      fetchUsers();
+    }
+  }, [user?.email, authLoading, fetchUsers]);
 
   const handleActivateUser = async (userId: number) => {
     try {
@@ -89,7 +89,7 @@ export default function AdminUsersPage() {
         title: "Success",
         description: "User activated successfully",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to activate user",
@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
         title: "Success",
         description: "User deactivated successfully",
       });
-    } catch (error) {
+    } catch  {
       toast({
         title: "Error",
         description: "Failed to deactivate user",

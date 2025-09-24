@@ -20,10 +20,11 @@ const getErrorMessage = (
         canRetry: false,
       };
     case "AccessDenied":
+    case "access_denied":
       return {
         title: "Access Denied",
         message:
-          "You don't have permission to access this application. Please contact your administrator.",
+          "Only users with admin roles (Super Admin, MT Admin, HR Admin, or Event Admin) can access this portal. Please contact your administrator if you believe this is an error.",
         canRetry: false,
       };
     case "Verification":
@@ -94,6 +95,12 @@ const getErrorMessage = (
         title: "Authentication Failed",
         message: "Login failed. Please check your credentials and try again.",
         canRetry: true,
+      };
+    case "insufficient_role":
+      return {
+        title: "Insufficient Permissions",
+        message: "Your account does not have the required admin permissions to access this portal. Only Super Admin, MT Admin, HR Admin, and Event Admin roles are allowed.",
+        canRetry: false,
       };
     default:
       return {

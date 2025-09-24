@@ -86,9 +86,7 @@ export default function ResetPasswordComponent() {
       });
 
       if (response.ok) {
-        const data = await response.json();
         setTokenValid(true);
-        console.log("Token verified:", data);
       } else {
         setTokenValid(false);
         setError(

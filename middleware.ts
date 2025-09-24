@@ -5,16 +5,14 @@ export default withAuth(
   // Optional middleware function
   function middleware(request: NextRequestWithAuth) {
     // Debug logging
-    console.log("Middleware - Token role:", request.nextauth.token?.role);
-    console.log("Middleware - Pathname:", request.nextUrl.pathname);
+    // Debug logging removed for production
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
 
-        console.log("Authorized callback - Token role:", token?.role);
-        console.log("Authorized callback - Pathname:", pathname);
+        // Debug logging removed for production
 
         // Public routes that don't require authentication
         if (pathname === "/" || pathname === "/login") {
@@ -23,11 +21,11 @@ export default withAuth(
 
         // All other routes require authentication
         if (!token) {
-          console.log("No token found, denying access");
+          // No token found, denying access
           return false;
         }
 
-        // Admin routes require admin roles - Updated to include super_admin
+        // Admin routes require admin roles (using actual API role strings)
         if (
           pathname.startsWith("/dashboard") ||
           pathname.startsWith("/users") ||
@@ -35,38 +33,26 @@ export default withAuth(
           pathname.startsWith("/tenant")
         ) {
           const adminRoles = [
-            "SUPER_ADMIN",
-            "super_admin", // Add the actual role from your API
-            "MT_ADMIN",
-            "HR_ADMIN",
-            "EVENT_ADMIN",
+            "super_admin",
+            "mt_admin",
+            "hr_admin",
+            "event_admin",
           ];
 
           const hasAdminRole = !!(
             token?.role && adminRoles.includes(token.role as string)
           );
-          console.log(
-            "Admin route check:",
-            hasAdminRole,
-            "for role:",
-            token.role
-          );
+          // Admin route check completed
           return hasAdminRole;
         }
 
-        // Super admin only routes - Updated to include super_admin
+        // Super admin only routes (using actual API role string)
         if (
           pathname.startsWith("/tenants") ||
           pathname.startsWith("/settings/system")
         ) {
-          const isSuperAdmin =
-            token?.role === "SUPER_ADMIN" || token?.role === "super_admin";
-          console.log(
-            "Super admin route check:",
-            isSuperAdmin,
-            "for role:",
-            token.role
-          );
+          const isSuperAdmin = token?.role === "super_admin";
+          // Super admin route check completed
           return isSuperAdmin;
         }
 

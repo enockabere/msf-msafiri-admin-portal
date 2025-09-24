@@ -303,7 +303,7 @@ const handleSessionExpiry = async (): Promise<void> => {
       loginUrl.searchParams.set("reason", "inactivity");
       window.location.href = loginUrl.toString();
     }
-  } catch (error) {
+  } catch {
     // Fallback: force page reload to clear any cached state
     if (typeof window !== "undefined") {
       window.location.href = "/login?sessionExpired=true&reason=error";
@@ -603,14 +603,14 @@ class ApiClient {
     return await this.request<User[]>("/super-admin/super-admins");
   }
 
-  async inviteSuperAdmin(email: string, full_name: string): Promise<any> {
+  async inviteSuperAdmin(email: string, full_name: string): Promise<{ message: string }> {
     return await this.request("/super-admin/invite-super-admin", {
       method: "POST",
       body: JSON.stringify({ email, full_name }),
     });
   }
 
-  async getPendingInvitations(): Promise<any[]> {
+  async getPendingInvitations(): Promise<Array<{ id: number; email: string; full_name: string; created_at: string }>> {
     const response = await fetch('/api/super-admin/pending-invitations');
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Failed to fetch pending invitations' }));
@@ -619,7 +619,7 @@ class ApiClient {
     return await response.json();
   }
 
-  async resendInvitation(invitationId: number): Promise<any> {
+  async resendInvitation(invitationId: number): Promise<{ message: string }> {
     const response = await fetch('/api/super-admin/resend-invitation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -632,7 +632,7 @@ class ApiClient {
     return await response.json();
   }
 
-  async cancelInvitation(invitationId: number): Promise<any> {
+  async cancelInvitation(invitationId: number): Promise<{ message: string }> {
     const response = await fetch('/api/super-admin/cancel-invitation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -645,20 +645,20 @@ class ApiClient {
     return await response.json();
   }
 
-  async acceptInvitation(token: string, password?: string): Promise<any> {
+  async acceptInvitation(token: string): Promise<{ message: string }> {
     return await this.request(`/invitations/accept/${token}`, {
       method: "POST",
     });
   }
 
-  async requestEmailChange(newEmail: string): Promise<any> {
+  async requestEmailChange(newEmail: string): Promise<{ message: string }> {
     return await this.request("/profile/request-email-change", {
       method: "POST",
       body: JSON.stringify({ new_email: newEmail }),
     });
   }
 
-  async confirmEmailChange(token: string): Promise<any> {
+  async confirmEmailChange(token: string): Promise<{ message: string }> {
     return await this.request("/profile/confirm-email-change", {
       method: "POST",
       body: JSON.stringify({ token }),
@@ -914,7 +914,7 @@ class ApiClient {
     try {
       await this.healthCheck();
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -934,22 +934,20 @@ class ApiClient {
     };
   }> {
     const [users, events, roles] = await Promise.all([
-      this.request<any[]>(`/users/`, { headers: { "X-Tenant-ID": tenantSlug } }),
-      this.request<any[]>(`/events/`),
-      this.request<any[]>(`/roles/tenant/${tenantSlug}`)
+      this.request<Array<{ id: number; is_active: boolean }>>(`/users/`, { headers: { "X-Tenant-ID": tenantSlug } }),
+      this.request<Array<{ id: number; is_active: boolean }>>(`/events/`),
+      this.request<Array<{ id: number; name: string }>>(`/roles/tenant/${tenantSlug}`)
     ]);
 
     // Get all participants for all events
     const allParticipants = await Promise.all(
       events.map(event => 
-        this.request<any[]>(`/events/${event.id}/participants`).catch(() => [])
+        this.request<Array<{ id: number }>>(`/events/${event.id}/participants`).catch(() => [])
       )
     );
     const totalVisitors = allParticipants.flat().length;
 
     // Calculate trends (mock data for now - would need historical data from API)
-    const currentMonth = new Date().getMonth();
-    const lastMonth = currentMonth - 1;
     
     return {
       totalUsers: users.length,

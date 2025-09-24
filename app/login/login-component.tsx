@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn, getSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Image from "next/image";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,31 +24,26 @@ import {
 const getApiUrl = (): string => {
   // Try environment variable first
   if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log("🔧 Using API URL from env:", process.env.NEXT_PUBLIC_API_URL);
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
   // Client-side fallback logic
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    console.log("🔧 Detecting API URL for hostname:", hostname);
 
     // Local development
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       const localUrl = "http://localhost:8000";
-      console.log("🏠 Using local API URL:", localUrl);
       return localUrl;
     }
 
     // Vercel deployment or other production
     const prodUrl = "https://msafiri-visitor-api.onrender.com";
-    console.log("🌐 Using production API URL:", prodUrl);
     return prodUrl;
   }
 
   // Server-side fallback
   const fallbackUrl = "https://msafiri-visitor-api.onrender.com";
-  console.log("🔄 Using server-side fallback:", fallbackUrl);
   return fallbackUrl;
 };
 
@@ -178,16 +173,13 @@ export default function LoginComponent() {
   useEffect(() => {
     const url = getApiUrl();
     setApiUrl(url);
-    console.log("🎯 API URL initialized:", url);
 
     if (resetToken) {
-      console.log("🔐 Reset token detected, switching to reset password view");
       setViewMode("resetPassword");
       setResetData((prev) => ({ ...prev, token: resetToken }));
     }
 
     if (forgotParam === "true") {
-      console.log("🔐 Forgot password mode detected");
       setViewMode("resetRequest");
     }
 
@@ -216,9 +208,7 @@ export default function LoginComponent() {
 
   const checkApiConnectivity = async (url: string) => {
     try {
-      console.log("🔍 Testing API connectivity to:", url);
       const healthUrl = `${url.replace("/api/v1", "")}/health`;
-      console.log("🔍 Health check URL:", healthUrl);
 
       const response = await fetch(healthUrl, {
         method: "GET",
@@ -227,7 +217,6 @@ export default function LoginComponent() {
 
       if (response.ok) {
         setIsApiConnected(true);
-        console.log("✅ API server is reachable");
       } else {
         setIsApiConnected(false);
         console.warn("⚠️ API health check failed:", response.status);
@@ -254,27 +243,18 @@ export default function LoginComponent() {
       setError("");
       setSuccess("");
       setLoginMethod("sso");
-
-      const result = await signIn("azure-ad", {
-        redirect: false,
-        callbackUrl: redirectTo,
-      });
-
-      if (result?.error) {
-        const errorMessage = "Microsoft SSO authentication failed";
-        // ... error handling logic remains the same
-        throw new Error(errorMessage);
-      }
-
-      if (result?.ok) {
-        setSuccess("Successfully authenticated with Microsoft!");
-        setTimeout(() => router.push(redirectTo), 1000);
-      }
     } catch (error) {
+      console.error("🚨 === MICROSOFT SSO ERROR ===");
+      console.error("Error details:", error);
+      console.error("Error type:", typeof error);
+      console.error(
+        "Error message:",
+        error instanceof Error ? error.message : "Unknown error"
+      );
+
       const errorMessage =
         error instanceof Error ? error.message : "Microsoft SSO login failed";
       setError(errorMessage);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -292,9 +272,10 @@ export default function LoginComponent() {
       }
 
       // Determine callback URL based on password
-      const callbackUrl = formData.password === "password@1234" 
-        ? "/change-password?required=true&default=true"
-        : redirectTo;
+      const callbackUrl =
+        formData.password === "password@1234"
+          ? "/change-password?required=true&default=true"
+          : redirectTo;
 
       const result = await signIn("credentials", {
         email: formData.email,
@@ -314,7 +295,7 @@ export default function LoginComponent() {
 
       if (result?.ok) {
         setSuccess("Login successful! Redirecting...");
-        
+
         // Use NextAuth's built-in callback URL mechanism
         setTimeout(() => {
           if (formData.password === "password@1234") {
@@ -584,7 +565,9 @@ export default function LoginComponent() {
 
             <Button
               type="button"
-              onClick={handleMicrosoftLogin}
+              onClick={() => {
+                handleMicrosoftLogin();
+              }}
               disabled={isLoading}
               variant="outline"
               className="w-full h-12 border-gray-200 hover:bg-gray-50"
@@ -592,7 +575,7 @@ export default function LoginComponent() {
               {isLoading && loginMethod === "sso" ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
+                  Redirecting to Microsoft...
                 </>
               ) : (
                 <>
@@ -602,7 +585,7 @@ export default function LoginComponent() {
                     <path fill="#00a1f1" d="M0 13h11v11H0z" />
                     <path fill="#00a1f1" d="M13 13h11v11H13z" />
                   </svg>
-                  Microsoft SSO
+                  Sign in with Microsoft
                 </>
               )}
             </Button>

@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
 
+interface ExtendedSession {
+  user?: {
+    accessToken?: string;
+  };
+  accessToken?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
-    if (!session?.accessToken) {
+    const accessToken = (session as ExtendedSession)?.accessToken || (session as ExtendedSession)?.user?.accessToken;
+    if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -16,7 +24,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${apiUrl}/api/v1/super-admin/invite-super-admin`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),

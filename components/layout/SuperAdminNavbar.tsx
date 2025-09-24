@@ -18,7 +18,6 @@ import {
 import {
   LogOut,
   User,
-  Settings,
   Bell,
   Loader2,
   RefreshCw,

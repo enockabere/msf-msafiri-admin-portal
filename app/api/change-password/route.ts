@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-config";
 
+interface ExtendedSession {
+  user?: {
+    accessToken?: string;
+  };
+  accessToken?: string;
+}
+
+interface ValidationError {
+  loc?: string[];
+  msg: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    console.log("Change password session:", JSON.stringify(session, null, 2));
     
     if (!session?.user) {
       return NextResponse.json(
@@ -14,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const accessToken = session.user.accessToken || session.accessToken;
+    const accessToken = (session as ExtendedSession).user?.accessToken || (session as ExtendedSession).accessToken;
     if (!accessToken) {
       return NextResponse.json(
         { error: "Access token not found" },
@@ -23,7 +34,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { currentPassword, newPassword } = await request.json();
-    console.log("Change password request data:", { currentPassword: "***", newPassword: "***" });
 
     if (!currentPassword || !newPassword || currentPassword.trim() === "" || newPassword.trim() === "") {
       return NextResponse.json(
@@ -42,7 +52,6 @@ export async function POST(request: NextRequest) {
       new_password: newPassword.trim(),
       confirm_password: newPassword.trim(),
     };
-    console.log("API request body:", { ...requestBody, current_password: "***", new_password: "***" });
 
     const response = await fetch(`${baseUrl}/api/v1/password/change-password`, {
       method: "POST",
@@ -55,12 +64,11 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: "Failed to change password" }));
-      console.log("API error response:", JSON.stringify(errorData, null, 2));
-      
+       
       // Extract validation error details
       let errorMessage = "Failed to change password";
       if (errorData.detail && Array.isArray(errorData.detail)) {
-        const validationErrors = errorData.detail.map(err => `${err.loc?.join('.')} - ${err.msg}`).join(', ');
+        const validationErrors = errorData.detail.map((err: ValidationError) => `${err.loc?.join('.')} - ${err.msg}`).join(', ');
         errorMessage = `Validation error: ${validationErrors}`;
       } else if (errorData.detail) {
         errorMessage = errorData.detail;
