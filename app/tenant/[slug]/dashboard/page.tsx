@@ -52,8 +52,9 @@ export default function TenantDashboardPage() {
 
   const fetchRecentActivities = useCallback(async () => {
     try {
-      const activitiesResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/activities?tenant=${tenantSlug}&limit=3`,
+      // Use notifications as activities since activities endpoint doesn't exist
+      const notificationsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/notifications/?limit=3`,
         {
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
@@ -62,10 +63,20 @@ export default function TenantDashboardPage() {
         }
       );
 
-      if (activitiesResponse.ok) {
-        const activities = await activitiesResponse.json();
+      if (notificationsResponse.ok) {
+        const notifications = await notificationsResponse.json();
+        // Transform notifications to activity format
+        const activities = notifications.map((notif: { id: string | number; message?: string; title?: string; triggered_by?: string; created_at: string; is_read: boolean }) => ({
+          id: notif.id,
+          type: "notification",
+          description: notif.message || notif.title,
+          user_name: notif.triggered_by || "System",
+          created_at: notif.created_at,
+          status: notif.is_read ? "completed" : "pending",
+        }));
         setRecentActivities(activities);
       } else {
+        // Fallback activities
         setRecentActivities([
           {
             id: 1,
@@ -81,7 +92,7 @@ export default function TenantDashboardPage() {
       console.error("Error fetching activities:", error);
       setRecentActivities([]);
     }
-  }, [apiClient, tenantSlug, user]);
+  }, [apiClient, user]);
 
   const fetchStats = useCallback(async (foundTenant: Tenant) => {
     try {
@@ -289,19 +300,27 @@ export default function TenantDashboardPage() {
       enabled: true,
     },
     {
+      title: "Accommodation",
+      description: "Manage guesthouses & rooms",
+      icon: Hotel,
+      path: `/tenant/${tenantSlug}/accommodation`,
+      color: "orange",
+      enabled: true,
+    },
+    {
       title: "Inventory",
       description: `${stats.totalInventory} items available`,
-      icon: Hotel,
+      icon: Coins,
       path: `/tenant/${tenantSlug}/inventory`,
-      color: "orange",
+      color: "purple",
       enabled: true,
     },
     {
       title: "Approvals",
       description: "Handle allocations",
-      icon: Coins,
+      icon: AlertCircle,
       path: `/tenant/${tenantSlug}/allocation-approvals`,
-      color: "purple",
+      color: "indigo",
       enabled: true,
     },
     {
@@ -309,7 +328,7 @@ export default function TenantDashboardPage() {
       description: `${stats.totalVisitors} participants`,
       icon: Users,
       path: null,
-      color: "indigo",
+      color: "blue",
       enabled: true,
     },
     {
@@ -349,7 +368,7 @@ export default function TenantDashboardPage() {
                 <Building2 className="w-5 h-5 text-blue-700" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-lg font-bold text-gray-900">
                   {tenant.name}
                 </h1>
                 <div className="flex items-center space-x-2">
@@ -363,7 +382,7 @@ export default function TenantDashboardPage() {
                   >
                     {tenant.is_active ? "Active" : "Inactive"}
                   </Badge>
-                  <span className="text-sm text-gray-500">{tenant.slug}</span>
+                  <span className="text-xs text-gray-500">{tenant.slug}</span>
                 </div>
               </div>
             </div>
@@ -394,10 +413,10 @@ export default function TenantDashboardPage() {
                       <Icon className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-700">
+                      <div className="font-medium text-sm text-gray-700">
                         {action.title}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs text-gray-500">
                         {action.description}
                       </div>
                     </div>
@@ -427,10 +446,10 @@ export default function TenantDashboardPage() {
                   <Icon className="h-6 w-6" />
                 </div>
                 <div className="ml-4 text-left">
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-medium text-sm text-gray-900">
                     {action.title}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-xs text-gray-500">
                     {action.description}
                   </div>
                 </div>
@@ -464,11 +483,11 @@ export default function TenantDashboardPage() {
                         <Activity className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900 capitalize">
+                        <div className="font-medium text-sm text-gray-900 capitalize">
                           {activity.type?.replace("_", " ") ||
                             "System Activity"}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-gray-500">
                           {activity.description}
                         </div>
                       </div>
@@ -485,7 +504,7 @@ export default function TenantDashboardPage() {
                       >
                         {activity.status || "Active"}
                       </Badge>
-                      <div className="text-sm text-gray-500 mt-1">
+                      <div className="text-xs text-gray-500 mt-1">
                         {activity.created_at
                           ? new Date(activity.created_at).toLocaleDateString()
                           : "Today"}
@@ -509,19 +528,19 @@ export default function TenantDashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-xs font-medium text-gray-500">
                   Organization Name
                 </label>
-                <p className="text-sm text-gray-900">{tenant.name}</p>
+                <p className="text-xs text-gray-900">{tenant.name}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-xs font-medium text-gray-500">
                   Contact Email
                 </label>
-                <p className="text-sm text-gray-900">{tenant.contact_email}</p>
+                <p className="text-xs text-gray-900">{tenant.contact_email}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-xs font-medium text-gray-500">
                   Status
                 </label>
                 <Badge
@@ -535,19 +554,19 @@ export default function TenantDashboardPage() {
                 </Badge>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">
+                <label className="text-xs font-medium text-gray-500">
                   Domain
                 </label>
-                <p className="text-sm text-gray-900">
+                <p className="text-xs text-gray-900">
                   {tenant.domain || "Not configured"}
                 </p>
               </div>
               {tenant.description && (
                 <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-gray-500">
+                  <label className="text-xs font-medium text-gray-500">
                     Description
                   </label>
-                  <p className="text-sm text-gray-900">{tenant.description}</p>
+                  <p className="text-xs text-gray-900">{tenant.description}</p>
                 </div>
               )}
             </div>

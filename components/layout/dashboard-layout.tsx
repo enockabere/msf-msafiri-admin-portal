@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useSidebar } from "@/contexts/SidebarContext";
 import Sidebar from "./sidebar";
 import Navbar from "./navbar";
 
@@ -11,9 +11,9 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user } = useAuth();
   const pathname = usePathname();
+  const { collapsed, toggleCollapsed } = useSidebar();
 
   // Check if we're on a tenant dashboard route
   const isTenantDashboard = pathname?.startsWith('/tenant/');
@@ -27,8 +27,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
-        collapsed={sidebarCollapsed}
-        toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        collapsed={collapsed}
+        toggleCollapse={toggleCollapsed}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />

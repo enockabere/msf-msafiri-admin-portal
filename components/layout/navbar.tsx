@@ -186,7 +186,7 @@ export default function Navbar() {
           <div className="flex items-center space-x-4 min-w-0 flex-1">
             <div className="min-w-0 flex-1">
               {/* Main greeting */}
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 truncate">
+              <h1 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
                 {getGreeting()}, {displayName?.split(" ")[0] || "Admin"}
               </h1>
 
@@ -248,7 +248,7 @@ export default function Navbar() {
                 >
                   <DropdownMenuLabel className="font-normal bg-gray-50/50 border-b border-gray-100 p-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-medium text-sm text-gray-900">
                         Notifications
                       </h3>
                       <div className="flex items-center space-x-1">
@@ -256,7 +256,7 @@ export default function Navbar() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            className="h-5 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                             onClick={handleClearAllNotifications}
                           >
                             Mark all read
@@ -311,7 +311,7 @@ export default function Navbar() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium text-gray-900 line-clamp-1">
+                                <p className="text-xs font-medium text-gray-900 line-clamp-1">
                                   {notification.title}
                                 </p>
                                 {!notification.is_read && (
@@ -416,7 +416,7 @@ export default function Navbar() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
+                          <p className="text-xs font-semibold text-gray-900 truncate">
                             {displayName || "User"}
                           </p>
                           <p className="text-xs text-gray-500 truncate">
@@ -485,7 +485,7 @@ export default function Navbar() {
                     className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
                   >
                     <User className="mr-3 h-4 w-4 text-gray-500" />
-                    <span className="text-sm">Profile Settings</span>
+                    <span className="text-xs">Profile Settings</span>
                   </DropdownMenuItem>
 
                   {isSuperAdmin && (
@@ -494,7 +494,7 @@ export default function Navbar() {
                       className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
                     >
                       <Settings className="mr-3 h-4 w-4 text-gray-500" />
-                      <span className="text-sm">System Settings</span>
+                      <span className="text-xs">System Settings</span>
                     </DropdownMenuItem>
                   )}
                 </div>
@@ -512,7 +512,7 @@ export default function Navbar() {
                     ) : (
                       <LogOut className="mr-3 h-4 w-4" />
                     )}
-                    <span className="text-sm">
+                    <span className="text-xs">
                       {isLoggingOut ? "Signing out..." : "Sign Out"}
                     </span>
                   </DropdownMenuItem>

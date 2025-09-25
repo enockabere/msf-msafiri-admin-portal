@@ -243,6 +243,20 @@ export default function LoginComponent() {
       setError("");
       setSuccess("");
       setLoginMethod("sso");
+
+      const result = await signIn("azure-ad", {
+        redirect: false,
+        callbackUrl: redirectTo,
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      if (result?.ok) {
+        setSuccess("Redirecting to Microsoft...");
+        // Let NextAuth handle the redirect
+      }
     } catch (error) {
       console.error("🚨 === MICROSOFT SSO ERROR ===");
       console.error("Error details:", error);
@@ -413,9 +427,9 @@ export default function LoginComponent() {
     };
 
   const renderLoginContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex">
-      {/* Left side - Branding and illustration */}
-      <div className="flex-1 flex flex-col justify-center items-center p-12 bg-white/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex flex-col lg:flex-row">
+      {/* Left side - Branding and illustration (hidden on mobile, shown on large screens) */}
+      <div className="hidden lg:flex lg:flex-1 flex-col justify-center items-center p-12 bg-white/80 backdrop-blur-sm">
         {/* Logo */}
         <div>
           <div className="flex items-center justify-center mb-4">
@@ -446,19 +460,35 @@ export default function LoginComponent() {
         <TravelEventsIllustration />
       </div>
 
-      {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
+      {/* Right side - Login form (full width on mobile, half width on large screens) */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+        {/* Mobile logo (shown only on small screens) */}
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 lg:hidden">
+          <Image
+            src="/icon/MSF_logo_square.png"
+            alt="MSF Logo"
+            width={80}
+            height={80}
+            className="w-20 h-20"
+            priority
+          />
+        </div>
+        
+        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl mt-16 lg:mt-0">
           <CardHeader className="text-center space-y-4 pb-2">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
               Welcome to MSF Msafiri
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600">
               Travel & Events Admin Portal
+            </p>
+            {/* Mobile description */}
+            <p className="text-xs text-gray-500 lg:hidden px-2">
+              Manage visitors, events, and travel arrangements
             </p>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
             {/* Alert Messages */}
             {error && (
               <Alert className="border-red-200 bg-red-50">
@@ -490,7 +520,7 @@ export default function LoginComponent() {
                   value={formData.email}
                   onChange={handleInputChange("email")}
                   placeholder="admin@msafiri.com"
-                  className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                  className="h-10 sm:h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
                   required
                   disabled={isLoading}
                 />
@@ -507,7 +537,7 @@ export default function LoginComponent() {
                     value={formData.password}
                     onChange={handleInputChange("password")}
                     placeholder="Enter password"
-                    className="h-12 pr-10 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                    className="h-10 sm:h-12 pr-10 border-gray-200 focus:border-red-600 focus:ring-red-600"
                     required
                     disabled={isLoading}
                   />
@@ -538,7 +568,7 @@ export default function LoginComponent() {
               <Button
                 type="submit"
                 disabled={isLoading || !isApiConnected}
-                className="w-full h-12 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                className="w-full h-10 sm:h-12 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm sm:text-base"
               >
                 {isLoading && loginMethod === "credentials" ? (
                   <>
@@ -570,7 +600,7 @@ export default function LoginComponent() {
               }}
               disabled={isLoading}
               variant="outline"
-              className="w-full h-12 border-gray-200 hover:bg-gray-50"
+              className="w-full h-10 sm:h-12 border-gray-200 hover:bg-gray-50 text-sm sm:text-base"
             >
               {isLoading && loginMethod === "sso" ? (
                 <>
@@ -596,7 +626,7 @@ export default function LoginComponent() {
   );
 
   const renderResetRequestContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-4 sm:p-8">
       <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
         <CardHeader className="text-center space-y-4">
           <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
@@ -635,7 +665,7 @@ export default function LoginComponent() {
                 value={resetData.email}
                 onChange={handleResetInputChange("email")}
                 placeholder="admin@msafiri.com"
-                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                className="h-10 sm:h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
                 required
                 disabled={isLoading}
               />
@@ -644,7 +674,7 @@ export default function LoginComponent() {
             <Button
               type="submit"
               disabled={isLoading || !apiUrl}
-              className="w-full h-12 bg-red-600 hover:bg-red-700 text-white"
+              className="w-full h-10 sm:h-12 bg-red-600 hover:bg-red-700 text-white text-sm sm:text-base"
             >
               {isLoading ? (
                 <>
@@ -676,7 +706,7 @@ export default function LoginComponent() {
   );
 
   const renderResetPasswordContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-4 sm:p-8">
       <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
         <CardHeader className="text-center space-y-4">
           <h2 className="text-2xl font-bold text-gray-800">Set New Password</h2>
@@ -713,7 +743,7 @@ export default function LoginComponent() {
                 value={resetData.newPassword || ""}
                 onChange={handleResetInputChange("newPassword")}
                 placeholder="Enter new password"
-                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                className="h-10 sm:h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
                 required
                 disabled={isLoading}
               />
@@ -729,7 +759,7 @@ export default function LoginComponent() {
                 value={resetData.confirmPassword || ""}
                 onChange={handleResetInputChange("confirmPassword")}
                 placeholder="Confirm new password"
-                className="h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
+                className="h-10 sm:h-12 border-gray-200 focus:border-red-600 focus:ring-red-600"
                 required
                 disabled={isLoading}
               />
@@ -738,7 +768,7 @@ export default function LoginComponent() {
             <Button
               type="submit"
               disabled={isLoading || !apiUrl}
-              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white"
+              className="w-full h-10 sm:h-12 bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base"
             >
               {isLoading ? (
                 <>

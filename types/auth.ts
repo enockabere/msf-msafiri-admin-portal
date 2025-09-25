@@ -44,6 +44,7 @@ export interface UserProfile {
 
   // Enhanced profile information
   date_of_birth?: string | null;
+  gender?: string | null;
   nationality?: string | null;
   passport_number?: string | null;
   passport_issue_date?: string | null;
@@ -100,6 +101,7 @@ export interface UserProfileUpdate {
   department?: string | null;
   job_title?: string | null;
   date_of_birth?: string | null;
+  gender?: string | null;
   nationality?: string | null;
   passport_number?: string | null;
   passport_issue_date?: string | null;
@@ -250,6 +252,13 @@ export enum AuthProvider {
   LOCAL = "LOCAL",
   MICROSOFT_SSO = "MICROSOFT_SSO",
   GOOGLE_SSO = "GOOGLE_SSO",
+}
+
+// Gender enum
+export enum Gender {
+  MALE = "male",
+  FEMALE = "female",
+  OTHER = "other",
 }
 
 // User creation request

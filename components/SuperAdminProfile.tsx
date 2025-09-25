@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -491,6 +492,30 @@ export function SuperAdminProfile({
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="gender" className="text-gray-700 mb-2 block">
+                      Gender
+                    </Label>
+                    <Select
+                      value={editData.gender || ""}
+                      onValueChange={(value) =>
+                        handleInputChange("gender", value)
+                      }
+                    >
+                      <SelectTrigger className="bg-white border-gray-300 mt-2">
+                        <SelectValue placeholder="Select gender (optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-gray-300 shadow-lg">
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This field is optional and can be updated later
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="email" className="text-gray-700 mb-2 block">
                       Email Address
                     </Label>
@@ -552,6 +577,16 @@ export function SuperAdminProfile({
                       <span className="text-gray-600">Phone:</span>
                       <span className="font-medium text-gray-900">
                         {profile.phone_number}
+                      </span>
+                    </div>
+                  )}
+
+                  {profile?.gender && (
+                    <div className="flex items-center space-x-3 text-sm">
+                      <User className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-600">Gender:</span>
+                      <span className="font-medium text-gray-900 capitalize">
+                        {profile.gender}
                       </span>
                     </div>
                   )}

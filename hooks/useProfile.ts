@@ -65,6 +65,7 @@ function transformApiProfileToUserProfile(apiProfile: unknown): UserProfile {
 
       // Enhanced profile information
       date_of_birth: safeDate(profile.date_of_birth),
+      gender: safeString(profile.gender),
       nationality: safeString(profile.nationality),
       passport_number: safeString(profile.passport_number),
       passport_issue_date: safeDate(profile.passport_issue_date),

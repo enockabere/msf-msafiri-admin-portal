@@ -26,6 +26,7 @@ import {
   PanelLeftClose,
   Package,
   CheckCircle,
+  Hotel,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
@@ -140,6 +141,12 @@ const getNavigationItems = () => {
       href: "/allocation-approvals",
       badge: "allocations",
     },
+    {
+      icon: Hotel,
+      label: "Accommodation",
+      href: "/accommodation",
+      badge: null,
+    },
   ];
   
   sections.push({
@@ -159,6 +166,12 @@ const getNavigationItems = () => {
       icon: MessageSquare,
       label: "Chat Management",
       href: "/chat",
+      badge: null,
+    },
+    {
+      icon: User,
+      label: "Useful Contacts",
+      href: "/useful-contacts",
       badge: null,
     },
   ];
@@ -303,6 +316,8 @@ export default function Sidebar({
                 item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
                 item.href === '/allocation-approvals' ? `/tenant/${tenantSlug}/allocation-approvals` :
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
+                item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
+                item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href
         }))
       }));
@@ -350,7 +365,7 @@ export default function Sidebar({
                   />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-white">MSF Msafiri</h1>
+                  <h1 className="text-sm font-bold text-white">MSF Msafiri</h1>
                   <p className="text-xs text-red-200">Admin Portal</p>
                 </div>
               </div>
@@ -423,7 +438,7 @@ export default function Sidebar({
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate">
+                    <p className="text-xs font-semibold text-white truncate">
                       {displayName || "User"}
                     </p>
                     <div className="flex items-center space-x-1 mt-1">
@@ -522,7 +537,7 @@ export default function Sidebar({
             <div key={idx} className="mb-6">
               {(!collapsed || isMobile) && (
                 <div className="px-4 lg:px-6 mb-3">
-                  <p className="text-xs uppercase tracking-wider text-red-300 font-semibold">
+                  <p className="text-xs uppercase tracking-wider text-red-300 font-medium">
                     {section.title}
                   </p>
                 </div>
@@ -560,7 +575,7 @@ export default function Sidebar({
 
                       {(!collapsed || isMobile) && (
                         <>
-                          <span className="ml-3 font-medium text-sm">
+                          <span className="ml-3 font-medium text-xs">
                             {item.label}
                           </span>
                           {badgeCount !== null && badgeCount > 0 && (
@@ -664,7 +679,7 @@ export default function Sidebar({
                       />
 
                       {(!collapsed || isMobile) && (
-                        <span className="ml-3 font-medium text-sm">
+                        <span className="ml-3 font-medium text-xs">
                           System Settings
                         </span>
                       )}
@@ -713,7 +728,7 @@ export default function Sidebar({
               ) : (
                 <LogOut className="h-5 w-5" />
               )}
-              <span className="ml-3 font-medium text-sm">
+              <span className="ml-3 font-medium text-xs">
                 {isLoggingOut ? "Signing out..." : "Sign Out"}
               </span>
             </Button>
