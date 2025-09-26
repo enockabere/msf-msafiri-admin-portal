@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { tokenManager } from '@/lib/token-refresh';
 
 export default function SessionTimeoutHandler() {
   const { data: session, status } = useSession();
@@ -30,13 +31,23 @@ export default function SessionTimeoutHandler() {
     const checkSession = async () => {
       if (status === 'authenticated' && session?.user?.accessToken) {
         try {
+          // Try to get a valid token (will refresh if needed)
+          const validToken = await tokenManager.getValidToken();
+          
+          if (!validToken) {
+            await handleSessionTimeout();
+            return;
+          }
+
+          // Test the token with a simple API call
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
             headers: {
-              'Authorization': `Bearer ${session.user.accessToken}`
+              'Authorization': `Bearer ${validToken}`
             }
           });
           
-          if (!response.ok) {
+          if (!response.ok && response.status === 401) {
+            // Token is invalid and refresh failed
             await handleSessionTimeout();
           }
         } catch {
@@ -46,7 +57,8 @@ export default function SessionTimeoutHandler() {
     };
 
     if (status === 'authenticated') {
-      timeoutId = setInterval(checkSession, 5 * 60 * 1000);
+      // Check session every 2 minutes instead of 5
+      timeoutId = setInterval(checkSession, 2 * 60 * 1000);
       
       const handleFocus = () => checkSession();
       window.addEventListener('focus', handleFocus);

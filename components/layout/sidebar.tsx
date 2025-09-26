@@ -27,6 +27,7 @@ import {
   Package,
   CheckCircle,
   Hotel,
+  Car,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
@@ -145,6 +146,12 @@ const getNavigationItems = () => {
       icon: Hotel,
       label: "Accommodation",
       href: "/accommodation",
+      badge: null,
+    },
+    {
+      icon: Car,
+      label: "Transport Management",
+      href: "/transport",
       badge: null,
     },
   ];
@@ -318,6 +325,7 @@ export default function Sidebar({
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
+                item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href
         }))
       }));

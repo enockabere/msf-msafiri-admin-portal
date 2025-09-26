@@ -93,12 +93,13 @@ export default function RoomsView({
       };
       
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
+            'X-Tenant-ID': tenantSlug
           },
           body: JSON.stringify(roomData),
         }

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Plus, Send } from "lucide-react";
+import ParticipantDetailsPanel from "@/components/events/ParticipantDetailsPanel";
 
 interface Participant {
   id: number;
@@ -39,6 +40,7 @@ interface EventParticipantsProps {
 
 export default function EventParticipants({
   eventId,
+  tenantSlug,
   roleFilter,
   allowAdminAdd = false,
   onParticipantsChange,
@@ -53,6 +55,7 @@ export default function EventParticipants({
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [expandedParticipant, setExpandedParticipant] = useState<number | null>(null);
 
   const fetchParticipants = useCallback(async () => {
     try {
@@ -407,130 +410,149 @@ export default function EventParticipants({
 
       <div className="space-y-2 max-h-[60vh] overflow-y-auto border rounded-lg bg-gray-50 p-2">
         {filteredParticipants.map((participant) => (
-          <div
-            key={participant.id}
-            className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-all duration-200"
-          >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
-                {participant.full_name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-gray-900 truncate">
-                    {participant.full_name}
-                  </span>
-                  <Badge
-                    className={`text-xs px-2 py-0.5 ${getStatusColor(
-                      participant.status
-                    )} flex-shrink-0`}
-                  >
-                    {participant.status.replace("_", " ").toUpperCase()}
-                  </Badge>
+          <div key={participant.id} className="space-y-2">
+            <div 
+              className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-all duration-200 cursor-pointer"
+              onClick={() => setExpandedParticipant(
+                expandedParticipant === participant.id ? null : participant.id
+              )}
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                  {participant.full_name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-600">
-                  <Mail className="h-3 w-3 text-red-500 flex-shrink-0" />
-                  <span className="truncate">{participant.email}</span>
-                </div>
-                {participant.status === "selected" && (
-                  <div className="flex items-center gap-2 text-xs mt-1">
-                    {participant.email && participant.email.trim() ? (
-                      participant.invitation_sent ? (
-                        <span className="text-green-600">
-                          ✓ Invitation sent
-                        </span>
-                      ) : (
-                        <span className="text-orange-600">
-                          ⚠ Invitation pending
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-red-600">✗ No email address</span>
-                    )}
-                    {participant.invitation_accepted && (
-                      <span className="text-blue-600">• Accepted</span>
-                    )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-gray-900 truncate">
+                      {participant.full_name}
+                    </span>
+                    <Badge
+                      className={`text-xs px-2 py-0.5 ${getStatusColor(
+                        participant.status
+                      )} flex-shrink-0`}
+                    >
+                      {participant.status.replace("_", " ").toUpperCase()}
+                    </Badge>
                   </div>
-                )}
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <Mail className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    <span className="truncate">{participant.email}</span>
+                  </div>
+                  {participant.status === "selected" && (
+                    <div className="flex items-center gap-2 text-xs mt-1">
+                      {participant.email && participant.email.trim() ? (
+                        participant.invitation_sent ? (
+                          <span className="text-green-600">
+                            ✓ Invitation sent
+                          </span>
+                        ) : (
+                          <span className="text-orange-600">
+                            ⚠ Invitation pending
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-red-600">✗ No email address</span>
+                      )}
+                      {participant.invitation_accepted && (
+                        <span className="text-blue-600">• Accepted</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                <Select
+                  value={participant.status}
+                  onValueChange={(value) =>
+                    handleStatusChange(participant.id, value)
+                  }
+                >
+                  <SelectTrigger className="w-28 h-7 text-xs bg-white border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
+                    <SelectItem
+                      value="registered"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Registered
+                    </SelectItem>
+                    <SelectItem
+                      value="selected"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Selected
+                    </SelectItem>
+                    <SelectItem
+                      value="not_selected"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Not Selected
+                    </SelectItem>
+                    <SelectItem
+                      value="waiting"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Waiting
+                    </SelectItem>
+                    <SelectItem
+                      value="canceled"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Canceled
+                    </SelectItem>
+                    <SelectItem
+                      value="attended"
+                      className="hover:bg-red-50 focus:bg-red-50 text-xs"
+                    >
+                      Attended
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {participant.status === "selected" &&
+                  participant.email &&
+                  participant.email.trim() && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResendInvitation(participant.id);
+                      }}
+                      disabled={resendingId === participant.id}
+                      className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+                    >
+                      {resendingId === participant.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-700 mr-1"></div>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3 w-3 mr-1" />
+                          Resend
+                        </>
+                      )}
+                    </Button>
+                  )}
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Select
-                value={participant.status}
-                onValueChange={(value) =>
-                  handleStatusChange(participant.id, value)
-                }
-              >
-                <SelectTrigger className="w-28 h-7 text-xs bg-white border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-                  <SelectItem
-                    value="registered"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Registered
-                  </SelectItem>
-                  <SelectItem
-                    value="selected"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Selected
-                  </SelectItem>
-                  <SelectItem
-                    value="not_selected"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Not Selected
-                  </SelectItem>
-                  <SelectItem
-                    value="waiting"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Waiting
-                  </SelectItem>
-                  <SelectItem
-                    value="canceled"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Canceled
-                  </SelectItem>
-                  <SelectItem
-                    value="attended"
-                    className="hover:bg-red-50 focus:bg-red-50 text-xs"
-                  >
-                    Attended
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              {participant.status === "selected" &&
-                participant.email &&
-                participant.email.trim() && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleResendInvitation(participant.id)}
-                    disabled={resendingId === participant.id}
-                    className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
-                  >
-                    {resendingId === participant.id ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-700 mr-1"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3 w-3 mr-1" />
-                        Resend
-                      </>
-                    )}
-                  </Button>
-                )}
-            </div>
+            
+            {expandedParticipant === participant.id && (
+              <ParticipantDetailsPanel
+                participantId={participant.id}
+                participantName={participant.full_name}
+                participantEmail={participant.email}
+                eventId={eventId}
+                tenantSlug={tenantSlug}
+                isOpen={true}
+                onToggle={() => setExpandedParticipant(null)}
+              />
+            )}
           </div>
         ))}
 

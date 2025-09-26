@@ -1,4 +1,5 @@
 import { signOut } from "next-auth/react";
+import { tokenManager } from "./token-refresh";
 
 export interface User {
   id: number;
@@ -388,7 +389,8 @@ class ApiClient {
 
     const makeRequest = async (): Promise<T> => {
       const url = getApiUrl(endpoint);
-      const token = this.getToken();
+      // Get a valid token (will refresh if needed)
+      const token = options.skipAuthError ? this.getToken() : await tokenManager.getValidToken() || this.getToken();
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -429,8 +431,19 @@ class ApiClient {
               throw new Error(errorData.detail || "Authentication failed");
             }
 
-            // For authenticated endpoints, this indicates session expiry
-
+            // Try token refresh once before giving up
+            if (!options.skipAuthError) {
+              try {
+                const newToken = await tokenManager.refreshToken();
+                if (newToken) {
+                  // Retry the request with new token
+                  this.setToken(newToken);
+                  return await this.request(endpoint, { ...options, skipAuthError: true });
+                }
+              } catch (refreshError) {
+                console.error("Token refresh failed:", refreshError);
+              }
+            }
 
             // Set flag to prevent concurrent session expiry handling
             this.isHandlingSessionExpiry = true;
@@ -497,7 +510,21 @@ class ApiClient {
         return await retryRequest(makeRequest, 1, 1000); // Reduced retries for authenticated requests
       }
     } catch (error) {
-
+      // If it's a token-related error and we haven't tried refreshing yet
+      if (error instanceof Error && 
+          error.message.includes("Session expired") && 
+          !options.skipAuthError &&
+          !endpoint.includes("/auth/")) {
+        try {
+          const newToken = await tokenManager.refreshToken();
+          if (newToken) {
+            this.setToken(newToken);
+            return await this.request(endpoint, { ...options, skipAuthError: true });
+          }
+        } catch (refreshError) {
+          console.error("Final token refresh attempt failed:", refreshError);
+        }
+      }
       throw error;
     }
   }

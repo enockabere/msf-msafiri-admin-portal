@@ -163,9 +163,12 @@ export default function AccommodationPage() {
     try {
       const roomPromises = guesthouseIds.map(id => 
         fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${id}/rooms?tenant_context=${tenantSlug}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${id}/rooms`,
           {
-            headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+            headers: { 
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              'X-Tenant-ID': tenantSlug
+            },
           }
         ).then(res => res.ok ? res.json() : [])
       );
@@ -179,9 +182,12 @@ export default function AccommodationPage() {
           if (room.current_occupants > 0) {
             try {
               const occupantResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms/${room.id}/occupants?tenant_context=${tenantSlug}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms/${room.id}/occupants`,
                 {
-                  headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+                  headers: { 
+                    Authorization: `Bearer ${apiClient.getToken()}`,
+                    'X-Tenant-ID': tenantSlug
+                  },
                 }
               );
               if (occupantResponse.ok) {
@@ -211,9 +217,12 @@ export default function AccommodationPage() {
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations?tenant_context=${tenantSlug}&event_id=${eventId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations?event_id=${eventId}`,
         {
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
       if (response.ok) {
@@ -238,17 +247,29 @@ export default function AccommodationPage() {
     try {
       const token = apiClient.getToken();
       const [ghResponse, vendorResponse, allocationsResponse, eventsResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }),
       ]);
 
@@ -278,8 +299,11 @@ export default function AccommodationPage() {
       // Fetch all rooms for each guesthouse to calculate real stats
       if (ghData.length > 0) {
         const allRoomsPromises = ghData.map((gh) => 
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${gh.id}/rooms?tenant_context=${tenantSlug}`, {
-            headers: { Authorization: `Bearer ${token}` },
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${gh.id}/rooms`, {
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'X-Tenant-ID': tenantSlug
+            },
           }).then(res => res.ok ? res.json() : [])
         );
         
@@ -328,9 +352,12 @@ export default function AccommodationPage() {
     // Fetch rooms for this specific guesthouse
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouse.id}/rooms?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouse.id}/rooms`,
         {
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
       if (response.ok) {
@@ -360,9 +387,12 @@ export default function AccommodationPage() {
   const fetchRooms = async (guesthouseId: number) => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouseId}/rooms?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouseId}/rooms`,
         {
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
       if (response.ok) {
@@ -382,9 +412,12 @@ export default function AccommodationPage() {
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants`,
         {
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
       if (response.ok) {
@@ -394,9 +427,12 @@ export default function AccommodationPage() {
           participantData.map(async (participant: Participant) => {
             try {
               const userResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/by-email/${participant.email}?tenant_context=${tenantSlug}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/by-email/${participant.email}`,
                 {
-                  headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+                  headers: { 
+                    Authorization: `Bearer ${apiClient.getToken()}`,
+                    'X-Tenant-ID': tenantSlug
+                  },
                 }
               );
               if (userResponse.ok) {
@@ -580,12 +616,13 @@ export default function AccommodationPage() {
         
         for (const allocation of allocations) {
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/room-allocations?tenant_context=${tenantSlug}`,
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/room-allocations`,
             {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${apiClient.getToken()}`,
                 "Content-Type": "application/json",
+                'X-Tenant-ID': tenantSlug
               },
               body: JSON.stringify(allocation),
             }
@@ -616,12 +653,13 @@ export default function AccommodationPage() {
             };
             
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations?tenant_context=${tenantSlug}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations`,
               {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${apiClient.getToken()}`,
                   "Content-Type": "application/json",
+                  'X-Tenant-ID': tenantSlug
                 },
                 body: JSON.stringify(payload),
               }
@@ -635,7 +673,12 @@ export default function AccommodationPage() {
         }
       }
 
-      fetchData();
+      // Refresh data and update allocated participants list
+      await fetchData();
+      if (allocationForm.event_id) {
+        await fetchAllocatedParticipants(allocationForm.event_id);
+      }
+      
       setAllocationModalOpen(false);
       setSelectedRooms([]);
       setAllocationForm({
@@ -662,15 +705,22 @@ export default function AccommodationPage() {
     setDeleting(id);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
 
       if (response.ok) {
-        fetchData();
+        await fetchData();
+        // Refresh allocated participants for current event if modal is open
+        if (allocationForm.event_id) {
+          await fetchAllocatedParticipants(allocationForm.event_id);
+        }
         toast({ title: "Success", description: "Allocation deleted successfully" });
       } else {
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
@@ -687,10 +737,13 @@ export default function AccommodationPage() {
     setCheckingIn(id);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/check-in?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/check-in`,
         {
           method: "PATCH",
-          headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
         }
       );
 
@@ -713,10 +766,13 @@ export default function AccommodationPage() {
     try {
       const promises = ids.map(id => 
         fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/check-in?tenant_context=${tenantSlug}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/check-in`,
           {
             method: "PATCH",
-            headers: { Authorization: `Bearer ${apiClient.getToken()}` },
+            headers: { 
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              'X-Tenant-ID': tenantSlug
+            },
           }
         )
       );
@@ -906,12 +962,13 @@ export default function AccommodationPage() {
 
           events={events}
           participants={participants}
-          onEventChange={(eventId) => {
+          onEventChange={async (eventId) => {
             setAllocationForm({ ...allocationForm, event_id: eventId, participant_ids: [] });
             setSelectedParticipants([]);
             setSelectedGuesthouses([]);
             setSelectedRooms([]);
-            fetchParticipants(eventId);
+            await fetchParticipants(eventId);
+            await fetchAllocatedParticipants(eventId);
           }}
           selectedParticipants={selectedParticipants}
           onParticipantToggle={(participantId) => {

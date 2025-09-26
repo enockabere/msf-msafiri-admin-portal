@@ -21,6 +21,11 @@ import {
   RotateCcw,
   Send,
   Trash2,
+  ChevronDown,
+  ChevronRight,
+  Mail,
+  Laptop,
+  Wrench,
 } from "lucide-react";
 
 interface Allocation {
@@ -67,41 +72,58 @@ export default function EventAllocations({
   const [editData, setEditData] = useState({
     items: [] as {
       inventory_item_id: string;
-      quantity_per_participant: string;
+      quantity_per_event: string;
     }[],
     drink_vouchers_per_participant: "",
     notes: "",
   });
-  const [newAllocation, setNewAllocation] = useState({
-    items: [{ inventory_item_id: "", quantity_per_participant: "" }] as {
+  const [allocationType, setAllocationType] = useState<"items" | "vouchers">("items");
+  const [newItemAllocation, setNewItemAllocation] = useState({
+    items: [{ inventory_item_id: "", quantity_per_event: "" }] as {
       inventory_item_id: string;
-      quantity_per_participant: string;
+      quantity_per_event: string;
     }[],
+    notes: "",
+  });
+  const [newVoucherAllocation, setNewVoucherAllocation] = useState({
     drink_vouchers_per_participant: "",
     notes: "",
   });
-  const [savedItems, setSavedItems] = useState<
-    { inventory_item_id: string; quantity_per_participant: string }[]
-  >([]);
-  const [savedVouchers, setSavedVouchers] = useState("");
-  const [itemsSaved, setItemsSaved] = useState(false);
-  const [vouchersSaved, setVouchersSaved] = useState(false);
+  const [expandedAllocations, setExpandedAllocations] = useState<number[]>([]);
+  const [voucherStats, setVoucherStats] = useState<{
+    total_participants: number;
+    total_allocated_vouchers: number;
+    total_redeemed_vouchers: number;
+    over_allocated_participants: number;
+  } | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [requestEmail, setRequestEmail] = useState("");
+  const [sendingRequest, setSendingRequest] = useState(false);
+
 
   const fetchAllocations = useCallback(async () => {
     try {
+      // Get tenant ID from slug first
       const tenantResponse = await fetch(
-        `http://localhost:8000/api/v1/tenants/slug/${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
+      
+      if (!tenantResponse.ok) {
+        console.error("Failed to get tenant ID");
+        return;
+      }
+      
       const tenantData = await tenantResponse.json();
       const tenantId = tenantData.id;
 
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/event/${eventId}?tenant_id=${tenantId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/event/${eventId}?tenant_id=${tenantId}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -111,7 +133,6 @@ export default function EventAllocations({
 
       if (response.ok) {
         const data = await response.json();
-
         setAllocations(data);
       }
     } catch (error) {
@@ -121,23 +142,12 @@ export default function EventAllocations({
 
   const fetchInventoryItems = useCallback(async () => {
     try {
-      // Get tenant ID from slug
-      const tenantResponse = await fetch(
-        `http://localhost:8000/api/v1/tenants/slug/${tenantSlug}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      const tenantData = await tenantResponse.json();
-      const tenantId = tenantData.id;
-
       const response = await fetch(
-        `http://localhost:8000/api/v1/inventory/?tenant_id=${tenantId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory/`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            'X-Tenant-ID': tenantSlug
           },
         }
       );
@@ -157,24 +167,62 @@ export default function EventAllocations({
   }, [fetchAllocations, fetchInventoryItems]);
 
   const addInventoryItem = () => {
-    setNewAllocation((prev) => ({
+    setNewItemAllocation((prev) => ({
       ...prev,
       items: [
         ...prev.items,
-        { inventory_item_id: "", quantity_per_participant: "" },
+        { inventory_item_id: "", quantity_per_event: "" },
       ],
     }));
   };
 
+  const fetchVoucherStats = async (eventId: number) => {
+    try {
+      // Get tenant ID from slug first
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      if (!tenantResponse.ok) {
+        console.error("Failed to get tenant ID");
+        return;
+      }
+      
+      const tenantData = await tenantResponse.json();
+      const tenantId = tenantData.id;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/voucher-stats/${eventId}?tenant_id=${tenantId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const stats = await response.json();
+        setVoucherStats(stats);
+      }
+    } catch (error) {
+      console.error("Failed to fetch voucher stats:", error);
+    }
+  };
+
   const removeInventoryItem = (index: number) => {
-    setNewAllocation((prev) => ({
+    setNewItemAllocation((prev) => ({
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
   };
 
   const updateInventoryItem = (index: number, field: string, value: string) => {
-    setNewAllocation((prev) => ({
+    setNewItemAllocation((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
         i === index ? { ...item, [field]: value } : item
@@ -182,71 +230,65 @@ export default function EventAllocations({
     }));
   };
 
-  const handleSaveItems = async () => {
-    const validItems = newAllocation.items.filter(
-      (item) => item.inventory_item_id && item.quantity_per_participant
-    );
 
-    if (validItems.length === 0) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Please add at least one item.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    setSavedItems(validItems);
-    setItemsSaved(true);
 
-    const { toast } = await import("@/hooks/use-toast");
-    toast({
-      title: "Items Saved!",
-      description: `${validItems.length} item(s) saved successfully.`,
-    });
-  };
-
-  const handleSaveVouchers = async () => {
-    setSavedVouchers(newAllocation.drink_vouchers_per_participant);
-    setVouchersSaved(true);
-
-    const { toast } = await import("@/hooks/use-toast");
-    toast({
-      title: "Vouchers Saved!",
-      description: "Drink vouchers saved successfully.",
-    });
-  };
 
   const handleSubmitAllocation = async (asDraft = false) => {
-    if (!itemsSaved) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Please save items first.",
-        variant: "destructive",
-      });
-      return;
+    // Validate based on allocation type
+    if (allocationType === "items") {
+      const validItems = newItemAllocation.items.filter(
+        (item) => item.inventory_item_id && item.quantity_per_event
+      );
+      if (validItems.length === 0) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Please add at least one item.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else if (allocationType === "vouchers") {
+      if (!newVoucherAllocation.drink_vouchers_per_participant) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Please enter number of vouchers per participant.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      // Get tenant ID from slug
+      // Get tenant ID from slug first
       const tenantResponse = await fetch(
-        `http://localhost:8000/api/v1/tenants/slug/${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
+      
+      if (!tenantResponse.ok) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Failed to get tenant information.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const tenantData = await tenantResponse.json();
       const tenantId = tenantData.id;
+      const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/?tenant_id=${tenantId}&created_by=${
-          localStorage.getItem("userEmail") || "admin"
-        }`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/?tenant_id=${tenantId}&created_by=${encodeURIComponent(createdBy)}`,
         {
           method: "POST",
           headers: {
@@ -255,36 +297,41 @@ export default function EventAllocations({
           },
           body: JSON.stringify({
             event_id: eventId,
-            items: savedItems.map((item) => ({
-              inventory_item_id: parseInt(item.inventory_item_id),
-              quantity_per_participant: parseInt(item.quantity_per_participant),
-            })),
-            drink_vouchers_per_participant: parseInt(savedVouchers) || 0,
-            notes: newAllocation.notes,
-            status: asDraft ? "open" : "pending",
+            items: allocationType === "items" ? newItemAllocation.items
+              .filter(item => item.inventory_item_id && item.quantity_per_event)
+              .map((item) => ({
+                inventory_item_id: parseInt(item.inventory_item_id),
+                quantity_per_event: parseInt(item.quantity_per_event),
+              })) : [],
+            drink_vouchers_per_participant: allocationType === "vouchers" 
+              ? parseInt(newVoucherAllocation.drink_vouchers_per_participant) || 0 
+              : 0,
+            notes: allocationType === "items" ? newItemAllocation.notes : newVoucherAllocation.notes,
+            status: asDraft ? "open" : "pending"
           }),
         }
       );
 
       if (response.ok) {
         await fetchAllocations();
-        setNewAllocation({
-          items: [{ inventory_item_id: "", quantity_per_participant: "" }],
-          drink_vouchers_per_participant: "",
-          notes: "",
-        });
-        setSavedItems([]);
-        setSavedVouchers("");
-        setItemsSaved(false);
-        setVouchersSaved(false);
-        setShowAddForm(false);
+        
+        // Clear only the current form type, keep the form open
+        if (allocationType === "items") {
+          setNewItemAllocation({
+            items: [{ inventory_item_id: "", quantity_per_event: "" }],
+            notes: "",
+          });
+        } else {
+          setNewVoucherAllocation({
+            drink_vouchers_per_participant: "",
+            notes: "",
+          });
+        }
 
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "✅ Success!",
-          description: `Allocation ${
-            asDraft ? "saved" : "submitted for approval"
-          } successfully.`,
+          description: `${allocationType === "items" ? "Items" : "Vouchers"} allocation saved successfully. You can now switch tabs to add ${allocationType === "items" ? "vouchers" : "items"}.`,
         });
       } else {
         const errorData = await response.json();
@@ -310,7 +357,7 @@ export default function EventAllocations({
   const handleCancelAllocation = async (allocationId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/${allocationId}/cancel`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/${allocationId}/cancel`,
         {
           method: "PUT",
           headers: {
@@ -347,12 +394,12 @@ export default function EventAllocations({
   const handleEditAllocation = (allocation: Allocation) => {
     setEditingId(allocation.id);
     setEditData({
-      items: allocation.items?.map((item: { inventory_item_id: number; quantity_per_participant: number }) => ({
+      items: allocation.items?.map((item: { inventory_item_id: number; quantity_per_event: number }) => ({
         inventory_item_id: item.inventory_item_id.toString(),
-        quantity_per_participant: item.quantity_per_participant.toString(),
+        quantity_per_event: item.quantity_per_event.toString(),
       })) || [{ 
         inventory_item_id: allocation.inventory_item_id.toString(), 
-        quantity_per_participant: allocation.quantity_per_participant.toString() 
+        quantity_per_event: allocation.quantity_per_participant.toString() 
       }],
       drink_vouchers_per_participant:
         allocation.drink_vouchers_per_participant?.toString() || "0",
@@ -364,11 +411,11 @@ export default function EventAllocations({
     setLoading(true);
     try {
       const validItems = editData.items.filter(
-        (item) => item.inventory_item_id && item.quantity_per_participant
+        (item) => item.inventory_item_id && item.quantity_per_event
       );
 
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/${allocationId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/${allocationId}`,
         {
           method: "PUT",
           headers: {
@@ -378,7 +425,7 @@ export default function EventAllocations({
           body: JSON.stringify({
             items: validItems.map((item) => ({
               inventory_item_id: parseInt(item.inventory_item_id),
-              quantity_per_participant: parseInt(item.quantity_per_participant),
+              quantity_per_event: parseInt(item.quantity_per_event),
             })),
             drink_vouchers_per_participant:
               parseInt(editData.drink_vouchers_per_participant) || 0,
@@ -420,7 +467,7 @@ export default function EventAllocations({
     try {
       // Get tenant ID from slug
       const tenantResponse = await fetch(
-        `http://localhost:8000/api/v1/tenants/slug/${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -431,7 +478,7 @@ export default function EventAllocations({
       const tenantId = tenantData.id;
 
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/${allocationId}/resubmit?tenant_id=${tenantId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/${allocationId}/resubmit?tenant_id=${tenantId}`,
         {
           method: "PUT",
           headers: {
@@ -472,7 +519,7 @@ export default function EventAllocations({
   const handleDeleteAllocation = async (allocationId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/allocations/${allocationId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/${allocationId}`,
         {
           method: "DELETE",
           headers: {
@@ -536,6 +583,94 @@ export default function EventAllocations({
     }
   };
 
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "ict_equipment":
+        return <Laptop className="h-5 w-5" />;
+      case "equipment":
+        return <Wrench className="h-5 w-5" />;
+      default:
+        return <Package className="h-5 w-5" />;
+    }
+  };
+
+  const groupAllocationsByCategory = () => {
+    const grouped: { [key: string]: Allocation[] } = {};
+    
+    allocations.forEach(allocation => {
+      const category = allocation.inventory_item_category || "stationary";
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(allocation);
+    });
+    
+    return grouped;
+  };
+
+  const handleSendRequest = async () => {
+    if (!requestEmail || !selectedCategory) return;
+    
+    setSendingRequest(true);
+    try {
+      // Get tenant ID from slug first
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      
+      if (!tenantResponse.ok) {
+        throw new Error("Failed to get tenant information");
+      }
+      
+      const tenantData = await tenantResponse.json();
+      const tenantId = tenantData.id;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/request-items`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            event_id: eventId,
+            category: selectedCategory,
+            email: requestEmail,
+            tenant_id: tenantId
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "✅ Request Sent!",
+          description: `Item request for ${selectedCategory} category sent to ${requestEmail}`,
+        });
+        setShowEmailModal(false);
+        setRequestEmail("");
+        setSelectedCategory("");
+      } else {
+        throw new Error("Failed to send request");
+      }
+    } catch {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to send item request",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-6">
@@ -556,209 +691,216 @@ export default function EventAllocations({
 
       {showAddForm && (
         <div className="bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-xl p-6 space-y-4 mb-6 shadow-sm">
-          <div className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-red-600" />
-            <h4 className="text-lg font-semibold text-gray-900">
-              Add New Allocation
-            </h4>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                Inventory Items *
-              </label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-red-600" />
+              <h4 className="text-lg font-semibold text-gray-900">
+                Add New Allocation
+              </h4>
+            </div>
+            <div className="flex gap-2">
               <Button
-                type="button"
-                variant="outline"
+                variant={allocationType === "items" ? "default" : "outline"}
                 size="sm"
-                onClick={addInventoryItem}
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => setAllocationType("items")}
+                className={allocationType === "items" ? "bg-red-600 text-white" : ""}
               >
-                <Plus className="w-4 h-4 mr-2" /> Add Item
+                Items
+              </Button>
+              <Button
+                variant={allocationType === "vouchers" ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setAllocationType("vouchers");
+                  fetchVoucherStats(eventId);
+                }}
+                className={allocationType === "vouchers" ? "bg-red-600 text-white" : ""}
+              >
+                Drink Vouchers
               </Button>
             </div>
-
-            {newAllocation.items.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 border rounded-md"
-              >
-                <div className="space-y-2">
-                  <Select
-                    value={item.inventory_item_id}
-                    onValueChange={(value) =>
-                      updateInventoryItem(index, "inventory_item_id", value)
-                    }
-                    disabled={itemsSaved}
-                  >
-                    <SelectTrigger className="border-gray-300 focus:border-red-500 focus:ring-red-500">
-                      <SelectValue placeholder="Select inventory item" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-                      {inventoryItems.map((invItem) => (
-                        <SelectItem
-                          key={invItem.id}
-                          value={invItem.id.toString()}
-                          className="hover:bg-red-50 focus:bg-red-50"
-                        >
-                          {invItem.name} ({invItem.quantity} available)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={item.quantity_per_participant}
-                    onChange={(e) =>
-                      updateInventoryItem(
-                        index,
-                        "quantity_per_participant",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Quantity per participant"
-                    className="border-gray-300 focus:border-red-500 focus:ring-red-500"
-                    disabled={itemsSaved}
-                  />
-                  {newAllocation.items.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeInventoryItem(index)}
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                      disabled={itemsSaved}
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <div className="flex gap-2">
-              {!itemsSaved && (
-                <Button
-                  onClick={handleSaveItems}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Save Items
-                </Button>
-              )}
-
-              {itemsSaved && (
-                <>
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-md flex-1">
-                    <p className="text-green-800 font-medium">
-                      ✓ {savedItems.length} item(s) saved
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => setItemsSaved(false)}
-                    variant="outline"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                  >
-                    Edit Items
-                  </Button>
-                </>
-              )}
-            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Drink Vouchers per Participant
-              </label>
-              <div className="flex gap-2">
+          {allocationType === "items" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-700">
+                  Inventory Items *
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addInventoryItem}
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Add Item
+                </Button>
+              </div>
+
+              {newItemAllocation.items.map((item, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 border rounded-md"
+                >
+                  <div className="space-y-2">
+                    <Select
+                      value={item.inventory_item_id}
+                      onValueChange={(value) =>
+                        updateInventoryItem(index, "inventory_item_id", value)
+                      }
+                    >
+                      <SelectTrigger className="border-gray-300 focus:border-red-500 focus:ring-red-500">
+                        <SelectValue placeholder="Select inventory item" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
+                        {inventoryItems.map((invItem) => (
+                          <SelectItem
+                            key={invItem.id}
+                            value={invItem.id.toString()}
+                            className="hover:bg-red-50 focus:bg-red-50"
+                          >
+                            {invItem.name} ({invItem.quantity} available)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={item.quantity_per_event}
+                      onChange={(e) =>
+                        updateInventoryItem(
+                          index,
+                          "quantity_per_event",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Total quantity for event"
+                      className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+                    />
+                    {newItemAllocation.items.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeInventoryItem(index)}
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Notes (Optional)
+                </label>
+                <Input
+                  value={newItemAllocation.notes}
+                  onChange={(e) =>
+                    setNewItemAllocation({ ...newItemAllocation, notes: e.target.value })
+                  }
+                  placeholder="Additional notes"
+                  className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {allocationType === "vouchers" && (
+            <div className="space-y-4">
+              {voucherStats && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h5 className="font-medium text-blue-900 mb-2">Voucher Statistics</h5>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-700">Total Participants:</span>
+                      <div className="font-semibold text-blue-900">{voucherStats.total_participants}</div>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Allocated Vouchers:</span>
+                      <div className="font-semibold text-blue-900">{voucherStats.total_allocated_vouchers}</div>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Redeemed Vouchers:</span>
+                      <div className="font-semibold text-blue-900">{voucherStats.total_redeemed_vouchers}</div>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Over-allocated:</span>
+                      <div className="font-semibold text-blue-900">{voucherStats.over_allocated_participants}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Drink Vouchers per Participant *
+                </label>
                 <Input
                   type="number"
                   min="0"
-                  value={newAllocation.drink_vouchers_per_participant}
+                  value={newVoucherAllocation.drink_vouchers_per_participant}
                   onChange={(e) =>
-                    setNewAllocation({
-                      ...newAllocation,
+                    setNewVoucherAllocation({
+                      ...newVoucherAllocation,
                       drink_vouchers_per_participant: e.target.value,
                     })
                   }
                   placeholder="Enter number of vouchers"
                   className="border-gray-300 focus:border-red-500 focus:ring-red-500"
-                  disabled={vouchersSaved}
                 />
-                {!vouchersSaved && (
-                  <Button
-                    onClick={handleSaveVouchers}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Save
-                  </Button>
-                )}
               </div>
-              {vouchersSaved && (
-                <div className="p-2 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-green-800 text-sm">
-                    ✓ Vouchers saved: {savedVouchers || "0"}
-                  </p>
-                </div>
-              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Notes (Optional)
+                </label>
+                <Input
+                  value={newVoucherAllocation.notes}
+                  onChange={(e) =>
+                    setNewVoucherAllocation({ ...newVoucherAllocation, notes: e.target.value })
+                  }
+                  placeholder="Additional notes"
+                  className="border-gray-300 focus:border-red-500 focus:ring-red-500"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Notes (Optional)
-              </label>
-              <Input
-                value={newAllocation.notes}
-                onChange={(e) =>
-                  setNewAllocation({ ...newAllocation, notes: e.target.value })
-                }
-                placeholder="Additional notes"
-                className="border-gray-300 focus:border-red-500 focus:ring-red-500"
-              />
-            </div>
-          </div>
+          )}
           <div className="flex gap-3 pt-2">
             <Button
-              onClick={() => handleSubmitAllocation(false)}
+              onClick={() => handleSubmitAllocation(true)}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-              disabled={!itemsSaved || loading}
+              disabled={loading}
             >
               {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Submitting...
+                  Saving...
                 </>
               ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit for Approval
-                </>
+                "Save"
               )}
-            </Button>
-            <Button
-              onClick={() => handleSubmitAllocation(true)}
-              variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-50 px-6 py-2 rounded-lg transition-all duration-200"
-              disabled={!itemsSaved || loading}
-            >
-              Save
             </Button>
             <Button
               variant="outline"
               onClick={() => {
                 setShowAddForm(false);
-                setNewAllocation({
+                setNewItemAllocation({
                   items: [
-                    { inventory_item_id: "", quantity_per_participant: "" },
+                    { inventory_item_id: "", quantity_per_event: "" },
                   ],
+                  notes: "",
+                });
+                setNewVoucherAllocation({
                   drink_vouchers_per_participant: "",
                   notes: "",
                 });
-                setSavedItems([]);
-                setSavedVouchers("");
-                setItemsSaved(false);
-                setVouchersSaved(false);
+                setVoucherStats(null);
               }}
               className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg transition-all duration-200"
             >
@@ -768,8 +910,86 @@ export default function EventAllocations({
         </div>
       )}
 
-      <div className="space-y-3">
-        {allocations.map((allocation) => (
+      {showEmailModal && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">Request Items - {selectedCategory}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address *
+                </label>
+                <Input
+                  type="email"
+                  value={requestEmail}
+                  onChange={(e) => setRequestEmail(e.target.value)}
+                  placeholder="Enter email address"
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleSendRequest}
+                  disabled={!requestEmail || sendingRequest}
+                  className="bg-red-600 hover:bg-red-700 text-white flex-1"
+                >
+                  {sendingRequest ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send Request
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setRequestEmail("");
+                    setSelectedCategory("");
+                  }}
+                  disabled={sendingRequest}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+      )}
+
+      <div className="space-y-6">
+        {Object.entries(groupAllocationsByCategory()).map(([category, categoryAllocations]) => (
+          <div key={category} className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                  {getCategoryIcon(category)}
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900">
+                    {category === "ict_equipment" ? "ICT Equipment/Items" : 
+                     category === "equipment" ? "Equipment" : "Stationary"}
+                  </h4>
+                  <p className="text-sm text-gray-600">{categoryAllocations.length} allocations</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  setSelectedCategory(category);
+                  setShowEmailModal(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Request
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {categoryAllocations.map((allocation) => (
           <div
             key={allocation.id}
             className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-all duration-200"
@@ -820,14 +1040,14 @@ export default function EventAllocations({
                           <Input
                             type="number"
                             min="1"
-                            value={item.quantity_per_participant}
+                            value={item.quantity_per_event}
                             onChange={(e) => {
                               const newItems = [...editData.items];
-                              newItems[index].quantity_per_participant =
+                              newItems[index].quantity_per_event =
                                 e.target.value;
                               setEditData({ ...editData, items: newItems });
                             }}
-                            placeholder="Quantity"
+                            placeholder="Total quantity"
                           />
                           {editData.items.length > 1 && (
                             <Button
@@ -858,7 +1078,7 @@ export default function EventAllocations({
                             ...editData.items,
                             {
                               inventory_item_id: "",
-                              quantity_per_participant: "",
+                              quantity_per_event: "",
                             },
                           ],
                         });
@@ -954,24 +1174,64 @@ export default function EventAllocations({
                         {allocation.status.toUpperCase()}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Items:</span>{" "}
-                        {allocation.quantity_per_participant} per person
-                      </div>
-                      <div>
-                        <span className="font-medium">Drinks:</span>{" "}
-                        {allocation.drink_vouchers_per_participant} vouchers
-                      </div>
-                      <div>
-                        <span className="font-medium">Available:</span>{" "}
-                        {allocation.available_quantity}
-                      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                      {allocation.drink_vouchers_per_participant > 0 && (
+                        <div>
+                          <span className="font-medium">Drinks:</span>{" "}
+                          {allocation.drink_vouchers_per_participant} vouchers per person
+                        </div>
+                      )}
+                      {allocation.items && allocation.items.length > 0 && (
+                        <div>
+                          <span className="font-medium">Items:</span>{" "}
+                          {allocation.items.length} item types
+                        </div>
+                      )}
                       <div>
                         <span className="font-medium">Requested by:</span>{" "}
                         {allocation.created_by}
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const isExpanded = expandedAllocations.includes(allocation.id);
+                        if (isExpanded) {
+                          setExpandedAllocations(prev => prev.filter(id => id !== allocation.id));
+                        } else {
+                          setExpandedAllocations(prev => [...prev, allocation.id]);
+                        }
+                      }}
+                      className="mt-2 text-blue-600 hover:text-blue-800"
+                    >
+                      {expandedAllocations.includes(allocation.id) ? (
+                        <><ChevronDown className="h-4 w-4 mr-1" />Hide Items</>
+                      ) : (
+                        <><ChevronRight className="h-4 w-4 mr-1" />Show Items</>
+                      )}
+                    </Button>
+                    {expandedAllocations.includes(allocation.id) && (
+                      <div className="mt-3 space-y-2 bg-gray-50 p-3 rounded-lg">
+                        {allocation.items?.map((item: {
+                        inventory_item_name: string;
+                        quantity_per_event?: number;
+                        quantity_per_participant?: number;
+                        available_quantity: number;
+                      }, index: number) => (
+                          <div key={index} className="flex justify-between items-center text-sm">
+                            <span className="font-medium">{item.inventory_item_name}</span>
+                            <div className="text-right">
+                              <span className="text-gray-600">Total: {item.quantity_per_event || item.quantity_per_participant}</span>
+                              <br />
+                              <span className="text-xs text-gray-500">Available: {item.available_quantity}</span>
+                            </div>
+                          </div>
+                        )) || (
+                          <div className="text-sm text-gray-500">No items allocated</div>
+                        )}
+                      </div>
+                    )}
                     {allocation.notes && (
                       <div className="text-sm text-gray-700 mt-2 bg-gray-50 p-2 rounded">
                         {allocation.notes}
@@ -1023,20 +1283,20 @@ export default function EventAllocations({
                       )}
                     </>
                   )}
-                  {(allocation.status === "open" ||
-                    allocation.status === "draft") && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteAllocation(allocation.id)}
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteAllocation(allocation.id)}
+                    className="border-red-300 text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}
+          </div>
+              ))}
+            </div>
           </div>
         ))}
 

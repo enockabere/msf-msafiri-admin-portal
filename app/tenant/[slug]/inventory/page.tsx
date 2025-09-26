@@ -201,6 +201,7 @@ export default function InventoryPage() {
               <SelectItem value="all" className="hover:bg-red-50 focus:bg-red-50">All Categories</SelectItem>
               <SelectItem value="stationary" className="hover:bg-red-50 focus:bg-red-50">Stationary</SelectItem>
               <SelectItem value="equipment" className="hover:bg-red-50 focus:bg-red-50">Equipment</SelectItem>
+              <SelectItem value="ict_equipment" className="hover:bg-red-50 focus:bg-red-50">ICT Equipment/Items</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -239,6 +240,7 @@ export default function InventoryPage() {
                       <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
                         <SelectItem value="stationary" className="hover:bg-red-50 focus:bg-red-50">Stationary</SelectItem>
                         <SelectItem value="equipment" className="hover:bg-red-50 focus:bg-red-50">Equipment</SelectItem>
+                        <SelectItem value="ict_equipment" className="hover:bg-red-50 focus:bg-red-50">ICT Equipment/Items</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

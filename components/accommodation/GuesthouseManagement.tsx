@@ -48,12 +48,13 @@ export default function GuesthouseManagement({
     setSubmitting(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses?tenant_context=${tenantSlug}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
+            'X-Tenant-ID': tenantSlug
           },
           body: JSON.stringify(guesthouseForm),
         }
