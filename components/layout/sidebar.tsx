@@ -25,14 +25,16 @@ import {
   PanelLeftOpen,
   PanelLeftClose,
   Package,
-  CheckCircle,
+
   Hotel,
   Car,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useAllocations } from "@/hooks/useAllocations";
+import { useChatUnreadCount } from "@/hooks/useChatUnreadCount";
+// import { useWebSocketNotifications } from "@/hooks/useWebSocketNotifications";
+
 import { useEffect, useState } from "react";
 
 interface SidebarProps {
@@ -136,12 +138,7 @@ const getNavigationItems = () => {
       href: "/security-briefings",
       badge: null,
     },
-    {
-      icon: CheckCircle,
-      label: "Allocation Approvals",
-      href: "/allocation-approvals",
-      badge: "allocations",
-    },
+
     {
       icon: Hotel,
       label: "Accommodation",
@@ -212,9 +209,8 @@ export default function Sidebar({
     refetchUser,
   } = useUserData();
 
-  // Use real notifications and allocations
+  // Use real notifications
   const { stats } = useNotifications();
-  const { pendingCount } = useAllocations();
 
   // Fetch user roles
   useEffect(() => {
@@ -284,14 +280,18 @@ export default function Sidebar({
     return date.toLocaleDateString();
   };
 
-  const getBadgeCount = (badgeType: string | null) => {
-    if (!badgeType) return null;
+  const getBadgeCount = (badgeType: string | null, itemHref: string) => {
+    if (!badgeType) {
+      // Special case for chat - show unread count even without badge type
+      if (itemHref.includes('/chat')) {
+        return unreadChatCount > 0 ? unreadChatCount : null;
+      }
+      return null;
+    }
 
     switch (badgeType) {
       case "notifications":
         return stats?.unread || 0;
-      case "allocations":
-        return pendingCount || 0;
       case "dynamic":
         return 0;
       default:
@@ -304,6 +304,12 @@ export default function Sidebar({
   const isTenantPath = pathname?.startsWith('/tenant/');
   const tenantSlugMatch = pathname?.match(/\/tenant\/([^/]+)/);
   const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : null;
+  
+  // Get chat unread count
+  const { unreadCount: unreadChatCount } = useChatUnreadCount({ 
+    tenantSlug: tenantSlug || 'default', 
+    enabled: !!tenantSlug 
+  });
   
   // userRoles is now fetched from the API
   
@@ -321,7 +327,7 @@ export default function Sidebar({
                 item.href === '/events' ? `/tenant/${tenantSlug}/events` :
                 item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
                 item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
-                item.href === '/allocation-approvals' ? `/tenant/${tenantSlug}/allocation-approvals` :
+
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
@@ -554,7 +560,7 @@ export default function Sidebar({
               <div className="space-y-1 px-2 lg:px-3">
                 {section.items.map((item, index) => {
                   const isActive = pathname === item.href;
-                  const badgeCount = getBadgeCount(item.badge);
+                  const badgeCount = getBadgeCount(item.badge, item.href);
 
                   const navButton = (
                     <button

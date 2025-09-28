@@ -143,11 +143,13 @@ export default function GuesthouseManagement({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description (Optional)</Label>
+            <Label htmlFor="description" className="text-sm font-medium text-gray-700">Facilities Description</Label>
             <Textarea
               id="description"
+              placeholder="Describe the facilities available in this guesthouse (e.g., WiFi, parking, dining, etc.)"
               value={guesthouseForm.description}
               onChange={(e) => setGuesthouseForm({ ...guesthouseForm, description: e.target.value })}
+              required
             />
           </div>
           <div className="flex justify-end space-x-3 pt-4">

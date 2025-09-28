@@ -100,13 +100,14 @@ export interface UserProfileUpdate {
   phone_number?: string | null;
   department?: string | null;
   job_title?: string | null;
-  date_of_birth?: string | null;
+  date_of_birth?: string;
   gender?: string | null;
   nationality?: string | null;
   passport_number?: string | null;
   passport_issue_date?: string | null;
   passport_expiry_date?: string | null;
   whatsapp_number?: string | null;
+  email_work?: string | null;
   email_personal?: string | null;
 }
 

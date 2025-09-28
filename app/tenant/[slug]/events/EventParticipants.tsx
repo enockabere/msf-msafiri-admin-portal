@@ -124,7 +124,7 @@ export default function EventParticipants({
       );
 
       if (response.ok) {
-        await fetchParticipants();
+        fetchParticipants();
         setNewParticipant({ full_name: "", email: "" });
         setShowAddForm(false);
 
@@ -178,7 +178,7 @@ export default function EventParticipants({
       );
 
       if (response.ok) {
-        await fetchParticipants(); // Refresh the list
+        fetchParticipants(); // Refresh the list
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Success!",
@@ -207,7 +207,7 @@ export default function EventParticipants({
       );
 
       if (response.ok) {
-        await fetchParticipants(); // Refresh the list
+        fetchParticipants(); // Refresh the list
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Success!",

@@ -51,7 +51,7 @@ interface TransportVendor {
 }
 
 export default function TransportPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const params = useParams();
   const router = useRouter();
@@ -100,7 +100,7 @@ export default function TransportPage() {
     fetchData();
   }, [fetchData]);
 
-  const canEdit = user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role);
+  const canEdit = Boolean(user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role));
 
   const getStatusCounts = () => {
     const counts = {
@@ -182,7 +182,7 @@ export default function TransportPage() {
               onRefresh={fetchData}
               onCreateBooking={() => setCreateModalOpen(true)}
               onEditBooking={(booking) => setEditingBooking(booking)}
-              apiClient={apiClient}
+              apiClient={apiClient as { getToken: () => string }}
               tenantSlug={tenantSlug}
             />
           </TabsContent>
@@ -214,7 +214,7 @@ export default function TransportPage() {
                             {new Date(booking.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                           {booking.has_welcome_package && (
-                            <Package className="w-4 h-4 text-orange-500" title="Has welcome package" />
+                            <Package className="w-4 h-4 text-orange-500" />
                           )}
                         </div>
                         <div className="text-sm text-gray-600">
@@ -255,7 +255,7 @@ export default function TransportPage() {
               vendors={vendors}
               canEdit={canEdit}
               onRefresh={fetchData}
-              apiClient={apiClient}
+              apiClient={apiClient as { getToken: () => string }}
               tenantSlug={tenantSlug}
             />
           </TabsContent>
@@ -266,7 +266,7 @@ export default function TransportPage() {
           onOpenChange={setCreateModalOpen}
           vendors={vendors}
           onSuccess={fetchData}
-          apiClient={apiClient}
+          apiClient={apiClient as { getToken: () => string }}
           tenantSlug={tenantSlug}
         />
 
@@ -278,8 +278,8 @@ export default function TransportPage() {
             fetchData();
             setEditingBooking(null);
           }}
-          editingBooking={editingBooking}
-          apiClient={apiClient}
+          editingBooking={editingBooking || undefined}
+          apiClient={apiClient as { getToken: () => string }}
           tenantSlug={tenantSlug}
         />
       </div>

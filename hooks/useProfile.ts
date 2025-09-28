@@ -141,15 +141,12 @@ export function useProfile(): UseProfileResult {
   // Load initial profile data
   const loadProfileData = useCallback(async () => {
     if (!isReady) {
-      console.log("API not ready, skipping profile load");
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
-      console.log("Loading profile data...");
 
       // Load profile data first (required)
       const apiProfileData = await apiClient.getMyProfile().catch((err) => {
@@ -163,13 +160,6 @@ export function useProfile(): UseProfileResult {
       if (!validateProfileData(profileData)) {
         throw new Error("Invalid profile data received from server");
       }
-
-      console.log("Profile data loaded successfully:", {
-        id: profileData.id,
-        email: profileData.email,
-        full_name: profileData.full_name,
-        role: profileData.role,
-      });
 
       setProfile(profileData);
 
@@ -233,24 +223,21 @@ export function useProfile(): UseProfileResult {
       try {
         setError(null);
 
-        console.log("🔄 Updating profile with data:", data);
-        console.log("🔑 API client has token:", apiClient.hasToken());
-        console.log("🌐 API base URL:", apiClient.getBaseUrl());
-        console.log("👤 Current profile:", {
-          id: profile.id,
-          email: profile.email,
-          role: profile.role,
-          auth_provider: profile.auth_provider
-        });
-
         // Check editable fields first
         if (editableFields) {
-          console.log("📝 Editable fields:", editableFields);
-          const allEditableFields = [...editableFields.basic_fields, ...editableFields.enhanced_fields];
+          const allEditableFields = [
+            ...editableFields.basic_fields,
+            ...editableFields.enhanced_fields,
+          ];
           const attemptedFields = Object.keys(data);
-          const restrictedFields = attemptedFields.filter(field => !allEditableFields.includes(field));
+          const restrictedFields = attemptedFields.filter(
+            (field) => !allEditableFields.includes(field)
+          );
           if (restrictedFields.length > 0) {
-            console.warn("⚠️ Attempting to edit restricted fields:", restrictedFields);
+            console.warn(
+              "⚠️ Attempting to edit restricted fields:",
+              restrictedFields
+            );
           }
         }
 
@@ -262,23 +249,6 @@ export function useProfile(): UseProfileResult {
         };
         setProfile(optimisticProfile);
 
-        // Prepare clean data for API
-        const cleanData = {
-          ...data,
-          phone_number:
-            data.phone_number === null ? undefined : data.phone_number,
-          email_work: data.email_work === null ? undefined : data.email_work,
-        };
-        
-        console.log("📤 Sending to API:", cleanData);
-
-        // Update profile on server
-        const result = await apiClient.updateMyProfile(cleanData);
-
-        console.log("✅ Profile updated successfully on server:", result);
-
-        // Refresh profile data to get the latest server state
-        // We do this to ensure we have the complete, up-to-date profile
         await loadProfileData();
 
         return true;
@@ -294,12 +264,11 @@ export function useProfile(): UseProfileResult {
         return false;
       }
     },
-    [profile, loadProfileData, apiClient, isReady]
+    [profile, editableFields, loadProfileData, isReady]
   );
 
   // Refresh profile data
   const refreshProfile = useCallback(async () => {
-    console.log("Refreshing profile data...");
     await loadProfileData();
   }, [loadProfileData]);
 
@@ -316,10 +285,7 @@ export function useProfile(): UseProfileResult {
   // Compute derived values
   const hasProfileData = Boolean(profile);
   const isProfileComplete = Boolean(
-    profile &&
-      profile.full_name &&
-      profile.phone_number &&
-      profile.email_work
+    profile && profile.full_name && profile.phone_number && profile.email_work
   );
 
   return {

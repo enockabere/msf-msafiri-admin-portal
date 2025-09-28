@@ -47,23 +47,44 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     refreshStats();
     
     const handleRefresh = () => {
+      // Immediate refresh
+      refreshStats();
+      // Also refresh after delay
       setTimeout(() => {
         refreshStats();
-      }, 500);
+      }, 2000);
     };
     
     const handleRefreshPending = () => {
+      // Immediate refresh
+      refreshStats();
+      // Also refresh after delay
       setTimeout(() => {
         refreshStats();
-      }, 500);
+      }, 2000);
     };
     
     window.addEventListener('refreshNotifications', handleRefresh);
     window.addEventListener('refreshPendingInvitations', handleRefreshPending);
     
+    // Listen for chat message events to refresh notifications
+    const handleChatMessage = () => {
+      // Immediate refresh
+      refreshStats();
+      // Also refresh after delay to catch any delayed notifications
+      setTimeout(() => {
+        refreshStats();
+      }, 3000);
+    };
+    
+    window.addEventListener('chatMessageSent', handleChatMessage);
+    window.addEventListener('chatMessageReceived', handleChatMessage);
+    
     return () => {
       window.removeEventListener('refreshNotifications', handleRefresh);
       window.removeEventListener('refreshPendingInvitations', handleRefreshPending);
+      window.removeEventListener('chatMessageSent', handleChatMessage);
+      window.removeEventListener('chatMessageReceived', handleChatMessage);
     };
   }, [isAuthenticated, accessToken]);
 

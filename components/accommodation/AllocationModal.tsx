@@ -35,6 +35,7 @@ interface VendorAccommodation {
 interface GuestHouse {
   id: number;
   name: string;
+  location?: string;
 }
 
 interface Event {
@@ -51,6 +52,7 @@ interface Participant {
   phone?: string;
   role: string;
   event_id: number;
+  gender?: string;
 }
 
 interface AllocationForm {
@@ -75,7 +77,7 @@ interface AllocationModalProps {
   onRoomToggle: (roomId: number) => void;
   vendors: VendorAccommodation[];
   guesthouses: GuestHouse[];
-
+  preSelectedGuesthouse?: GuestHouse | null;
   events: Event[];
   participants: Participant[];
   onEventChange: (eventId: string) => void;
@@ -99,6 +101,7 @@ export default function AllocationModal({
   onRoomToggle,
   vendors,
   guesthouses,
+  preSelectedGuesthouse,
   events,
   participants,
   onEventChange,
@@ -110,11 +113,11 @@ export default function AllocationModal({
   allocatedParticipants
 }: AllocationModalProps) {
   // Helper function to get selected participant genders
-  const getSelectedParticipantGenders = () => {
+  const getSelectedParticipantGenders = (): string[] => {
     return selectedParticipants.map(id => {
       const participant = participants.find(p => p.id === id);
       return participant?.gender;
-    }).filter(Boolean);
+    }).filter((gender): gender is string => Boolean(gender));
   };
   
   // Helper function to get room occupant genders
@@ -192,37 +195,47 @@ export default function AllocationModal({
           </div>
           {form.accommodation_type === "guesthouse" && (
             <>
-              <div className="space-y-3">
-                <Label className="text-sm font-medium text-gray-700">Select Guesthouses</Label>
-                {guesthouses.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500">
-                    <p className="text-sm">No guesthouses available</p>
+              {!preSelectedGuesthouse ? (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">Select Guesthouses</Label>
+                  {guesthouses.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <p className="text-sm">No guesthouses available</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 gap-2 max-h-24 overflow-y-auto">
+                        {guesthouses.map((guesthouse) => {
+                          const isSelected = selectedGuesthouses.includes(guesthouse.id);
+                          return (
+                            <div 
+                              key={guesthouse.id}
+                              className={`p-2 border rounded cursor-pointer transition-colors ${
+                                isSelected ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => onGuesthouseToggle(guesthouse.id)}
+                            >
+                              <div className="text-sm font-medium">{guesthouse.name}</div>
+                              <div className="text-xs text-gray-600">{guesthouse.location || 'No location'}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Selected: {selectedGuesthouses.length} guesthouses
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">Selected Guesthouse</Label>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-sm font-medium text-blue-900">{preSelectedGuesthouse.name}</div>
+                    <div className="text-xs text-blue-600">{preSelectedGuesthouse.location || 'No location'}</div>
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 gap-2 max-h-24 overflow-y-auto">
-                      {guesthouses.map((guesthouse) => {
-                        const isSelected = selectedGuesthouses.includes(guesthouse.id);
-                        return (
-                          <div 
-                            key={guesthouse.id}
-                            className={`p-2 border rounded cursor-pointer transition-colors ${
-                              isSelected ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-50'
-                            }`}
-                            onClick={() => onGuesthouseToggle(guesthouse.id)}
-                          >
-                            <div className="text-sm font-medium">{guesthouse.name}</div>
-                            <div className="text-xs text-gray-600">{guesthouse.location || 'No location'}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Selected: {selectedGuesthouses.length} guesthouses
-                    </div>
-                  </>
-                )}
-              </div>
+                </div>
+              )}
               {selectedGuesthouses.length > 0 && (
                 <div className="space-y-3">
                   <Label className="text-sm font-medium text-gray-700">Available Rooms</Label>
@@ -245,8 +258,8 @@ export default function AllocationModal({
                           // Check if there are any gender constraints from selected participants or other rooms
                           if (allConstrainingGenders.length > 0) {
                             // If room has occupants, check if they match the constraint
-                            if (room.occupantInfo?.occupant_genders.length > 0) {
-                              const roomGenders = [...new Set(room.occupantInfo.occupant_genders)];
+                            if (room.occupantInfo?.occupant_genders && room.occupantInfo.occupant_genders.length > 0) {
+                              const roomGenders = [...new Set(room.occupantInfo?.occupant_genders || [])];
                               const hasConflict = roomGenders.some(gender => !allConstrainingGenders.includes(gender)) ||
                                                  allConstrainingGenders.some(gender => !roomGenders.includes(gender));
                               
@@ -265,10 +278,10 @@ export default function AllocationModal({
                             }
                           }
                           // If no constraints yet, check room's existing occupants against selected participants
-                          else if (room.occupantInfo?.occupant_genders.length > 0 && selectedParticipants.length > 0) {
+                          else if (room.occupantInfo?.occupant_genders && room.occupantInfo.occupant_genders.length > 0 && selectedParticipants.length > 0) {
                             const participantGenders = getSelectedParticipantGenders();
                             const uniqueParticipantGenders = [...new Set(participantGenders)];
-                            const roomGenders = [...new Set(room.occupantInfo.occupant_genders)];
+                            const roomGenders = [...new Set(room.occupantInfo?.occupant_genders || [])];
                             
                             if (uniqueParticipantGenders.length > 0) {
                               const hasConflict = roomGenders.some(gender => !uniqueParticipantGenders.includes(gender)) ||
@@ -296,7 +309,7 @@ export default function AllocationModal({
                               {genderWarning && (
                                 <div className="text-xs text-red-600 mt-1">{genderWarning}</div>
                               )}
-                              {room.occupantInfo?.occupant_genders.length === 0 && room.current_occupants === 0 && (
+                              {(!room.occupantInfo?.occupant_genders || room.occupantInfo.occupant_genders.length === 0) && room.current_occupants === 0 && (
                                 <div className="text-xs text-green-600 mt-1">Empty room</div>
                               )}
                             </div>
@@ -368,7 +381,7 @@ export default function AllocationModal({
                     
                     // Check for gender conflicts with existing constraints
                     if (hasGender && !isSelected && allConstrainingGenders.length > 0) {
-                      if (!allConstrainingGenders.includes(participant.gender)) {
+                      if (participant.gender && !allConstrainingGenders.includes(participant.gender)) {
                         isDisabledDueToGender = true;
                         genderConflictMessage = `Cannot select ${participant.gender} - only ${allConstrainingGenders.join('/')} allowed`;
                       }
@@ -441,6 +454,7 @@ export default function AllocationModal({
                 id="check_in_date"
                 type="date"
                 value={form.check_in_date}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => onFormChange({ ...form, check_in_date: e.target.value })}
                 required
               />
@@ -451,6 +465,7 @@ export default function AllocationModal({
                 id="check_out_date"
                 type="date"
                 value={form.check_out_date}
+                min={form.check_in_date || new Date().toISOString().split('T')[0]}
                 onChange={(e) => onFormChange({ ...form, check_out_date: e.target.value })}
                 required
               />

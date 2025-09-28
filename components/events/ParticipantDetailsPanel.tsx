@@ -100,7 +100,7 @@ export default function ParticipantDetailsPanel({
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
-        setParticipantDetails(participantData);
+        setParticipantDetails(participantData as ParticipantDetails);
       } catch (error) {
         console.error('Failed to fetch participant details:', error);
       }
@@ -113,7 +113,7 @@ export default function ParticipantDetailsPanel({
         );
 
         // Filter to only show drink vouchers, hide inventory items
-        const drinkVouchers = voucherData.filter((allocation: DrinkVoucherAllocation) => 
+        const drinkVouchers = (voucherData as DrinkVoucherAllocation[]).filter((allocation: DrinkVoucherAllocation) => 
           allocation.allocation_type === 'drink_voucher' && 
           !allocation.notes?.includes('ITEMS:')
         );
@@ -131,7 +131,7 @@ export default function ParticipantDetailsPanel({
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
-        setAccommodationDetails(accommodationData);
+        setAccommodationDetails(accommodationData as AccommodationDetails[]);
       } catch (error) {
         console.error('Failed to fetch accommodation details:', error);
         setAccommodationDetails([]);
@@ -145,7 +145,7 @@ export default function ParticipantDetailsPanel({
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
-        setTransportDetails(transportData);
+        setTransportDetails(transportData as TransportDetails[]);
       } catch (error) {
         console.error('Failed to fetch transport details:', error);
         setTransportDetails([]);

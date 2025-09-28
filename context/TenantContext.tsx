@@ -50,48 +50,38 @@ export function TenantProvider({ children }: TenantProviderProps) {
   const ALL_TENANTS_KEY = "msafiri_all_tenants_selected";
 
   const setSelectedTenant = (tenant: Tenant | null) => {
-    console.log("Setting selected tenant:", tenant?.name || "null");
     setSelectedTenantState(tenant);
     setIsAllTenantsSelected(false);
     if (typeof window !== "undefined") {
       if (tenant) {
         sessionStorage.setItem(STORAGE_KEY, JSON.stringify(tenant));
         sessionStorage.removeItem(ALL_TENANTS_KEY);
-        console.log("Saved tenant to storage:", tenant.name);
       } else {
         sessionStorage.removeItem(STORAGE_KEY);
         sessionStorage.removeItem(ALL_TENANTS_KEY);
-        console.log("Cleared tenant from storage");
       }
     }
   };
 
   const setAllTenantsSelected = () => {
-    console.log("Setting all tenants selected");
     setSelectedTenantState(null);
     setIsAllTenantsSelected(true);
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(STORAGE_KEY);
       sessionStorage.setItem(ALL_TENANTS_KEY, "true");
-      console.log("Saved all tenants selection to storage");
     }
   };
 
   const loadSelectedTenantFromStorage = useCallback(() => {
     if (typeof window !== "undefined" && !hasLoadedFromStorage.current) {
-      console.log("Loading tenant selection from storage...");
       try {
         const allTenantsSelected = sessionStorage.getItem(ALL_TENANTS_KEY);
         const storedTenant = sessionStorage.getItem(STORAGE_KEY);
 
-        console.log("Storage values:", { allTenantsSelected, storedTenant });
-
         if (allTenantsSelected === "true") {
-          console.log("Setting all tenants selected");
           setIsAllTenantsSelected(true);
           setSelectedTenantState(null);
         } else if (storedTenant) {
-          console.log("Setting specific tenant from storage");
           const tenant = JSON.parse(storedTenant) as Tenant;
           setSelectedTenantState(tenant);
           setIsAllTenantsSelected(false);
@@ -114,20 +104,16 @@ export function TenantProvider({ children }: TenantProviderProps) {
       !user?.role ||
       (user.role !== "super_admin" && user.role !== "SUPER_ADMIN")
     ) {
-      console.log(
-        "Skipping tenant refresh - not super admin or not authenticated"
-      );
       return;
     }
 
-    console.log("Refreshing tenants...");
     try {
       setLoading(true);
       setError(null);
       apiClient.setToken(accessToken);
 
       const tenantsData = await apiClient.getTenants();
-      console.log("Fetched tenants:", tenantsData.length);
+
       setTenants(tenantsData);
 
       // Update selected tenant if it exists, but use a ref or state updater to avoid dependency
@@ -137,17 +123,12 @@ export function TenantProvider({ children }: TenantProviderProps) {
             (t) => t.id === currentSelected.id
           );
           if (updatedSelectedTenant) {
-            console.log(
-              "Updated selected tenant from API:",
-              updatedSelectedTenant.name
-            );
             return updatedSelectedTenant;
           } else {
-            console.log("Selected tenant no longer exists, clearing selection");
             return null;
           }
         }
-        console.log("No tenant currently selected");
+
         return currentSelected;
       });
     } catch (err) {
@@ -172,26 +153,21 @@ export function TenantProvider({ children }: TenantProviderProps) {
   useEffect(() => {
     // Don't do anything while auth is still loading
     if (authLoading) {
-      console.log("Auth still loading, waiting...");
       return;
     }
 
-    console.log(
-      "Auth loaded. User role:",
-      user?.role,
-      "Authenticated:",
-      isAuthenticated
-    );
-
-    if ((user?.role === "super_admin" || user?.role === "SUPER_ADMIN") && isAuthenticated && accessToken) {
-      console.log("User is super admin, fetching tenants...");
-      // Only fetch tenants, don't clear the selection
+    if (
+      (user?.role === "super_admin" || user?.role === "SUPER_ADMIN") &&
+      isAuthenticated &&
+      accessToken
+    ) {
       refreshTenants();
-    } else if (isAuthenticated && user && user.role !== "super_admin" && user.role !== "SUPER_ADMIN") {
-      // Only clear if we have a confirmed user who is NOT a super admin
-      console.log(
-        "User is authenticated but not super admin, clearing tenant selection"
-      );
+    } else if (
+      isAuthenticated &&
+      user &&
+      user.role !== "super_admin" &&
+      user.role !== "SUPER_ADMIN"
+    ) {
       setTenants([]);
       setSelectedTenant(null);
       hasLoadedFromStorage.current = false;

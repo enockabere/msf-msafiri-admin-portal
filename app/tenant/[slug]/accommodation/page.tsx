@@ -23,8 +23,11 @@ interface GuestHouse {
   contact_phone?: string;
   contact_email?: string;
   total_rooms: number;
-  occupied_rooms: number;
-  is_active: boolean;
+  occupied_rooms?: number;
+  total_capacity?: number;
+  current_occupants?: number;
+  available_rooms?: number;
+  is_active?: boolean;
 }
 
 interface VendorAccommodation {
@@ -43,6 +46,8 @@ interface Room {
   capacity: number;
   room_type: string;
   current_occupants: number;
+  is_active?: boolean;
+  is_occupied?: boolean;
   occupantInfo?: {
     occupant_genders: string[];
     can_accept_gender: {
@@ -97,11 +102,12 @@ interface Event {
 interface Participant {
   id: number;
   name: string;
+  full_name?: string;
   email: string;
   phone?: string;
   role: string;
   event_id: number;
-  gender?: string | null;
+  gender?: string;
 }
 
 interface AllocationForm {
@@ -115,7 +121,7 @@ interface AllocationForm {
 }
 
 export default function AccommodationPage() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const params = useParams();
   const router = useRouter();
@@ -136,9 +142,12 @@ export default function AccommodationPage() {
   const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
 
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  
+
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [availableRoomsForGuesthouse, setAvailableRoomsForGuesthouse] = useState<Room[]>([]);
   const [selectedGuesthouses, setSelectedGuesthouses] = useState<number[]>([]);
+  const [preSelectedGuesthouse, setPreSelectedGuesthouse] = useState<GuestHouse | null>(null);
   const [allocatedParticipants, setAllocatedParticipants] = useState<number[]>([]);
 
   const [events, setEvents] = useState<Event[]>([]);
@@ -229,7 +238,7 @@ export default function AccommodationPage() {
         const allocationsData = await response.json();
         // Extract participant IDs from allocations for the specific event
         const participantIds: number[] = [];
-        allocationsData.forEach((allocation) => {
+        allocationsData.forEach((allocation: { participant_id?: number; event_id?: number }) => {
           if (allocation.participant_id && allocation.event_id === parseInt(eventId)) {
             participantIds.push(allocation.participant_id);
           }
@@ -349,26 +358,8 @@ export default function AccommodationPage() {
   }, [fetchData]);
 
   const handleBookGuesthouse = async (guesthouse: GuestHouse) => {
-    // Fetch rooms for this specific guesthouse
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouse.id}/rooms`,
-        {
-          headers: { 
-            Authorization: `Bearer ${apiClient.getToken()}`,
-            'X-Tenant-ID': tenantSlug
-          },
-        }
-      );
-      if (response.ok) {
-        const roomData = await response.json();
-        const availableRooms = roomData.filter((room) => room.current_occupants < room.capacity);
-        setAvailableRoomsForGuesthouse(availableRooms);
-      }
-    } catch (error) {
-      console.error("Error fetching rooms:", error);
-    }
-    
+    setPreSelectedGuesthouse(guesthouse);
+    setSelectedGuesthouses([guesthouse.id]);
     setAllocationForm({
       ...allocationForm,
       accommodation_type: "guesthouse",
@@ -376,6 +367,7 @@ export default function AccommodationPage() {
       vendor_accommodation_id: "",
     });
     setSelectedRooms([]);
+    await fetchRoomsForGuesthouses([guesthouse.id]);
     setAllocationModalOpen(true);
   };
 
@@ -445,7 +437,7 @@ export default function AccommodationPage() {
             return { ...participant, gender: null };
           })
         );
-        setParticipants(participantsWithGender);
+        setParticipants(participantsWithGender.map(p => ({ ...p, gender: p.gender || undefined })));
         // Also fetch allocated participants for this event
         await fetchAllocatedParticipants(eventId);
       }
@@ -454,7 +446,7 @@ export default function AccommodationPage() {
     }
   };
 
-  const canEdit = user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role);
+  const canEdit = Boolean(user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role));
 
   const handleBookVendor = (vendor: VendorAccommodation) => {
     setAllocationForm({
@@ -490,6 +482,22 @@ export default function AccommodationPage() {
 
   const handleAllocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkInDate = new Date(allocationForm.check_in_date);
+    const checkOutDate = new Date(allocationForm.check_out_date);
+    
+    if (checkInDate < today) {
+      toast({ title: "Error", description: "Check-in date cannot be in the past", variant: "destructive" });
+      return;
+    }
+    
+    if (checkOutDate <= checkInDate) {
+      toast({ title: "Error", description: "Check-out date must be after check-in date", variant: "destructive" });
+      return;
+    }
     
     if (allocationForm.accommodation_type === "guesthouse") {
       if (selectedGuesthouses.length === 0) {
@@ -600,7 +608,7 @@ export default function AccommodationPage() {
                   accommodation_type: "guesthouse",
                   room_id: roomId,
                   vendor_accommodation_id: null,
-                  guest_name: participant.name || participant.full_name || `Participant ${participantId}`,
+                  guest_name: participant.full_name || participant.name || `Participant ${participantId}`,
                   guest_email: participant.email,
                   guest_phone: participant.phone || "",
                   check_in_date: allocationForm.check_in_date,
@@ -642,7 +650,7 @@ export default function AccommodationPage() {
               accommodation_type: "vendor",
               room_id: null,
               vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
-              guest_name: participant.name || participant.full_name || `Participant ${participantId}`,
+              guest_name: participant.full_name || participant.name || `Participant ${participantId}`,
               guest_email: participant.email,
               guest_phone: participant.phone || "",
               check_in_date: allocationForm.check_in_date,
@@ -701,7 +709,8 @@ export default function AccommodationPage() {
     }
   };
 
-  const handleDeleteAllocation = async (id: number) => {
+  const handleDeleteAllocation = async (allocation: Allocation) => {
+    const id = allocation.id;
     setDeleting(id);
     try {
       const response = await fetch(
@@ -857,9 +866,9 @@ export default function AccommodationPage() {
                 <p className="text-sm text-gray-500">Manage your accommodation properties</p>
               </div>
               <GuesthouseManagement 
-                canEdit={canEdit} 
+                canEdit={!!canEdit} 
                 onGuesthouseCreated={fetchDataCallback} 
-                apiClient={apiClient} 
+                apiClient={apiClient as { getToken: () => string }} 
                 tenantSlug={tenantSlug} 
               />
             </div>
@@ -897,7 +906,7 @@ export default function AccommodationPage() {
                   guesthouses.map((guesthouse) => (
                     <GuestHouseCard 
                       key={guesthouse.id} 
-                      guesthouse={guesthouse} 
+                      guesthouse={guesthouse as unknown as Parameters<typeof GuestHouseCard>[0]['guesthouse']} 
                       onBook={handleBookGuesthouse}
                       onViewRooms={handleViewRooms}
                     />
@@ -909,13 +918,13 @@ export default function AccommodationPage() {
             {selectedGuesthouse && (
               <RoomsView 
                 selectedGuesthouse={selectedGuesthouse}
-                rooms={rooms}
+                rooms={rooms as unknown as Parameters<typeof RoomsView>[0]['rooms']}
                 canEdit={canEdit}
                 onRoomCreated={() => {
                   fetchRooms(selectedGuesthouse.id);
                   fetchData();
                 }}
-                apiClient={apiClient}
+                apiClient={apiClient as { getToken: () => string }}
                 tenantSlug={tenantSlug}
               />
             )}
@@ -935,8 +944,11 @@ export default function AccommodationPage() {
 
           <TabsContent value="allocations" className="space-y-6">
             <AllocationsList 
-              allocations={allocations} 
-              onDelete={handleDeleteAllocation} 
+              allocations={allocations as Allocation[]} 
+              onDelete={(id: number) => {
+                const allocation = allocations.find(a => a.id === id);
+                if (allocation) handleDeleteAllocation(allocation);
+              }} 
               deleting={deleting}
               onCheckIn={handleCheckIn}
               checkingIn={checkingIn}
@@ -949,7 +961,12 @@ export default function AccommodationPage() {
 
         <AllocationModal
           open={allocationModalOpen}
-          onOpenChange={setAllocationModalOpen}
+          onOpenChange={(open) => {
+            setAllocationModalOpen(open);
+            if (!open) {
+              setPreSelectedGuesthouse(null);
+            }
+          }}
           form={allocationForm}
           onFormChange={setAllocationForm}
           onSubmit={handleAllocationSubmit}
@@ -959,13 +976,15 @@ export default function AccommodationPage() {
           onRoomToggle={toggleRoomSelection}
           vendors={vendors}
           guesthouses={guesthouses}
-
+          preSelectedGuesthouse={preSelectedGuesthouse}
           events={events}
           participants={participants}
           onEventChange={async (eventId) => {
             setAllocationForm({ ...allocationForm, event_id: eventId, participant_ids: [] });
             setSelectedParticipants([]);
-            setSelectedGuesthouses([]);
+            if (!preSelectedGuesthouse) {
+              setSelectedGuesthouses([]);
+            }
             setSelectedRooms([]);
             await fetchParticipants(eventId);
             await fetchAllocatedParticipants(eventId);

@@ -83,12 +83,12 @@ export default function TransportBookingsList({
   const getStatusBadge = (status: string) => {
     const statusColors = {
       pending: "bg-yellow-100 text-yellow-800",
-      confirmed: "bg-blue-100 text-blue-800",
+      confirmed: "bg-red-100 text-red-800",
       package_collected: "bg-orange-100 text-orange-800",
-      visitor_picked_up: "bg-purple-100 text-purple-800",
-      in_transit: "bg-indigo-100 text-indigo-800",
+      visitor_picked_up: "bg-red-100 text-red-800",
+      in_transit: "bg-red-100 text-red-800",
       completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800"
+      cancelled: "bg-gray-100 text-gray-800"
     };
     return statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800";
   };
@@ -185,8 +185,11 @@ export default function TransportBookingsList({
         </div>
         
         {canEdit && (
-          <Button onClick={onCreateBooking} className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            onClick={onCreateBooking} 
+            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            <Plus className="w-5 h-5 mr-2" />
             New Booking
           </Button>
         )}
@@ -251,158 +254,185 @@ export default function TransportBookingsList({
       {/* Bookings List */}
       <div className="space-y-4">
         {filteredBookings.length === 0 ? (
-          <Card>
-            <CardContent className="flex items-center justify-center py-8">
-              <div className="text-center text-gray-500">
-                <Car className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No transport bookings found</p>
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardContent className="flex items-center justify-center py-16">
+              <div className="text-center">
+                <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center">
+                  <Car className="w-10 h-10 text-red-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">No transport bookings found</h3>
+                <p className="text-gray-500">Create your first transport booking to get started</p>
               </div>
             </CardContent>
           </Card>
         ) : (
-          filteredBookings.map((booking) => (
-            <Card key={booking.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="flex items-center gap-2">
+          <div className="grid gap-6">
+            {filteredBookings.map((booking) => (
+              <Card key={booking.id} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-gray-50 overflow-hidden">
+                <div className="h-2 bg-gradient-to-r from-red-500 to-red-700"></div>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-md text-white">
                         {getBookingTypeIcon(booking.booking_type)}
-                        <span className="font-medium text-gray-900">
-                          {booking.booking_type.replace('_', ' ').toUpperCase()}
-                        </span>
                       </div>
-                      {booking.has_welcome_package && (
-                        <div className="flex items-center gap-1 text-orange-600">
-                          <Package className="w-4 h-4" />
-                          <span className="text-xs">Package</span>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">
+                          {booking.booking_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </h3>
+                        <div className="flex items-center gap-3">
+                          <Badge className={`${getStatusBadge(booking.status)} font-semibold px-3 py-1 rounded-full`}>
+                            {booking.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Badge>
+                          {booking.has_welcome_package && (
+                            <div className="flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                              <Package className="w-3 h-3" />
+                              <span className="text-xs font-medium">Package</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(booking)}
+                        className="h-8 w-8 p-0 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      {canEdit && booking.status === 'pending' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEditBooking(booking)}
+                            className="h-8 w-8 p-0 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteBooking(booking)}
+                            disabled={deleting === booking.id}
+                            className="h-10 w-10 p-0 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Scheduled Time</span>
+                      </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {new Date(booking.scheduled_time).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </div>
+                      <div className="text-red-600 font-medium">
+                        {new Date(booking.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <User className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Passengers</span>
+                      </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {booking.participants?.length || booking.participant_ids.length}
+                      </div>
+                      <div className="text-gray-600 text-sm truncate">
+                        {booking.participants?.map(p => p.name).join(', ') || 'Loading...'}
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Route</span>
+                      </div>
+                      <div className="text-sm font-bold text-gray-900 truncate">
+                        {booking.pickup_locations[0]}
+                      </div>
+                      <div className="text-red-600 text-sm font-medium">
+                        → {booking.destination}
+                      </div>
+                      {booking.pickup_locations.length > 1 && (
+                        <div className="text-gray-500 text-xs mt-1">
+                          +{booking.pickup_locations.length - 1} more stops
                         </div>
                       )}
-                      <Badge className={getStatusBadge(booking.status)}>
-                        {booking.status.replace('_', ' ')}
-                      </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <div className="flex items-center gap-1 text-gray-500 mb-1">
-                          <Clock className="w-3 h-3" />
-                          <span className="text-xs">Scheduled</span>
-                        </div>
-                        <div className="font-medium">
-                          {new Date(booking.scheduled_time).toLocaleDateString()}
-                        </div>
-                        <div className="text-gray-600">
-                          {new Date(booking.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-center gap-2 text-red-600 mb-2">
+                        <Phone className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Driver</span>
                       </div>
-
-                      <div>
-                        <div className="flex items-center gap-1 text-gray-500 mb-1">
-                          <User className="w-3 h-3" />
-                          <span className="text-xs">Passengers</span>
-                        </div>
-                        <div className="font-medium">
-                          {booking.participants?.length || booking.participant_ids.length} passenger(s)
-                        </div>
-                        <div className="text-gray-600 truncate">
-                          {booking.participants?.map(p => p.name).join(', ') || 'Loading...'}
-                        </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {booking.driver_name || 'Not assigned'}
                       </div>
-
-                      <div>
-                        <div className="flex items-center gap-1 text-gray-500 mb-1">
-                          <MapPin className="w-3 h-3" />
-                          <span className="text-xs">Route</span>
-                        </div>
-                        <div className="font-medium truncate">
-                          {booking.pickup_locations[0]} → {booking.destination}
-                        </div>
-                        {booking.pickup_locations.length > 1 && (
-                          <div className="text-gray-600 text-xs">
-                            +{booking.pickup_locations.length - 1} more stops
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-1 text-gray-500 mb-1">
-                          <Phone className="w-3 h-3" />
-                          <span className="text-xs">Driver</span>
-                        </div>
-                        <div className="font-medium">
-                          {booking.driver_name || 'Not assigned'}
-                        </div>
-                        <div className="text-gray-600">
-                          {booking.driver_phone || booking.vendor_name}
-                        </div>
+                      <div className="text-gray-600 text-sm">
+                        {booking.driver_phone || booking.vendor_name}
                       </div>
                     </div>
+                  </div>
 
-                    {booking.flight_number && (
-                      <div className="mt-3 p-2 bg-blue-50 rounded text-sm">
-                        <span className="font-medium">Flight:</span> {booking.flight_number}
+                  {booking.flight_number && (
+                    <div className="mt-4 p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border border-red-200">
+                      <div className="flex items-center gap-2 text-red-700 mb-2">
+                        <Car className="w-4 h-4" />
+                        <span className="font-semibold">Flight Information</span>
+                      </div>
+                      <div className="text-red-900">
+                        <span className="font-bold">Flight:</span> {booking.flight_number}
                         {booking.arrival_time && (
-                          <span className="ml-2">
-                            • Arrival: {new Date(booking.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span className="ml-4">
+                            <span className="font-bold">Arrival:</span> {new Date(booking.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {booking.has_welcome_package && (
-                      <div className="mt-3 p-2 bg-orange-50 rounded text-sm">
-                        <div className="flex items-center gap-2">
-                          <Package className="w-4 h-4 text-orange-600" />
-                          <span className="font-medium">Welcome Package</span>
-                          {booking.package_collected ? (
-                            <Badge className="bg-green-100 text-green-800">Collected</Badge>
-                          ) : (
-                            <Badge className="bg-orange-100 text-orange-800">Pending</Badge>
-                          )}
+                  {booking.has_welcome_package && (
+                    <div className="mt-4 p-3 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-orange-700">
+                          <Package className="w-4 h-4" />
+                          <span className="font-semibold">Welcome Package</span>
                         </div>
-                        <div className="text-gray-600 mt-1">
-                          Pickup: {booking.package_pickup_location}
-                        </div>
+                        {booking.package_collected ? (
+                          <Badge className="bg-green-500 text-white font-semibold px-3 py-1 rounded-full">
+                            Collected
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-orange-500 text-white font-semibold px-3 py-1 rounded-full">
+                            Pending
+                          </Badge>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDetails(booking)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    {canEdit && booking.status === 'pending' && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEditBooking(booking)}
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteBooking(booking)}
-                          disabled={deleting === booking.id}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                      <div className="text-orange-900">
+                        <span className="font-bold">Pickup Location:</span> {booking.package_pickup_location}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
 

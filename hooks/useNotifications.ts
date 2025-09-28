@@ -61,15 +61,21 @@ export function useNotifications() {
     fetchNotifications();
     
     const handleRefresh = () => {
+      // Immediate refresh
+      fetchNotifications();
+      // Also refresh after delay to catch any delayed notifications
       setTimeout(() => {
         fetchNotifications();
-      }, 500);
+      }, 2000);
     };
     
     const handleRefreshPending = () => {
+      // Immediate refresh
+      fetchNotifications();
+      // Also refresh after delay
       setTimeout(() => {
         fetchNotifications();
-      }, 500);
+      }, 2000);
     };
     
     window.addEventListener('refreshNotifications', handleRefresh);

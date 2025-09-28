@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export default function EventDetailsModal({
 }: EventDetailsModalProps) {
   const { accessToken, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+
   const [feedbackStats, setFeedbackStats] = useState<{
     total_responses: number;
     average_overall_rating: number;
@@ -177,7 +179,7 @@ export default function EventDetailsModal({
     } catch {
       setAgenda([]);
     }
-  }, [event, accessToken]);
+  }, [event, accessToken, setAgenda]);
 
   const fetchFeedbackStats = useCallback(async () => {
     if (!event) return;
@@ -253,25 +255,24 @@ export default function EventDetailsModal({
       console.error("Error fetching status suggestions:", error);
       setStatusSuggestions({ suggestions: [] });
     }
-  }, [event]);
+  }, [event, setStatusSuggestions]);
 
   useEffect(() => {
     if (event && isOpen) {
-      fetchFeedbackStats();
-      fetchFeedback();
-      fetchStatusSuggestions();
-      fetchParticipants();
-      fetchAgenda();
-      fetchAttachments();
-      setEditedEvent(event);
+      const loadData = async () => {
+        await Promise.all([
+          fetchFeedbackStats(),
+          fetchFeedback(),
+          fetchStatusSuggestions(),
+          fetchParticipants(),
+          fetchAgenda(),
+          fetchAttachments()
+        ]);
+        setEditedEvent(event);
+      };
+      loadData();
     }
   }, [event, isOpen, fetchFeedbackStats, fetchFeedback, fetchStatusSuggestions, fetchParticipants, fetchAgenda, fetchAttachments]);
-
-  useEffect(() => {
-    if (event && isOpen) {
-      fetchParticipants();
-    }
-  }, [event, isOpen, fetchParticipants]);
 
   const saveEventChanges = async () => {
     if (!event) return;
@@ -431,6 +432,9 @@ export default function EventDetailsModal({
               {event.status}
             </Badge>
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Event details and management interface for {event.title}
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

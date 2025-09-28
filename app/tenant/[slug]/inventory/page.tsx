@@ -2,17 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Package, Wrench } from "lucide-react";
+import { Plus, Edit, Trash2, Package, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import AddItemModal from "@/components/inventory/AddItemModal";
 
 
 interface InventoryItem {
@@ -30,24 +29,24 @@ export default function InventoryPage() {
   
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 12;
   
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "stationary",
-    quantity: 0,
-    condition: "good"
-  });
+
 
   const fetchItems = useCallback(async () => {
     try {
       const categoryParam = categoryFilter !== "all" ? `&category=${categoryFilter}` : "";
-      const response = await fetch(`http://localhost:8000/api/v1/inventory/?tenant=${tenantSlug}${categoryParam}`);
+      const offset = (currentPage - 1) * itemsPerPage;
+      const response = await fetch(`http://localhost:8000/api/v1/inventory/?tenant=${tenantSlug}${categoryParam}&limit=${itemsPerPage}&offset=${offset}`);
       if (response.ok) {
         const data = await response.json();
-        setItems(data);
+        setItems(data.items || data);
+        setTotalItems(data.total || data.length);
       }
     } catch (error) {
       console.error("Error fetching items:", error);
@@ -55,15 +54,13 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [tenantSlug, categoryFilter]);
+  }, [tenantSlug, categoryFilter, currentPage, itemsPerPage]);
 
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (formData: { name: string; category: string; quantity: number; condition: string }) => {
     try {
       const url = editingItem 
         ? `http://localhost:8000/api/v1/inventory/${editingItem.id}`
@@ -83,9 +80,8 @@ export default function InventoryPage() {
           title: "Success",
           description: editingItem ? "Item updated successfully" : "Item added successfully",
         });
-        setShowForm(false);
+        setShowModal(false);
         setEditingItem(null);
-        resetForm();
         fetchItems();
       } else {
         toast({
@@ -105,13 +101,7 @@ export default function InventoryPage() {
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
-    setFormData({
-      name: item.name,
-      category: item.category,
-      quantity: item.quantity,
-      condition: item.condition
-    });
-    setShowForm(true);
+    setShowModal(true);
   };
 
   const handleDelete = async (id: number, itemName: string) => {
@@ -157,14 +147,7 @@ export default function InventoryPage() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      category: "stationary",
-      quantity: 0,
-      condition: "good"
-    });
-  };
+
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
@@ -184,7 +167,7 @@ export default function InventoryPage() {
             <p className="text-gray-600">Manage your inventory items</p>
           </div>
           <Button 
-            onClick={() => { setShowForm(true); setEditingItem(null); resetForm(); }}
+            onClick={() => { setShowModal(true); setEditingItem(null); }}
             className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -192,8 +175,8 @@ export default function InventoryPage() {
           </Button>
         </div>
 
-        <div className="flex gap-4">
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <div className="flex justify-between items-center">
+          <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-56 h-12 border-2 border-gray-200 focus:border-red-500 rounded-lg bg-white">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
@@ -204,96 +187,20 @@ export default function InventoryPage() {
               <SelectItem value="ict_equipment" className="hover:bg-red-50 focus:bg-red-50">ICT Equipment/Items</SelectItem>
             </SelectContent>
           </Select>
+          
+          {totalItems > 0 && (
+            <div className="text-sm text-gray-600">
+              Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+            </div>
+          )}
         </div>
 
-        {showForm && (
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-red-50">
-            <CardHeader className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-lg">
-              <CardTitle className="text-xl font-semibold">
-                {editingItem ? "Edit Item" : "Add New Item"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8">
-              <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <Label htmlFor="name" className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Item Name *
-                    </Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                      className="h-12 border-2 border-gray-200 focus:border-red-500 rounded-lg px-4 text-gray-700"
-                      placeholder="Enter item name"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="category" className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Category *
-                    </Label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
-                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-red-500 rounded-lg bg-white">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-                        <SelectItem value="stationary" className="hover:bg-red-50 focus:bg-red-50">Stationary</SelectItem>
-                        <SelectItem value="equipment" className="hover:bg-red-50 focus:bg-red-50">Equipment</SelectItem>
-                        <SelectItem value="ict_equipment" className="hover:bg-red-50 focus:bg-red-50">ICT Equipment/Items</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="quantity" className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Quantity
-                    </Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="0"
-                      value={formData.quantity === 0 ? '' : formData.quantity}
-                      onChange={(e) => setFormData({...formData, quantity: e.target.value === '' ? 0 : parseInt(e.target.value) || 0})}
-                      className="h-12 border-2 border-gray-200 focus:border-red-500 rounded-lg px-4 text-gray-700"
-                      placeholder="Enter quantity"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="condition" className="text-sm font-semibold text-gray-700 mb-2 block">
-                      Condition
-                    </Label>
-                    <Select value={formData.condition} onValueChange={(value) => setFormData({...formData, condition: value})}>
-                      <SelectTrigger className="h-12 border-2 border-gray-200 focus:border-red-500 rounded-lg bg-white">
-                        <SelectValue placeholder="Select condition" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-                        <SelectItem value="good" className="hover:bg-red-50 focus:bg-red-50">Good</SelectItem>
-                        <SelectItem value="fair" className="hover:bg-red-50 focus:bg-red-50">Fair</SelectItem>
-                        <SelectItem value="poor" className="hover:bg-red-50 focus:bg-red-50">Poor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex gap-4 pt-6 border-t border-gray-200">
-                  <Button 
-                    type="submit" 
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-8 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105"
-                  >
-                    {editingItem ? "Update Item" : "Add Item"}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setShowForm(false)}
-                    className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-800 px-8 py-3 rounded-lg font-semibold transition-all duration-200"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+        <AddItemModal
+          open={showModal}
+          onOpenChange={setShowModal}
+          editingItem={editingItem}
+          onSubmit={handleSubmit}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {loading ? (
@@ -378,6 +285,63 @@ export default function InventoryPage() {
             ))
           )}
         </div>
+        
+        {totalItems > itemsPerPage && (
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="border-2 border-gray-300 hover:border-red-500 text-gray-700 hover:text-red-700 px-4 py-2 rounded-lg transition-all duration-200"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {Array.from({ length: Math.ceil(totalItems / itemsPerPage) }, (_, i) => i + 1)
+                .filter(page => {
+                  const totalPages = Math.ceil(totalItems / itemsPerPage);
+                  if (totalPages <= 7) return true;
+                  if (page === 1 || page === totalPages) return true;
+                  if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                  return false;
+                })
+                .map((page, index, array) => {
+                  const prevPage = array[index - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+                  
+                  return (
+                    <div key={page} className="flex items-center gap-2">
+                      {showEllipsis && <span className="text-gray-400">...</span>}
+                      <Button
+                        variant={currentPage === page ? "default" : "outline"}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-10 h-10 p-0 rounded-lg transition-all duration-200 ${
+                          currentPage === page
+                            ? "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg"
+                            : "border-2 border-gray-300 hover:border-red-500 text-gray-700 hover:text-red-700"
+                        }`}
+                      >
+                        {page}
+                      </Button>
+                    </div>
+                  );
+                })
+              }
+            </div>
+            
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalItems / itemsPerPage)))}
+              disabled={currentPage === Math.ceil(totalItems / itemsPerPage)}
+              className="border-2 border-gray-300 hover:border-red-500 text-gray-700 hover:text-red-700 px-4 py-2 rounded-lg transition-all duration-200"
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

@@ -111,61 +111,6 @@ export default function CreateBookingModal({
     has_welcome_package: true
   });
 
-  useEffect(() => {
-    if (open) {
-      fetchEvents();
-      if (editingBooking) {
-        // Populate form with existing booking data
-        setFormData({
-          booking_type: editingBooking.booking_type,
-          event_id: editingBooking.event_id?.toString() || "",
-          pickup_locations: editingBooking.pickup_locations,
-          destination: editingBooking.destination,
-          scheduled_time: new Date(editingBooking.scheduled_time).toISOString().slice(0, 16),
-          vendor_type: editingBooking.vendor_type,
-          vendor_name: editingBooking.vendor_name || "",
-          driver_name: editingBooking.driver_name || "",
-          driver_phone: editingBooking.driver_phone || "",
-          driver_email: editingBooking.driver_email || "",
-          vehicle_details: editingBooking.vehicle_details || "",
-          special_instructions: editingBooking.special_instructions || "",
-          flight_number: editingBooking.flight_number || "",
-          arrival_time: editingBooking.arrival_time ? new Date(editingBooking.arrival_time).toISOString().slice(0, 16) : "",
-          has_welcome_package: editingBooking.has_welcome_package ?? true
-        });
-        setSelectedParticipants(editingBooking.participant_ids || []);
-      }
-    }
-  }, [open, editingBooking, fetchEvents]);
-
-  useEffect(() => {
-    if (formData.event_id) {
-      fetchParticipants(formData.event_id);
-    }
-  }, [formData.event_id, fetchParticipants]);
-
-
-
-  useEffect(() => {
-    if (selectedParticipants.length > 0) {
-      checkWelcomePackages();
-      if (formData.booking_type === 'airport_pickup' && selectedParticipants.length === 1) {
-        fetchParticipantAccommodation(selectedParticipants[0]);
-      } else if (formData.booking_type === 'event_transfer') {
-        fetchMultipleParticipantAccommodations(selectedParticipants);
-      }
-    } else {
-      setParticipantAccommodations([]);
-      setFormData(prev => ({ ...prev, destination: "" }));
-    }
-  }, [selectedParticipants, formData.booking_type, checkWelcomePackages, fetchParticipantAccommodation, fetchMultipleParticipantAccommodations]);
-
-  useEffect(() => {
-    if (formData.booking_type === 'event_transfer' && selectedEvent) {
-      setFormData(prev => ({ ...prev, destination: selectedEvent.location || selectedEvent.title }));
-    }
-  }, [selectedEvent, formData.booking_type]);
-
   const fetchEvents = useCallback(async () => {
     try {
       const response = await fetch(
@@ -290,6 +235,59 @@ export default function CreateBookingModal({
       console.error("Error checking welcome packages");
     }
   }, [selectedParticipants, apiClient, tenantSlug]);
+
+  useEffect(() => {
+    if (open) {
+      fetchEvents();
+      if (editingBooking) {
+        // Populate form with existing booking data
+        setFormData({
+          booking_type: editingBooking.booking_type,
+          event_id: editingBooking.event_id?.toString() || "",
+          pickup_locations: editingBooking.pickup_locations,
+          destination: editingBooking.destination,
+          scheduled_time: new Date(editingBooking.scheduled_time).toISOString().slice(0, 16),
+          vendor_type: editingBooking.vendor_type,
+          vendor_name: editingBooking.vendor_name || "",
+          driver_name: editingBooking.driver_name || "",
+          driver_phone: editingBooking.driver_phone || "",
+          driver_email: editingBooking.driver_email || "",
+          vehicle_details: editingBooking.vehicle_details || "",
+          special_instructions: editingBooking.special_instructions || "",
+          flight_number: editingBooking.flight_number || "",
+          arrival_time: editingBooking.arrival_time ? new Date(editingBooking.arrival_time).toISOString().slice(0, 16) : "",
+          has_welcome_package: editingBooking.has_welcome_package ?? true
+        });
+        setSelectedParticipants(editingBooking.participant_ids || []);
+      }
+    }
+  }, [open, editingBooking, fetchEvents]);
+
+  useEffect(() => {
+    if (formData.event_id) {
+      fetchParticipants(formData.event_id);
+    }
+  }, [formData.event_id, fetchParticipants]);
+
+  useEffect(() => {
+    if (selectedParticipants.length > 0) {
+      checkWelcomePackages();
+      if (formData.booking_type === 'airport_pickup' && selectedParticipants.length === 1) {
+        fetchParticipantAccommodation(selectedParticipants[0]);
+      } else if (formData.booking_type === 'event_transfer') {
+        fetchMultipleParticipantAccommodations(selectedParticipants);
+      }
+    } else {
+      setParticipantAccommodations([]);
+      setFormData(prev => ({ ...prev, destination: "" }));
+    }
+  }, [selectedParticipants, formData.booking_type, checkWelcomePackages, fetchParticipantAccommodation, fetchMultipleParticipantAccommodations]);
+
+  useEffect(() => {
+    if (formData.booking_type === 'event_transfer' && selectedEvent) {
+      setFormData(prev => ({ ...prev, destination: selectedEvent.location || selectedEvent.title }));
+    }
+  }, [selectedEvent, formData.booking_type]);
 
   const checkPoolingOpportunities = async (bookingData: {
     pickup_locations: string[];

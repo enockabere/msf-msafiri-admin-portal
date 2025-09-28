@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { QrCode, User, Calendar, Package, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export default function ParticipantQRCode({
         `/participants/${participantId}/qr`,
         { headers: { 'X-Tenant-ID': tenantSlug } }
       );
-      setQrData(response);
+      setQrData(response as ParticipantQRResponse);
     } catch (error) {
       console.error('Failed to fetch QR code:', error);
       setError('Failed to generate QR code');

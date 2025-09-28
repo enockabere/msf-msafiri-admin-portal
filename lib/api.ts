@@ -265,17 +265,18 @@ interface RequestOptions {
 
 // API Configuration
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://msafiri-visitor-api.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL || "https://msafiri-visitor-api.onrender.com";
 
 // Add /api/v1 prefix to all endpoints
 const getApiUrl = (endpoint: string): string => {
-  const baseUrl = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL : `${API_BASE_URL}/api/v1`;
-  return `${baseUrl}${endpoint}`;
+  const baseUrl = API_BASE_URL.endsWith("/api/v1")
+    ? API_BASE_URL
+    : `${API_BASE_URL}/api/v1`;
+  const fullUrl = `${baseUrl}${endpoint}`;
+  return fullUrl;
 };
 
 const handleSessionExpiry = async (): Promise<void> => {
-
   try {
     // Clear any browser storage
     if (typeof window !== "undefined") {
@@ -344,8 +345,6 @@ const retryRequest = async <T>(
       // Exponential backoff with jitter
       const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
       await new Promise((resolve) => setTimeout(resolve, delay));
-
-
     }
   }
 
@@ -358,7 +357,9 @@ class ApiClient {
   private isHandlingSessionExpiry: boolean = false;
 
   constructor() {
-    this.baseURL = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.replace('/api/v1', '') : API_BASE_URL;
+    this.baseURL = API_BASE_URL.endsWith("/api/v1")
+      ? API_BASE_URL.replace("/api/v1", "")
+      : API_BASE_URL;
   }
 
   // Token management - simplified for NextAuth integration
@@ -389,8 +390,11 @@ class ApiClient {
 
     const makeRequest = async (): Promise<T> => {
       const url = getApiUrl(endpoint);
+
       // Get a valid token (will refresh if needed)
-      const token = options.skipAuthError ? this.getToken() : await tokenManager.getValidToken() || this.getToken();
+      const token = options.skipAuthError
+        ? this.getToken()
+        : (await tokenManager.getValidToken()) || this.getToken();
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -414,10 +418,14 @@ class ApiClient {
         signal: AbortSignal.timeout(30000), // 30 second timeout
       };
 
-
-
       try {
         const response = await fetch(url, requestConfig);
+
+        // Log response headers for debugging
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
 
         if (!response.ok) {
           // Handle 401 errors (authentication/authorization issues)
@@ -438,7 +446,10 @@ class ApiClient {
                 if (newToken) {
                   // Retry the request with new token
                   this.setToken(newToken);
-                  return await this.request(endpoint, { ...options, skipAuthError: true });
+                  return await this.request(endpoint, {
+                    ...options,
+                    skipAuthError: true,
+                  });
                 }
               } catch (refreshError) {
                 console.error("Token refresh failed:", refreshError);
@@ -464,22 +475,35 @@ class ApiClient {
           }
 
           // Handle other HTTP errors
-          const errorData: unknown = await response.json().catch(() => ({
-            detail: response.statusText,
-            status_code: response.status,
-          }));
+          const errorText = await response.text();
 
-
+          let errorData: unknown;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = {
+              detail: response.statusText,
+              status_code: response.status,
+            };
+          }
 
           // Handle array of errors (validation errors)
           if (Array.isArray(errorData)) {
-            const errorMessages = errorData.map(err => err.msg || err.detail || JSON.stringify(err)).join(', ');
+            const errorMessages = errorData
+              .map((err) => err.msg || err.detail || JSON.stringify(err))
+              .join(", ");
             throw new Error(`Validation errors: ${errorMessages}`);
           }
 
-          const errorMessage = 
-            (errorData && typeof errorData === 'object' && 'detail' in errorData ? (errorData as { detail: string }).detail : null) ||
-            (errorData && typeof errorData === 'object' && 'message' in errorData ? (errorData as { message: string }).message : null) ||
+          const errorMessage =
+            (errorData && typeof errorData === "object" && "detail" in errorData
+              ? (errorData as { detail: string }).detail
+              : null) ||
+            (errorData &&
+            typeof errorData === "object" &&
+            "message" in errorData
+              ? (errorData as { message: string }).message
+              : null) ||
             `HTTP ${response.status}: ${response.statusText}`;
 
           throw new Error(errorMessage);
@@ -511,15 +535,20 @@ class ApiClient {
       }
     } catch (error) {
       // If it's a token-related error and we haven't tried refreshing yet
-      if (error instanceof Error && 
-          error.message.includes("Session expired") && 
-          !options.skipAuthError &&
-          !endpoint.includes("/auth/")) {
+      if (
+        error instanceof Error &&
+        error.message.includes("Session expired") &&
+        !options.skipAuthError &&
+        !endpoint.includes("/auth/")
+      ) {
         try {
           const newToken = await tokenManager.refreshToken();
           if (newToken) {
             this.setToken(newToken);
-            return await this.request(endpoint, { ...options, skipAuthError: true });
+            return await this.request(endpoint, {
+              ...options,
+              skipAuthError: true,
+            });
           }
         } catch (refreshError) {
           console.error("Final token refresh attempt failed:", refreshError);
@@ -630,43 +659,54 @@ class ApiClient {
     return await this.request<User[]>("/super-admin/super-admins");
   }
 
-  async inviteSuperAdmin(email: string, full_name: string): Promise<{ message: string }> {
+  async inviteSuperAdmin(
+    email: string,
+    full_name: string
+  ): Promise<{ message: string }> {
     return await this.request("/super-admin/invite-super-admin", {
       method: "POST",
       body: JSON.stringify({ email, full_name }),
     });
   }
 
-  async getPendingInvitations(): Promise<Array<{ id: number; email: string; full_name: string; created_at: string }>> {
-    const response = await fetch('/api/super-admin/pending-invitations');
+  async getPendingInvitations(): Promise<
+    Array<{ id: number; email: string; full_name: string; created_at: string }>
+  > {
+    const response = await fetch("/api/super-admin/pending-invitations");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch pending invitations' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch pending invitations" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
   }
 
   async resendInvitation(invitationId: number): Promise<{ message: string }> {
-    const response = await fetch('/api/super-admin/resend-invitation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/super-admin/resend-invitation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invitationId }),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to resend invitation' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to resend invitation" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
   }
 
   async cancelInvitation(invitationId: number): Promise<{ message: string }> {
-    const response = await fetch('/api/super-admin/cancel-invitation', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/super-admin/cancel-invitation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invitationId }),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to cancel invitation' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to cancel invitation" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -694,9 +734,11 @@ class ApiClient {
 
   async getMyProfile(): Promise<UserProfile> {
     // Use Next.js API route instead of direct external API call
-    const response = await fetch('/api/profile/me');
+    const response = await fetch("/api/profile/me");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch profile' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch profile" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -705,18 +747,18 @@ class ApiClient {
   async updateMyProfile(profileData: UserProfileUpdate): Promise<User> {
     try {
       // Use Next.js API route instead of direct external API call
-      const response = await fetch('/api/profile/me', {
-        method: 'PUT',
+      const response = await fetch("/api/profile/me", {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(profileData),
       });
 
-
-      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
 
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
@@ -730,18 +772,22 @@ class ApiClient {
   }
 
   async getEditableFields(): Promise<EditableFieldsResponse> {
-    const response = await fetch('/api/profile/editable-fields');
+    const response = await fetch("/api/profile/editable-fields");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch editable fields' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch editable fields" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
   }
 
   async getProfileStats(): Promise<ProfileStatsResponse> {
-    const response = await fetch('/api/profile/stats');
+    const response = await fetch("/api/profile/stats");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch profile stats' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch profile stats" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -772,7 +818,7 @@ class ApiClient {
     const requestBody = {
       changes: tenantData,
       reason,
-      notify_admins: notifyAdmins
+      notify_admins: notifyAdmins,
     };
     return await this.request<Tenant>(`/tenants/${tenantId}`, {
       method: "PUT",
@@ -803,7 +849,9 @@ class ApiClient {
     const query = unreadOnly ? "?unread_only=true" : "";
     const response = await fetch(`/api/notifications${query}`);
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch notifications' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch notifications" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -814,9 +862,11 @@ class ApiClient {
   }
 
   async getNotificationStats(): Promise<NotificationStats> {
-    const response = await fetch('/api/notifications/stats');
+    const response = await fetch("/api/notifications/stats");
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch notification stats' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to fetch notification stats" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -825,25 +875,29 @@ class ApiClient {
   async markNotificationRead(
     notificationId: number
   ): Promise<{ message: string }> {
-    const response = await fetch('/api/notifications/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/notifications/mark-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notificationId }),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to mark notification as read' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to mark notification as read" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
   }
 
   async markAllNotificationsRead(): Promise<{ message: string }> {
-    const response = await fetch('/api/notifications/mark-all-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/notifications/mark-all-read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to mark all notifications as read' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to mark all notifications as read" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -861,13 +915,15 @@ class ApiClient {
   async sendBroadcastNotification(
     notificationData: BroadcastNotificationRequest
   ): Promise<Notification> {
-    const response = await fetch('/api/notifications/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/notifications/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(notificationData),
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to send broadcast notification' }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to send broadcast notification" }));
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
     return await response.json();
@@ -961,24 +1017,30 @@ class ApiClient {
     };
   }> {
     const [users, events, roles] = await Promise.all([
-      this.request<Array<{ id: number; is_active: boolean }>>(`/users/`, { headers: { "X-Tenant-ID": tenantSlug } }),
+      this.request<Array<{ id: number; is_active: boolean }>>(`/users/`, {
+        headers: { "X-Tenant-ID": tenantSlug },
+      }),
       this.request<Array<{ id: number; is_active: boolean }>>(`/events/`),
-      this.request<Array<{ id: number; name: string }>>(`/roles/tenant/${tenantSlug}`)
+      this.request<Array<{ id: number; name: string }>>(
+        `/roles/tenant/${tenantSlug}`
+      ),
     ]);
 
     // Get all participants for all events
     const allParticipants = await Promise.all(
-      events.map(event => 
-        this.request<Array<{ id: number }>>(`/events/${event.id}/participants`).catch(() => [])
+      events.map((event) =>
+        this.request<Array<{ id: number }>>(
+          `/events/${event.id}/participants`
+        ).catch(() => [])
       )
     );
     const totalVisitors = allParticipants.flat().length;
 
     // Calculate trends (mock data for now - would need historical data from API)
-    
+
     return {
       totalUsers: users.length,
-      activeEvents: events.filter(e => e.is_active).length,
+      activeEvents: events.filter((e) => e.is_active).length,
       totalRoles: roles.length,
       totalVisitors,
       tenantStatus: "Active",
@@ -986,8 +1048,8 @@ class ApiClient {
         usersChange: Math.floor(Math.random() * 20) - 10, // Mock trend data
         eventsChange: Math.floor(Math.random() * 10) - 5,
         rolesChange: Math.floor(Math.random() * 5) - 2,
-        visitorsChange: Math.floor(Math.random() * 50) - 25
-      }
+        visitorsChange: Math.floor(Math.random() * 50) - 25,
+      },
     };
   }
 }

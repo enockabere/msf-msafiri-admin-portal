@@ -394,9 +394,9 @@ export default function EventAllocations({
   const handleEditAllocation = (allocation: Allocation) => {
     setEditingId(allocation.id);
     setEditData({
-      items: allocation.items?.map((item: { inventory_item_id: number; quantity_per_event: number }) => ({
+      items: allocation.items?.map((item: { inventory_item_id: number; quantity_per_participant: number }) => ({
         inventory_item_id: item.inventory_item_id.toString(),
-        quantity_per_event: item.quantity_per_event.toString(),
+        quantity_per_event: item.quantity_per_participant.toString(),
       })) || [{ 
         inventory_item_id: allocation.inventory_item_id.toString(), 
         quantity_per_event: allocation.quantity_per_participant.toString() 
@@ -1213,18 +1213,13 @@ export default function EventAllocations({
                     </Button>
                     {expandedAllocations.includes(allocation.id) && (
                       <div className="mt-3 space-y-2 bg-gray-50 p-3 rounded-lg">
-                        {allocation.items?.map((item: {
-                        inventory_item_name: string;
-                        quantity_per_event?: number;
-                        quantity_per_participant?: number;
-                        available_quantity: number;
-                      }, index: number) => (
+                        {allocation.items?.map((item: Record<string, unknown>, index: number) => (
                           <div key={index} className="flex justify-between items-center text-sm">
-                            <span className="font-medium">{item.inventory_item_name}</span>
+                            <span className="font-medium">{String(item.inventory_item_name)}</span>
                             <div className="text-right">
-                              <span className="text-gray-600">Total: {item.quantity_per_event || item.quantity_per_participant}</span>
+                              <span className="text-gray-600">Total: {String(item.quantity_per_event || item.quantity_per_participant)}</span>
                               <br />
-                              <span className="text-xs text-gray-500">Available: {item.available_quantity}</span>
+                              <span className="text-xs text-gray-500">Available: {String(item.available_quantity)}</span>
                             </div>
                           </div>
                         )) || (
