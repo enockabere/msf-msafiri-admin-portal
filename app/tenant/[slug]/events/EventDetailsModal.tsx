@@ -108,6 +108,14 @@ export default function EventDetailsModal({
   const [saving, setSaving] = useState(false);
   const [, setAgenda] = useState<AgendaItem[]>([]);
 
+  const handleParticipantsChange = useCallback((count: number) => {
+    setParticipantsCount(count);
+  }, []);
+
+  const handleFacilitatorsChange = useCallback((count: number) => {
+    setFacilitatorsCount(count);
+  }, []);
+
   const fetchParticipants = useCallback(async () => {
     if (!event || !accessToken) return;
 
@@ -785,10 +793,7 @@ export default function EventDetailsModal({
             <EventParticipants
               eventId={event.id}
               tenantSlug={tenantSlug}
-              onParticipantsChange={(count) => {
-                setParticipantsCount(count);
-                fetchParticipants(); // Refresh counts when participants change
-              }}
+              onParticipantsChange={handleParticipantsChange}
             />
           </TabsContent>
 
@@ -801,10 +806,7 @@ export default function EventDetailsModal({
               tenantSlug={tenantSlug}
               roleFilter="facilitator"
               allowAdminAdd={true}
-              onParticipantsChange={(count) => {
-                setFacilitatorsCount(count);
-                fetchParticipants(); // Refresh counts when facilitators change
-              }}
+              onParticipantsChange={handleFacilitatorsChange}
             />
           </TabsContent>
 

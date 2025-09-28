@@ -114,6 +114,9 @@ export default function ChatWindow({ chat, tenantSlug, onBack, onUpdate, onChatO
         });
         setCanSendMessages((statusResponse as { can_send_messages: boolean }).can_send_messages);
       } else {
+        // For direct messages, always allow sending messages
+        setCanSendMessages(true);
+        
         const endpoint = `/chat/direct-messages/?with_user=${chat.email}`;
 
         
@@ -325,6 +328,13 @@ export default function ChatWindow({ chat, tenantSlug, onBack, onUpdate, onChatO
       });
     }
   };
+
+  // Reset canSendMessages immediately when chat type changes
+  useEffect(() => {
+    if (chat.type === "direct") {
+      setCanSendMessages(true);
+    }
+  }, [chat.type, chat]);
 
   useEffect(() => {
     fetchMessages();

@@ -46,9 +46,11 @@ export function useWebSocketNotifications({
       return;
 
     try {
-      const wsUrl = `${
-        process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000"
-      }/api/v1/chat/ws/notifications?token=${token}&tenant=${tenantSlug}`;
+      // Use secure WebSocket in production, fallback to ws for local development
+      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+      const wsUrl = `${baseUrl}/api/v1/chat/ws/notifications?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenantSlug)}`;
+      
+      console.log("Attempting WebSocket connection to:", wsUrl.replace(token, "[TOKEN_HIDDEN]"));
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
@@ -59,6 +61,12 @@ export function useWebSocketNotifications({
 
       ws.onmessage = (event) => {
         try {
+          // Validate event data before parsing
+          if (!event.data || typeof event.data !== 'string') {
+            console.warn("Invalid WebSocket message format:", event.data);
+            return;
+          }
+          
           const notification: WebSocketNotification = JSON.parse(event.data);
 
           if (notification.type === "chat_message") {
@@ -95,6 +103,7 @@ export function useWebSocketNotifications({
           }
         } catch (error) {
           console.error("Error parsing WebSocket notification:", error);
+          console.error("Raw message data:", event.data?.substring(0, 200));
         }
       };
 
@@ -120,12 +129,19 @@ export function useWebSocketNotifications({
 
       ws.onerror = (error) => {
         console.error("WebSocket notifications error:", error);
-        console.error("WebSocket error event:", {
-          type: error.type,
-          target: error.target,
-          currentTarget: error.currentTarget,
-        });
+        console.error("WebSocket URL (token hidden):", wsUrl.replace(token, "[TOKEN_HIDDEN]"));
+        console.error("WebSocket readyState:", ws.readyState);
         setIsConnected(false);
+        
+        // Try to reconnect after error
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            console.log(`Attempting WebSocket reconnect ${reconnectAttempts.current}/${maxReconnectAttempts}`);
+            connect();
+          }, delay);
+        }
       };
     } catch (error) {
       console.error(

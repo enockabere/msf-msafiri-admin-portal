@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NotificationProvider } from "@/context/NotificationContext";
+import DashboardLayout from "@/components/layout/dashboard-layout";
+import { useAuth } from "@/lib/auth";
 
 import {
   Bell,
@@ -396,13 +398,22 @@ function NotificationsContent() {
 }
 
 export default function TenantNotificationsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role && ["super_admin", "mt_admin", "hr_admin", "event_admin"].includes(user.role);
+  
   return (
     <NotificationProvider>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-6">
+      {isAdmin ? (
+        <DashboardLayout>
           <NotificationsContent />
+        </DashboardLayout>
+      ) : (
+        <div className="min-h-screen bg-gray-50">
+          <div className="container mx-auto px-4 py-6">
+            <NotificationsContent />
+          </div>
         </div>
-      </div>
+      )}
     </NotificationProvider>
   );
 }

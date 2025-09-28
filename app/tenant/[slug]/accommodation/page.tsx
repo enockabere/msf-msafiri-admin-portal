@@ -11,6 +11,7 @@ import GuestHouseCard from "@/components/accommodation/GuestHouseCard";
 import VendorCard from "@/components/accommodation/VendorCard";
 import AllocationsList from "@/components/accommodation/AllocationsList";
 import GuesthouseManagement from "@/components/accommodation/GuesthouseManagement";
+import VendorManagement from "@/components/accommodation/VendorManagement";
 import RoomsView from "@/components/accommodation/RoomsView";
 import { Hotel, Building2, Users } from "lucide-react";
 
@@ -931,14 +932,37 @@ export default function AccommodationPage() {
           </TabsContent>
 
           <TabsContent value="vendors" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-base font-medium text-gray-900">Vendor Hotels</h2>
+                <p className="text-sm text-gray-500">Manage external hotel partnerships</p>
+              </div>
+              <VendorManagement 
+                canEdit={!!canEdit} 
+                onVendorCreated={fetchDataCallback} 
+                apiClient={apiClient as { getToken: () => string }} 
+                tenantSlug={tenantSlug} 
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {vendors.map((vendor) => (
-                <VendorCard 
-                  key={vendor.id} 
-                  vendor={vendor} 
-                  onBook={handleBookVendor} 
-                />
-              ))}
+              {vendors.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <Hotel className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-medium text-gray-900 mb-2">No vendor hotels yet</h3>
+                  <p className="text-gray-500 mb-4">Get started by adding your first vendor hotel partnership</p>
+                </div>
+              ) : (
+                vendors.map((vendor) => (
+                  <VendorCard 
+                    key={vendor.id} 
+                    vendor={vendor} 
+                    onBook={handleBookVendor} 
+                  />
+                ))
+              )}
             </div>
           </TabsContent>
 

@@ -38,7 +38,13 @@ export function useChatNotifications({
 
   // Simulate real-time notifications with polling
   const pollForNotifications = useCallback(async () => {
+    if (!tenantSlug || !apiClient) {
+      console.warn("Missing tenantSlug or apiClient for notifications");
+      return;
+    }
+    
     try {
+      console.log("Polling for chat notifications...");
       // Check for new messages in conversations
       const conversations = await apiClient.request("/chat/conversations/", {
         headers: { "X-Tenant-ID": tenantSlug },
@@ -66,9 +72,17 @@ export function useChatNotifications({
       setIsConnected(true);
     } catch (error: unknown) {
       console.error(
-        "DEBUG Notifications: Error polling for notifications:",
+        "Error polling for chat notifications:",
         error
       );
+      
+      // Check if it's an authentication error
+      const errorResponse = error as { response?: { status?: number } };
+      if (errorResponse.response?.status === 401) {
+        console.warn("Authentication error in chat notifications - user may need to re-login");
+      } else if (errorResponse.response?.status === 403) {
+        console.warn("Permission denied for chat notifications");
+      }
 
       setIsConnected(false);
     }

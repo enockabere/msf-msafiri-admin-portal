@@ -81,7 +81,6 @@ export default function EventParticipants({
           : data.filter((p: Participant) => p.role !== "facilitator");
 
         setParticipants(filteredData);
-        // Only count non-facilitators for the main participants count
         const countForCallback = roleFilter
           ? filteredData.length
           : data.filter((p: Participant) => p.role !== "facilitator").length;

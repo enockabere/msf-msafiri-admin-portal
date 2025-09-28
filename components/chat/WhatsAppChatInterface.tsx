@@ -19,16 +19,19 @@ import {
   Clock,
   XCircle,
   MoreVertical,
+  Bug,
 } from "lucide-react";
 import ChatNotifications from "./ChatNotifications";
 import ChatWindow from "./ChatWindow";
-import ChatNotificationIndicator from "./ChatNotificationIndicator";
+import NotificationDebug from "./NotificationDebug";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+
 
 interface ChatRoom {
   id: number;
@@ -96,6 +99,7 @@ export default function WhatsAppChatInterface({
     ChatRoom | Conversation | null
   >(null);
   const [activeTab, setActiveTab] = useState<"groups" | "contacts">("groups");
+  const [showDebug, setShowDebug] = useState(false);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -136,8 +140,11 @@ export default function WhatsAppChatInterface({
     enabled: true,
   });
 
+  // Calculate separate unread counts for groups and direct messages
+  const groupUnreadCount = chatRooms.reduce((sum, room) => sum + (room.unread_count || 0), 0);
+  const directUnreadCount = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+
   // WebSocket notifications (temporarily disabled)
-  const unreadChatCount = 0;
   const markChatAsRead = () => {};
 
   useEffect(() => {
@@ -282,9 +289,6 @@ export default function WhatsAppChatInterface({
               />
             </div>
             <div className="flex items-center gap-2">
-              <ChatNotificationIndicator
-                unreadCount={unreadCount + unreadChatCount}
-              />
               <ChatNotifications tenantSlug={tenantSlug} />
               {isAdmin && (
                 <DropdownMenu>
@@ -305,6 +309,10 @@ export default function WhatsAppChatInterface({
                     <DropdownMenuItem onClick={onCleanupChats}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Cleanup Ended Chats
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowDebug(!showDebug)}>
+                      <Bug className="h-4 w-4 mr-2" />
+                      {showDebug ? 'Hide' : 'Show'} Debug Panel
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -340,14 +348,11 @@ export default function WhatsAppChatInterface({
               <Badge variant="secondary" className="bg-gray-100">
                 {groupChats.length}
               </Badge>
-              {(unreadCount > 0 || unreadChatCount > 0) &&
-                activeTab === "groups" && (
-                  <Badge className="bg-red-500 text-white text-xs animate-pulse">
-                    {unreadCount + unreadChatCount > 99
-                      ? "99+"
-                      : unreadCount + unreadChatCount}
-                  </Badge>
-                )}
+              {groupUnreadCount > 0 && (
+                <Badge className="bg-red-500 text-white text-xs animate-pulse">
+                  {groupUnreadCount > 99 ? "99+" : groupUnreadCount}
+                </Badge>
+              )}
             </div>
           </button>
           <button
@@ -364,6 +369,11 @@ export default function WhatsAppChatInterface({
               <Badge variant="secondary" className="bg-gray-100">
                 {directChats.length}
               </Badge>
+              {directUnreadCount > 0 && (
+                <Badge className="bg-red-500 text-white text-xs animate-pulse">
+                  {directUnreadCount > 99 ? "99+" : directUnreadCount}
+                </Badge>
+              )}
             </div>
           </button>
         </div>
@@ -460,7 +470,11 @@ export default function WhatsAppChatInterface({
 
       {/* Chat Window */}
       <div className="flex-1 flex flex-col">
-        {selectedChat ? (
+        {showDebug ? (
+          <div className="p-4 bg-gray-50 h-full overflow-auto">
+            <NotificationDebug tenantSlug={tenantSlug} />
+          </div>
+        ) : selectedChat ? (
           <ChatWindow
             chat={selectedChat}
             tenantSlug={tenantSlug}
