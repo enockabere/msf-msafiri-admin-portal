@@ -50,7 +50,6 @@ export function useWebSocketNotifications({
       const baseUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
       const wsUrl = `${baseUrl}/api/v1/chat/ws/notifications?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenantSlug)}`;
       
-      console.log("Attempting WebSocket connection to:", wsUrl.replace(token, "[TOKEN_HIDDEN]"));
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 

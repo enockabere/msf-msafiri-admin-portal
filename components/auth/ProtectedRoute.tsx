@@ -114,7 +114,7 @@ export default function ProtectedRoute({
                 <div className="space-y-2">
                   <p className="font-medium">Access Denied</p>
                   <p className="text-sm">
-                    You don't have permission to access this page. 
+                    You don&apos;t have permission to access this page. 
                     {redirecting && "Redirecting to dashboard..."}
                   </p>
                   {redirecting && (

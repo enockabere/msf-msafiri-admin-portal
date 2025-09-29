@@ -9,7 +9,6 @@ import { useWebSocketNotifications } from "@/hooks/useWebSocketNotifications";
 import { useAuthenticatedApi } from "@/lib/auth";
 import { 
   Bell, 
-  BellOff, 
   Wifi, 
   WifiOff, 
   RefreshCw,
@@ -23,7 +22,7 @@ interface NotificationDebugProps {
 }
 
 export default function NotificationDebug({ tenantSlug }: NotificationDebugProps) {
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<Record<string, unknown>>({});
   const [testResults, setTestResults] = useState<string[]>([]);
   const { apiClient } = useAuthenticatedApi();
   
@@ -58,8 +57,9 @@ export default function NotificationDebug({ tenantSlug }: NotificationDebugProps
         headers: { "X-Tenant-ID": tenantSlug },
       });
       addTestResult(`API connection successful - ${Array.isArray(response) ? response.length : 0} conversations`, 'success');
-    } catch (error: any) {
-      addTestResult(`API connection failed: ${error.message || error}`, 'error');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addTestResult(`API connection failed: ${errorMessage}`, 'error');
     }
   };
 
@@ -82,8 +82,9 @@ export default function NotificationDebug({ tenantSlug }: NotificationDebugProps
       testWs.onclose = (event) => {
         addTestResult(`WebSocket closed with code: ${event.code}`, event.code === 1000 ? 'success' : 'error');
       };
-    } catch (error: any) {
-      addTestResult(`WebSocket test failed: ${error.message}`, 'error');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      addTestResult(`WebSocket test failed: ${errorMessage}`, 'error');
     }
   };
 

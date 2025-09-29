@@ -110,6 +110,7 @@ export default function TenantAdminUsersPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [resendingId, setResendingId] = useState<number | null>(null);
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
 
   const tenantSlug = params.slug as string;
 
@@ -219,6 +220,7 @@ export default function TenantAdminUsersPage() {
 
       // If user is super admin, allow access to any tenant
       if (user?.role === "SUPER_ADMIN" || user?.role === "super_admin") {
+        setIsTenantAdmin(true);
         await Promise.all([fetchUsers(), fetchPendingInvitations()]);
         fetchRoles();
         return;
@@ -247,6 +249,7 @@ export default function TenantAdminUsersPage() {
         return;
       }
 
+      setIsTenantAdmin(true);
       await Promise.all([fetchUsers(), fetchPendingInvitations()]);
       fetchRoles();
     } catch (error) {
@@ -287,6 +290,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleInviteUser = async () => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can invite users",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (
       !formData.email.trim() ||
       !formData.full_name.trim() ||
@@ -341,6 +353,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleChangeRole = async () => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can change user roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedUser || !formData.role) return;
 
     const { default: Swal } = await import("sweetalert2");
@@ -389,6 +410,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleRemoveRole = async (user: AdminUser, roleToRemove: string) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can remove user roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { default: Swal } = await import("sweetalert2");
 
     const result = await Swal.fire({
@@ -452,6 +482,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleResendInvitation = async (invitationId: number) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can resend invitations",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setResendingId(invitationId);
       await apiClient.request(`/invitations/${invitationId}/resend`, {
@@ -483,6 +522,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleAddRole = async () => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can add user roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedUser || !formData.role) return;
 
     try {
@@ -531,6 +579,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleRemoveUser = async (user: AdminUser) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can remove users",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { default: Swal } = await import("sweetalert2");
 
     const result = await Swal.fire({
@@ -579,6 +636,15 @@ export default function TenantAdminUsersPage() {
   };
 
   const handleCancelInvitation = async (invitationId: number) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can cancel invitations",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { default: Swal } = await import("sweetalert2");
 
     const result = await Swal.fire({
@@ -682,7 +748,8 @@ export default function TenantAdminUsersPage() {
             </div>
             <Button
               onClick={() => setShowInviteModal(true)}
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+              disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
+              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               Invite Admin User
@@ -720,7 +787,7 @@ export default function TenantAdminUsersPage() {
                       <div className="flex gap-2">
                         <Button
                           onClick={() => handleResendInvitation(invitation.id)}
-                          disabled={resendingId === invitation.id}
+                          disabled={resendingId === invitation.id || (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin")}
                           variant="outline"
                           size="sm"
                         >
@@ -735,7 +802,7 @@ export default function TenantAdminUsersPage() {
                         </Button>
                         <Button
                           onClick={() => handleCancelInvitation(invitation.id)}
-                          disabled={resendingId === invitation.id}
+                          disabled={resendingId === invitation.id || (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin")}
                           variant="outline"
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -822,7 +889,8 @@ export default function TenantAdminUsersPage() {
                                 {getRoleDisplayName(role.trim())}
                                 {user.id !== 0 &&
                                   role.trim() !== "TENANT_ADMIN" &&
-                                  role.trim() !== "GUEST" && (
+                                  role.trim() !== "GUEST" &&
+                                  (isTenantAdmin || user?.role === "SUPER_ADMIN" || user?.role === "super_admin") && (
                                     <button
                                       onClick={() =>
                                         handleRemoveRole(user, role.trim())
@@ -860,7 +928,8 @@ export default function TenantAdminUsersPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
+                                className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>

@@ -58,6 +58,7 @@ export default function TenantAdminRolesPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [deletingRoleId, setDeletingRoleId] = useState<number | null>(null);
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
 
   const tenantSlug = params.slug as string;
 
@@ -89,6 +90,7 @@ export default function TenantAdminRolesPage() {
 
       // If user is super admin, allow access to any tenant
       if (user?.role === "SUPER_ADMIN" || user?.role === "super_admin") {
+        setIsTenantAdmin(true);
         await fetchRoles();
         return;
       }
@@ -115,6 +117,7 @@ export default function TenantAdminRolesPage() {
         return;
       }
 
+      setIsTenantAdmin(true);
       await fetchRoles();
     } catch (error) {
       console.error("Access check error:", error);
@@ -133,6 +136,15 @@ export default function TenantAdminRolesPage() {
   }, [user?.email, authLoading, checkAccess]);
 
   const handleCreateRole = async () => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can create roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.name.trim()) {
       toast({
         title: "Error",
@@ -177,6 +189,15 @@ export default function TenantAdminRolesPage() {
   };
 
   const handleUpdateRole = async () => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can update roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!editingRole) return;
 
     if (!formData.name.trim()) {
@@ -226,6 +247,15 @@ export default function TenantAdminRolesPage() {
   };
 
   const handleEditRole = (role: Role) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can edit roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingRole(role);
     setFormData({
       name: role.name,
@@ -240,6 +270,15 @@ export default function TenantAdminRolesPage() {
   };
 
   const handleDeleteRole = async (roleId: number) => {
+    if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
+      toast({
+        title: "Access Denied",
+        description: "Only tenant administrators can delete roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { default: Swal } = await import("sweetalert2");
 
     const result = await Swal.fire({
@@ -303,7 +342,8 @@ export default function TenantAdminRolesPage() {
             </div>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+              disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
+              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               Create Role
@@ -422,7 +462,8 @@ export default function TenantAdminRolesPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
+                                className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>

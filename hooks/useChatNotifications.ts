@@ -42,10 +42,8 @@ export function useChatNotifications({
       console.warn("Missing tenantSlug or apiClient for notifications");
       return;
     }
-    
+
     try {
-      console.log("Polling for chat notifications...");
-      // Check for new messages in conversations
       const conversations = await apiClient.request("/chat/conversations/", {
         headers: { "X-Tenant-ID": tenantSlug },
       });
@@ -71,15 +69,14 @@ export function useChatNotifications({
 
       setIsConnected(true);
     } catch (error: unknown) {
-      console.error(
-        "Error polling for chat notifications:",
-        error
-      );
-      
+      console.error("Error polling for chat notifications:", error);
+
       // Check if it's an authentication error
       const errorResponse = error as { response?: { status?: number } };
       if (errorResponse.response?.status === 401) {
-        console.warn("Authentication error in chat notifications - user may need to re-login");
+        console.warn(
+          "Authentication error in chat notifications - user may need to re-login"
+        );
       } else if (errorResponse.response?.status === 403) {
         console.warn("Permission denied for chat notifications");
       }
