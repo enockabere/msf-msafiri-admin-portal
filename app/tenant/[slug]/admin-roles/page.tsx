@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -288,7 +289,8 @@ export default function TenantAdminRolesPage() {
   }
 
   return (
-    <DashboardLayout>
+    <ProtectedRoute requireTenantAdmin={true}>
+      <DashboardLayout>
       <div className="space-y-6">
         <div className="w-full space-y-4">
           {/* Header and Create Button */}
@@ -540,6 +542,7 @@ export default function TenantAdminRolesPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }

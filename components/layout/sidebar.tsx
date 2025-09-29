@@ -97,8 +97,7 @@ function Tooltip({ children, content, side = "right" }: TooltipProps) {
   );
 }
 
-const getNavigationItems = () => {
-  // Show all menu items to all users for now
+const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin: boolean, isSuperAdmin: boolean) => {
   const sections = [];
   
   // Overview - All roles
@@ -109,14 +108,16 @@ const getNavigationItems = () => {
     ],
   });
   
-  // User Management - All roles
-  sections.push({
-    title: "User Management",
-    items: [
-      { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
-      { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
-    ],
-  });
+  // User Management - Only for Super Admin or Tenant Admin (owner)
+  if (isSuperAdmin || isTenantAdmin) {
+    sections.push({
+      title: "User Management",
+      items: [
+        { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
+        { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
+      ],
+    });
+  }
   
   // Operations - Show to all users for now
   const operationsItems = [
@@ -198,7 +199,8 @@ export default function Sidebar({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
-  const { user, isSuperAdmin, loading: authLoading } = useAuth();
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
+  const { user, isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const router = useRouter();
   const pathname = usePathname();
@@ -212,7 +214,7 @@ export default function Sidebar({
   // Use real notifications
   const { stats } = useNotifications();
 
-  // Fetch user roles
+  // Fetch user roles and check tenant admin status
   useEffect(() => {
     const fetchUserRoles = async () => {
       if (user?.id) {
@@ -223,17 +225,30 @@ export default function Sidebar({
             roleNames.push(user.role);
           }
           const uniqueRoles = [...new Set(roleNames)];
-        
           setUserRoles(uniqueRoles);
+
+          // Check if user is tenant admin for current tenant
+          const currentTenantSlug = window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1];
+          if (currentTenantSlug && user.email) {
+            try {
+              const tenants = await apiClient.getTenants();
+              const currentTenant = tenants.find(t => t.slug === currentTenantSlug);
+              setIsTenantAdmin(currentTenant?.admin_email === user.email);
+            } catch (error) {
+              console.error('Error checking tenant admin status:', error);
+              setIsTenantAdmin(false);
+            }
+          }
         } catch (error) {
           console.error('Error fetching user roles:', error);
           setUserRoles(user.role ? [user.role] : []);
+          setIsTenantAdmin(false);
         }
       }
     };
     
     fetchUserRoles();
-  }, [user?.id, user?.role, apiClient]);
+  }, [user?.id, user?.role, user?.email, apiClient]);
 
   const handleLogout = async () => {
     try {
@@ -311,10 +326,8 @@ export default function Sidebar({
     enabled: !!tenantSlug 
   });
   
-  // userRoles is now fetched from the API
-  
-  const getNavigationItemsWithTenantContext = (userRoles: string[], isTenantPath: boolean, tenantSlug: string | null) => {
-    const items = getNavigationItems();
+  const getNavigationItemsWithTenantContext = (userRoles: string[], isTenantPath: boolean, tenantSlug: string | null, isAdmin: boolean, isTenantAdmin: boolean, isSuperAdmin: boolean) => {
+    const items = getNavigationItems(userRoles, isAdmin, isTenantAdmin, isSuperAdmin);
     if (isTenantPath && tenantSlug) {
       return items.map(section => ({
         ...section,
@@ -339,7 +352,7 @@ export default function Sidebar({
     return items;
   };
   
-  const navigationItems = getNavigationItemsWithTenantContext(userRoles, isTenantPath, tenantSlug);
+  const navigationItems = getNavigationItemsWithTenantContext(userRoles, isTenantPath, tenantSlug, isAdmin, isTenantAdmin, isSuperAdmin);
 
   return (
     <>

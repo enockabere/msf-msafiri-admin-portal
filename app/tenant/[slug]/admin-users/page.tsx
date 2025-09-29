@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -668,7 +669,8 @@ export default function TenantAdminUsersPage() {
   }
 
   return (
-    <DashboardLayout>
+    <ProtectedRoute requireTenantAdmin={true}>
+      <DashboardLayout>
       <div className="space-y-6">
         <div className="w-full space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -1150,6 +1152,7 @@ export default function TenantAdminUsersPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 }

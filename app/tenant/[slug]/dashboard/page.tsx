@@ -391,7 +391,7 @@ export default function TenantDashboardPage() {
 
         {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickActions.map((action, index) => {
+          {quickActions.filter(action => action.enabled).map((action, index) => {
             const Icon = action.icon;
             const colorClasses = {
               blue: "bg-blue-500 hover:bg-blue-600 text-blue-600",
@@ -401,29 +401,6 @@ export default function TenantDashboardPage() {
               indigo: "bg-indigo-500 hover:bg-indigo-600 text-indigo-600",
               red: "bg-red-500 hover:bg-red-600 text-red-600",
             };
-
-            if (!action.enabled) {
-              return (
-                <div
-                  key={index}
-                  className="p-6 border-2 border-gray-200 rounded-lg bg-gray-50 cursor-not-allowed"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 rounded-lg bg-gray-400">
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm text-gray-700">
-                        {action.title}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {action.description}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
 
             return (
               <Button

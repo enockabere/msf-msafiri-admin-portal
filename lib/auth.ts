@@ -39,13 +39,14 @@ export function useAuth() {
     isAuthenticated: status === "authenticated",
     loading: status === "loading",
 
-    // Role-based permissions
+    // Role-based permissions - handle both uppercase and lowercase
     isAdmin: session?.user?.role
-      ? adminRoles.includes(session.user.role as ValidRole)
+      ? adminRoles.includes(session.user.role.toLowerCase() as ValidRole) ||
+        ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'].includes(session.user.role.toUpperCase())
       : false,
 
-    // Super admin check using actual API role
-    isSuperAdmin: session?.user?.role === "super_admin",
+    // Super admin check using actual API role - handle both cases
+    isSuperAdmin: session?.user?.role === "super_admin" || session?.user?.role === "SUPER_ADMIN",
 
     // Role checking utilities
     hasRole: (role: ValidRole) => session?.user?.role === role,
@@ -94,7 +95,7 @@ export function useAuthenticatedApi() {
 
 // Utility functions for role-based access using actual API roles
 export const AuthUtils = {
-  // Check if role is admin
+  // Check if role is admin - handle both uppercase and lowercase
   isAdminRole: (role: string): boolean => {
     const adminRoles: ValidRole[] = [
       "super_admin",
@@ -102,12 +103,13 @@ export const AuthUtils = {
       "hr_admin",
       "event_admin",
     ];
-    return adminRoles.includes(role as ValidRole);
+    const upperAdminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+    return adminRoles.includes(role.toLowerCase() as ValidRole) || upperAdminRoles.includes(role.toUpperCase());
   },
 
-  // Check if role is super admin
+  // Check if role is super admin - handle both cases
   isSuperAdminRole: (role: string): boolean => {
-    return role === "super_admin";
+    return role.toLowerCase() === "super_admin" || role.toUpperCase() === "SUPER_ADMIN";
   },
 
   // Get role display name using actual API roles
