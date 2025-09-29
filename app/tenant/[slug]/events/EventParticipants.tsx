@@ -65,7 +65,7 @@ export default function EventParticipants({
     try {
       setFetchLoading(true);
       const url = new URL(
-        `http://localhost:8000/api/v1/event-registration/event/${eventId}/registrations`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/event/${eventId}/registrations`
       );
       if (statusFilter && statusFilter !== "all") {
         url.searchParams.append("status_filter", statusFilter);
@@ -115,7 +115,7 @@ export default function EventParticipants({
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/event-registration/register`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/register`,
         {
           method: "POST",
           headers: {
@@ -169,7 +169,7 @@ export default function EventParticipants({
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/event-registration/participant/${participantId}/status`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
         {
           method: "PUT",
           headers: {
@@ -199,7 +199,7 @@ export default function EventParticipants({
     setResendingId(participantId);
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/event-registration/participant/${participantId}/resend-invitation`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/resend-invitation`,
         {
           method: "POST",
           headers: {

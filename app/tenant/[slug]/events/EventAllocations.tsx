@@ -40,7 +40,6 @@ import {
   Wrench,
   FileText,
   Wine,
-  Send,
   User,
   Grid3X3,
   List,
@@ -91,12 +90,16 @@ export default function EventAllocations({
   eventHasEnded = false,
 }: EventAllocationsProps) {
   const [itemAllocations, setItemAllocations] = useState<ItemAllocation[]>([]);
-  const [voucherAllocations, setVoucherAllocations] = useState<VoucherAllocation[]>([]);
+  const [voucherAllocations, setVoucherAllocations] = useState<
+    VoucherAllocation[]
+  >([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("items");
-  const [itemViewMode, setItemViewMode] = useState<'card' | 'table'>('table');
-  
+  const [itemViewMode, setItemViewMode] = useState<"card" | "table">("table");
+  const [, setEditingItemId] = useState<number | null>(null);
+  const [, setEditingVoucherId] = useState<number | null>(null);
+
   // Item allocation form
   const [showItemForm, setShowItemForm] = useState(false);
   const [itemFormData, setItemFormData] = useState({
@@ -105,18 +108,14 @@ export default function EventAllocations({
     notes: "",
     requested_email: "",
   });
-  
+
   // Voucher allocation form
   const [showVoucherForm, setShowVoucherForm] = useState(false);
   const [voucherFormData, setVoucherFormData] = useState({
     drink_vouchers_per_participant: "",
     notes: "",
   });
-  
-  // Edit states
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
-  const [editingVoucherId, setEditingVoucherId] = useState<number | null>(null);
-  
+
   // Stats
   const [voucherStats, setVoucherStats] = useState<{
     total_participants: number;
@@ -132,7 +131,8 @@ export default function EventAllocations({
 
   const fetchItemAllocations = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
@@ -141,12 +141,12 @@ export default function EventAllocations({
           },
         }
       );
-      
+
       if (!tenantResponse.ok) {
         console.error("Failed to fetch tenant data:", tenantResponse.status);
         return;
       }
-      
+
       const tenantData = await tenantResponse.json();
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/items/event/${eventId}?tenant_id=${tenantData.id}`,
@@ -159,7 +159,7 @@ export default function EventAllocations({
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Item allocations fetched:", data);
+
         setItemAllocations(data);
       } else {
         console.error("Failed to fetch item allocations:", response.status);
@@ -179,9 +179,9 @@ export default function EventAllocations({
           },
         }
       );
-      
+
       if (!tenantResponse.ok) return;
-      
+
       const tenantData = await tenantResponse.json();
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/vouchers/event/${eventId}?tenant_id=${tenantData.id}`,
@@ -203,20 +203,20 @@ export default function EventAllocations({
 
   const fetchInventoryItems = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'X-Tenant-ID': tenantSlug
+            "X-Tenant-ID": tenantSlug,
           },
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Inventory items fetched:", data);
         setInventoryItems(data);
       } else {
         console.error("Failed to fetch inventory items:", response.status);
@@ -236,9 +236,9 @@ export default function EventAllocations({
           },
         }
       );
-      
+
       if (!tenantResponse.ok) return;
-      
+
       const tenantData = await tenantResponse.json();
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/voucher-stats/${eventId}?tenant_id=${tenantData.id}`,
@@ -263,14 +263,23 @@ export default function EventAllocations({
     fetchVoucherAllocations();
     fetchInventoryItems();
     fetchVoucherStats();
-  }, [fetchItemAllocations, fetchVoucherAllocations, fetchInventoryItems, fetchVoucherStats]);
+  }, [
+    fetchItemAllocations,
+    fetchVoucherAllocations,
+    fetchInventoryItems,
+    fetchVoucherStats,
+  ]);
 
   const handleSubmitItemAllocation = async () => {
     const validItems = itemFormData.items.filter(
       (item) => item.inventory_item_id && item.quantity_per_event
     );
-    
-    if (validItems.length === 0 || !itemFormData.category || !itemFormData.requested_email) {
+
+    if (
+      validItems.length === 0 ||
+      !itemFormData.category ||
+      !itemFormData.requested_email
+    ) {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -290,12 +299,16 @@ export default function EventAllocations({
           },
         }
       );
-      
+
       const tenantData = await tenantResponse.json();
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/items?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
+        `${
+          process.env.NEXT_PUBLIC_API_URL
+        }/api/v1/allocations/items?tenant_id=${
+          tenantData.id
+        }&created_by=${encodeURIComponent(createdBy)}`,
         {
           method: "POST",
           headers: {
@@ -331,7 +344,7 @@ export default function EventAllocations({
           description: `Item request sent to ${itemFormData.requested_email}`,
         });
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -359,7 +372,8 @@ export default function EventAllocations({
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
-        description: "Voucher allocation already exists. You can edit or delete the existing one.",
+        description:
+          "Voucher allocation already exists. You can edit or delete the existing one.",
         variant: "destructive",
       });
       return;
@@ -375,12 +389,16 @@ export default function EventAllocations({
           },
         }
       );
-      
+
       const tenantData = await tenantResponse.json();
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/vouchers?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
+        `${
+          process.env.NEXT_PUBLIC_API_URL
+        }/api/v1/allocations/vouchers?tenant_id=${
+          tenantData.id
+        }&created_by=${encodeURIComponent(createdBy)}`,
         {
           method: "POST",
           headers: {
@@ -389,7 +407,9 @@ export default function EventAllocations({
           },
           body: JSON.stringify({
             event_id: eventId,
-            drink_vouchers_per_participant: parseInt(voucherFormData.drink_vouchers_per_participant),
+            drink_vouchers_per_participant: parseInt(
+              voucherFormData.drink_vouchers_per_participant
+            ),
             notes: voucherFormData.notes,
           }),
         }
@@ -410,7 +430,7 @@ export default function EventAllocations({
           description: "Voucher allocation created successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -442,7 +462,7 @@ export default function EventAllocations({
           description: "Item allocation deleted successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -473,7 +493,7 @@ export default function EventAllocations({
           description: "Voucher allocation deleted successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -510,31 +530,31 @@ export default function EventAllocations({
   };
 
   const getCategoryIcon = (category: string) => {
-    const categoryData = categories.find(cat => cat.value === category);
+    const categoryData = categories.find((cat) => cat.value === category);
     const IconComponent = categoryData?.icon || Package;
     return <IconComponent className="h-5 w-5" />;
   };
 
   const addItemToForm = () => {
-    setItemFormData(prev => ({
+    setItemFormData((prev) => ({
       ...prev,
-      items: [...prev.items, { inventory_item_id: "", quantity_per_event: "" }]
+      items: [...prev.items, { inventory_item_id: "", quantity_per_event: "" }],
     }));
   };
 
   const removeItemFromForm = (index: number) => {
-    setItemFormData(prev => ({
+    setItemFormData((prev) => ({
       ...prev,
-      items: prev.items.filter((_, i) => i !== index)
+      items: prev.items.filter((_, i) => i !== index),
     }));
   };
 
   const updateItemInForm = (index: number, field: string, value: string) => {
-    setItemFormData(prev => ({
+    setItemFormData((prev) => ({
       ...prev,
       items: prev.items.map((item, i) =>
         i === index ? { ...item, [field]: value } : item
-      )
+      ),
     }));
   };
 
@@ -567,18 +587,26 @@ export default function EventAllocations({
             <div className="flex items-center gap-3">
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <Button
-                  variant={itemViewMode === 'card' ? 'default' : 'ghost'}
+                  variant={itemViewMode === "card" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setItemViewMode('card')}
-                  className={itemViewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                  onClick={() => setItemViewMode("card")}
+                  className={
+                    itemViewMode === "card"
+                      ? "h-8 px-3 bg-white shadow-sm"
+                      : "h-8 px-3 hover:bg-gray-200"
+                  }
                 >
                   <Grid3X3 className="w-4 h-4" />
                 </Button>
                 <Button
-                  variant={itemViewMode === 'table' ? 'default' : 'ghost'}
+                  variant={itemViewMode === "table" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setItemViewMode('table')}
-                  className={itemViewMode === 'table' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                  onClick={() => setItemViewMode("table")}
+                  className={
+                    itemViewMode === "table"
+                      ? "h-8 px-3 bg-white shadow-sm"
+                      : "h-8 px-3 hover:bg-gray-200"
+                  }
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -595,11 +623,12 @@ export default function EventAllocations({
           </div>
 
           <div className="mb-4 text-sm text-gray-600">
-            Debug: {itemAllocations.length} item allocations found, View mode: {itemViewMode}
+            Debug: {itemAllocations.length} item allocations found, View mode:{" "}
+            {itemViewMode}
           </div>
-          
+
           {itemAllocations.length > 0 ? (
-            itemViewMode === 'table' ? (
+            itemViewMode === "table" ? (
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -617,16 +646,26 @@ export default function EventAllocations({
                       <TableRow key={allocation.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getCategoryIcon(allocation.inventory_item_category)}
+                            {getCategoryIcon(
+                              allocation.inventory_item_category
+                            )}
                             <span className="font-medium">
-                              {categories.find(cat => cat.value === allocation.inventory_item_category)?.label || allocation.inventory_item_category}
+                              {categories.find(
+                                (cat) =>
+                                  cat.value ===
+                                  allocation.inventory_item_category
+                              )?.label || allocation.inventory_item_category}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{allocation.inventory_item_name}</div>
-                            <div className="text-sm text-gray-500">Qty: {allocation.quantity_per_event}</div>
+                            <div className="font-medium">
+                              {allocation.inventory_item_name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Qty: {allocation.quantity_per_event}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -642,7 +681,11 @@ export default function EventAllocations({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`${getStatusColor(allocation.status)} flex items-center gap-1 w-fit`}>
+                          <Badge
+                            className={`${getStatusColor(
+                              allocation.status
+                            )} flex items-center gap-1 w-fit`}
+                          >
                             {getStatusIcon(allocation.status)}
                             {allocation.status.toUpperCase()}
                           </Badge>
@@ -660,7 +703,9 @@ export default function EventAllocations({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteItemAllocation(allocation.id)}
+                              onClick={() =>
+                                handleDeleteItemAllocation(allocation.id)
+                              }
                               disabled={eventHasEnded}
                               className="text-red-600 hover:text-red-700"
                             >
@@ -676,44 +721,64 @@ export default function EventAllocations({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {itemAllocations.map((allocation) => (
-                  <div key={allocation.id} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div
+                    key={allocation.id}
+                    className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         {getCategoryIcon(allocation.inventory_item_category)}
                         <span className="text-sm font-medium text-gray-600">
-                          {categories.find(cat => cat.value === allocation.inventory_item_category)?.label || allocation.inventory_item_category}
+                          {categories.find(
+                            (cat) =>
+                              cat.value === allocation.inventory_item_category
+                          )?.label || allocation.inventory_item_category}
                         </span>
                       </div>
-                      <Badge className={`${getStatusColor(allocation.status)} flex items-center gap-1`}>
+                      <Badge
+                        className={`${getStatusColor(
+                          allocation.status
+                        )} flex items-center gap-1`}
+                      >
                         {getStatusIcon(allocation.status)}
                         {allocation.status.toUpperCase()}
                       </Badge>
                     </div>
-                    
+
                     <div className="space-y-2 mb-4">
-                      <h4 className="font-semibold text-gray-900">{allocation.inventory_item_name}</h4>
-                      <p className="text-sm text-gray-600">Quantity: {allocation.quantity_per_event}</p>
+                      <h4 className="font-semibold text-gray-900">
+                        {allocation.inventory_item_name}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Quantity: {allocation.quantity_per_event}
+                      </p>
                     </div>
-                    
+
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-gray-400" />
                         <span className="text-gray-600">Requested by:</span>
-                        <span className="font-medium">{allocation.created_by}</span>
+                        <span className="font-medium">
+                          {allocation.created_by}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
                         <Mail className="h-4 w-4 text-gray-400" />
                         <span className="text-gray-600">Assigned to:</span>
-                        <span className="font-medium">{allocation.requested_email || "Not assigned"}</span>
+                        <span className="font-medium">
+                          {allocation.requested_email || "Not assigned"}
+                        </span>
                       </div>
                     </div>
-                    
+
                     {allocation.notes && (
                       <div className="mb-4">
-                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{allocation.notes}</p>
+                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                          {allocation.notes}
+                        </p>
                       </div>
                     )}
-                    
+
                     <div className="flex gap-2 pt-2 border-t">
                       <Button
                         variant="outline"
@@ -728,7 +793,9 @@ export default function EventAllocations({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDeleteItemAllocation(allocation.id)}
+                        onClick={() =>
+                          handleDeleteItemAllocation(allocation.id)
+                        }
                         disabled={eventHasEnded}
                         className="text-red-600 hover:text-red-700"
                       >
@@ -742,8 +809,12 @@ export default function EventAllocations({
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-medium text-gray-900 mb-2">No item allocations</h4>
-              <p className="text-gray-500 mb-4">Request items from team members for this event</p>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                No item allocations
+              </h4>
+              <p className="text-gray-500 mb-4">
+                Request items from team members for this event
+              </p>
               <Button
                 onClick={() => setShowItemForm(true)}
                 disabled={eventHasEnded}
@@ -774,19 +845,27 @@ export default function EventAllocations({
 
           {voucherStats && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h5 className="font-medium text-blue-900 mb-2">Voucher Statistics</h5>
+              <h5 className="font-medium text-blue-900 mb-2">
+                Voucher Statistics
+              </h5>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-blue-700">Total Participants:</span>
-                  <div className="font-semibold text-blue-900">{voucherStats.total_participants}</div>
+                  <div className="font-semibold text-blue-900">
+                    {voucherStats.total_participants}
+                  </div>
                 </div>
                 <div>
                   <span className="text-blue-700">Allocated Vouchers:</span>
-                  <div className="font-semibold text-blue-900">{voucherStats.total_allocated_vouchers}</div>
+                  <div className="font-semibold text-blue-900">
+                    {voucherStats.total_allocated_vouchers}
+                  </div>
                 </div>
                 <div>
                   <span className="text-blue-700">Redeemed Vouchers:</span>
-                  <div className="font-semibold text-blue-900">{voucherStats.total_redeemed_vouchers}</div>
+                  <div className="font-semibold text-blue-900">
+                    {voucherStats.total_redeemed_vouchers}
+                  </div>
                 </div>
               </div>
             </div>
@@ -810,7 +889,9 @@ export default function EventAllocations({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Wine className="h-5 w-5 text-purple-600" />
-                          <span className="font-medium">{allocation.drink_vouchers_per_participant} vouchers</span>
+                          <span className="font-medium">
+                            {allocation.drink_vouchers_per_participant} vouchers
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -820,7 +901,11 @@ export default function EventAllocations({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusColor(allocation.status)} flex items-center gap-1 w-fit`}>
+                        <Badge
+                          className={`${getStatusColor(
+                            allocation.status
+                          )} flex items-center gap-1 w-fit`}
+                        >
                           {getStatusIcon(allocation.status)}
                           {allocation.status.toUpperCase()}
                         </Badge>
@@ -841,7 +926,9 @@ export default function EventAllocations({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteVoucherAllocation(allocation.id)}
+                            onClick={() =>
+                              handleDeleteVoucherAllocation(allocation.id)
+                            }
                             disabled={eventHasEnded}
                             className="text-red-600 hover:text-red-700"
                           >
@@ -857,8 +944,12 @@ export default function EventAllocations({
           ) : (
             <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
               <Wine className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-medium text-gray-900 mb-2">No voucher allocations</h4>
-              <p className="text-gray-500 mb-4">Add drink vouchers for event participants</p>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                No voucher allocations
+              </h4>
+              <p className="text-gray-500 mb-4">
+                Add drink vouchers for event participants
+              </p>
               <Button
                 onClick={() => {
                   setShowVoucherForm(true);
@@ -883,8 +974,15 @@ export default function EventAllocations({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Category *</label>
-              <Select value={itemFormData.category} onValueChange={(value) => setItemFormData(prev => ({ ...prev, category: value }))}>
+              <label className="block text-sm font-medium mb-2">
+                Category *
+              </label>
+              <Select
+                value={itemFormData.category}
+                onValueChange={(value) =>
+                  setItemFormData((prev) => ({ ...prev, category: value }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -902,11 +1000,18 @@ export default function EventAllocations({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Assign to Email *</label>
+              <label className="block text-sm font-medium mb-2">
+                Assign to Email *
+              </label>
               <Input
                 type="email"
                 value={itemFormData.requested_email}
-                onChange={(e) => setItemFormData(prev => ({ ...prev, requested_email: e.target.value }))}
+                onChange={(e) =>
+                  setItemFormData((prev) => ({
+                    ...prev,
+                    requested_email: e.target.value,
+                  }))
+                }
                 placeholder="Enter email address of person responsible"
               />
             </div>
@@ -914,28 +1019,45 @@ export default function EventAllocations({
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-medium">Items *</label>
-                <Button type="button" variant="outline" size="sm" onClick={addItemToForm}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addItemToForm}
+                >
                   <Plus className="w-4 h-4 mr-2" /> Add Item
                 </Button>
               </div>
 
               {itemFormData.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4 p-3 border rounded-md mb-2">
+                <div
+                  key={index}
+                  className="grid grid-cols-2 gap-4 p-3 border rounded-md mb-2"
+                >
                   <Select
                     value={item.inventory_item_id}
-                    onValueChange={(value) => updateItemInForm(index, "inventory_item_id", value)}
+                    onValueChange={(value) =>
+                      updateItemInForm(index, "inventory_item_id", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select item" />
                     </SelectTrigger>
                     <SelectContent>
                       {inventoryItems
-                        .filter(invItem => !itemFormData.category || invItem.category === itemFormData.category)
+                        .filter(
+                          (invItem) =>
+                            !itemFormData.category ||
+                            invItem.category === itemFormData.category
+                        )
                         .map((invItem) => (
-                        <SelectItem key={invItem.id} value={invItem.id.toString()}>
-                          {invItem.name} ({invItem.quantity} available)
-                        </SelectItem>
-                      ))}
+                          <SelectItem
+                            key={invItem.id}
+                            value={invItem.id.toString()}
+                          >
+                            {invItem.name} ({invItem.quantity} available)
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <div className="flex gap-2">
@@ -943,7 +1065,13 @@ export default function EventAllocations({
                       type="number"
                       min="1"
                       value={item.quantity_per_event}
-                      onChange={(e) => updateItemInForm(index, "quantity_per_event", e.target.value)}
+                      onChange={(e) =>
+                        updateItemInForm(
+                          index,
+                          "quantity_per_event",
+                          e.target.value
+                        )
+                      }
                       placeholder="Quantity"
                     />
                     {itemFormData.items.length > 1 && (
@@ -965,7 +1093,12 @@ export default function EventAllocations({
               <label className="block text-sm font-medium mb-2">Notes</label>
               <Input
                 value={itemFormData.notes}
-                onChange={(e) => setItemFormData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) =>
+                  setItemFormData((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))
+                }
                 placeholder="Additional notes"
               />
             </div>
@@ -989,12 +1122,19 @@ export default function EventAllocations({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Vouchers per Participant *</label>
+              <label className="block text-sm font-medium mb-2">
+                Vouchers per Participant *
+              </label>
               <Input
                 type="number"
                 min="0"
                 value={voucherFormData.drink_vouchers_per_participant}
-                onChange={(e) => setVoucherFormData(prev => ({ ...prev, drink_vouchers_per_participant: e.target.value }))}
+                onChange={(e) =>
+                  setVoucherFormData((prev) => ({
+                    ...prev,
+                    drink_vouchers_per_participant: e.target.value,
+                  }))
+                }
                 placeholder="Enter number of vouchers"
               />
             </div>
@@ -1002,7 +1142,12 @@ export default function EventAllocations({
               <label className="block text-sm font-medium mb-2">Notes</label>
               <Input
                 value={voucherFormData.notes}
-                onChange={(e) => setVoucherFormData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) =>
+                  setVoucherFormData((prev) => ({
+                    ...prev,
+                    notes: e.target.value,
+                  }))
+                }
                 placeholder="Additional notes"
               />
             </div>

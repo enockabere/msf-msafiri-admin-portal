@@ -89,7 +89,7 @@ export default function EventDetailsModal({
   const [activeTab, setActiveTab] = useState("overview");
   const [tabLoading, setTabLoading] = useState(false);
 
-  const [feedbackStats, setFeedbackStats] = useState<{
+  const [, setFeedbackStats] = useState<{
     total_responses: number;
     average_overall_rating: number;
     unread: number;
@@ -99,7 +99,7 @@ export default function EventDetailsModal({
     average_venue_rating?: number;
     recommendation_percentage?: number;
   } | null>(null);
-  const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [, setFeedback] = useState<Feedback[]>([]);
   const [, setStatusSuggestions] = useState<StatusSuggestions | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -125,7 +125,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/participants/`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/participants/`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -140,7 +140,9 @@ export default function EventDetailsModal({
         const actualParticipants = data.filter(
           (p: Participant) => p.role !== "facilitator"
         );
-        const facilitators = data.filter((p: Participant) => p.role === "facilitator");
+        const facilitators = data.filter(
+          (p: Participant) => p.role === "facilitator"
+        );
         setParticipantsCount(actualParticipants.length);
         setFacilitatorsCount(facilitators.length);
       }
@@ -154,7 +156,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/attachments/`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/attachments/`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -176,7 +178,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/agenda/`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/agenda/`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -198,7 +200,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/feedback/stats`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/feedback/stats`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -226,7 +228,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/feedback`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/feedback`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -249,7 +251,7 @@ export default function EventDetailsModal({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/status/suggestions`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/status/suggestions`
       );
 
       if (response.ok) {
@@ -278,13 +280,22 @@ export default function EventDetailsModal({
           fetchStatusSuggestions(),
           fetchParticipants(),
           fetchAgenda(),
-          fetchAttachments()
+          fetchAttachments(),
         ]);
         setEditedEvent(event);
       };
       loadData();
     }
-  }, [event, isOpen, fetchFeedbackStats, fetchFeedback, fetchStatusSuggestions, fetchParticipants, fetchAgenda, fetchAttachments]);
+  }, [
+    event,
+    isOpen,
+    fetchFeedbackStats,
+    fetchFeedback,
+    fetchStatusSuggestions,
+    fetchParticipants,
+    fetchAgenda,
+    fetchAttachments,
+  ]);
 
   const saveEventChanges = async () => {
     if (!event) return;
@@ -292,7 +303,7 @@ export default function EventDetailsModal({
     setSaving(true);
     try {
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}`,
         {
           method: "PUT",
           headers: {
@@ -308,7 +319,7 @@ export default function EventDetailsModal({
 
         // Send notifications
         await fetch(
-          `http://localhost:8000/api/v1/events/${event.id}/notify-update`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/notify-update`,
           {
             method: "POST",
             headers: {
@@ -349,11 +360,9 @@ export default function EventDetailsModal({
     }
   };
 
-
-
   const updateEventStatus = async (newStatus: string) => {
     if (!event) return;
-    
+
     setUpdatingStatus(true);
 
     try {
@@ -368,7 +377,7 @@ export default function EventDetailsModal({
         return;
       }
       const response = await fetch(
-        `http://localhost:8000/api/v1/events/${event.id}/status`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/status`,
         {
           method: "PUT",
           headers: {
@@ -455,18 +464,28 @@ export default function EventDetailsModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={(value) => {
-            setTabLoading(true);
-            setTimeout(() => {
-              setActiveTab(value);
-              setTabLoading(false);
-            }, 150);
-          }} className="h-full flex flex-col">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setTabLoading(true);
+              setTimeout(() => {
+                setActiveTab(value);
+                setTabLoading(false);
+              }, 150);
+            }}
+            className="h-full flex flex-col"
+          >
             <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 bg-white border-b border-gray-200 p-0 mx-3 sm:mx-4 lg:mx-6 mt-2 sm:mt-3 rounded-none h-12 sm:h-11 text-xs overflow-x-auto">
-              <TabsTrigger value="overview" className="text-xs font-medium px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+              <TabsTrigger
+                value="overview"
+                className="text-xs font-medium px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="participants" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+              <TabsTrigger
+                value="participants"
+                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
                 <Users className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Participants</span>
                 <span className="sm:hidden">P</span>
@@ -480,7 +499,10 @@ export default function EventDetailsModal({
                 <span className="lg:hidden">Fac</span>
                 <span className="ml-1">({facilitatorsCount})</span>
               </TabsTrigger>
-              <TabsTrigger value="attachments" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+              <TabsTrigger
+                value="attachments"
+                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
                 <Paperclip className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Files</span>
                 <span className="sm:hidden">F</span>
@@ -494,7 +516,10 @@ export default function EventDetailsModal({
                 <span className="hidden lg:inline">Allocations</span>
                 <span className="lg:hidden">Alloc</span>
               </TabsTrigger>
-              <TabsTrigger value="agenda" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+              <TabsTrigger
+                value="agenda"
+                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
                 <Calendar className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Agenda</span>
                 <span className="sm:hidden">A</span>
@@ -542,294 +567,301 @@ export default function EventDetailsModal({
                   )}
                 </div>
 
-            {editMode ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Event Title
-                    </label>
-                    <input
-                      type="text"
-                      value={editedEvent.title || ""}
-                      onChange={(e) =>
-                        setEditedEvent({
-                          ...editedEvent,
-                          title: e.target.value,
-                        })
-                      }
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Event Type
-                    </label>
-                    <input
-                      type="text"
-                      value={editedEvent.event_type || ""}
-                      onChange={(e) =>
-                        setEditedEvent({
-                          ...editedEvent,
-                          event_type: e.target.value,
-                        })
-                      }
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={editedEvent.description || ""}
-                    onChange={(e) =>
-                      setEditedEvent({
-                        ...editedEvent,
-                        description: e.target.value,
-                      })
-                    }
-                    className="w-full p-2 border rounded-lg h-24"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      value={editedEvent.location || ""}
-                      onChange={(e) =>
-                        setEditedEvent({
-                          ...editedEvent,
-                          location: e.target.value,
-                        })
-                      }
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Address
-                    </label>
-                    <input
-                      type="text"
-                      value={editedEvent.address || ""}
-                      onChange={(e) =>
-                        setEditedEvent({
-                          ...editedEvent,
-                          address: e.target.value,
-                        })
-                      }
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    onClick={saveEventChanges}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditMode(false);
-                      setEditedEvent(event);
-                    }}
-                    disabled={saving}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-                  <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-lg border border-red-200 shadow-sm">
-                    <h3 className="font-semibold text-sm sm:text-base mb-3 text-red-800 flex items-center gap-2">
-                      <div className="p-1 rounded bg-red-100">
-                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
-                      </div>
-                      Event Details
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">Type:</span>
-                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                          {event.event_type || "Not specified"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">
-                          Start Date:
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                          {new Date(event.start_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">
-                          End Date:
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                          {new Date(event.end_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-1.5">
-                        <span className="text-xs sm:text-sm font-medium text-gray-600">
-                          Duration:
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                          {event.duration_days} days
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
-                  <h3 className="font-bold text-lg mb-4 text-red-800 flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Participants
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Registered:
-                      </span>
-                      <span className="text-gray-900 font-semibold">
-                        {
-                          participants.filter((p) => p.role !== "facilitator")
-                            .length
-                        }{" "}
-                        visitors
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Selected:
-                      </span>
-                      <span className="text-green-700 font-semibold">
-                        {
-                          participants.filter(
-                            (p) =>
-                              p.status === "selected" &&
-                              p.role !== "facilitator"
-                          ).length
-                        }{" "}
-                        visitors
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Facilitators:
-                      </span>
-                      <span className="text-purple-700 font-semibold">
-                        {
-                          participants.filter((p) => p.role === "facilitator")
-                            .length
-                        }{" "}
-                        facilitators
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Waiting:
-                      </span>
-                      <span className="text-yellow-700 font-semibold">
-                        {
-                          participants.filter(
-                            (p) =>
-                              p.status === "waiting" && p.role !== "facilitator"
-                          ).length
-                        }{" "}
-                        visitors
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="font-medium text-gray-700">
-                        Attended:
-                      </span>
-                      <span className="text-red-700 font-semibold">
-                        {
-                          participants.filter(
-                            (p) =>
-                              p.status === "attended" &&
-                              p.role !== "facilitator"
-                          ).length
-                        }{" "}
-                        visitors
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-                  <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Location & Venue
-                  </h3>
+                {editMode ? (
                   <div className="space-y-4">
-                    <div>
-                      <span className="font-medium text-gray-700 block mb-2">
-                        Venue:
-                      </span>
-                      <div className="bg-white p-3 rounded-lg border">
-                        <span className="text-gray-900 font-semibold">
-                          {event.location || "Not specified"}
-                        </span>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Event Title
+                        </label>
+                        <input
+                          type="text"
+                          value={editedEvent.title || ""}
+                          onChange={(e) =>
+                            setEditedEvent({
+                              ...editedEvent,
+                              title: e.target.value,
+                            })
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Event Type
+                        </label>
+                        <input
+                          type="text"
+                          value={editedEvent.event_type || ""}
+                          onChange={(e) =>
+                            setEditedEvent({
+                              ...editedEvent,
+                              event_type: e.target.value,
+                            })
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
                       </div>
                     </div>
-                    {event.address && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        value={editedEvent.description || ""}
+                        onChange={(e) =>
+                          setEditedEvent({
+                            ...editedEvent,
+                            description: e.target.value,
+                          })
+                        }
+                        className="w-full p-2 border rounded-lg h-24"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="font-medium text-gray-700 block mb-2">
-                          Address:
-                        </span>
-                        <div className="bg-white p-3 rounded-lg border">
-                          <span className="text-gray-700">{event.address}</span>
+                        <label className="block text-sm font-medium mb-1">
+                          Location
+                        </label>
+                        <input
+                          type="text"
+                          value={editedEvent.location || ""}
+                          onChange={(e) =>
+                            setEditedEvent({
+                              ...editedEvent,
+                              location: e.target.value,
+                            })
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Address
+                        </label>
+                        <input
+                          type="text"
+                          value={editedEvent.address || ""}
+                          onChange={(e) =>
+                            setEditedEvent({
+                              ...editedEvent,
+                              address: e.target.value,
+                            })
+                          }
+                          className="w-full p-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={saveEventChanges}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditMode(false);
+                          setEditedEvent(event);
+                        }}
+                        disabled={saving}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                    <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-lg border border-red-200 shadow-sm">
+                      <h3 className="font-semibold text-sm sm:text-base mb-3 text-red-800 flex items-center gap-2">
+                        <div className="p-1 rounded bg-red-100">
+                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                        </div>
+                        Event Details
+                      </h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600">
+                            Type:
+                          </span>
+                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                            {event.event_type || "Not specified"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600">
+                            Start Date:
+                          </span>
+                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                            {new Date(event.start_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600">
+                            End Date:
+                          </span>
+                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                            {new Date(event.end_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-1.5">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600">
+                            Duration:
+                          </span>
+                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                            {event.duration_days} days
+                          </span>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                      <h3 className="font-bold text-lg mb-4 text-red-800 flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Participants
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="font-medium text-gray-700">
+                            Registered:
+                          </span>
+                          <span className="text-gray-900 font-semibold">
+                            {
+                              participants.filter(
+                                (p) => p.role !== "facilitator"
+                              ).length
+                            }{" "}
+                            visitors
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="font-medium text-gray-700">
+                            Selected:
+                          </span>
+                          <span className="text-green-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) =>
+                                  p.status === "selected" &&
+                                  p.role !== "facilitator"
+                              ).length
+                            }{" "}
+                            visitors
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="font-medium text-gray-700">
+                            Facilitators:
+                          </span>
+                          <span className="text-purple-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) => p.role === "facilitator"
+                              ).length
+                            }{" "}
+                            facilitators
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="font-medium text-gray-700">
+                            Waiting:
+                          </span>
+                          <span className="text-yellow-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) =>
+                                  p.status === "waiting" &&
+                                  p.role !== "facilitator"
+                              ).length
+                            }{" "}
+                            visitors
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="font-medium text-gray-700">
+                            Attended:
+                          </span>
+                          <span className="text-red-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) =>
+                                  p.status === "attended" &&
+                                  p.role !== "facilitator"
+                              ).length
+                            }{" "}
+                            visitors
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
+                      <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Location & Venue
+                      </h3>
+                      <div className="space-y-4">
+                        <div>
+                          <span className="font-medium text-gray-700 block mb-2">
+                            Venue:
+                          </span>
+                          <div className="bg-white p-3 rounded-lg border">
+                            <span className="text-gray-900 font-semibold">
+                              {event.location || "Not specified"}
+                            </span>
+                          </div>
+                        </div>
+                        {event.address && (
+                          <div>
+                            <span className="font-medium text-gray-700 block mb-2">
+                              Address:
+                            </span>
+                            <div className="bg-white p-3 rounded-lg border">
+                              <span className="text-gray-700">
+                                {event.address}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {!editMode && event.description && (
-              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-lg mb-4 text-gray-800">
-                  Description
-                </h3>
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-700 leading-relaxed text-xs sm:text-sm">
-                    {event.description}
-                  </p>
-                </div>
-              </div>
-            )}
-          </TabsContent>
+                {!editMode && event.description && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="font-bold text-lg mb-4 text-gray-800">
+                      Description
+                    </h3>
+                    <div className="prose prose-sm max-w-none">
+                      <p className="text-gray-700 leading-relaxed text-xs sm:text-sm">
+                        {event.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
 
-          <TabsContent
-            value="participants"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <EventParticipants
-              eventId={event.id}
-              tenantSlug={tenantSlug}
-              onParticipantsChange={handleParticipantsChange}
-              eventHasEnded={eventHasEnded}
-              canManageEvents={canManageEvents}
-            />
-          </TabsContent>
+              <TabsContent
+                value="participants"
+                className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
+              >
+                <EventParticipants
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  onParticipantsChange={handleParticipantsChange}
+                  eventHasEnded={eventHasEnded}
+                  canManageEvents={canManageEvents}
+                />
+              </TabsContent>
 
               <TabsContent
                 value="facilitators"
@@ -862,14 +894,22 @@ export default function EventDetailsModal({
                 value="agenda"
                 className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
               >
-                <EventAgenda eventId={event.id} tenantSlug={tenantSlug} eventHasEnded={eventHasEnded} />
+                <EventAgenda
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  eventHasEnded={eventHasEnded}
+                />
               </TabsContent>
 
               <TabsContent
                 value="allocations"
                 className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
               >
-                <EventAllocations eventId={event.id} tenantSlug={tenantSlug} eventHasEnded={eventHasEnded} />
+                <EventAllocations
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  eventHasEnded={eventHasEnded}
+                />
               </TabsContent>
 
               <TabsContent
@@ -885,7 +925,9 @@ export default function EventDetailsModal({
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 pt-3 border-t bg-white px-3 sm:px-4 lg:px-6 pb-3 rounded-b-xl">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-medium text-gray-600">Status:</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-600">
+                Status:
+              </span>
               <Badge
                 variant={
                   event.status === "Published"

@@ -26,13 +26,13 @@ const getApiUrl = (): string => {
     const hostname = window.location.hostname;
 
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://localhost:8000/api/v1";
+      return process.env.NEXT_PUBLIC_LOCAL_API_URL || "http://localhost:8000/api/v1";
     }
 
-    return "https://msafiri-visitor-api.onrender.com/api/v1";
+    return process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com/api/v1";
   }
 
-  return "https://msafiri-visitor-api.onrender.com/api/v1";
+  return process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com/api/v1";
 };
 
 interface PasswordResetData {

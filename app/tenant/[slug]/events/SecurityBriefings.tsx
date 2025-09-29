@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
-  Plus, Shield, Trash2, FileText, Video, Edit, Eye, Calendar, 
-  Clock, CheckCircle, Archive, Users, Building, Globe, Search, Download, ArrowUpDown
+  Plus, Shield, Trash2, Edit,Calendar, 
+  Clock, CheckCircle, Archive, Users, Globe, Search, Download, ArrowUpDown
 } from 'lucide-react'
 
 interface SecurityBriefing {
@@ -223,23 +223,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
     setShowModal(true)
   }
 
-  const getStatusColor = (status: SecurityBriefing['status']) => {
-    switch (status) {
-      case 'published': return 'bg-green-100 text-green-800'
-      case 'draft': return 'bg-yellow-100 text-yellow-800'
-      case 'archived': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
 
-  const getStatusIcon = (status: SecurityBriefing['status']) => {
-    switch (status) {
-      case 'published': return <CheckCircle className="h-4 w-4" />
-      case 'draft': return <Clock className="h-4 w-4" />
-      case 'archived': return <Archive className="h-4 w-4" />
-      default: return <Clock className="h-4 w-4" />
-    }
-  }
 
   const getTypeIcon = (type: SecurityBriefing['type']) => {
     const typeData = briefingTypes.find(t => t.value === type)
@@ -248,7 +232,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
   }
 
   const getFilteredAndSortedBriefings = () => {
-    let filtered = briefings.filter(briefing => {
+    const filtered = briefings.filter(briefing => {
       const matchesSearch = !searchTerm || 
         briefing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         briefing.content?.toLowerCase().includes(searchTerm.toLowerCase())

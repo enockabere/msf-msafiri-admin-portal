@@ -31,13 +31,22 @@ interface Event {
   end_date: string;
   location?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
+  banner_image?: string;
   duration_days?: number;
+  perdiem_rate?: number;
+  perdiem_currency?: string;
+  tenant_id?: number;
   created_by: string;
-  created_at: string;
+  created_at?: string;
+  updated_at?: string;
   participant_count?: number;
   selected_count?: number;
+  tenant_name?: string;
   checked_in_count?: number;
   event_status?: 'upcoming' | 'ongoing' | 'ended';
+  days_until_start?: number;
 }
 
 interface EventTableProps {
@@ -206,7 +215,7 @@ export function EventTable({
                 </td>
                 <td className="px-4 py-4">
                   <div className="text-sm text-gray-900">
-                    {new Date(event.created_at).toLocaleDateString()}
+                    {event.created_at ? new Date(event.created_at).toLocaleDateString() : 'N/A'}
                   </div>
                   <div className="text-xs text-gray-500">
                     by {event.created_by}

@@ -33,17 +33,17 @@ const getApiUrl = (): string => {
 
     // Local development
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      const localUrl = "http://localhost:8000";
+      const localUrl = process.env.NEXT_PUBLIC_LOCAL_API_URL || "http://localhost:8000";
       return localUrl;
     }
 
     // Vercel deployment or other production
-    const prodUrl = "https://msafiri-visitor-api.onrender.com";
+    const prodUrl = process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
     return prodUrl;
   }
 
   // Server-side fallback
-  const fallbackUrl = "https://msafiri-visitor-api.onrender.com";
+  const fallbackUrl = process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
   return fallbackUrl;
 };
 
@@ -153,7 +153,7 @@ export default function LoginComponent() {
   const [isApiConnected, setIsApiConnected] = useState<boolean>(true);
 
   const [formData, setFormData] = useState<LoginFormData>({
-    email: "abereenock95@gmail.com",
+    email: process.env.NEXT_PUBLIC_DEFAULT_EMAIL || "",
     password: "",
   });
 

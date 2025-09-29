@@ -58,7 +58,6 @@ interface EventDetails {
 
 export default function EventAgenda({
   eventId,
-  tenantSlug,
   eventHasEnded = false,
 }: EventAgendaProps) {
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
@@ -66,8 +65,10 @@ export default function EventAgenda({
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -128,28 +129,35 @@ export default function EventAgenda({
 
   const isDateWithinEvent = (date: Date) => {
     if (!eventDetails) return false;
-    
+
     const eventStart = parseISO(eventDetails.start_date);
     const eventEnd = parseISO(eventDetails.end_date);
-    
+
     return isWithinInterval(date, { start: eventStart, end: eventEnd });
   };
 
   const getAgendaItemsForDate = (date: Date) => {
-    return agendaItems.filter(item => 
+    return agendaItems.filter((item) =>
       isSameDay(parseISO(item.start_datetime), date)
     );
   };
 
   const generateSessionNumber = () => {
-    const sortedItems = [...agendaItems].sort((a, b) => 
-      new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+    const sortedItems = [...agendaItems].sort(
+      (a, b) =>
+        new Date(a.start_datetime).getTime() -
+        new Date(b.start_datetime).getTime()
     );
     return `Session ${sortedItems.length + 1}`;
   };
 
   const handleSubmit = async () => {
-    if (!formData.title || !formData.date || !formData.start_time || !formData.end_time) {
+    if (
+      !formData.title ||
+      !formData.date ||
+      !formData.start_time ||
+      !formData.end_time
+    ) {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -186,7 +194,7 @@ export default function EventAgenda({
     try {
       const startDateTime = `${formData.date}T${formData.start_time}:00`;
       const endDateTime = `${formData.date}T${formData.end_time}:00`;
-      
+
       const payload = {
         title: formData.title,
         description: formData.description,
@@ -197,10 +205,10 @@ export default function EventAgenda({
         session_number: editingId ? undefined : generateSessionNumber(),
       };
 
-      const url = editingId 
+      const url = editingId
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda/${editingId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda`;
-      
+
       const method = editingId ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -215,16 +223,18 @@ export default function EventAgenda({
       if (response.ok) {
         await fetchAgendaItems();
         handleCloseForm();
-        
+
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Success!",
-          description: `Agenda item ${editingId ? 'updated' : 'created'} successfully.`,
+          description: `Agenda item ${
+            editingId ? "updated" : "created"
+          } successfully.`,
         });
       } else {
         throw new Error("Failed to save agenda item");
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -239,7 +249,7 @@ export default function EventAgenda({
   const handleEdit = (item: AgendaItem) => {
     const startDate = parseISO(item.start_datetime);
     const endDate = parseISO(item.end_datetime);
-    
+
     setEditingId(item.id);
     setFormData({
       title: item.title,
@@ -273,7 +283,7 @@ export default function EventAgenda({
           description: "Agenda item deleted successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -299,31 +309,33 @@ export default function EventAgenda({
 
   const getCurrentSession = () => {
     const now = new Date();
-    const sortedItems = [...agendaItems].sort((a, b) => 
-      new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+    const sortedItems = [...agendaItems].sort(
+      (a, b) =>
+        new Date(a.start_datetime).getTime() -
+        new Date(b.start_datetime).getTime()
     );
-    
+
     // Find current session (ongoing)
-    const currentSession = sortedItems.find(item => {
+    const currentSession = sortedItems.find((item) => {
       const start = new Date(item.start_datetime);
       const end = new Date(item.end_datetime);
       return now >= start && now <= end;
     });
-    
+
     if (currentSession) {
-      return { ...currentSession, status: 'current' };
+      return { ...currentSession, status: "current" };
     }
-    
+
     // Find next session
-    const nextSession = sortedItems.find(item => {
+    const nextSession = sortedItems.find((item) => {
       const start = new Date(item.start_datetime);
       return now < start;
     });
-    
+
     if (nextSession) {
-      return { ...nextSession, status: 'next' };
+      return { ...nextSession, status: "next" };
     }
-    
+
     return null;
   };
 
@@ -350,7 +362,8 @@ export default function EventAgenda({
           </p>
           {eventDetails && (
             <p className="text-xs text-gray-500 mt-1">
-              Event dates: {format(parseISO(eventDetails.start_date), "MMM dd")} - {format(parseISO(eventDetails.end_date), "MMM dd, yyyy")}
+              Event dates: {format(parseISO(eventDetails.start_date), "MMM dd")}{" "}
+              - {format(parseISO(eventDetails.end_date), "MMM dd, yyyy")}
             </p>
           )}
         </div>
@@ -359,15 +372,21 @@ export default function EventAgenda({
             const currentSession = getCurrentSession();
             if (currentSession) {
               return (
-                <div className={`px-3 py-2 rounded-lg border ${
-                  currentSession.status === 'current' 
-                    ? 'bg-green-50 border-green-200 text-green-800' 
-                    : 'bg-blue-50 border-blue-200 text-blue-800'
-                }`}>
+                <div
+                  className={`px-3 py-2 rounded-lg border ${
+                    currentSession.status === "current"
+                      ? "bg-green-50 border-green-200 text-green-800"
+                      : "bg-blue-50 border-blue-200 text-blue-800"
+                  }`}
+                >
                   <div className="text-xs font-medium">
-                    {currentSession.status === 'current' ? '🔴 Current Session' : '⏰ Next Session'}
+                    {currentSession.status === "current"
+                      ? "🔴 Current Session"
+                      : "⏰ Next Session"}
                   </div>
-                  <div className="text-sm font-semibold">{currentSession.session_number}</div>
+                  <div className="text-sm font-semibold">
+                    {currentSession.session_number}
+                  </div>
                   <div className="text-xs">{currentSession.title}</div>
                 </div>
               );
@@ -403,10 +422,10 @@ export default function EventAgenda({
                 hasAgenda: (date) => getAgendaItemsForDate(date).length > 0,
               }}
               modifiersStyles={{
-                hasAgenda: { 
-                  backgroundColor: '#fee2e2', 
-                  color: '#dc2626',
-                  fontWeight: 'bold'
+                hasAgenda: {
+                  backgroundColor: "#fee2e2",
+                  color: "#dc2626",
+                  fontWeight: "bold",
                 },
               }}
             />
@@ -455,73 +474,96 @@ export default function EventAgenda({
                   {getAgendaItemsForDate(selectedDate).length > 0 ? (
                     <div className="space-y-3">
                       {getAgendaItemsForDate(selectedDate)
-                        .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime())
+                        .sort(
+                          (a, b) =>
+                            new Date(a.start_datetime).getTime() -
+                            new Date(b.start_datetime).getTime()
+                        )
                         .map((item) => (
-                        <div
-                          key={item.id}
-                          className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="secondary" className="text-xs font-medium">
-                                  {item.session_number}
-                                </Badge>
-                                <h5 className="font-semibold text-gray-900">{item.title}</h5>
-                                <Badge variant="outline" className="text-xs">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {format(parseISO(item.start_datetime), "HH:mm")} - {format(parseISO(item.end_datetime), "HH:mm")}
-                                </Badge>
-                              </div>
-                              
-                              {item.description && (
-                                <p className="text-sm text-gray-600 mb-2">{item.description}</p>
-                              )}
-                              
-                              <div className="flex flex-wrap gap-4 text-xs text-gray-500">
-                                {item.location && (
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    {item.location}
-                                  </div>
+                          <div
+                            key={item.id}
+                            className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-medium"
+                                  >
+                                    {item.session_number}
+                                  </Badge>
+                                  <h5 className="font-semibold text-gray-900">
+                                    {item.title}
+                                  </h5>
+                                  <Badge variant="outline" className="text-xs">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {format(
+                                      parseISO(item.start_datetime),
+                                      "HH:mm"
+                                    )}{" "}
+                                    -{" "}
+                                    {format(
+                                      parseISO(item.end_datetime),
+                                      "HH:mm"
+                                    )}
+                                  </Badge>
+                                </div>
+
+                                {item.description && (
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    {item.description}
+                                  </p>
                                 )}
-                                {item.presenter && (
-                                  <div className="flex items-center gap-1">
-                                    <User className="h-3 w-3" />
-                                    {item.presenter}
-                                  </div>
-                                )}
+
+                                <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                                  {item.location && (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      {item.location}
+                                    </div>
+                                  )}
+                                  {item.presenter && (
+                                    <div className="flex items-center gap-1">
+                                      <User className="h-3 w-3" />
+                                      {item.presenter}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            
-                            <div className="flex gap-2 ml-4">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEdit(item)}
-                                disabled={eventHasEnded}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(item.id)}
-                                disabled={eventHasEnded}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+
+                              <div className="flex gap-2 ml-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(item)}
+                                  disabled={eventHasEnded}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(item.id)}
+                                  disabled={eventHasEnded}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">No agenda items</h4>
-                      <p className="text-gray-500 mb-4">Add agenda items for this date</p>
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">
+                        No agenda items
+                      </h4>
+                      <p className="text-gray-500 mb-4">
+                        Add agenda items for this date
+                      </p>
                       <Button
                         onClick={() => handleAddForDate(selectedDate)}
                         disabled={eventHasEnded}
@@ -536,8 +578,13 @@ export default function EventAgenda({
               ) : (
                 <div className="text-center py-8">
                   <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">Select a date</h4>
-                  <p className="text-gray-500">Choose a date within the event period to view or add agenda items</p>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    Select a date
+                  </h4>
+                  <p className="text-gray-500">
+                    Choose a date within the event period to view or add agenda
+                    items
+                  </p>
                 </div>
               )}
             </div>
@@ -564,55 +611,70 @@ export default function EventAgenda({
             </TableHeader>
             <TableBody>
               {agendaItems
-                .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(a.start_datetime).getTime() -
+                    new Date(b.start_datetime).getTime()
+                )
                 .map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs font-medium">
-                      {item.session_number}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{item.title}</div>
-                      {item.description && (
-                        <div className="text-sm text-gray-500 truncate max-w-xs">{item.description}</div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{format(parseISO(item.start_datetime), "MMM dd, yyyy")}</div>
-                      <div className="text-gray-500">
-                        {format(parseISO(item.start_datetime), "HH:mm")} - {format(parseISO(item.end_datetime), "HH:mm")}
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-medium"
+                      >
+                        {item.session_number}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{item.title}</div>
+                        {item.description && (
+                          <div className="text-sm text-gray-500 truncate max-w-xs">
+                            {item.description}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{item.location || "-"}</TableCell>
-                  <TableCell>{item.presenter || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(item)}
-                        disabled={eventHasEnded}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(item.id)}
-                        disabled={eventHasEnded}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>
+                          {format(
+                            parseISO(item.start_datetime),
+                            "MMM dd, yyyy"
+                          )}
+                        </div>
+                        <div className="text-gray-500">
+                          {format(parseISO(item.start_datetime), "HH:mm")} -{" "}
+                          {format(parseISO(item.end_datetime), "HH:mm")}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{item.location || "-"}</TableCell>
+                    <TableCell>{item.presenter || "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                          disabled={eventHasEnded}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(item.id)}
+                          disabled={eventHasEnded}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </div>
@@ -626,22 +688,31 @@ export default function EventAgenda({
               {editingId ? "Edit Agenda Item" : "Add Agenda Item"}
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Title *</label>
               <Input
                 value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, title: e.target.value }))
+                }
                 placeholder="Enter agenda item title"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Description</label>
+              <label className="block text-sm font-medium mb-2">
+                Description
+              </label>
               <Input
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
                 placeholder="Enter description (optional)"
               />
             </div>
@@ -652,43 +723,73 @@ export default function EventAgenda({
                 <Input
                   type="date"
                   value={formData.date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, date: e.target.value }))
+                  }
                   min={eventDetails?.start_date}
                   max={eventDetails?.end_date}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Start Time *</label>
+                <label className="block text-sm font-medium mb-2">
+                  Start Time *
+                </label>
                 <Input
                   type="time"
                   value={formData.start_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      start_time: e.target.value,
+                    }))
+                  }
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">End Time *</label>
+                <label className="block text-sm font-medium mb-2">
+                  End Time *
+                </label>
                 <Input
                   type="time"
                   value={formData.end_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      end_time: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Location</label>
+                <label className="block text-sm font-medium mb-2">
+                  Location
+                </label>
                 <Input
                   value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      location: e.target.value,
+                    }))
+                  }
                   placeholder="Enter location (optional)"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Presenter</label>
+                <label className="block text-sm font-medium mb-2">
+                  Presenter
+                </label>
                 <Input
                   value={formData.presenter}
-                  onChange={(e) => setFormData(prev => ({ ...prev, presenter: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      presenter: e.target.value,
+                    }))
+                  }
                   placeholder="Enter presenter name (optional)"
                 />
               </div>

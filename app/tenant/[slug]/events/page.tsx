@@ -51,9 +51,9 @@ interface Event {
   duration_days?: number;
   perdiem_rate?: number;
   perdiem_currency?: string;
-  tenant_id: number;
+  tenant_id?: number;
   created_by: string;
-  created_at: string;
+  created_at?: string;
   updated_at?: string;
   participant_count?: number;
   selected_count?: number;
@@ -510,7 +510,7 @@ export default function TenantEventsPage() {
         event.selected_count || 0,
         event.checked_in_count || 0,
         `"${event.created_by}"`,
-        `"${new Date(event.created_at).toLocaleDateString()}"`
+        `"${event.created_at ? new Date(event.created_at).toLocaleDateString() : 'N/A'}"`
       ].join(","))
     ].join("\n");
 
@@ -679,22 +679,22 @@ export default function TenantEventsPage() {
                   {paginatedEvents.map((event) => (
                     <EventCard 
                       key={event.id} 
-                      event={event as any} 
+                      event={event} 
                       canManageEvents={canManageEvents()} 
-                      onEdit={(e) => openEditModal(e as Event)} 
-                      onDelete={(e) => handleDeleteEvent(e as Event)} 
-                      onViewDetails={(e) => { setDetailsEvent(e as Event); setShowDetailsModal(true); }} 
+                      onEdit={(e) => openEditModal(e)} 
+                      onDelete={(e) => handleDeleteEvent(e)} 
+                      onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
                     />
                   ))}
                 </div>
               ) : (
                 <EventTable
-                  data={paginatedEvents as any[]}
+                  data={paginatedEvents}
                   canManageEvents={canManageEvents()}
-                  onEdit={(e) => openEditModal(e as Event)}
-                  onDelete={(e) => handleDeleteEvent(e as Event)}
-                  onViewDetails={(e) => { setDetailsEvent(e as Event); setShowDetailsModal(true); }}
-                  sortField={sortField as any}
+                  onEdit={(e) => openEditModal(e)}
+                  onDelete={(e) => handleDeleteEvent(e)}
+                  onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
+                  sortField={sortField}
                   sortDirection={sortDirection}
                   onSort={(field) => {
                     if (sortField === field) {

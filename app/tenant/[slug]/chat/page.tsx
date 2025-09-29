@@ -21,6 +21,10 @@ interface ChatRoom {
     start_date: string;
     end_date: string;
   };
+  unread_count?: number;
+  last_message?: string;
+  last_message_time?: string;
+  type: "group";
 }
 
 export default function ChatManagementPage() {
@@ -39,7 +43,11 @@ export default function ChatManagementPage() {
       const response = await apiClient.request("/chat/rooms/", {
         headers: { 'X-Tenant-ID': tenantSlug }
       });
-      setChatRooms(response as ChatRoom[]);
+      const roomsWithType = (response as any[]).map(room => ({
+        ...room,
+        type: "group" as const
+      }));
+      setChatRooms(roomsWithType);
     } catch (error) {
       console.error("Error fetching chat rooms:", error);
       toast({ title: "Error", description: "Failed to load chat rooms", variant: "destructive" });
