@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,27 +18,21 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Calendar,
   Plus,
   Loader2,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Eye,
   Clock,
   Play,
   CheckCircle,
-  Users,
-  UserCheck,
+  Grid3X3,
+  List,
+  Search,
+  Download,
 } from "lucide-react";
 import EventDetailsModal from "./EventDetailsModal";
-import { toast } from "@/components/ui/toast";
+import { EventCard } from "./components/EventCard";
+import { EventTable } from "./components/EventTable";
+import { toast } from "@/hooks/use-toast";
 import { LoadingScreen } from "@/components/ui/loading";
 
 interface Event {
@@ -86,6 +79,7 @@ export default function TenantEventsPage() {
   const { apiClient } = useAuthenticatedApi();
   const [events, setEvents] = useState<Event[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -95,6 +89,10 @@ export default function TenantEventsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'ended'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 8;
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<keyof Event>('start_date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -137,7 +135,6 @@ export default function TenantEventsPage() {
         `/events/?tenant=${tenantSlug}`
       );
 
-      // Fetch participant counts for each event
       const eventsWithCounts = await Promise.all(
         eventsData.map(async (event) => {
           try {
@@ -188,7 +185,6 @@ export default function TenantEventsPage() {
     try {
       setLoading(true);
 
-      // Fetch user roles
       const roles = await apiClient
         .request<UserRole[]>(`/user-roles/user/${user.id}`)
         .catch(() => []);
@@ -198,7 +194,14 @@ export default function TenantEventsPage() {
       }
       setUserRoles([...new Set(roleNames)]);
 
-      // Allow all admin users to access events
+      // Check if user is tenant admin (owner)
+      try {
+        const tenantData = await apiClient.request<{ admin_email: string }>(`/tenants/slug/${tenantSlug}`);
+        setIsTenantAdmin(tenantData.admin_email === user.email);
+      } catch {
+        setIsTenantAdmin(false);
+      }
+
       await fetchEvents();
     } catch (error) {
       console.error("Access check error:", error);
@@ -208,7 +211,7 @@ export default function TenantEventsPage() {
         variant: "destructive",
       });
     }
-  }, [user?.id, user?.role, apiClient, fetchEvents]);
+  }, [user?.id, user?.role, user?.email, apiClient, fetchEvents, tenantSlug]);
 
   useEffect(() => {
     if (!authLoading && user?.email) {
@@ -217,6 +220,10 @@ export default function TenantEventsPage() {
   }, [user?.email, authLoading, checkAccess]);
 
   const canManageEvents = () => {
+    // Tenant admins can only view, not manage
+    if (isTenantAdmin && !userRoles.some(role => ["SUPER_ADMIN", "super_admin"].includes(role))) {
+      return false;
+    }
     return userRoles.some((role) =>
       [
         "SUPER_ADMIN",
@@ -280,10 +287,13 @@ export default function TenantEventsPage() {
         longitude: formData.longitude ? parseFloat(formData.longitude) : null,
       };
 
-      await apiClient.request(`/events/?tenant=${tenantSlug}`, {
-        method: "POST",
-        body: JSON.stringify(eventData),
-      });
+      const newEvent = await apiClient.request<Event>(
+        `/events/?tenant=${tenantSlug}`,
+        {
+          method: "POST",
+          body: JSON.stringify(eventData),
+        }
+      );
 
       setShowCreateModal(false);
       setFormData({
@@ -302,17 +312,9 @@ export default function TenantEventsPage() {
         perdiem_rate: "",
         perdiem_currency: "",
       });
-      const newEvent = await apiClient.request<Event>(
-        `/events/?tenant=${tenantSlug}`,
-        {
-          method: "POST",
-          body: JSON.stringify(eventData),
-        }
-      );
 
       await fetchEvents();
 
-      // Show event details modal after creation
       setDetailsEvent(newEvent);
       setShowDetailsModal(true);
 
@@ -476,9 +478,95 @@ export default function TenantEventsPage() {
     });
   };
 
+  const exportEventsToCSV = (events: Event[]) => {
+    const headers = [
+      "Title",
+      "Type",
+      "Status",
+      "Event Status",
+      "Start Date",
+      "End Date",
+      "Duration",
+      "Location",
+      "Registered",
+      "Selected",
+      "Checked In",
+      "Created By",
+      "Created At"
+    ];
+    
+    const csvData = [
+      headers.join(","),
+      ...events.map(event => [
+        `"${event.title}"`,
+        `"${event.event_type || ''}"`,
+        `"${event.status}"`,
+        `"${event.event_status || ''}"`,
+        `"${new Date(event.start_date).toLocaleDateString()}"`,
+        `"${new Date(event.end_date).toLocaleDateString()}"`,
+        `"${event.duration_days || ''} days"`,
+        `"${event.location || ''}"`,
+        event.participant_count || 0,
+        event.selected_count || 0,
+        event.checked_in_count || 0,
+        `"${event.created_by}"`,
+        `"${new Date(event.created_at).toLocaleDateString()}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvData], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "events.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   if (loading || authLoading) {
     return <LoadingScreen message="Loading events..." />;
   }
+
+  const getFilteredAndSortedEvents = () => {
+    let filtered = events.filter(event => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        event.title.toLowerCase().includes(searchLower) ||
+        (event.description && event.description.toLowerCase().includes(searchLower)) ||
+        (event.event_type && event.event_type.toLowerCase().includes(searchLower)) ||
+        (event.location && event.location.toLowerCase().includes(searchLower))
+      );
+    });
+    
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(e => e.event_status === statusFilter);
+    }
+    
+    return filtered.sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
+      if (bValue == null) return sortDirection === 'asc' ? 1 : -1;
+      
+      if (sortField === 'start_date' || sortField === 'end_date' || sortField === 'created_at') {
+        const dateA = new Date(aValue as string).getTime();
+        const dateB = new Date(bValue as string).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const filteredEvents = getFilteredAndSortedEvents();
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  const startIndex = (currentPage - 1) * eventsPerPage;
+  const paginatedEvents = filteredEvents.slice(startIndex, startIndex + eventsPerPage);
 
   return (
     <DashboardLayout>
@@ -486,29 +574,46 @@ export default function TenantEventsPage() {
         <div className="w-full space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Events</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Events Management</h1>
               <p className="text-gray-600">
                 Manage events for your organization
               </p>
             </div>
-            {canManageEvents() && (
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Create Event
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'card' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('card')}
+                  className={viewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                >
+                  <Grid3X3 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className={viewMode === 'list' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+              </div>
+              {canManageEvents() && (
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Event
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Event Status Filter Tabs */}
           <div className="flex flex-wrap gap-2 mb-6">
             <button
               onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                statusFilter === 'all' ? 'bg-red-100 text-red-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-              }`}
+              className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
             >
               <Calendar className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -517,9 +622,7 @@ export default function TenantEventsPage() {
             </button>
             <button
               onClick={() => { setStatusFilter('ongoing'); setCurrentPage(1); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                statusFilter === 'ongoing' ? 'bg-green-100 text-green-900' : 'bg-green-50 text-green-700 hover:bg-green-100'
-              }`}
+              className={statusFilter === 'ongoing' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-100 text-green-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-50 text-green-700 hover:bg-green-100'}
             >
               <Play className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -528,9 +631,7 @@ export default function TenantEventsPage() {
             </button>
             <button
               onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                statusFilter === 'upcoming' ? 'bg-blue-100 text-blue-900' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-              }`}
+              className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
             >
               <Clock className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -539,9 +640,7 @@ export default function TenantEventsPage() {
             </button>
             <button
               onClick={() => { setStatusFilter('ended'); setCurrentPage(1); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                statusFilter === 'ended' ? 'bg-gray-100 text-gray-900' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-              }`}
+              className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
             >
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm font-medium">
@@ -550,95 +649,114 @@ export default function TenantEventsPage() {
             </button>
           </div>
 
-          {/* Filtered Events */}
-          {(() => {
-            // Sort events: ongoing first, then upcoming, then ended
-            const sortedEvents = [...events].sort((a, b) => {
-              const statusOrder = { ongoing: 0, upcoming: 1, ended: 2 };
-              return (statusOrder[a.event_status || 'ended'] || 2) - (statusOrder[b.event_status || 'ended'] || 2);
-            });
-            
-            // Filter events based on status
-            const filteredEvents = statusFilter === 'all' 
-              ? sortedEvents 
-              : sortedEvents.filter(e => e.event_status === statusFilter);
-            
-            // Pagination
-            const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
-            const startIndex = (currentPage - 1) * eventsPerPage;
-            const paginatedEvents = filteredEvents.slice(startIndex, startIndex + eventsPerPage);
-            
-            return (
-              <>
-                {filteredEvents.length > 0 ? (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                      {paginatedEvents.map((event) => (
-                        <EventCard 
-                          key={event.id} 
-                          event={event} 
-                          canManageEvents={canManageEvents()} 
-                          onEdit={openEditModal} 
-                          onDelete={handleDeleteEvent} 
-                          onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
-                        />
-                      ))}
-                    </div>
-                    
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex justify-center items-center gap-2 mt-8">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          disabled={currentPage === 1}
-                        >
-                          Previous
-                        </Button>
-                        
-                        <div className="flex gap-1">
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentPage(page)}
-                              className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
-                            >
-                              {page}
-                            </Button>
-                          ))}
-                        </div>
-                        
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                          disabled={currentPage === totalPages}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-12">
-                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      No {statusFilter === 'all' ? '' : statusFilter} events found
-                    </h3>
-                    <p className="text-gray-600">
-                      {statusFilter === 'all' 
-                        ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
-                        : `No ${statusFilter} events at the moment`
-                      }
-                    </p>
+          {viewMode === 'list' && (
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search events..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-9 text-sm border-gray-200"
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => exportEventsToCSV(filteredEvents)} 
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+            </div>
+          )}
+
+          {filteredEvents.length > 0 ? (
+            <>
+              {viewMode === 'card' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                  {paginatedEvents.map((event) => (
+                    <EventCard 
+                      key={event.id} 
+                      event={event as any} 
+                      canManageEvents={canManageEvents()} 
+                      onEdit={(e) => openEditModal(e as Event)} 
+                      onDelete={(e) => handleDeleteEvent(e as Event)} 
+                      onViewDetails={(e) => { setDetailsEvent(e as Event); setShowDetailsModal(true); }} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EventTable
+                  data={paginatedEvents as any[]}
+                  canManageEvents={canManageEvents()}
+                  onEdit={(e) => openEditModal(e as Event)}
+                  onDelete={(e) => handleDeleteEvent(e as Event)}
+                  onViewDetails={(e) => { setDetailsEvent(e as Event); setShowDetailsModal(true); }}
+                  sortField={sortField as any}
+                  sortDirection={sortDirection}
+                  onSort={(field) => {
+                    if (sortField === field) {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortField(field as keyof Event);
+                      setSortDirection('desc');
+                    }
+                  }}
+                />
+              )}
+              
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <Button
+                        key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
+                      >
+                        {page}
+                      </Button>
+                    ))}
                   </div>
-                )}
-              </>
-            );
-          })()}
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No {statusFilter === 'all' ? '' : statusFilter} events found
+              </h3>
+              <p className="text-gray-600">
+                {statusFilter === 'all' 
+                  ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
+                  : "No " + statusFilter + " events at the moment"
+                }
+              </p>
+            </div>
+          )}
 
           {events.length === 0 && (
             <div className="col-span-full">
@@ -668,7 +786,6 @@ export default function TenantEventsPage() {
           )}
         </div>
 
-        {/* Create Event Modal */}
         <Dialog open={showCreateModal} onOpenChange={closeModals}>
           <DialogContent className="max-w-2xl bg-white border shadow-lg">
             <DialogHeader>
@@ -828,7 +945,6 @@ export default function TenantEventsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Event Modal */}
         <Dialog open={showEditModal} onOpenChange={closeModals}>
           <DialogContent className="max-w-2xl bg-white border shadow-lg">
             <DialogHeader>
@@ -988,7 +1104,6 @@ export default function TenantEventsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Event Details Modal */}
         <EventDetailsModal
           event={detailsEvent}
           isOpen={showDetailsModal}
@@ -997,192 +1112,9 @@ export default function TenantEventsPage() {
             setDetailsEvent(null);
           }}
           tenantSlug={tenantSlug}
+          canManageEvents={canManageEvents()}
         />
       </div>
     </DashboardLayout>
-  );
-}
-
-// Event Card Component
-interface EventCardProps {
-  event: Event;
-  canManageEvents: boolean;
-  onEdit: (event: Event) => void;
-  onDelete: (event: Event) => void;
-  onViewDetails: (event: Event) => void;
-}
-
-function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDetails }: EventCardProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming': return 'from-blue-50 to-blue-100';
-      case 'ongoing': return 'from-green-50 to-green-100';
-      case 'ended': return 'from-gray-50 to-gray-100';
-      default: return 'from-white to-red-50';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'upcoming': return <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-blue-700" />;
-      case 'ongoing': return <Play className="w-5 h-5 sm:w-6 sm:h-6 text-green-700" />;
-      case 'ended': return <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />;
-      default: return <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-red-700" />;
-    }
-  };
-
-  const getStatusText = () => {
-    if (event.event_status === 'upcoming' && event.days_until_start) {
-      return event.days_until_start === 1 ? 'Starts tomorrow' : `Starts in ${event.days_until_start} days`;
-    }
-    if (event.event_status === 'ongoing') {
-      return 'Event in progress';
-    }
-    if (event.event_status === 'ended') {
-      return 'Event completed';
-    }
-    return '';
-  };
-
-  return (
-    <Card
-      className={`shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-gradient-to-br ${getStatusColor(event.event_status || '')} cursor-pointer`}
-      onClick={() => onViewDetails(event)}
-    >
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex flex-col h-full">
-          <div className="flex items-start gap-3 sm:gap-4 mb-4">
-            <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-sm flex-shrink-0">
-              {getStatusIcon(event.event_status || '')}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-1 line-clamp-2 break-words">
-                {event.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 truncate">
-                {event.event_type}
-              </p>
-              {getStatusText() && (
-                <p className="text-xs font-medium text-blue-600 mt-1">
-                  {getStatusText()}
-                </p>
-              )}
-            </div>
-            {canManageEvents && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 hover:bg-red-100 flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="bg-white border-2 border-gray-200 rounded-lg shadow-lg"
-                >
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewDetails(event);
-                    }}
-                    className="hover:bg-red-50 focus:bg-red-50"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(event);
-                    }}
-                    className="hover:bg-red-50 focus:bg-red-50"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(event);
-                    }}
-                    className="text-red-600 hover:bg-red-50 focus:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-
-          <div className="flex-1 space-y-2 sm:space-y-3">
-            <div className="text-sm sm:text-base text-gray-600">
-              <span className="font-medium">Location:</span>
-              <span className="text-gray-800 font-semibold ml-1 break-words">
-                {event.location || "TBD"}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-600">Registered:</span>
-                <span className="font-semibold text-gray-800">{event.participant_count || 0}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <UserCheck className="w-4 h-4 text-green-500" />
-                <span className="text-gray-600">Selected:</span>
-                <span className="font-semibold text-green-700">{event.selected_count || 0}</span>
-              </div>
-            </div>
-
-            {event.event_status === 'ongoing' && (
-              <div className="flex items-center gap-1 text-sm">
-                <CheckCircle className="w-4 h-4 text-blue-500" />
-                <span className="text-gray-600">Checked In:</span>
-                <span className="font-semibold text-blue-700">{event.checked_in_count || 0}</span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-1 sm:gap-2">
-              <Badge
-                className={`px-2 py-1 text-xs font-medium ${
-                  event.status === "Published"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-yellow-100 text-yellow-800"
-                }`}
-              >
-                {event.status}
-              </Badge>
-              {event.duration_days && (
-                <Badge
-                  variant="outline"
-                  className="px-2 py-1 text-xs font-medium border-2 border-red-200 text-red-700 bg-red-50"
-                >
-                  {event.duration_days} days
-                </Badge>
-              )}
-              <Badge
-                className={`px-2 py-1 text-xs font-medium ${
-                  event.event_status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
-                  event.event_status === 'ongoing' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {event.event_status ? event.event_status.charAt(0).toUpperCase() + event.event_status.slice(1) : 'Unknown'}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="text-xs text-gray-500 pt-3 sm:pt-4 mt-3 sm:mt-4 border-t border-gray-200 truncate">
-            Created by {event.created_by}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

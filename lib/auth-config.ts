@@ -1,9 +1,43 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AzureADProvider from "next-auth/providers/azure-ad";
+import { JWT } from "next-auth/jwt";
 
 // Admin roles that can access the portal (using actual API role strings)
 const ADMIN_ROLES = ['super_admin', 'mt_admin', 'hr_admin', 'event_admin'];
+
+// Token refresh function
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.refreshToken || token.accessToken}`,
+      },
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 3600) * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+    };
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    };
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   debug: process.env.NODE_ENV === 'development',
@@ -63,6 +97,7 @@ export const authOptions: NextAuthOptions = {
             tenantId: data.tenant_id,
             isActive: true,
             accessToken: data.access_token,
+            refreshToken: data.refresh_token || data.access_token,
             firstLogin: data.first_login || false,
             mustChangePassword: data.must_change_password || false,
           };
@@ -111,6 +146,7 @@ export const authOptions: NextAuthOptions = {
           user.role = data.role;
           user.tenantId = data.tenant_id;
           user.accessToken = data.access_token;
+          user.refreshToken = data.refresh_token || data.access_token;
           user.firstLogin = data.first_login || false;
           user.isActive = true;
           
@@ -129,10 +165,19 @@ export const authOptions: NextAuthOptions = {
         token.tenantId = user.tenantId;
         token.isActive = user.isActive;
         token.accessToken = user.accessToken;
+        token.refreshToken = user.refreshToken;
         token.firstLogin = user.firstLogin;
         token.mustChangePassword = user.mustChangePassword;
+        token.accessTokenExpires = Date.now() + (60 * 60 * 1000); // 1 hour from now
       }
-      return token;
+
+      // Return previous token if the access token has not expired yet
+      if (Date.now() < (token.accessTokenExpires as number)) {
+        return token;
+      }
+
+      // Access token has expired, try to update it
+      return await refreshAccessToken(token);
     },
     async session({ session, token }) {
       if (token) {
@@ -169,7 +214,8 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    updateAge: 24 * 60 * 60, // Update session every 24 hours
   },
   events: {
     async signOut() {

@@ -29,6 +29,7 @@ import EventParticipants from "./EventParticipants";
 import EventAttachments from "./EventAttachments";
 import EventAllocations from "./EventAllocations";
 import EventAgenda from "./EventAgenda";
+import SessionFeedback from "@/components/events/SessionFeedback";
 
 interface Event {
   id: number;
@@ -74,6 +75,7 @@ interface EventDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   tenantSlug: string;
+  canManageEvents?: boolean;
 }
 
 export default function EventDetailsModal({
@@ -81,9 +83,11 @@ export default function EventDetailsModal({
   isOpen,
   onClose,
   tenantSlug,
+  canManageEvents = true,
 }: EventDetailsModalProps) {
   const { accessToken, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
+  const [tabLoading, setTabLoading] = useState(false);
 
   const [feedbackStats, setFeedbackStats] = useState<{
     total_responses: number;
@@ -417,24 +421,29 @@ export default function EventDetailsModal({
 
   if (!event) return null;
 
+  // Check if event has ended
+  const eventHasEnded = new Date() > new Date(event.end_date);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] sm:w-[90vw] h-[90vh] sm:h-[85vh] max-w-[95vw] sm:max-w-[90vw] overflow-y-auto bg-white border shadow-xl p-0">
-        <DialogHeader className="px-4 sm:px-6 py-4 border-b bg-gradient-to-r from-red-50 to-red-100">
-          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2">
+      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-xl">
+        <DialogHeader className="px-3 sm:px-4 lg:px-6 py-4 border-b bg-gradient-to-r from-slate-50 via-red-50 to-rose-50 rounded-t-xl min-h-[80px] flex flex-col justify-center">
+          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-red-600" />
-              <span className="text-lg sm:text-xl font-bold text-gray-900">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-sm">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+              </div>
+              <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
                 {event.title}
               </span>
             </div>
             <Badge
-              className={`w-fit ${
+              className={`w-fit text-xs px-2 py-1 font-medium rounded-full ${
                 event.status === "Published"
-                  ? "bg-green-100 text-green-800"
+                  ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                   : event.status === "Draft"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-gray-100 text-gray-800"
+                  ? "bg-amber-100 text-amber-700 border-amber-200"
+                  : "bg-gray-100 text-gray-700 border-gray-200"
               }`}
             >
               {event.status}
@@ -445,72 +454,93 @@ export default function EventDetailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 bg-gradient-to-r from-red-50 to-red-100 p-1 sm:p-2 mx-4 sm:mx-6 mt-4 rounded-xl h-12 sm:h-14 border border-red-200 text-xs sm:text-sm">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="participants" className="text-xs sm:text-sm">
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Participants</span>
-              <span className="sm:hidden">({participantsCount})</span>
-              <span className="hidden sm:inline"> ({participantsCount})</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="facilitators"
-              className="text-xs sm:text-sm hidden sm:flex"
-            >
-              Facilitators ({facilitatorsCount})
-            </TabsTrigger>
-            <TabsTrigger value="attachments" className="text-xs sm:text-sm">
-              <Paperclip className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Files</span>
-              <span className="sm:hidden">({attachmentsCount})</span>
-              <span className="hidden sm:inline"> ({attachmentsCount})</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="allocations"
-              className="text-xs sm:text-sm hidden sm:flex"
-            >
-              <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Allocations</span>
-            </TabsTrigger>
-            <TabsTrigger value="agenda" className="text-xs sm:text-sm">
-              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Agenda</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="feedback"
-              className="text-xs sm:text-sm hidden sm:flex"
-            >
-              <Star className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              <span className="hidden sm:inline">Feedback</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex-1 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setTabLoading(true);
+            setTimeout(() => {
+              setActiveTab(value);
+              setTabLoading(false);
+            }, 150);
+          }} className="h-full flex flex-col">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 bg-white border-b border-gray-200 p-0 mx-3 sm:mx-4 lg:mx-6 mt-2 sm:mt-3 rounded-none h-12 sm:h-11 text-xs overflow-x-auto">
+              <TabsTrigger value="overview" className="text-xs font-medium px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="participants" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+                <Users className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Participants</span>
+                <span className="sm:hidden">P</span>
+                <span className="ml-1">({participantsCount})</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="facilitators"
+                className="text-xs font-medium px-1 sm:px-2 py-2 hidden sm:flex data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
+                <span className="hidden lg:inline">Facilitators</span>
+                <span className="lg:hidden">Fac</span>
+                <span className="ml-1">({facilitatorsCount})</span>
+              </TabsTrigger>
+              <TabsTrigger value="attachments" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+                <Paperclip className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Files</span>
+                <span className="sm:hidden">F</span>
+                <span className="ml-1">({attachmentsCount})</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="allocations"
+                className="text-xs font-medium px-1 sm:px-2 py-2 hidden sm:flex data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                <span className="hidden lg:inline">Allocations</span>
+                <span className="lg:hidden">Alloc</span>
+              </TabsTrigger>
+              <TabsTrigger value="agenda" className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500">
+                <Calendar className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Agenda</span>
+                <span className="sm:hidden">A</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="feedback"
+                className="text-xs font-medium px-2 sm:px-3 py-2 flex items-center data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500 min-w-fit"
+              >
+                <Star className="h-3 w-3 mr-1" />
+                <span className="whitespace-nowrap">Feedback</span>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent
-            value="overview"
-            className="space-y-6 mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Event Overview
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Detailed information about this event
-                </p>
-              </div>
-              {event.status === "Draft" && !editMode && (
-                <Button
-                  onClick={() => setEditMode(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
-                >
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Event
-                </Button>
+            <div className="flex-1 overflow-y-auto relative">
+              {tabLoading && (
+                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                    <span className="text-sm text-gray-600">Loading...</span>
+                  </div>
+                </div>
               )}
-            </div>
+              <TabsContent
+                value="overview"
+                className="space-y-4 sm:space-y-6 mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
+                      Event Overview
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      Detailed information about this event
+                    </p>
+                  </div>
+                  {event.status === "Draft" && !editMode && canManageEvents && (
+                    <Button
+                      onClick={() => setEditMode(true)}
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto text-xs px-3 py-2 h-8"
+                    >
+                      <Edit3 className="h-3 w-3 mr-1" />
+                      Edit Event
+                    </Button>
+                  )}
+                </div>
 
             {editMode ? (
               <div className="space-y-4">
@@ -625,53 +655,55 @@ export default function EventDetailsModal({
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
-                  <h3 className="font-bold text-lg mb-4 text-red-800 flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Event Details
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">Type:</span>
-                      <span className="text-gray-900 font-semibold">
-                        {event.event_type || "Not specified"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Start Date:
-                      </span>
-                      <span className="text-gray-900 font-semibold">
-                        {new Date(event.start_date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        End Date:
-                      </span>
-                      <span className="text-gray-900 font-semibold">
-                        {new Date(event.end_date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-red-200">
-                      <span className="font-medium text-gray-700">
-                        Duration:
-                      </span>
-                      <span className="text-gray-900 font-semibold">
-                        {event.duration_days} days
-                      </span>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                  <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-lg border border-red-200 shadow-sm">
+                    <h3 className="font-semibold text-sm sm:text-base mb-3 text-red-800 flex items-center gap-2">
+                      <div className="p-1 rounded bg-red-100">
+                        <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                      </div>
+                      Event Details
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">Type:</span>
+                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                          {event.event_type || "Not specified"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">
+                          Start Date:
+                        </span>
+                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                          {new Date(event.start_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">
+                          End Date:
+                        </span>
+                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                          {new Date(event.end_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1.5">
+                        <span className="text-xs sm:text-sm font-medium text-gray-600">
+                          Duration:
+                        </span>
+                        <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                          {event.duration_days} days
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-                  <h3 className="font-bold text-lg mb-4 text-blue-800 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
+                  <h3 className="font-bold text-lg mb-4 text-red-800 flex items-center gap-2">
                     <Users className="h-5 w-5" />
                     Participants
                   </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                    <div className="flex justify-between items-center py-2 border-b border-red-200">
                       <span className="font-medium text-gray-700">
                         Registered:
                       </span>
@@ -683,7 +715,7 @@ export default function EventDetailsModal({
                         visitors
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                    <div className="flex justify-between items-center py-2 border-b border-red-200">
                       <span className="font-medium text-gray-700">
                         Selected:
                       </span>
@@ -698,7 +730,7 @@ export default function EventDetailsModal({
                         visitors
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                    <div className="flex justify-between items-center py-2 border-b border-red-200">
                       <span className="font-medium text-gray-700">
                         Facilitators:
                       </span>
@@ -710,7 +742,7 @@ export default function EventDetailsModal({
                         facilitators
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                    <div className="flex justify-between items-center py-2 border-b border-red-200">
                       <span className="font-medium text-gray-700">
                         Waiting:
                       </span>
@@ -728,7 +760,7 @@ export default function EventDetailsModal({
                       <span className="font-medium text-gray-700">
                         Attended:
                       </span>
-                      <span className="text-blue-700 font-semibold">
+                      <span className="text-red-700 font-semibold">
                         {
                           participants.filter(
                             (p) =>
@@ -778,7 +810,7 @@ export default function EventDetailsModal({
                   Description
                 </h3>
                 <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-700 leading-relaxed">
+                  <p className="text-gray-700 leading-relaxed text-xs sm:text-sm">
                     {event.description}
                   </p>
                 </div>
@@ -794,155 +826,66 @@ export default function EventDetailsModal({
               eventId={event.id}
               tenantSlug={tenantSlug}
               onParticipantsChange={handleParticipantsChange}
+              eventHasEnded={eventHasEnded}
+              canManageEvents={canManageEvents}
             />
           </TabsContent>
 
-          <TabsContent
-            value="facilitators"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <EventParticipants
-              eventId={event.id}
-              tenantSlug={tenantSlug}
-              roleFilter="facilitator"
-              allowAdminAdd={true}
-              onParticipantsChange={handleFacilitatorsChange}
-            />
-          </TabsContent>
+              <TabsContent
+                value="facilitators"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventParticipants
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  roleFilter="facilitator"
+                  allowAdminAdd={canManageEvents}
+                  onParticipantsChange={handleFacilitatorsChange}
+                  eventHasEnded={eventHasEnded}
+                  canManageEvents={canManageEvents}
+                />
+              </TabsContent>
 
-          <TabsContent
-            value="attachments"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <EventAttachments
-              eventId={event.id}
-              tenantSlug={tenantSlug}
-              onAttachmentsChange={setAttachmentsCount}
-            />
-          </TabsContent>
+              <TabsContent
+                value="attachments"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventAttachments
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  onAttachmentsChange={setAttachmentsCount}
+                  eventHasEnded={eventHasEnded}
+                />
+              </TabsContent>
 
-          <TabsContent
-            value="agenda"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <EventAgenda eventId={event.id} tenantSlug={tenantSlug} />
-          </TabsContent>
+              <TabsContent
+                value="agenda"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventAgenda eventId={event.id} tenantSlug={tenantSlug} eventHasEnded={eventHasEnded} />
+              </TabsContent>
 
-          <TabsContent
-            value="allocations"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <EventAllocations eventId={event.id} tenantSlug={tenantSlug} />
-          </TabsContent>
+              <TabsContent
+                value="allocations"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventAllocations eventId={event.id} tenantSlug={tenantSlug} eventHasEnded={eventHasEnded} />
+              </TabsContent>
 
-          <TabsContent
-            value="feedback"
-            className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
-          >
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">
-                  Event Feedback & Ratings
-                </h3>
-                {feedbackStats && (
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <span className="font-semibold">
-                      {feedbackStats.average_overall_rating}/5
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      ({feedbackStats.total_responses} responses)
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {feedbackStats ? (
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Rating Breakdown</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Overall Rating:</span>
-                        <span className="font-medium">
-                          {feedbackStats.average_overall_rating}/5
-                        </span>
-                      </div>
-                      {feedbackStats.average_content_rating && (
-                        <div className="flex justify-between">
-                          <span>Content:</span>
-                          <span className="font-medium">
-                            {feedbackStats.average_content_rating}/5
-                          </span>
-                        </div>
-                      )}
-                      {feedbackStats.average_organization_rating && (
-                        <div className="flex justify-between">
-                          <span>Organization:</span>
-                          <span className="font-medium">
-                            {feedbackStats.average_organization_rating}/5
-                          </span>
-                        </div>
-                      )}
-                      {feedbackStats.average_venue_rating && (
-                        <div className="flex justify-between">
-                          <span>Venue:</span>
-                          <span className="font-medium">
-                            {feedbackStats.average_venue_rating}/5
-                          </span>
-                        </div>
-                      )}
-                      {feedbackStats.recommendation_percentage && (
-                        <div className="flex justify-between">
-                          <span>Would Recommend:</span>
-                          <span className="font-medium">
-                            {feedbackStats.recommendation_percentage}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Recent Feedback</h4>
-                    <div className="space-y-3 max-h-64 overflow-y-auto">
-                      {feedback.slice(0, 5).map((fb, index) => (
-                        <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium text-sm">
-                              {fb.participant_name}
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <Star className="h-4 w-4 text-yellow-500" />
-                              <span className="text-sm">
-                                {fb.overall_rating}
-                              </span>
-                            </div>
-                          </div>
-                          {fb.feedback_text && (
-                            <p className="text-sm text-gray-700">
-                              {fb.feedback_text}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No feedback received yet</p>
-                </div>
-              )}
+              <TabsContent
+                value="feedback"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <SessionFeedback eventId={event.id} tenantSlug={tenantSlug} />
+              </TabsContent>
             </div>
-          </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 mt-6 border-t bg-gradient-to-r from-gray-50 to-red-50 px-4 sm:px-6 pb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 pt-3 border-t bg-white px-3 sm:px-4 lg:px-6 pb-3 rounded-b-xl">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Status:</span>
+              <span className="text-xs sm:text-sm font-medium text-gray-600">Status:</span>
               <Badge
                 variant={
                   event.status === "Published"
@@ -953,7 +896,7 @@ export default function EventDetailsModal({
                     ? "destructive"
                     : "outline"
                 }
-                className="flex items-center gap-1"
+                className="flex items-center gap-1 text-xs px-2 py-1"
               >
                 {event.status === "Published" && (
                   <CheckCircle className="h-3 w-3" />
@@ -974,39 +917,37 @@ export default function EventDetailsModal({
               </Badge>
             </div>
 
-            {event.status === "Draft" && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    updateEventStatus("Published");
-                  }}
-                  disabled={updatingStatus}
-                  className="text-xs px-3 py-1 h-7 border-red-300 text-red-700 hover:bg-red-50 cursor-pointer"
-                >
-                  {updatingStatus ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600 mr-1"></div>
-                      Publishing...
-                    </>
-                  ) : (
-                    <>
-                      <Edit3 className="h-3 w-3 mr-1" />
-                      Publish Event
-                    </>
-                  )}
-                </Button>
-              </div>
+            {event.status === "Draft" && canManageEvents && (
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateEventStatus("Published");
+                }}
+                disabled={updatingStatus}
+                className="text-xs px-3 py-1 h-7 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {updatingStatus ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="h-3 w-3 mr-1" />
+                    Publish Event
+                  </>
+                )}
+              </Button>
             )}
           </div>
 
           <Button
             variant="outline"
             onClick={onClose}
-            className="px-6 py-2 bg-white border-gray-300 hover:bg-gray-50 w-full sm:w-auto"
+            size="sm"
+            className="px-4 py-2 bg-white border-gray-300 hover:bg-gray-50 w-full sm:w-auto text-xs"
           >
             Close
           </Button>

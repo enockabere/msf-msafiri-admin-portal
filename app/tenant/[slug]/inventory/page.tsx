@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Trash2, Package, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit, Trash2, Package, Wrench, ChevronLeft, ChevronRight, Grid3X3, List, Search, Download, ArrowUpDown } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -35,6 +37,10 @@ export default function InventoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 12;
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<keyof InventoryItem>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
 
 
@@ -158,6 +164,85 @@ export default function InventoryPage() {
     }
   };
 
+  const getFilteredAndSortedItems = () => {
+    let filtered = items.filter(item => {
+      const matchesSearch = !searchTerm || 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.condition.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+    
+    return filtered.sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      
+      if (aValue == null && bValue == null) return 0;
+      if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
+      if (bValue == null) return sortDirection === 'asc' ? 1 : -1;
+      
+      if (sortField === 'created_at') {
+        const dateA = new Date(aValue as string).getTime();
+        const dateB = new Date(bValue as string).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      const strA = String(aValue).toLowerCase();
+      const strB = String(bValue).toLowerCase();
+      
+      if (strA < strB) return sortDirection === 'asc' ? -1 : 1;
+      if (strA > strB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const exportInventoryToCSV = (items: InventoryItem[]) => {
+    const headers = [
+      "Name",
+      "Category",
+      "Quantity",
+      "Condition",
+      "Created At"
+    ];
+    
+    const csvData = [
+      headers.join(","),
+      ...items.map(item => [
+        `"${item.name}"`,
+        `"${item.category}"`,
+        item.quantity,
+        `"${item.condition}"`,
+        `"${new Date(item.created_at).toLocaleDateString()}"`
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvData], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "inventory.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleSort = (field: keyof InventoryItem) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredItems = getFilteredAndSortedItems();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -188,12 +273,56 @@ export default function InventoryPage() {
             </SelectContent>
           </Select>
           
-          {totalItems > 0 && (
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+          <div className="flex items-center gap-4">
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <Button
+                variant={viewMode === 'card' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('card')}
+                className={viewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className={viewMode === 'table' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+              >
+                <List className="w-4 h-4" />
+              </Button>
             </div>
-          )}
+            
+            {totalItems > 0 && (
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+              </div>
+            )}
+          </div>
         </div>
+
+        {viewMode === 'table' && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search inventory..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-9 text-sm border-gray-200"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => exportInventoryToCSV(getFilteredAndSortedItems())} 
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
+        )}
 
         <AddItemModal
           open={showModal}
@@ -202,29 +331,132 @@ export default function InventoryPage() {
           onSubmit={handleSubmit}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {loading ? (
-            <div className="col-span-full text-center py-16">
-              <div className="inline-flex items-center px-6 py-3 font-medium leading-6 text-sm shadow rounded-lg text-red-700 bg-red-100 transition ease-in-out duration-150">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading inventory...
-              </div>
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center px-6 py-3 font-medium leading-6 text-sm shadow rounded-lg text-red-700 bg-red-100 transition ease-in-out duration-150">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-red-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Loading inventory...
             </div>
-          ) : items.length === 0 ? (
-            <div className="col-span-full">
-              <Card className="shadow-md border-0 bg-gradient-to-br from-white to-red-50">
-                <CardContent className="text-center py-16">
-                  <Package className="w-16 h-16 mx-auto mb-6 text-red-400" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">No inventory items found</h3>
-                  <p className="text-gray-500">Start by adding your first inventory item</p>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            items.map((item) => (
+          </div>
+        ) : items.length === 0 ? (
+          <Card className="shadow-md border-0 bg-gradient-to-br from-white to-red-50">
+            <CardContent className="text-center py-16">
+              <Package className="w-16 h-16 mx-auto mb-6 text-red-400" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">No inventory items found</h3>
+              <p className="text-gray-500">Start by adding your first inventory item</p>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'table' ? (
+          <div className="border rounded-lg bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleSort('name')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Item
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleSort('category')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Category
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleSort('quantity')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Quantity
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => handleSort('condition')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Condition
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-red-100 to-red-200">
+                          {item.category === "equipment" ? (
+                            <Wrench className="w-5 h-5 text-red-700" />
+                          ) : (
+                            <Package className="w-5 h-5 text-red-700" />
+                          )}
+                        </div>
+                        <span className="font-medium">{item.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline" 
+                        className="px-2 py-1 text-xs font-medium border-2 border-red-200 text-red-700 bg-red-50"
+                      >
+                        {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold">{item.quantity}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`px-2 py-1 text-xs font-medium ${getConditionColor(item.condition)}`}>
+                        {item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleEdit(item)}
+                          className="border-red-200 text-red-700 hover:bg-red-50"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleDelete(item.id, item.name)}
+                          className="border-red-200 text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredItems.map((item) => (
+
               <Card key={item.id} className="shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-gradient-to-br from-white to-red-50">
                 <CardContent className="p-6">
                   <div className="flex flex-col h-full">
@@ -282,9 +514,9 @@ export default function InventoryPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
         
         {totalItems > itemsPerPage && (
           <div className="flex justify-center items-center gap-4 mt-8">

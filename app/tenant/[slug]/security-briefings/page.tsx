@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Shield, Plus, Trash2, FileText, Video } from "lucide-react";
+import { Shield, Plus, Trash2, FileText, Video, Bold, Italic, Underline, List, ListOrdered } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
 
@@ -54,8 +54,14 @@ export default function SecurityBriefingsPage() {
   });
   const [events, setEvents] = useState<Event[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [isRichText, setIsRichText] = useState(false);
 
   const tenantSlug = params.slug as string;
+
+  // Check if user can create security briefings (all admin roles)
+  const canCreateBriefings = () => {
+    return user?.role && ['super_admin', 'mt_admin', 'hr_admin', 'event_admin'].includes(user.role);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,12 +69,28 @@ export default function SecurityBriefingsPage() {
         setLoading(true);
         
         // Fetch events for dropdown
-        const eventsData = await apiClient.request<Event[]>(`/events/?tenant=${tenantSlug}`);
-        setEvents(eventsData);
+        const eventsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/?tenant=${tenantSlug}`, {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (eventsResponse.ok) {
+          const eventsData = await eventsResponse.json();
+          setEvents(eventsData);
+        }
         
         // Fetch security briefings
-        const briefingsData = await apiClient.request<SecurityBriefing[]>(`/security-briefings/?tenant=${tenantSlug}`);
-        setBriefings(briefingsData);
+        const briefingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/security-briefings/?tenant=${tenantSlug}`, {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (briefingsResponse.ok) {
+          const briefingsData = await briefingsResponse.json();
+          setBriefings(briefingsData);
+        }
       } catch (error) {
         console.error("Fetch error:", error);
         toast({
@@ -108,19 +130,88 @@ export default function SecurityBriefingsPage() {
     try {
       setSubmitting(true);
       
-      await apiClient.request(`/security-briefings/?tenant=${tenantSlug}`, {
+      // Map frontend content types to API expected values
+      let apiContentType = formData.content_type;
+      if (formData.content_type === 'rich_text') {
+        apiContentType = 'text'; // API treats rich text as regular text
+      } else if (formData.content_type === 'document') {
+        apiContentType = 'video'; // API uses 'video' for URLs (both video and document)
+      }
+      
+      const payload = {
+        title: formData.title,
+        brief_type: formData.brief_type,
+        content_type: apiContentType,
+        content: formData.content,
+        event_id: formData.event_id ? parseInt(formData.event_id) : null,
+        is_active: true
+      };
+      
+      // Debug logs
+      console.log('🔍 DEBUG INFO:');
+      console.log('User role:', user?.role);
+      console.log('User email:', user?.email);
+      console.log('Access token exists:', !!apiClient.getToken());
+      console.log('Access token preview:', apiClient.getToken()?.substring(0, 20) + '...');
+      console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+      console.log('Payload:', payload);
+      console.log('Tenant slug:', tenantSlug);
+      
+      // Use direct fetch with tenant parameter like working SecurityBriefings.tsx
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/security-briefings/?tenant=${tenantSlug}`, {
         method: 'POST',
-        body: JSON.stringify(formData),
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response text:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { detail: errorText || 'Unknown error' };
+        }
+        console.log('Parsed error data:', errorData);
+        throw new Error(errorData.detail || 'Failed to create security briefing');
+      }
+      
+      const responseData = await response.json();
+      console.log('Success response:', responseData);
       
       setShowCreateModal(false);
       setFormData({ title: "", brief_type: "general", content_type: "text", content: "", event_id: "" });
+      setIsRichText(false);
       
       // Refetch data
-      const eventsData = await apiClient.request<Event[]>(`/events/?tenant=${tenantSlug}`);
-      setEvents(eventsData);
-      const briefingsData = await apiClient.request<SecurityBriefing[]>(`/security-briefings/?tenant=${tenantSlug}`);
-      setBriefings(briefingsData);
+      const eventsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/?tenant=${tenantSlug}`, {
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setEvents(eventsData);
+      }
+      
+      const briefingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/security-briefings/?tenant=${tenantSlug}`, {
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (briefingsResponse.ok) {
+        const briefingsData = await briefingsResponse.json();
+        setBriefings(briefingsData);
+      }
       
       toast({
         title: "Success",
@@ -128,9 +219,19 @@ export default function SecurityBriefingsPage() {
       });
     } catch (error) {
       console.error("Create briefing error:", error);
+      let errorMessage = "Failed to create security briefing";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        errorMessage = JSON.stringify(error);
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to create security briefing",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -155,13 +256,29 @@ export default function SecurityBriefingsPage() {
     if (!result.isConfirmed) return;
 
     try {
-      await apiClient.request(`/security-briefings/${briefingId}?tenant=${tenantSlug}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/security-briefings/${briefingId}/`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+        },
       });
       
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || 'Failed to delete security briefing');
+      }
+      
       // Refetch data
-      const briefingsData = await apiClient.request<SecurityBriefing[]>(`/security-briefings/?tenant=${tenantSlug}`);
-      setBriefings(briefingsData);
+      const briefingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/security-briefings/?tenant=${tenantSlug}`, {
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (briefingsResponse.ok) {
+        const briefingsData = await briefingsResponse.json();
+        setBriefings(briefingsData);
+      }
       
       toast({
         title: "Success",
@@ -190,13 +307,15 @@ export default function SecurityBriefingsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Security Briefings</h1>
               <p className="text-gray-600">Manage security briefings for events</p>
             </div>
-            <Button 
-              onClick={() => setShowCreateModal(true)} 
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Create Briefing
-            </Button>
+            {canCreateBriefings() && (
+              <Button 
+                onClick={() => setShowCreateModal(true)} 
+                className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                Create Briefing
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,10 +328,12 @@ export default function SecurityBriefingsPage() {
                     <p className="text-gray-600 text-center mb-4">
                       Get started by creating your first security briefing
                     </p>
-                    <Button onClick={() => setShowCreateModal(true)} className="bg-red-600 hover:bg-red-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Briefing
-                    </Button>
+                    {canCreateBriefings() && (
+                      <Button onClick={() => setShowCreateModal(true)} className="bg-red-600 hover:bg-red-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Briefing
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -281,7 +402,7 @@ export default function SecurityBriefingsPage() {
 
         {/* Create Briefing Modal */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] bg-white border shadow-lg">
             <DialogHeader>
               <DialogTitle>Create Security Briefing</DialogTitle>
             </DialogHeader>
@@ -338,11 +459,17 @@ export default function SecurityBriefingsPage() {
                 </label>
                 <select
                   value={formData.content_type}
-                  onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
+                  onChange={(e) => {
+                    const newContentType = e.target.value;
+                    setFormData({ ...formData, content_type: newContentType, content: "" });
+                    setIsRichText(newContentType === 'rich_text');
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="text">Text</option>
+                  <option value="text">Plain Text</option>
+                  <option value="rich_text">Rich Text</option>
                   <option value="video">Video URL</option>
+                  <option value="document">Document URL</option>
                 </select>
               </div>
               
@@ -350,28 +477,118 @@ export default function SecurityBriefingsPage() {
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
                   Content
                 </label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder={formData.content_type === 'video' ? 'Enter video URL' : 'Enter briefing content'}
-                  rows={6}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
+                {isRichText ? (
+                  <div className="border border-gray-300 rounded-md">
+                    <div className="flex items-center gap-2 p-2 border-b border-gray-200 bg-gray-50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.getElementById('rich-content') as HTMLTextAreaElement;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const selectedText = textarea.value.substring(start, end);
+                          const newText = textarea.value.substring(0, start) + `**${selectedText}**` + textarea.value.substring(end);
+                          setFormData({ ...formData, content: newText });
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <Bold className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.getElementById('rich-content') as HTMLTextAreaElement;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const selectedText = textarea.value.substring(start, end);
+                          const newText = textarea.value.substring(0, start) + `*${selectedText}*` + textarea.value.substring(end);
+                          setFormData({ ...formData, content: newText });
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <Italic className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.getElementById('rich-content') as HTMLTextAreaElement;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const selectedText = textarea.value.substring(start, end);
+                          const newText = textarea.value.substring(0, start) + `__${selectedText}__` + textarea.value.substring(end);
+                          setFormData({ ...formData, content: newText });
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <Underline className="w-4 h-4" />
+                      </button>
+                      <div className="w-px h-4 bg-gray-300 mx-1" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.getElementById('rich-content') as HTMLTextAreaElement;
+                          const start = textarea.selectionStart;
+                          const newText = textarea.value.substring(0, start) + '\n- ' + textarea.value.substring(start);
+                          setFormData({ ...formData, content: newText });
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = document.getElementById('rich-content') as HTMLTextAreaElement;
+                          const start = textarea.selectionStart;
+                          const newText = textarea.value.substring(0, start) + '\n1. ' + textarea.value.substring(start);
+                          setFormData({ ...formData, content: newText });
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded"
+                      >
+                        <ListOrdered className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <textarea
+                      id="rich-content"
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      placeholder="Enter briefing content with markdown formatting"
+                      rows={8}
+                      className="w-full px-3 py-2 border-0 focus:outline-none focus:ring-0 resize-none"
+                    />
+                    <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600">
+                      Use **bold**, *italic*, __underline__, - for bullets, 1. for numbers
+                    </div>
+                  </div>
+                ) : (
+                  <textarea
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    placeholder={
+                      formData.content_type === 'video' ? 'Enter video URL' :
+                      formData.content_type === 'document' ? 'Enter document URL' :
+                      'Enter briefing content'
+                    }
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                )}
               </div>
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
                 disabled={submitting}
+                className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateBriefing}
                 disabled={submitting}
-                className="bg-red-600 hover:bg-red-700"
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm"
               >
                 {submitting ? "Creating..." : "Create Briefing"}
               </Button>

@@ -36,6 +36,8 @@ interface EventParticipantsProps {
   roleFilter?: string;
   allowAdminAdd?: boolean;
   onParticipantsChange?: (count: number) => void;
+  eventHasEnded?: boolean;
+  canManageEvents?: boolean;
 }
 
 export default function EventParticipants({
@@ -44,6 +46,8 @@ export default function EventParticipants({
   roleFilter,
   allowAdminAdd = false,
   onParticipantsChange,
+  eventHasEnded = false,
+  canManageEvents = true,
 }: EventParticipantsProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -324,7 +328,8 @@ export default function EventParticipants({
           {allowAdminAdd && (
             <Button
               onClick={() => setShowAddForm(true)}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+              disabled={eventHasEnded}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add {roleFilter || "Participant"}
@@ -469,8 +474,9 @@ export default function EventParticipants({
                   onValueChange={(value) =>
                     handleStatusChange(participant.id, value)
                   }
+                  disabled={eventHasEnded}
                 >
-                  <SelectTrigger className="w-28 h-7 text-xs bg-white border-gray-300">
+                  <SelectTrigger className="w-28 h-7 text-xs bg-white border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
@@ -522,8 +528,8 @@ export default function EventParticipants({
                         e.stopPropagation();
                         handleResendInvitation(participant.id);
                       }}
-                      disabled={resendingId === participant.id}
-                      className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50"
+                      disabled={resendingId === participant.id || eventHasEnded}
+                      className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {resendingId === participant.id ? (
                         <>
@@ -550,6 +556,7 @@ export default function EventParticipants({
                 tenantSlug={tenantSlug}
                 isOpen={true}
                 onToggle={() => setExpandedParticipant(null)}
+                canManageEvents={canManageEvents}
               />
             )}
           </div>

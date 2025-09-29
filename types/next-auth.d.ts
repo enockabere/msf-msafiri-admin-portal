@@ -23,6 +23,7 @@ declare module "next-auth" {
     tenantId?: string;
     isActive?: boolean;
     accessToken?: string;
+    refreshToken?: string;
     firstLogin?: boolean;
     mustChangePassword?: boolean;
   }
@@ -34,7 +35,10 @@ declare module "next-auth/jwt" {
     tenantId?: string;
     isActive?: boolean;
     accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
     firstLogin?: boolean;
     mustChangePassword?: boolean;
+    error?: string;
   }
 }

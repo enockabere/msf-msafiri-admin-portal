@@ -19,9 +19,10 @@ interface EventAttachmentsProps {
   eventId: number
   tenantSlug: string
   onAttachmentsChange?: (count: number) => void
+  eventHasEnded?: boolean
 }
 
-export default function EventAttachments({ eventId, onAttachmentsChange }: EventAttachmentsProps) {
+export default function EventAttachments({ eventId, onAttachmentsChange, eventHasEnded = false }: EventAttachmentsProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -129,7 +130,8 @@ export default function EventAttachments({ eventId, onAttachmentsChange }: Event
         </div>
         <Button 
           onClick={() => setShowAddForm(true)} 
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+          disabled={eventHasEnded}
+          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Attachment
@@ -265,7 +267,8 @@ export default function EventAttachments({ eventId, onAttachmentsChange }: Event
                 variant="outline"
                 size="sm"
                 onClick={() => handleRemoveAttachment(attachment.id)}
-                className="border-red-300 text-red-700 hover:bg-red-50"
+                disabled={eventHasEnded}
+                className="border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -283,7 +286,8 @@ export default function EventAttachments({ eventId, onAttachmentsChange }: Event
               <p className="text-gray-500 mb-4">Get started by adding your first attachment</p>
               <Button 
                 onClick={() => setShowAddForm(true)}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
+                disabled={eventHasEnded}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Attachment

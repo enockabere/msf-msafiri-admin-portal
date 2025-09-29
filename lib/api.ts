@@ -391,10 +391,8 @@ class ApiClient {
     const makeRequest = async (): Promise<T> => {
       const url = getApiUrl(endpoint);
 
-      // Get a valid token (will refresh if needed)
-      const token = options.skipAuthError
-        ? this.getToken()
-        : (await tokenManager.getValidToken()) || this.getToken();
+      // Use current token - NextAuth will handle refresh automatically
+      const token = this.getToken();
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -421,12 +419,6 @@ class ApiClient {
       try {
         const response = await fetch(url, requestConfig);
 
-        // Log response headers for debugging
-        const responseHeaders: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          responseHeaders[key] = value;
-        });
-
         if (!response.ok) {
           // Handle 401 errors (authentication/authorization issues)
           if (response.status === 401) {
@@ -437,23 +429,6 @@ class ApiClient {
                 status_code: 401,
               }));
               throw new Error(errorData.detail || "Authentication failed");
-            }
-
-            // Try token refresh once before giving up
-            if (!options.skipAuthError) {
-              try {
-                const newToken = await tokenManager.refreshToken();
-                if (newToken) {
-                  // Retry the request with new token
-                  this.setToken(newToken);
-                  return await this.request(endpoint, {
-                    ...options,
-                    skipAuthError: true,
-                  });
-                }
-              } catch (refreshError) {
-                console.error("Token refresh failed:", refreshError);
-              }
             }
 
             // Set flag to prevent concurrent session expiry handling

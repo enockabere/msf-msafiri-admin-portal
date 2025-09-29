@@ -26,6 +26,7 @@ interface QRAllocationData {
   event_end_date?: string;
   total_drinks: number;
   remaining_drinks: number;
+  redeemed_drinks?: number;
 }
 
 interface ParticipantQRResponse {
@@ -164,13 +165,19 @@ export default function ParticipantQRCode({
                 <Package className="h-4 w-4 text-gray-500" />
                 <span className="font-medium text-sm">Drink Vouchers</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="text-center p-2 bg-white rounded">
+              <div className="grid grid-cols-3 gap-1 text-xs">
+                <div className="text-center p-1 bg-white rounded">
                   <div className="font-medium text-blue-600">{allocation_summary.total_drinks}</div>
-                  <div className="text-gray-600">Total Allocated</div>
+                  <div className="text-gray-600">Assigned</div>
                 </div>
-                <div className="text-center p-2 bg-white rounded">
-                  <div className="font-medium text-green-600">{allocation_summary.remaining_drinks}</div>
+                <div className="text-center p-1 bg-white rounded">
+                  <div className="font-medium text-red-600">{allocation_summary.redeemed_drinks || 0}</div>
+                  <div className="text-gray-600">Redeemed</div>
+                </div>
+                <div className="text-center p-1 bg-white rounded">
+                  <div className={`font-medium ${allocation_summary.remaining_drinks < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {allocation_summary.remaining_drinks}
+                  </div>
                   <div className="text-gray-600">Remaining</div>
                 </div>
               </div>

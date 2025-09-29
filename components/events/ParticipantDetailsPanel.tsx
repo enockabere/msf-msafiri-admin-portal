@@ -1,11 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User, Calendar, Phone, Mail, Home, MapPin, Users, Car, Package } from "lucide-react";
+import { User, Calendar, Phone, Mail, Home, MapPin, Users, Car, Package, Minus, Edit, Badge as BadgeIcon, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 import { useAuthenticatedApi } from "@/lib/auth";
 import ParticipantQRCode from "./ParticipantQRCode";
+import ParticipantBadge from "./ParticipantBadge";
+import TransportReport from "./reports/TransportReport";
+import AccommodationReport from "./reports/AccommodationReport";
+import VoucherReport from "./reports/VoucherReport";
+import ParticipantPDFReport from "./reports/ParticipantPDFReport";
+import { toast } from "@/hooks/use-toast";
 
 interface ParticipantDetailsProps {
   participantId: number;
@@ -15,15 +24,38 @@ interface ParticipantDetailsProps {
   tenantSlug: string;
   isOpen: boolean;
   onToggle: () => void;
+  canManageEvents?: boolean;
 }
 
 interface DrinkVoucherAllocation {
   id: number;
   allocation_type: string;
   quantity: number;
+  current_quantity?: number;
   status: string;
   allocated_date: string;
   notes?: string;
+  redeemed?: number;
+}
+
+interface QRAllocationData {
+  participant_id: number;
+  participant_name: string;
+  participant_email: string;
+  event_id: number;
+  event_title: string;
+  event_location: string;
+  event_start_date?: string;
+  event_end_date?: string;
+  total_drinks: number;
+  remaining_drinks: number;
+  redeemed_drinks?: number;
+}
+
+interface ParticipantQRResponse {
+  qr_token: string;
+  qr_data_url: string;
+  allocation_summary: QRAllocationData;
 }
 
 interface AccommodationDetails {
@@ -72,17 +104,32 @@ interface ParticipantDetails {
 export default function ParticipantDetailsPanel({
   participantId,
   participantName,
-
+  participantEmail,
   eventId,
   tenantSlug,
   isOpen,
-
+  onToggle,
+  canManageEvents = true,
 }: ParticipantDetailsProps) {
   const [participantDetails, setParticipantDetails] = useState<ParticipantDetails | null>(null);
   const [drinkVoucherAllocations, setDrinkVoucherAllocations] = useState<DrinkVoucherAllocation[]>([]);
+  const [voucherSummary, setVoucherSummary] = useState<QRAllocationData | null>(null);
   const [accommodationDetails, setAccommodationDetails] = useState<AccommodationDetails[]>([]);
   const [transportDetails, setTransportDetails] = useState<TransportDetails[]>([]);
+  const [eventDetails, setEventDetails] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showBadge, setShowBadge] = useState(false);
+  const [showReports, setShowReports] = useState(false);
+  const [showPDFReport, setShowPDFReport] = useState(false);
+  const [redeemQuantity, setRedeemQuantity] = useState(1);
+  const [editAssigned, setEditAssigned] = useState(0);
+  const [editRedeemed, setEditRedeemed] = useState(0);
+  const [redeeming, setRedeeming] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [selectedAllocation, setSelectedAllocation] = useState<DrinkVoucherAllocation | null>(null);
+  const [qrRefreshKey, setQrRefreshKey] = useState(0);
 
   const { apiClient } = useAuthenticatedApi();
 
@@ -105,6 +152,45 @@ export default function ParticipantDetailsPanel({
         console.error('Failed to fetch participant details:', error);
       }
 
+      // Fetch event details
+      try {
+        const eventData = await apiClient.request(
+          `/events?tenant_slug=${tenantSlug}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        const events = eventData.data || eventData;
+        const currentEvent = events.find((e: any) => e.id === eventId);
+        
+        // Calculate actual event status based on dates
+        if (currentEvent) {
+          const now = new Date();
+          const startDate = new Date(currentEvent.start_date);
+          const endDate = new Date(currentEvent.end_date);
+          
+          let calculatedStatus = 'upcoming';
+          if (now >= startDate && now <= endDate) {
+            calculatedStatus = 'ongoing';
+          } else if (now > endDate) {
+            calculatedStatus = 'ended';
+          }
+          
+          currentEvent.calculated_status = calculatedStatus;
+          
+          console.log('DEBUG - Event details:', {
+            id: currentEvent.id,
+            startDate: currentEvent.start_date,
+            endDate: currentEvent.end_date,
+            dbStatus: currentEvent.event_status,
+            calculatedStatus,
+            now: now.toISOString()
+          });
+        }
+        
+        setEventDetails(currentEvent);
+      } catch (error) {
+        console.error('Failed to fetch event details:', error);
+      }
+
       // Fetch drink voucher allocations
       try {
         const voucherData = await apiClient.request(
@@ -121,6 +207,18 @@ export default function ParticipantDetailsPanel({
       } catch (error) {
         console.error('Failed to fetch voucher allocations:', error);
         setDrinkVoucherAllocations([]);
+      }
+
+      // Fetch voucher summary from QR endpoint for accurate totals
+      try {
+        const qrData = await apiClient.request(
+          `/participants/${participantId}/qr`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        setVoucherSummary((qrData as ParticipantQRResponse).allocation_summary);
+      } catch (error) {
+        console.error('Failed to fetch voucher summary:', error);
+        setVoucherSummary(null);
       }
 
       // Fetch accommodation details
@@ -191,6 +289,173 @@ export default function ParticipantDetailsPanel({
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleRedeemVoucher = async () => {
+    if (!selectedAllocation) return;
+
+    setRedeeming(true);
+    try {
+      console.log('Redeeming voucher:', {
+        allocationId: selectedAllocation.id,
+        quantity: redeemQuantity,
+        participantId,
+        tenantSlug
+      });
+      
+      // If no allocation ID, find the first allocation for this participant
+      let allocationId = selectedAllocation.id;
+      if (!allocationId || allocationId === 0) {
+        const allocationsResponse = await apiClient.request(
+          `/allocations/participant/${participantId}?event_id=${eventId}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        const allocations = allocationsResponse as DrinkVoucherAllocation[];
+        const drinkAllocation = allocations.find(a => a.allocation_type === 'drink_voucher');
+        if (drinkAllocation) {
+          allocationId = drinkAllocation.id;
+        } else {
+          throw new Error('No drink voucher allocation found');
+        }
+      }
+      
+      // Try the redemption endpoint
+      const response = await apiClient.request(
+        `/allocations/${allocationId}/redeem`,
+        {
+          method: 'POST',
+          headers: { 'X-Tenant-ID': tenantSlug },
+          body: JSON.stringify({ 
+            quantity: redeemQuantity,
+            participant_id: participantId
+          })
+        }
+      );
+      
+      console.log('Redemption response:', response);
+
+      // If successful, refresh data and QR code
+      setShowRedeemModal(false);
+      await fetchParticipantData();
+      setQrRefreshKey(prev => prev + 1);
+
+      // Send notification email
+      try {
+        await apiClient.request(
+          `/participants/${participantId}/voucher-redeemed-notification`,
+          {
+            method: 'POST',
+            headers: { 'X-Tenant-ID': tenantSlug },
+            body: JSON.stringify({
+              participant_email: participantEmail,
+              participant_name: participantName,
+              redeemed_quantity: redeemQuantity,
+              remaining_quantity: (selectedAllocation.current_quantity || selectedAllocation.quantity) - redeemQuantity
+            })
+          }
+        );
+      } catch (emailError) {
+        console.warn('Failed to send notification email:', emailError);
+      }
+
+      // Show success notification
+      const newRemaining = (selectedAllocation.current_quantity || selectedAllocation.quantity) - redeemQuantity;
+      toast({
+        title: 'Success!',
+        description: `Redeemed ${redeemQuantity} voucher${redeemQuantity > 1 ? 's' : ''} for ${participantName}. ${newRemaining < 0 ? `Over-redeemed by ${Math.abs(newRemaining)}` : `${newRemaining} remaining`}. QR code updated.`,
+      });
+      
+      console.log('Redemption completed successfully');
+    } catch (error) {
+      console.error('Failed to redeem voucher:', error);
+      toast({
+        title: 'Error!',
+        description: 'Failed to redeem voucher. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const handleEditVouchers = async () => {
+    if (!selectedAllocation) return;
+
+    setEditing(true);
+    try {
+      // If no allocation ID, find the first allocation for this participant
+      let allocationId = selectedAllocation.id;
+      if (!allocationId || allocationId === 0) {
+        const allocationsResponse = await apiClient.request(
+          `/allocations/participant/${participantId}?event_id=${eventId}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        const allocations = allocationsResponse as DrinkVoucherAllocation[];
+        const drinkAllocation = allocations.find(a => a.allocation_type === 'drink_voucher');
+        if (drinkAllocation) {
+          allocationId = drinkAllocation.id;
+        } else {
+          throw new Error('No drink voucher allocation found');
+        }
+      }
+      
+      // Calculate the net change needed
+      const currentAssigned = voucherSummary?.total_drinks || 0;
+      const currentRedeemed = voucherSummary?.redeemed_drinks || 0;
+      
+      const assignedDiff = editAssigned - currentAssigned;
+      const redeemedDiff = editRedeemed - currentRedeemed;
+      
+      // Apply changes by calculating the net effect
+      const netChange = assignedDiff - redeemedDiff;
+      
+      if (netChange > 0) {
+        // Net increase in available vouchers (reassign)
+        await apiClient.request(
+          `/allocations/${allocationId}/reassign`,
+          {
+            method: 'POST',
+            headers: { 'X-Tenant-ID': tenantSlug },
+            body: JSON.stringify({ 
+              quantity: netChange,
+              participant_id: participantId
+            })
+          }
+        );
+      } else if (netChange < 0) {
+        // Net decrease in available vouchers (redeem)
+        await apiClient.request(
+          `/allocations/${allocationId}/redeem`,
+          {
+            method: 'POST',
+            headers: { 'X-Tenant-ID': tenantSlug },
+            body: JSON.stringify({ 
+              quantity: Math.abs(netChange),
+              participant_id: participantId
+            })
+          }
+        );
+      }
+      // If netChange === 0, no API calls needed
+
+      setShowEditModal(false);
+      await fetchParticipantData();
+      setQrRefreshKey(prev => prev + 1);
+
+      toast({
+        title: 'Success!',
+        description: `Updated vouchers for ${participantName}. Assigned: ${editAssigned}, Redeemed: ${editRedeemed}, Remaining: ${editAssigned - editRedeemed}. QR code updated.`,
+      });
+    } catch (error) {
+      console.error('Failed to edit vouchers:', error);
+      toast({
+        title: 'Error!',
+        description: 'Failed to update vouchers. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditing(false);
+    }
   };
 
   return (
@@ -370,49 +635,306 @@ export default function ParticipantDetailsPanel({
                     <div className="h-4 w-4 text-red-600">🍺</div>
                     <h5 className="font-medium text-gray-900 text-sm">Drink Vouchers</h5>
                     <Badge variant="outline" className="text-xs px-1">
-                      {drinkVoucherAllocations.length}
+                      {voucherSummary?.total_drinks || 0}
                     </Badge>
                   </div>
-                  {drinkVoucherAllocations.length > 0 ? (
-                    <div className="space-y-2">
-                      {drinkVoucherAllocations.map((allocation) => (
-                        <div key={allocation.id} className="bg-gray-50 rounded p-2 text-xs">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge className={`text-xs px-1 ${getStatusColor(allocation.status)}`}>
-                              {allocation.status.toUpperCase()}
-                            </Badge>
-                            <span className="text-gray-600">{formatDate(allocation.allocated_date)}</span>
+                  {voucherSummary && voucherSummary.total_drinks > 0 ? (
+                    <div className="bg-gray-50 rounded p-2 text-xs">
+                      <div className="space-y-1">
+                        <div className="grid grid-cols-3 gap-1 text-xs">
+                          <div className="text-center p-1 bg-blue-50 rounded">
+                            <div className="font-medium text-blue-600">{voucherSummary.total_drinks}</div>
+                            <div className="text-gray-600">Assigned</div>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-600">Quantity:</span>
-                              <span className="font-medium">{allocation.quantity}</span>
+                          <div className="text-center p-1 bg-red-50 rounded">
+                            <div className="font-medium text-red-600">{voucherSummary.redeemed_drinks || 0}</div>
+                            <div className="text-gray-600">Redeemed</div>
+                          </div>
+                          <div className="text-center p-1 bg-green-50 rounded">
+                            <div className={`font-medium ${voucherSummary.remaining_drinks < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {voucherSummary.remaining_drinks}
                             </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-600">Used:</span>
-                              <span className="font-medium">0 / {allocation.quantity}</span>
-                            </div>
+                            <div className="text-gray-600">Remaining</div>
                           </div>
                         </div>
-                      ))}
+                        {(() => {
+                          const calculatedStatus = eventDetails?.calculated_status;
+                          const shouldShow = canManageEvents && voucherSummary.total_drinks > 0 && calculatedStatus !== 'ended';
+                          console.log('DEBUG - Voucher buttons visibility:', {
+                            canManageEvents,
+                            totalDrinks: voucherSummary.total_drinks,
+                            calculatedStatus,
+                            shouldShow
+                          });
+                          return shouldShow;
+                        })() && (
+                          <div className="flex gap-1 mt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // Create a dummy allocation if none exists
+                                const allocation = drinkVoucherAllocations.length > 0 
+                                  ? drinkVoucherAllocations[0]
+                                  : {
+                                      id: 0, // Will be handled by API
+                                      allocation_type: 'drink_voucher',
+                                      quantity: voucherSummary.total_drinks,
+                                      current_quantity: voucherSummary.remaining_drinks,
+                                      status: 'active',
+                                      allocated_date: new Date().toISOString(),
+                                      redeemed: voucherSummary.redeemed_drinks || 0
+                                    };
+                                setSelectedAllocation(allocation);
+                                setRedeemQuantity(1);
+                                setShowRedeemModal(true);
+                              }}
+                              className="flex-1 h-6 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                            >
+                              <Minus className="h-3 w-3 mr-1" />
+                              Redeem
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // Create a dummy allocation if none exists
+                                const allocation = drinkVoucherAllocations.length > 0 
+                                  ? drinkVoucherAllocations[0]
+                                  : {
+                                      id: 0, // Will be handled by API
+                                      allocation_type: 'drink_voucher',
+                                      quantity: voucherSummary.total_drinks,
+                                      current_quantity: voucherSummary.remaining_drinks,
+                                      status: 'active',
+                                      allocated_date: new Date().toISOString(),
+                                      redeemed: voucherSummary.redeemed_drinks || 0
+                                    };
+                                setSelectedAllocation(allocation);
+                                setEditAssigned(voucherSummary.total_drinks);
+                                setEditRedeemed(voucherSummary.redeemed_drinks || 0);
+                                setShowEditModal(true);
+                              }}
+                              className="flex-1 h-6 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit Vouchers
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="bg-gray-50 rounded p-2 text-center text-gray-500 text-xs">
-                      No vouchers
+                      No vouchers allocated
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Action Buttons */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowBadge(true)}
+                  className="gap-2 h-10 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 font-medium"
+                >
+                  <BadgeIcon className="h-4 w-4" />
+                  Event Badge
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowPDFReport(true)}
+                  className="gap-2 h-10 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 font-medium"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Report
+                </Button>
+              </div>
+
               {/* QR Code Section */}
               <div className="mt-4">
                 <ParticipantQRCode
+                  key={qrRefreshKey}
                   participantId={participantId}
                   participantName={participantName}
                   eventId={eventId}
                   tenantSlug={tenantSlug}
                 />
               </div>
+
+
+
+              {/* Redeem Voucher Modal */}
+              <Dialog open={showRedeemModal} onOpenChange={setShowRedeemModal}>
+                <DialogContent className="max-w-md bg-white border shadow-lg">
+                  <DialogHeader>
+                    <DialogTitle>Redeem Drink Vouchers</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Redeeming vouchers for: <span className="font-medium">{participantName}</span>
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Current vouchers: <span className="font-medium">{selectedAllocation?.current_quantity || 0}</span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Note: You can redeem more than available (over-redemption allowed)
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Quantity to redeem
+                      </label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={redeemQuantity}
+                        onChange={(e) => setRedeemQuantity(parseInt(e.target.value) || 1)}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowRedeemModal(false)}
+                      disabled={redeeming}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleRedeemVoucher}
+                      disabled={redeeming || redeemQuantity < 1}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {redeeming ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Redeeming...
+                        </>
+                      ) : (
+                        `Redeem ${redeemQuantity} Voucher${redeemQuantity > 1 ? 's' : ''}`
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Edit Vouchers Modal */}
+              <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+                <DialogContent className="max-w-md bg-white border shadow-lg">
+                  <DialogHeader>
+                    <DialogTitle>Edit Drink Vouchers</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Editing vouchers for: <span className="font-medium">{participantName}</span>
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Assigned
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={editAssigned}
+                          onChange={(e) => setEditAssigned(parseInt(e.target.value) || 0)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Redeemed
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={editRedeemed}
+                          onChange={(e) => setEditRedeemed(parseInt(e.target.value) || 0)}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50 rounded p-3">
+                      <div className="text-sm text-gray-600 mb-1">Preview:</div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="text-center p-2 bg-blue-100 rounded">
+                          <div className="font-medium text-blue-600">{editAssigned}</div>
+                          <div className="text-gray-600">Assigned</div>
+                        </div>
+                        <div className="text-center p-2 bg-red-100 rounded">
+                          <div className="font-medium text-red-600">{editRedeemed}</div>
+                          <div className="text-gray-600">Redeemed</div>
+                        </div>
+                        <div className="text-center p-2 bg-green-100 rounded">
+                          <div className={`font-medium ${(editAssigned - editRedeemed) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {editAssigned - editRedeemed}
+                          </div>
+                          <div className="text-gray-600">Remaining</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEditModal(false)}
+                      disabled={editing}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleEditVouchers}
+                      disabled={editing || editAssigned < 0 || editRedeemed < 0}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {editing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Updating...
+                        </>
+                      ) : (
+                        'Update Vouchers'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Participant Badge Modal */}
+              <ParticipantBadge
+                participantId={participantId}
+                participantName={participantName}
+                participantEmail={participantEmail}
+                eventId={eventId}
+                tenantSlug={tenantSlug}
+                isOpen={showBadge}
+                onClose={() => setShowBadge(false)}
+                eventDetails={eventDetails}
+              />
+
+              {/* PDF Report Modal */}
+              <ParticipantPDFReport
+                participantId={participantId}
+                participantName={participantName}
+                participantEmail={participantEmail}
+                eventDetails={eventDetails}
+                transportDetails={transportDetails}
+                accommodationDetails={accommodationDetails}
+                voucherSummary={voucherSummary}
+                isOpen={showPDFReport}
+                onClose={() => setShowPDFReport(false)}
+              />
             </>
           )}
         </div>

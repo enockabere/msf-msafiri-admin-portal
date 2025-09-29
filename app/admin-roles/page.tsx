@@ -50,7 +50,6 @@ export default function AdminRolesPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Get tenant ID from URL or user context
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
   const tenantSlugMatch = pathname.match(/\/tenant\/([^/]+)/);
   const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : user?.tenantId || "default";

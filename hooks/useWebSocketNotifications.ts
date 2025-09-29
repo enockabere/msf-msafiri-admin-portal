@@ -46,9 +46,29 @@ export function useWebSocketNotifications({
       return;
 
     try {
-      // Use secure WebSocket in production, fallback to ws for local development
-      const baseUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
-      const wsUrl = `${baseUrl}/api/v1/chat/ws/notifications?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenantSlug)}`;
+      // Use secure WebSocket protocol (wss://) in production
+      const isProduction = process.env.NODE_ENV === 'production';
+      const protocol = isProduction ? 'wss:' : 'ws:';
+      let baseUrl = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//localhost:8000`;
+      
+      // Validate and sanitize WebSocket URL to prevent SSRF
+      try {
+        const url = new URL(baseUrl.replace(/^ws/, 'http'));
+        const allowedHosts = ['localhost', '127.0.0.1', process.env.NEXT_PUBLIC_API_HOST].filter(Boolean);
+        if (!allowedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
+          throw new Error('Invalid WebSocket host');
+        }
+        baseUrl = `${protocol}//${url.host}`;
+      } catch {
+        baseUrl = `${protocol}//localhost:8000`;
+      }
+      
+      // Ensure secure protocol in production
+      const secureBaseUrl = isProduction && baseUrl.startsWith('ws:') 
+        ? baseUrl.replace('ws:', 'wss:') 
+        : baseUrl;
+      
+      const wsUrl = `${secureBaseUrl}/api/v1/chat/ws/notifications?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenantSlug)}`;
       
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -62,47 +82,126 @@ export function useWebSocketNotifications({
         try {
           // Validate event data before parsing
           if (!event.data || typeof event.data !== 'string') {
-            console.warn("Invalid WebSocket message format:", event.data);
+            console.warn("Invalid WebSocket message format");
             return;
           }
           
-          const notification: WebSocketNotification = JSON.parse(event.data);
+          // Additional validation for JSON string
+          if (event.data.length > 10000) {
+            console.warn("WebSocket message too large, ignoring");
+            return;
+          }
+          
+          // Safe parsing function to validate structure
+          const parseNotification = (jsonString: string): WebSocketNotification | null => {
+            let rawData: any;
+            try {
+              rawData = JSON.parse(jsonString);
+            } catch {
+              return null;
+            }
+            
+            // Prevent prototype pollution
+            if (rawData && (rawData.__proto__ || rawData.constructor || rawData.prototype)) {
+              return null;
+            }
+            
+            if (!rawData || typeof rawData !== 'object' || 
+                !rawData.type || !rawData.data ||
+                typeof rawData.data !== 'object') {
+              return null;
+            }
+            
+            if (rawData.type !== "chat_message" && rawData.type !== "system_notification") {
+              return null;
+            }
+            
+            const data = rawData.data;
+            if (rawData.type === "chat_message") {
+              if (data.chat_room_id !== undefined && typeof data.chat_room_id !== 'number') return null;
+              if (data.sender_name !== undefined && typeof data.sender_name !== 'string') return null;
+              if (data.message !== undefined && typeof data.message !== 'string') return null;
+              if (data.chat_room_name !== undefined && typeof data.chat_room_name !== 'string') return null;
+            } else {
+              if (data.title !== undefined && typeof data.title !== 'string') return null;
+              if (data.body !== undefined && typeof data.body !== 'string') return null;
+            }
+            
+            if (!data.timestamp || typeof data.timestamp !== 'string') return null;
+            
+            return {
+              type: rawData.type,
+              data: {
+                chat_room_id: data.chat_room_id,
+                chat_room_name: data.chat_room_name,
+                sender_name: data.sender_name,
+                message: data.message,
+                title: data.title,
+                body: data.body,
+                timestamp: data.timestamp
+              }
+            };
+          };
+          
+          const notification = parseNotification(event.data);
+          if (!notification) {
+            console.warn("Invalid notification format");
+            return;
+          }
+
+          // Sanitize user-controlled data to prevent XSS
+          const sanitizeText = (text: string | undefined): string => {
+            if (!text) return "";
+            return text.replace(/[<>"'&]/g, (char) => {
+              const entities: { [key: string]: string } = {
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#x27;',
+                '&': '&amp;'
+              };
+              return entities[char] || char;
+            });
+          };
 
           if (notification.type === "chat_message") {
             // Update unread count
             setUnreadChatCount((prev) => prev + 1);
 
-            // Show toast notification
+            const safeSenderName = sanitizeText(notification.data.sender_name);
+            const safeMessage = sanitizeText(notification.data.message);
+            const safeChatRoomName = sanitizeText(notification.data.chat_room_name);
+
+            // Show toast notification with additional sanitization
+            const safeTitle = safeSenderName ? `New message from ${safeSenderName}` : "New message";
+            const safeDescription = safeMessage ? safeMessage.substring(0, 100) + (safeMessage.length > 100 ? "..." : "") : "";
+            
             toast({
-              title: `New message from ${notification.data.sender_name}`,
-              description:
-                notification.data.message?.substring(0, 100) +
-                (notification.data.message &&
-                notification.data.message.length > 100
-                  ? "..."
-                  : ""),
+              title: safeTitle,
+              description: safeDescription,
             });
 
             // Show browser notification if permission granted
-            if (Notification.permission === "granted") {
-              new Notification(
-                `New message in ${notification.data.chat_room_name}`,
-                {
-                  body: `${notification.data.sender_name}: ${notification.data.message}`,
-                  icon: "/icon/favicon.png",
-                  tag: `chat-${notification.data.chat_room_id}`,
-                }
-              );
+            if (Notification.permission === "granted" && safeChatRoomName && safeSenderName) {
+              const notificationTitle = `New message in ${safeChatRoomName}`;
+              const notificationBody = `${safeSenderName}: ${safeMessage || 'New message'}`;
+              const chatId = typeof notification.data.chat_room_id === 'number' ? notification.data.chat_room_id : 0;
+              
+              new Notification(notificationTitle, {
+                body: notificationBody,
+                icon: "/icon/favicon.png",
+                tag: `chat-${chatId}`,
+              });
             }
           } else if (notification.type === "system_notification") {
             toast({
-              title: notification.data.title || "System Notification",
-              description: notification.data.body || "",
+              title: sanitizeText(notification.data.title) || "System Notification",
+              description: sanitizeText(notification.data.body),
             });
           }
         } catch (error) {
           console.error("Error parsing WebSocket notification:", error);
-          console.error("Raw message data:", event.data?.substring(0, 200));
+          console.error("Failed to process WebSocket message");
         }
       };
 
@@ -126,10 +225,8 @@ export function useWebSocketNotifications({
         }
       };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket notifications error:", error);
-        console.error("WebSocket URL (token hidden):", wsUrl.replace(token, "[TOKEN_HIDDEN]"));
-        console.error("WebSocket readyState:", ws.readyState);
+      ws.onerror = () => {
+        console.error("WebSocket notifications error occurred");
         setIsConnected(false);
         
         // Try to reconnect after error
@@ -137,7 +234,6 @@ export function useWebSocketNotifications({
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
-            console.log(`Attempting WebSocket reconnect ${reconnectAttempts.current}/${maxReconnectAttempts}`);
             connect();
           }, delay);
         }
