@@ -140,8 +140,9 @@ function AuthErrorContent() {
 
   const handleContactSupport = () => {
     // You can customize this to your support system
+    const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@msf.org";
     window.location.href =
-      "mailto:support@msf.org?subject=Authentication Error&body=Error: " +
+      `mailto:${supportEmail}?subject=Authentication Error&body=Error: ` +
       error;
   };
 

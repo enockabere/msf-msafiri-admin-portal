@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
     
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://msafiri-visitor-api.onrender.com';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const query = unreadOnly ? '?unread_only=true' : '';
     
     const response = await fetch(`${apiUrl}/api/v1/notifications/${query}`, {

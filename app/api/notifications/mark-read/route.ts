@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Notification ID is required' }, { status: 400 });
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://msafiri-visitor-api.onrender.com';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     const response = await fetch(`${apiUrl}/api/v1/notifications/mark-read/${notificationId}`, {
       method: 'POST',

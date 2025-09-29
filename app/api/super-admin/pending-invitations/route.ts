@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-config";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://msafiri-visitor-api.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function GET() {
   try {

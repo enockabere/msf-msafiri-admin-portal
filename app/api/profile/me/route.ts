@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://msafiri-visitor-api.onrender.com';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     const response = await fetch(`${apiUrl}/api/v1/profile/me`, {
       headers: {
@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
       return acc;
     }, {} as Record<string, unknown>);
     
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://msafiri-visitor-api.onrender.com';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     const response = await fetch(`${apiUrl}/api/v1/profile/me`, {
       method: 'PUT',
