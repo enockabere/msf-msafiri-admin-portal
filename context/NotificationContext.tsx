@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import apiClient, { NotificationStats } from "@/lib/api";
 
@@ -21,7 +21,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const { isAuthenticated, accessToken } = useAuth();
   const [stats, setStats] = useState<NotificationStats | null>(null);
 
-  const refreshStats = async () => {
+  const refreshStats = useCallback(async () => {
     if (!isAuthenticated || !accessToken) {
       return;
     }
@@ -33,7 +33,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } catch (error) {
       console.error("Failed to fetch notification stats:", error);
     }
-  };
+  }, [isAuthenticated, accessToken]);
 
   const decrementUnread = () => {
     setStats(prev => prev ? { ...prev, unread: Math.max(0, prev.unread - 1) } : null);
@@ -86,7 +86,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       window.removeEventListener('chatMessageSent', handleChatMessage);
       window.removeEventListener('chatMessageReceived', handleChatMessage);
     };
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated, accessToken, refreshStats]);
 
   return (
     <NotificationContext.Provider value={{ stats, refreshStats, decrementUnread, markAllRead }}>

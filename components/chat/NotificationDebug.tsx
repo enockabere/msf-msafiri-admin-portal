@@ -149,8 +149,8 @@ export default function NotificationDebug({ tenantSlug }: NotificationDebugProps
           </div>
           
           <div className="flex items-center gap-2">
-            <Badge variant={debugInfo.browser?.notificationPermission === 'granted' ? 'default' : 'destructive'}>
-              {debugInfo.browser?.notificationPermission || 'unknown'}
+            <Badge variant={(debugInfo.browser as { notificationPermission?: string })?.notificationPermission === 'granted' ? 'default' : 'destructive'}>
+              {(debugInfo.browser as { notificationPermission?: string })?.notificationPermission || 'unknown'}
             </Badge>
           </div>
         </div>

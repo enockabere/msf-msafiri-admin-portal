@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuthenticatedApi } from "@/lib/auth";
+import Image from "next/image";
 
 interface ParticipantBadgeProps {
   participantId: number;
@@ -225,9 +226,11 @@ export default function ParticipantBadge({
                     {qrData && (
                       <div className="flex justify-center mt-8">
                         <div className="bg-white p-3 rounded-xl shadow-lg">
-                          <img
+                          <Image
                             src={qrData.qr_data_url}
                             alt="QR Code"
+                            width={80}
+                            height={80}
                             className="w-20 h-20"
                           />
                         </div>

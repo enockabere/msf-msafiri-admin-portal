@@ -5,20 +5,49 @@ import { FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+interface EventDetails {
+  title?: string;
+  location?: string;
+}
+
+interface TransportDetails {
+  booking_type: string;
+  status: string;
+  pickup_locations: string[];
+  destination: string;
+  scheduled_time: string;
+  driver_name?: string;
+  vehicle_details?: string;
+}
+
+interface AccommodationDetails {
+  name: string;
+  type: string;
+  location: string;
+  status?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+}
+
+interface VoucherSummary {
+  total_drinks: number;
+  redeemed_drinks?: number;
+  remaining_drinks: number;
+}
+
 interface ParticipantPDFReportProps {
   participantId: number;
   participantName: string;
   participantEmail: string;
-  eventDetails: any;
-  transportDetails: any[];
-  accommodationDetails: any[];
-  voucherSummary: any;
+  eventDetails: EventDetails;
+  transportDetails: TransportDetails[];
+  accommodationDetails: AccommodationDetails[];
+  voucherSummary: VoucherSummary;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function ParticipantPDFReport({
-  participantId,
   participantName,
   participantEmail,
   eventDetails,
@@ -313,7 +342,7 @@ export default function ParticipantPDFReport({
 
         <div class="section">
           <h3>🏨 Accommodation Details</h3>
-          ${accommodationDetails.length > 0 ? accommodationDetails.map((accommodation, index) => `
+          ${accommodationDetails.length > 0 ? accommodationDetails.map((accommodation) => `
             <div class="accommodation-item">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <strong>${accommodation.name}</strong>

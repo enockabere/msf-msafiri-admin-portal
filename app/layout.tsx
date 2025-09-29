@@ -4,8 +4,6 @@ import "./globals.css";
 import { SessionProvider } from "@/components/SessionProvider";
 import { TenantProvider } from "@/context/TenantContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
-// import SessionTimeoutHandler from "@/components/auth/SessionTimeoutHandler";
-// import SessionStatus from "@/components/auth/SessionStatus";
 import { ToastContainer } from "@/components/ui/toast";
 import { NavigationLoader } from "@/components/ui/loading";
 import { Toaster } from "sonner";

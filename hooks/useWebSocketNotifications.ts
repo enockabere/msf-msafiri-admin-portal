@@ -46,16 +46,20 @@ export function useWebSocketNotifications({
       return;
 
     try {
-      // Use secure WebSocket protocol (wss://) in production
-      const isProduction = process.env.NODE_ENV === 'production';
-      const protocol = isProduction ? 'wss:' : 'ws:';
+      // Always use secure WebSocket protocol (wss://) except for localhost development
+      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const protocol = isLocalhost ? 'ws:' : 'wss:';
       let baseUrl = process.env.NEXT_PUBLIC_WS_URL || `${protocol}//localhost:8000`;
       
       // Validate and sanitize WebSocket URL to prevent SSRF
       try {
         const url = new URL(baseUrl.replace(/^ws/, 'http'));
-        const allowedHosts = ['localhost', '127.0.0.1', process.env.NEXT_PUBLIC_API_HOST].filter(Boolean);
-        if (!allowedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
+        // Strictly allow only hardcoded, trusted hosts
+        const allowedHosts = ['localhost', '127.0.0.1'];
+        if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_API_HOST) {
+          allowedHosts.push(process.env.NEXT_PUBLIC_API_HOST);
+        }
+        if (!allowedHosts.includes(url.hostname)) {
           throw new Error('Invalid WebSocket host');
         }
         baseUrl = `${protocol}//${url.host}`;
@@ -63,10 +67,7 @@ export function useWebSocketNotifications({
         baseUrl = `${protocol}//localhost:8000`;
       }
       
-      // Ensure secure protocol in production
-      const secureBaseUrl = isProduction && baseUrl.startsWith('ws:') 
-        ? baseUrl.replace('ws:', 'wss:') 
-        : baseUrl;
+      const secureBaseUrl = baseUrl;
       
       const wsUrl = `${secureBaseUrl}/api/v1/chat/ws/notifications?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenantSlug)}`;
       
@@ -85,65 +86,97 @@ export function useWebSocketNotifications({
             console.warn("Invalid WebSocket message format");
             return;
           }
-          
+
           // Additional validation for JSON string
           if (event.data.length > 10000) {
             console.warn("WebSocket message too large, ignoring");
             return;
           }
-          
-          // Safe parsing function to validate structure
-          const parseNotification = (jsonString: string): WebSocketNotification | null => {
-            let rawData: any;
+
+          // Strict JSON parsing and validation to prevent deserialization attacks
+          const safeParseNotification = (jsonString: string): WebSocketNotification | null => {
+            let rawData: unknown;
             try {
               rawData = JSON.parse(jsonString);
             } catch {
               return null;
             }
-            
-            // Prevent prototype pollution
-            if (rawData && (rawData.__proto__ || rawData.constructor || rawData.prototype)) {
+
+            // Ensure no prototype pollution
+            if (
+              rawData === null ||
+              typeof rawData !== 'object' ||
+              Object.prototype.hasOwnProperty.call(rawData, '__proto__') ||
+              Object.prototype.hasOwnProperty.call(rawData, 'constructor') ||
+              Object.prototype.hasOwnProperty.call(rawData, 'prototype')
+            ) {
               return null;
             }
-            
-            if (!rawData || typeof rawData !== 'object' || 
-                !rawData.type || !rawData.data ||
-                typeof rawData.data !== 'object') {
+
+            // Validate type
+            if (
+              !('type' in rawData) ||
+              (rawData.type !== "chat_message" && rawData.type !== "system_notification")
+            ) {
               return null;
             }
-            
-            if (rawData.type !== "chat_message" && rawData.type !== "system_notification") {
+
+            // Validate data object
+            if (
+              !('data' in rawData) ||
+              typeof rawData.data !== 'object' ||
+              rawData.data === null ||
+              Object.prototype.hasOwnProperty.call(rawData.data, '__proto__') ||
+              Object.prototype.hasOwnProperty.call(rawData.data, 'constructor') ||
+              Object.prototype.hasOwnProperty.call(rawData.data, 'prototype')
+            ) {
               return null;
             }
-            
-            const data = rawData.data;
+
+            const data = rawData.data as Record<string, unknown>;
+
+            // Validate fields for chat_message
             if (rawData.type === "chat_message") {
-              if (data.chat_room_id !== undefined && typeof data.chat_room_id !== 'number') return null;
-              if (data.sender_name !== undefined && typeof data.sender_name !== 'string') return null;
-              if (data.message !== undefined && typeof data.message !== 'string') return null;
-              if (data.chat_room_name !== undefined && typeof data.chat_room_name !== 'string') return null;
-            } else {
-              if (data.title !== undefined && typeof data.title !== 'string') return null;
-              if (data.body !== undefined && typeof data.body !== 'string') return null;
+              if (
+                (data.chat_room_id !== undefined && typeof data.chat_room_id !== 'number') ||
+                (data.sender_name !== undefined && typeof data.sender_name !== 'string') ||
+                (data.message !== undefined && typeof data.message !== 'string') ||
+                (data.chat_room_name !== undefined && typeof data.chat_room_name !== 'string')
+              ) {
+                return null;
+              }
             }
-            
-            if (!data.timestamp || typeof data.timestamp !== 'string') return null;
-            
+
+            // Validate fields for system_notification
+            if (rawData.type === "system_notification") {
+              if (
+                (data.title !== undefined && typeof data.title !== 'string') ||
+                (data.body !== undefined && typeof data.body !== 'string')
+              ) {
+                return null;
+              }
+            }
+
+            // Validate timestamp
+            if (!data.timestamp || typeof data.timestamp !== 'string') {
+              return null;
+            }
+
             return {
-              type: rawData.type,
+              type: rawData.type as "chat_message" | "system_notification",
               data: {
-                chat_room_id: data.chat_room_id,
-                chat_room_name: data.chat_room_name,
-                sender_name: data.sender_name,
-                message: data.message,
-                title: data.title,
-                body: data.body,
-                timestamp: data.timestamp
+                chat_room_id: data.chat_room_id as number | undefined,
+                chat_room_name: data.chat_room_name as string | undefined,
+                sender_name: data.sender_name as string | undefined,
+                message: data.message as string | undefined,
+                title: data.title as string | undefined,
+                body: data.body as string | undefined,
+                timestamp: data.timestamp as string
               }
             };
           };
-          
-          const notification = parseNotification(event.data);
+
+          const notification = safeParseNotification(event.data);
           if (!notification) {
             console.warn("Invalid notification format");
             return;
@@ -172,13 +205,14 @@ export function useWebSocketNotifications({
             const safeMessage = sanitizeText(notification.data.message);
             const safeChatRoomName = sanitizeText(notification.data.chat_room_name);
 
-            // Show toast notification with additional sanitization
+            // Ensure all interpolated values are sanitized and never interpreted as HTML
             const safeTitle = safeSenderName ? `New message from ${safeSenderName}` : "New message";
             const safeDescription = safeMessage ? safeMessage.substring(0, 100) + (safeMessage.length > 100 ? "..." : "") : "";
-            
+
             toast({
               title: safeTitle,
               description: safeDescription,
+              // Ensure toast component does not dangerouslySetInnerHTML or render as HTML
             });
 
             // Show browser notification if permission granted
@@ -186,7 +220,8 @@ export function useWebSocketNotifications({
               const notificationTitle = `New message in ${safeChatRoomName}`;
               const notificationBody = `${safeSenderName}: ${safeMessage || 'New message'}`;
               const chatId = typeof notification.data.chat_room_id === 'number' ? notification.data.chat_room_id : 0;
-              
+
+              // Use Notification API safely, ensuring all values are sanitized
               new Notification(notificationTitle, {
                 body: notificationBody,
                 icon: "/icon/favicon.png",
@@ -200,8 +235,11 @@ export function useWebSocketNotifications({
             });
           }
         } catch (error) {
-          console.error("Error parsing WebSocket notification:", error);
-          console.error("Failed to process WebSocket message");
+          // Sanitize error message to prevent log injection
+          const safeError = typeof error === "string"
+            ? error.replace(/[\r\n%0A%0D]/g, "")
+            : "WebSocket parsing error";
+          console.error("Error parsing WebSocket notification:", safeError);
         }
       };
 

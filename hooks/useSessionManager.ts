@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SessionState {
   isValid: boolean;
@@ -20,7 +20,7 @@ export function useSessionManager() {
   });
   
   const lastActivityRef = useRef(Date.now());
-  const sessionCheckRef = useRef<NodeJS.Timeout>();
+  const sessionCheckRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update activity timestamp
   const updateActivity = () => {
@@ -30,7 +30,7 @@ export function useSessionManager() {
   };
 
   // Check if session needs refresh
-  const checkSessionExpiry = () => {
+  const checkSessionExpiry = useCallback(() => {
     if (!session?.user?.accessToken) return;
 
     try {
@@ -50,13 +50,13 @@ export function useSessionManager() {
 
         // Auto-refresh session if expiring soon
         if (timeUntilExpiry < 5 * 60 * 1000 && timeUntilExpiry > 0) {
-          update(); // Trigger NextAuth session update
+          update({}); // Trigger NextAuth session update
         }
       }
     } catch (error) {
       console.error("Error checking session expiry:", error);
     }
-  };
+  }, [session, update]);
 
   // Parse JWT token
   const parseJWT = (token: string): { exp?: number } | null => {
@@ -99,7 +99,7 @@ export function useSessionManager() {
         clearInterval(sessionCheckRef.current);
       }
     };
-  }, [session, status]);
+  }, [session, status, checkSessionExpiry]);
 
   return {
     session,
