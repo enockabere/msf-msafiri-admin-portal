@@ -4,7 +4,7 @@ module.exports = {
       name: 'msf-admin-portal',
       script: 'npm',
       args: 'start',
-      cwd: '/home/leo-server/projects/msafiri/msf-admin-portal',
+      cwd: '/home/leo-server/projects/msafiri/msf-msafiri-admin-portal',
       instances: 1,
       autorestart: true,
       watch: false,
