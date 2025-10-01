@@ -11,9 +11,10 @@ interface ExtendedSession {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const session = await getServerSession(authOptions);
     
     const accessToken = (session as ExtendedSession)?.accessToken || (session as ExtendedSession)?.user?.accessToken;

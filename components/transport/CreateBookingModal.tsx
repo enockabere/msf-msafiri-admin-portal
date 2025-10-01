@@ -587,7 +587,7 @@ export default function CreateBookingModal({
                       <span className="text-sm font-medium">{participant.name}</span>
                       <span className="text-xs text-gray-500 ml-2">{participant.email}</span>
                       {packageChecks[participant.id] && (
-                        <Package className="w-4 h-4 text-orange-500 inline ml-2" title="Has welcome package" />
+                        <Package className="w-4 h-4 text-orange-500 inline ml-2" />
                       )}
                     </div>
                   </div>
@@ -843,7 +843,7 @@ export default function CreateBookingModal({
               <div className="text-sm font-medium text-blue-900">Existing bookings:</div>
               {poolingSuggestion.existing_bookings?.map((booking, index: number) => (
                 <div key={index} className="text-xs text-blue-700 mt-1">
-                  {new Date(booking.scheduled_time || booking.arrival_time).toLocaleString()} - {booking.participants?.map((p) => p.name).join(", ") || 'Unknown participant'}
+                  {new Date(booking.scheduled_time || booking.arrival_time || new Date()).toLocaleString()} - {booking.participants?.map((p) => p.name).join(", ") || 'Unknown participant'}
                 </div>
               ))}
             </div>

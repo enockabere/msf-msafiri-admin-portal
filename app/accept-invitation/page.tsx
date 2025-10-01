@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ interface AcceptInvitationResponse {
   must_change_password?: boolean;
 }
 
-export default function AcceptInvitationPage() {
+function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -133,4 +133,23 @@ export default function AcceptInvitationPage() {
   }
 
   return null;
+}
+
+export default function AcceptInvitationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-600" />
+              <h2 className="text-xl font-semibold">Loading...</h2>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <AcceptInvitationContent />
+    </Suspense>
+  );
 }

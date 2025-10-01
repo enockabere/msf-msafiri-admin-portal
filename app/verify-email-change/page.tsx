@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, LogOut } from "lucide-react";
 import apiClient from "@/lib/api";
 
-export default function VerifyEmailChangePage() {
+function VerifyEmailChangeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -142,4 +142,23 @@ export default function VerifyEmailChangePage() {
   }
 
   return null;
+}
+
+export default function VerifyEmailChangePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-600" />
+              <h2 className="text-xl font-semibold">Loading...</h2>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <VerifyEmailChangeContent />
+    </Suspense>
+  );
 }

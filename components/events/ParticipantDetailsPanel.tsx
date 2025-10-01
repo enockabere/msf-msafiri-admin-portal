@@ -156,7 +156,8 @@ export default function ParticipantDetailsPanel({
           `/events?tenant_slug=${tenantSlug}`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
-        const events = eventData.data || eventData;
+        const eventResponse = eventData as { data?: any[] } | any[];
+        const events = Array.isArray(eventResponse) ? eventResponse : (eventResponse.data || []);
         const currentEvent = events.find((e: Record<string, any>) => e.id === eventId);
         
         // Calculate actual event status based on dates
@@ -174,7 +175,7 @@ export default function ParticipantDetailsPanel({
           
           currentEvent.calculated_status = calculatedStatus;
           
-          console.log('DEBUG - Event details:', {
+          console.warn('DEBUG - Event details:', {
             id: currentEvent.id,
             startDate: currentEvent.start_date,
             endDate: currentEvent.end_date,
@@ -294,7 +295,7 @@ export default function ParticipantDetailsPanel({
 
     setRedeeming(true);
     try {
-      console.log('Redeeming voucher:', {
+      console.warn('Redeeming voucher:', {
         allocationId: selectedAllocation.id,
         quantity: redeemQuantity,
         participantId,
@@ -330,7 +331,7 @@ export default function ParticipantDetailsPanel({
         }
       );
       
-      console.log('Redemption response:', response);
+      console.warn('Redemption response:', response);
 
       // If successful, refresh data and QR code
       setShowRedeemModal(false);
@@ -363,7 +364,7 @@ export default function ParticipantDetailsPanel({
         description: `Redeemed ${redeemQuantity} voucher${redeemQuantity > 1 ? 's' : ''} for ${participantName}. ${newRemaining < 0 ? `Over-redeemed by ${Math.abs(newRemaining)}` : `${newRemaining} remaining`}. QR code updated.`,
       });
       
-      console.log('Redemption completed successfully');
+      console.warn('Redemption completed successfully');
     } catch (error) {
       console.error('Failed to redeem voucher:', error);
       toast({
@@ -658,7 +659,7 @@ export default function ParticipantDetailsPanel({
                         {(() => {
                           const calculatedStatus = eventDetails?.calculated_status;
                           const shouldShow = canManageEvents && voucherSummary.total_drinks > 0 && calculatedStatus !== 'ended';
-                          console.log('DEBUG - Voucher buttons visibility:', {
+                          console.warn('DEBUG - Voucher buttons visibility:', {
                             canManageEvents,
                             totalDrinks: voucherSummary.total_drinks,
                             calculatedStatus,
@@ -914,11 +915,10 @@ export default function ParticipantDetailsPanel({
                 participantId={participantId}
                 participantName={participantName}
                 participantEmail={participantEmail}
-                eventId={eventId}
                 tenantSlug={tenantSlug}
                 isOpen={showBadge}
                 onClose={() => setShowBadge(false)}
-                eventDetails={eventDetails}
+                eventDetails={eventDetails ? eventDetails as { id: number; title: string; location: string; start_date: string; end_date: string; } : undefined}
               />
 
               {/* PDF Report Modal */}
@@ -926,10 +926,10 @@ export default function ParticipantDetailsPanel({
                 participantId={participantId}
                 participantName={participantName}
                 participantEmail={participantEmail}
-                eventDetails={eventDetails}
+                eventDetails={eventDetails as any}
                 transportDetails={transportDetails}
                 accommodationDetails={accommodationDetails}
-                voucherSummary={voucherSummary}
+                voucherSummary={voucherSummary as any}
                 isOpen={showPDFReport}
                 onClose={() => setShowPDFReport(false)}
               />
