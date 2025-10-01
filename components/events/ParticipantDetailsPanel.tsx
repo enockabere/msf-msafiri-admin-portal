@@ -10,9 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useAuthenticatedApi } from "@/lib/auth";
 import ParticipantQRCode from "./ParticipantQRCode";
 import ParticipantBadge from "./ParticipantBadge";
-import TransportReport from "./reports/TransportReport";
-import AccommodationReport from "./reports/AccommodationReport";
-import VoucherReport from "./reports/VoucherReport";
+
 import ParticipantPDFReport from "./reports/ParticipantPDFReport";
 import { toast } from "@/hooks/use-toast";
 
@@ -108,7 +106,7 @@ export default function ParticipantDetailsPanel({
   eventId,
   tenantSlug,
   isOpen,
-  onToggle,
+
   canManageEvents = true,
 }: ParticipantDetailsProps) {
   const [participantDetails, setParticipantDetails] = useState<ParticipantDetails | null>(null);
@@ -116,12 +114,12 @@ export default function ParticipantDetailsPanel({
   const [voucherSummary, setVoucherSummary] = useState<QRAllocationData | null>(null);
   const [accommodationDetails, setAccommodationDetails] = useState<AccommodationDetails[]>([]);
   const [transportDetails, setTransportDetails] = useState<TransportDetails[]>([]);
-  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [eventDetails, setEventDetails] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBadge, setShowBadge] = useState(false);
-  const [showReports, setShowReports] = useState(false);
+
   const [showPDFReport, setShowPDFReport] = useState(false);
   const [redeemQuantity, setRedeemQuantity] = useState(1);
   const [editAssigned, setEditAssigned] = useState(0);
@@ -159,7 +157,7 @@ export default function ParticipantDetailsPanel({
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
         const events = eventData.data || eventData;
-        const currentEvent = events.find((e: any) => e.id === eventId);
+        const currentEvent = events.find((e: Record<string, any>) => e.id === eventId);
         
         // Calculate actual event status based on dates
         if (currentEvent) {

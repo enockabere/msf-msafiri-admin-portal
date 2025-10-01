@@ -20,7 +20,6 @@ interface CalendarProps {
 }
 
 function Calendar({
-  mode = "single",
   selected,
   onSelect,
   disabled,
