@@ -142,7 +142,8 @@ Add the following content:
 
 ```nginx
 server {
-    listen 80;
+    # Use port 80 if available, otherwise use alternative port like 8080
+    listen 80;  # Change to 8080 if port 80 is occupied
     server_name YOUR_SERVER_IP;
 
     # Admin Portal (Next.js)
@@ -211,8 +212,10 @@ sudo systemctl enable nginx
 ## Step 8: Firewall Configuration
 
 ```bash
-# Allow HTTP and HTTPS traffic
+# Allow HTTP and HTTPS traffic (or specific port if using alternative)
 sudo ufw allow 'Nginx Full'
+# If using alternative port (e.g., 8080):
+# sudo ufw allow 8080
 
 # Allow SSH (if not already allowed)
 sudo ufw allow ssh
