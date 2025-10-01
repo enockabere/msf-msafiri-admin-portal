@@ -40,7 +40,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const authOptions: NextAuthOptions = {
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // Enable debug for troubleshooting
   providers: [
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
@@ -58,9 +58,31 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const loginUrl = `${apiUrl}/api/v1/auth/login`;
+        const healthUrl = `${apiUrl}/health`;
+        
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          const loginUrl = `${apiUrl}/api/v1/auth/login`;
+          // First, check if API is reachable via health endpoint
+          console.log('🏥 Checking API health:', healthUrl);
+          const healthResponse = await fetch(healthUrl);
+          console.log('🏥 Health check result:', {
+            status: healthResponse.status,
+            ok: healthResponse.ok,
+            statusText: healthResponse.statusText
+          });
+          
+          if (healthResponse.ok) {
+            const healthData = await healthResponse.text();
+            console.log('🏥 Health response:', healthData);
+          }
+          
+          console.log('🔍 Attempting login with:', {
+            apiUrl,
+            loginUrl,
+            email: credentials.email,
+            hasPassword: !!credentials.password
+          });
                     
           const response = await fetch(loginUrl, {
             method: 'POST',
@@ -73,13 +95,31 @@ export const authOptions: NextAuthOptions = {
             }),
           });
           
+          console.log('📡 API Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+          });
+          
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('❌ API login failed:', response.status, errorText);
+            console.error('❌ API login failed:', {
+              status: response.status,
+              statusText: response.statusText,
+              url: loginUrl,
+              errorText,
+              headers: Object.fromEntries(response.headers.entries())
+            });
             return null;
           }
 
           const data = await response.json();
+          console.log('✅ API login success:', {
+            userId: data.user_id,
+            role: data.role,
+            tenantId: data.tenant_id,
+            hasToken: !!data.access_token
+          });
           
           // Check if user has admin role
           if (!data.role || !ADMIN_ROLES.includes(data.role)) {
@@ -102,7 +142,13 @@ export const authOptions: NextAuthOptions = {
             mustChangePassword: data.must_change_password || false,
           };
         } catch (error) {
-          console.error('💥 Credentials auth error:', error);
+          console.error('💥 Credentials auth error:', {
+            error: error instanceof Error ? error.message : error,
+            stack: error instanceof Error ? error.stack : undefined,
+            apiUrl,
+            loginUrl,
+            email: credentials.email
+          });
           // Don't throw errors, just return null to let NextAuth handle it
           return null;
         }
