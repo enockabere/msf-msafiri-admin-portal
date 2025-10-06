@@ -101,12 +101,20 @@ export default function TenantDashboardPage() {
       let totalVisitors = 0;
       let totalInventory = 0;
 
-      // Get users count
+      // Get users count filtered by current tenant
       try {
-        const users = await apiClient.getUsers(user?.tenantId);
-        totalUsers = users.length;
+        const users = await apiClient.getUsers(foundTenant.slug);
+        // Additional filtering to ensure we only count users for this specific tenant
+        const tenantUsers = users.filter(user => 
+          user.tenant_id === foundTenant.slug || 
+          user.tenant_id === foundTenant.id.toString() ||
+          user.tenant_id === tenantSlug
+        );
+        totalUsers = tenantUsers.length;
+        console.log(`Tenant ${tenantSlug}: Found ${totalUsers} users out of ${users.length} total users`);
       } catch (e: unknown) {
         console.error("Error fetching users:", e);
+        totalUsers = 0;
       }
 
       // Get events and visitors count
@@ -285,7 +293,7 @@ export default function TenantDashboardPage() {
   const quickActions = [
     {
       title: "Manage Users",
-      description: `${stats.totalUsers} users in system`,
+      description: `${stats.totalUsers} users in ${tenant.name}`,
       icon: UserPlus,
       path: `/tenant/${tenantSlug}/admin-users`,
       color: "blue",
