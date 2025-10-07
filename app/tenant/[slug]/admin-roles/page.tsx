@@ -23,6 +23,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Shield,
   Plus,
   Edit,
@@ -44,11 +51,17 @@ interface Role {
   updated_by?: string;
 }
 
+interface AvailableRole {
+  name: string;
+  description: string;
+}
+
 export default function TenantAdminRolesPage() {
   const params = useParams();
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<AvailableRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -61,6 +74,20 @@ export default function TenantAdminRolesPage() {
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
 
   const tenantSlug = params.slug as string;
+
+  const fetchAvailableRoles = useCallback(async () => {
+    try {
+      const availableRolesData = await apiClient.request<AvailableRole[]>(
+        `/roles/available-roles`,
+        {
+          headers: { "X-Tenant-ID": tenantSlug },
+        }
+      );
+      setAvailableRoles(availableRolesData);
+    } catch (error) {
+      console.error("Fetch available roles error:", error);
+    }
+  }, [apiClient, tenantSlug]);
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -118,7 +145,7 @@ export default function TenantAdminRolesPage() {
       }
 
       setIsTenantAdmin(true);
-      await fetchRoles();
+      await Promise.all([fetchRoles(), fetchAvailableRoles()]);
     } catch (error) {
       console.error("Access check error:", error);
       toast({
@@ -267,6 +294,16 @@ export default function TenantAdminRolesPage() {
     setShowCreateModal(false);
     setEditingRole(null);
     setFormData({ name: "", description: "" });
+  };
+
+  const handleRoleSelect = (roleName: string) => {
+    const selectedRole = availableRoles.find(role => role.name === roleName);
+    if (selectedRole) {
+      setFormData({
+        name: selectedRole.name,
+        description: selectedRole.description,
+      });
+    }
   };
 
   const handleDeleteRole = async (roleId: number) => {
@@ -529,15 +566,33 @@ export default function TenantAdminRolesPage() {
                 <Label htmlFor="name" className="text-gray-700">
                   Role Name
                 </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Enter role name"
-                  className="mt-2 bg-white border-gray-300"
-                />
+                {!editingRole ? (
+                  <Select onValueChange={handleRoleSelect}>
+                    <SelectTrigger className="mt-2 bg-white border-gray-300">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((role) => (
+                        <SelectItem key={role.name} value={role.name}>
+                          <div>
+                            <div className="font-medium">{role.name}</div>
+                            <div className="text-sm text-gray-500">{role.description}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    placeholder="Enter role name"
+                    className="mt-2 bg-white border-gray-300"
+                  />
+                )}
               </div>
               <div>
                 <Label htmlFor="description" className="text-gray-700">
