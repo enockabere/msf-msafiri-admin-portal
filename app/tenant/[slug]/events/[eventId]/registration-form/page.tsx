@@ -8,9 +8,9 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Copy, ExternalLink, Save } from "lucide-react";
+import { Loader2, Calendar, MapPin } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
 
@@ -25,15 +25,50 @@ interface Event {
   registration_form_description?: string;
 }
 
+interface FormData {
+  firstName: string;
+  lastName: string;
+  oc: string;
+  contractStatus: string;
+  contractType: string;
+  genderIdentity: string;
+  sex: string;
+  pronouns: string;
+  currentPosition: string;
+  countryOfWork: string;
+  projectOfWork: string;
+  personalEmail: string;
+  msfEmail: string;
+  hrcoEmail: string;
+  careerManagerEmail: string;
+  lineManagerEmail: string;
+  phoneNumber: string;
+}
+
 export default function EventRegistrationFormPage() {
   const params = useParams();
   const { apiClient } = useAuthenticatedApi();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    registration_form_title: "",
-    registration_form_description: "",
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    firstName: "",
+    lastName: "",
+    oc: "",
+    contractStatus: "",
+    contractType: "",
+    genderIdentity: "",
+    sex: "",
+    pronouns: "",
+    currentPosition: "",
+    countryOfWork: "",
+    projectOfWork: "",
+    personalEmail: "",
+    msfEmail: "",
+    hrcoEmail: "",
+    careerManagerEmail: "",
+    lineManagerEmail: "",
+    phoneNumber: "",
   });
 
   const tenantSlug = params.slug as string;
@@ -48,12 +83,7 @@ export default function EventRegistrationFormPage() {
       const eventData = await apiClient.request<Event>(`/events/${eventId}`, {
         headers: { "X-Tenant-ID": tenantSlug },
       });
-
       setEvent(eventData);
-      setFormData({
-        registration_form_title: eventData.registration_form_title || `${eventData.title} - Registration Form`,
-        registration_form_description: eventData.registration_form_description || generateDefaultDescription(eventData),
-      });
     } catch (error) {
       console.error("Error fetching event:", error);
       toast({
@@ -66,65 +96,79 @@ export default function EventRegistrationFormPage() {
     }
   };
 
-  const generateDefaultDescription = (event: Event) => {
-    return `<p>Dear colleague,</p>
-<p>Congratulations on your selection for the <strong>${event.title}</strong>, taking place on <strong>${new Date(event.start_date).toLocaleDateString()} - ${new Date(event.end_date).toLocaleDateString()}</strong> in <strong>${event.location}</strong>.</p>
-<p>Please complete the form below to enable prompt organisation of your travel.</p>
-
-<h3>OCA STAFF</h3>
-<p>Unless you are not currently linked to a project or assignment, your HRCO is responsible for booking your travel.</p>
-
-<h3>NON-OCA STAFF</h3>
-<p>You should discuss with your OC L&D or country program how you will travel to this training.</p>
-
-<h3>ALL STAFF</h3>
-<p>Please read the instructions carefully and follow them accordingly.</p>`;
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const validateForm = () => {
+    const required = [
+      'firstName', 'lastName', 'oc', 'contractStatus', 'contractType',
+      'genderIdentity', 'sex', 'pronouns', 'currentPosition', 'personalEmail',
+      'phoneNumber'
+    ];
+    
+    for (const field of required) {
+      if (!formData[field as keyof FormData]) {
+        toast({
+          title: "Required Field Missing",
+          description: `Please fill in all required fields`,
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
     try {
-      setSaving(true);
-      await apiClient.request(`/events/${eventId}`, {
-        method: "PUT",
+      setSubmitting(true);
+      const response = await apiClient.request(`/events/${eventId}/public-register`, {
+        method: "POST",
         headers: { "X-Tenant-ID": tenantSlug },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          eventId: parseInt(eventId),
+        }),
       });
 
       toast({
-        title: "Success",
-        description: "Registration form settings saved successfully",
+        title: "Registration Successful",
+        description: "Thank you for registering! You will be contacted with further details.",
       });
 
-      await fetchEvent();
+      // Reset form
+      setFormData({
+        firstName: "",
+        lastName: "",
+        oc: "",
+        contractStatus: "",
+        contractType: "",
+        genderIdentity: "",
+        sex: "",
+        pronouns: "",
+        currentPosition: "",
+        countryOfWork: "",
+        projectOfWork: "",
+        personalEmail: "",
+        msfEmail: "",
+        hrcoEmail: "",
+        careerManagerEmail: "",
+        lineManagerEmail: "",
+        phoneNumber: "",
+      });
     } catch (error) {
-      console.error("Error saving form settings:", error);
+      console.error("Registration error:", error);
       toast({
-        title: "Error",
-        description: "Failed to save registration form settings",
+        title: "Registration Failed",
+        description: "Please try again or contact support",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
-  };
-
-  const getPublicFormUrl = () => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/public/event-registration/${eventId}`;
-  };
-
-  const copyFormUrl = () => {
-    const url = getPublicFormUrl();
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Copied!",
-      description: "Registration form URL copied to clipboard",
-    });
-  };
-
-  const openFormPreview = () => {
-    const url = getPublicFormUrl();
-    window.open(url, "_blank");
   };
 
   if (loading) {
@@ -147,125 +191,268 @@ export default function EventRegistrationFormPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Registration Form Settings</h1>
-              <p className="text-gray-600">{event.title}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={openFormPreview}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Preview Form
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                className="gap-2"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
-                Save Settings
-              </Button>
-            </div>
-          </div>
-
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Event Header */}
           <Card>
             <CardHeader>
-              <CardTitle>Public Registration Form URL</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={getPublicFormUrl()}
-                  readOnly
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyFormUrl}
-                  className="gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  Copy
-                </Button>
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                Share this URL with participants to allow them to register without authentication.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Form Customization</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title">Form Title</Label>
-                <Input
-                  id="title"
-                  value={formData.registration_form_title}
-                  onChange={(e) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      registration_form_title: e.target.value
-                    }))
-                  }
-                  placeholder="Enter form title"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">Form Description</Label>
-                <p className="text-sm text-gray-500 mb-2">
-                  You can use HTML tags for formatting. This will appear at the top of the registration form.
-                </p>
-                <Textarea
-                  id="description"
-                  value={formData.registration_form_description}
-                  onChange={(e) =>
-                    setFormData(prev => ({
-                      ...prev,
-                      registration_form_description: e.target.value
-                    }))
-                  }
-                  placeholder="Enter form description with HTML formatting"
-                  rows={15}
-                  className="font-mono text-sm"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <h2 className="text-xl font-bold text-center mb-2">
-                  {formData.registration_form_title}
-                </h2>
-                <div className="text-sm text-gray-600 mb-4">
-                  <p className="text-center mb-2">The survey will take approximately 8 minutes to complete.</p>
-                  <div className="flex items-center justify-center gap-6 text-sm">
-                    <span>📅 {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}</span>
-                    <span>📍 {event.location}</span>
+              <CardTitle className="text-2xl text-center">
+                {event.registration_form_title || `${event.title} - Registration Form`}
+              </CardTitle>
+              <div className="text-center text-gray-600 space-y-2">
+                <p className="text-sm">The survey will take approximately 8 minutes to complete.</p>
+                <div className="flex items-center justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {event.location}
                   </div>
                 </div>
-                <div 
-                  className="prose max-w-none text-sm"
-                  dangerouslySetInnerHTML={{ __html: formData.registration_form_description }}
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Form */}
+          <Card>
+            <CardHeader>
+              <CardTitle>DETAILS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="firstName">1. First Name / Prénom *</Label>
+                  <p className="text-xs text-gray-500 mb-2">as stated in passport</p>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">2. Last Name / Nom de famille *</Label>
+                  <p className="text-xs text-gray-500 mb-2">as stated in passport</p>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>3. What is your OC? *</Label>
+                <RadioGroup value={formData.oc} onValueChange={(value) => handleInputChange('oc', value)}>
+                  {['OCA', 'OCB', 'OCBA', 'OCG', 'OCP', 'WACA'].map((oc) => (
+                    <div key={oc} className="flex items-center space-x-2">
+                      <RadioGroupItem value={oc} id={oc} />
+                      <Label htmlFor={oc}>{oc}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>4. Are you on contract or in between contracts? *</Label>
+                <RadioGroup value={formData.contractStatus} onValueChange={(value) => handleInputChange('contractStatus', value)}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="On contract" id="on-contract" />
+                    <Label htmlFor="on-contract">On contract</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Between contracts" id="between-contracts" />
+                    <Label htmlFor="between-contracts">Between contracts</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>5. Type of Contract *</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  HQ = Headquarters Contract<br/>
+                  IMS = International Mobile Staff Contract<br/>
+                  LRS = Locally Recruited Staff Contract
+                </p>
+                <RadioGroup value={formData.contractType} onValueChange={(value) => handleInputChange('contractType', value)}>
+                  {['HQ', 'IMS', 'LRS', 'Other'].map((type) => (
+                    <div key={type} className="flex items-center space-x-2">
+                      <RadioGroupItem value={type} id={type} />
+                      <Label htmlFor={type}>{type}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>6. Gender Identity *</Label>
+                <RadioGroup value={formData.genderIdentity} onValueChange={(value) => handleInputChange('genderIdentity', value)}>
+                  {['Man', 'Woman', 'Non-binary', 'Prefer to self-describe', 'Prefer not to disclose'].map((gender) => (
+                    <div key={gender} className="flex items-center space-x-2">
+                      <RadioGroupItem value={gender} id={gender} />
+                      <Label htmlFor={gender}>{gender}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>7. Sex *</Label>
+                <p className="text-xs text-gray-500 mb-2">As indicated in your passport. If you do not identify with the sex written in your passport, please email us.</p>
+                <RadioGroup value={formData.sex} onValueChange={(value) => handleInputChange('sex', value)}>
+                  {['Female', 'Male', 'Other'].map((sex) => (
+                    <div key={sex} className="flex items-center space-x-2">
+                      <RadioGroupItem value={sex} id={sex} />
+                      <Label htmlFor={sex}>{sex}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label>8. Pronouns *</Label>
+                <RadioGroup value={formData.pronouns} onValueChange={(value) => handleInputChange('pronouns', value)}>
+                  {['He / him', 'She / her', 'They / Them', 'Other'].map((pronoun) => (
+                    <div key={pronoun} className="flex items-center space-x-2">
+                      <RadioGroupItem value={pronoun} id={pronoun} />
+                      <Label htmlFor={pronoun}>{pronoun}</Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label htmlFor="currentPosition">9. Current (or most recent) position *</Label>
+                <Input
+                  id="currentPosition"
+                  value={formData.currentPosition}
+                  onChange={(e) => handleInputChange('currentPosition', e.target.value)}
+                  required
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="countryOfWork">10. Country of work</Label>
+                <p className="text-xs text-gray-500 mb-2">In which country of assignment do you work?<br/>If you are in-between country programs please leave this blank</p>
+                <Input
+                  id="countryOfWork"
+                  value={formData.countryOfWork}
+                  onChange={(e) => handleInputChange('countryOfWork', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="projectOfWork">11. Project of work</Label>
+                <p className="text-xs text-gray-500 mb-2">In which country project do you work?<br/>If you are country programs please leave this blank</p>
+                <Input
+                  id="projectOfWork"
+                  value={formData.projectOfWork}
+                  onChange={(e) => handleInputChange('projectOfWork', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="personalEmail">12. Personal/Tembo E-mail Address *</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  If you are currently enrolled on Tembo with an email address, please use that same email address here.<br/><br/>
+                  This email address will be used for all communication regarding this course<br/><br/>
+                  Please make extra sure that the address is written correctly.<br/><br/>
+                  If you are adding more than one address, please separate them with ;
+                </p>
+                <Input
+                  id="personalEmail"
+                  type="email"
+                  value={formData.personalEmail}
+                  onChange={(e) => handleInputChange('personalEmail', e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="msfEmail">13. MSF Email</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Please make extra sure that the address is written correctly.<br/><br/>
+                  If you are adding more than one address, please separate them with ;
+                </p>
+                <Input
+                  id="msfEmail"
+                  type="email"
+                  value={formData.msfEmail}
+                  onChange={(e) => handleInputChange('msfEmail', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="hrcoEmail">14. HRCo Email</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Please make extra sure that the address is written correctly.<br/><br/>
+                  If you are adding more than one address, please separate them with ;
+                </p>
+                <Input
+                  id="hrcoEmail"
+                  type="email"
+                  value={formData.hrcoEmail}
+                  onChange={(e) => handleInputChange('hrcoEmail', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="careerManagerEmail">15. Career Manager Email</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Please make extra sure that the address is written correctly.<br/><br/>
+                  If you are adding more than one address, please separate them with ;
+                </p>
+                <Input
+                  id="careerManagerEmail"
+                  type="email"
+                  value={formData.careerManagerEmail}
+                  onChange={(e) => handleInputChange('careerManagerEmail', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="lineManagerEmail">17. Line Manager Email</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Please make extra sure that the address is written correctly. If you are not OCA please add the email of your hosting OC.<br/><br/>
+                  If you are adding more than one address, please separate them with ;
+                </p>
+                <Input
+                  id="lineManagerEmail"
+                  type="email"
+                  value={formData.lineManagerEmail}
+                  onChange={(e) => handleInputChange('lineManagerEmail', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phoneNumber">18. Phone number *</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  This will only be used for emergencies or in order to coordinate transportation, if relevant<br/><br/>
+                  Please make extra sure that the number is written correctly.<br/><br/>
+                  Please include the calling code, including 00<br/><br/>
+                  e.g. 00 30 123456789
+                </p>
+                <Input
+                  id="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end pt-6">
+                <Button onClick={handleSubmit} disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Registration'
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
