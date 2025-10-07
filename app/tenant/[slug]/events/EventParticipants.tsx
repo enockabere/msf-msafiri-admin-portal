@@ -240,6 +240,8 @@ export default function EventParticipants({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case "registered":
+        return "bg-purple-100 text-purple-800 border-purple-200";
       case "selected":
         return "bg-green-100 text-green-800 border-green-200";
       case "not_selected":
@@ -255,7 +257,7 @@ export default function EventParticipants({
       case "invited":
         return "bg-purple-100 text-purple-800 border-purple-200";
       default:
-        return "bg-purple-100 text-purple-800 border-purple-200"; // registered
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
