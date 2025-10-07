@@ -37,7 +37,6 @@ interface FormData {
   msfEmail: string;
   hrcoEmail: string;
   careerManagerEmail: string;
-  ldManagerEmail: string;
   lineManagerEmail: string;
   phoneNumber: string;
 }
@@ -102,7 +101,7 @@ export default function PublicEventRegistrationPage() {
     const required = [
       'firstName', 'lastName', 'oc', 'contractStatus', 'contractType',
       'genderIdentity', 'sex', 'pronouns', 'currentPosition', 'personalEmail',
-      'msfEmail', 'phoneNumber'
+      'phoneNumber'
     ];
     
     for (const field of required) {
@@ -160,7 +159,6 @@ export default function PublicEventRegistrationPage() {
         msfEmail: "",
         hrcoEmail: "",
         careerManagerEmail: "",
-        ldManagerEmail: "",
         lineManagerEmail: "",
         phoneNumber: "",
       });
@@ -231,9 +229,9 @@ export default function PublicEventRegistrationPage() {
             <CardTitle>DETAILS</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="firstName">First Name / Prénom *</Label>
+                <Label htmlFor="firstName">1. First Name / Prénom *</Label>
                 <p className="text-xs text-gray-500 mb-2">as stated in passport</p>
                 <Input
                   id="firstName"
@@ -243,7 +241,7 @@ export default function PublicEventRegistrationPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">Last Name / Nom de famille *</Label>
+                <Label htmlFor="lastName">2. Last Name / Nom de famille *</Label>
                 <p className="text-xs text-gray-500 mb-2">as stated in passport</p>
                 <Input
                   id="lastName"
@@ -255,7 +253,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>What is your OC? *</Label>
+              <Label>3. What is your OC? *</Label>
               <RadioGroup value={formData.oc} onValueChange={(value) => handleInputChange('oc', value)}>
                 {['OCA', 'OCB', 'OCBA', 'OCG', 'OCP', 'WACA'].map((oc) => (
                   <div key={oc} className="flex items-center space-x-2">
@@ -267,7 +265,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>Are you on contract or in between contracts? *</Label>
+              <Label>4. Are you on contract or in between contracts? *</Label>
               <RadioGroup value={formData.contractStatus} onValueChange={(value) => handleInputChange('contractStatus', value)}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="On contract" id="on-contract" />
@@ -281,9 +279,11 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>Type of Contract *</Label>
+              <Label>5. Type of Contract *</Label>
               <p className="text-xs text-gray-500 mb-2">
-                HQ = Headquarters Contract, IMS = International Mobile Staff Contract, LRS = Locally Recruited Staff Contract
+                HQ = Headquarters Contract<br/>
+                IMS = International Mobile Staff Contract<br/>
+                LRS = Locally Recruited Staff Contract
               </p>
               <RadioGroup value={formData.contractType} onValueChange={(value) => handleInputChange('contractType', value)}>
                 {['HQ', 'IMS', 'LRS', 'Other'].map((type) => (
@@ -296,7 +296,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>Gender Identity *</Label>
+              <Label>6. Gender Identity *</Label>
               <RadioGroup value={formData.genderIdentity} onValueChange={(value) => handleInputChange('genderIdentity', value)}>
                 {['Man', 'Woman', 'Non-binary', 'Prefer to self-describe', 'Prefer not to disclose'].map((gender) => (
                   <div key={gender} className="flex items-center space-x-2">
@@ -308,7 +308,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>Sex *</Label>
+              <Label>7. Sex *</Label>
               <p className="text-xs text-gray-500 mb-2">As indicated in your passport. If you do not identify with the sex written in your passport, please email us.</p>
               <RadioGroup value={formData.sex} onValueChange={(value) => handleInputChange('sex', value)}>
                 {['Female', 'Male', 'Other'].map((sex) => (
@@ -321,7 +321,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label>Pronouns *</Label>
+              <Label>8. Pronouns *</Label>
               <RadioGroup value={formData.pronouns} onValueChange={(value) => handleInputChange('pronouns', value)}>
                 {['He / him', 'She / her', 'They / Them', 'Other'].map((pronoun) => (
                   <div key={pronoun} className="flex items-center space-x-2">
@@ -333,7 +333,7 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="currentPosition">Current (or most recent) position *</Label>
+              <Label htmlFor="currentPosition">9. Current (or most recent) position *</Label>
               <Input
                 id="currentPosition"
                 value={formData.currentPosition}
@@ -343,8 +343,8 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="countryOfWork">Country of work</Label>
-              <p className="text-xs text-gray-500 mb-2">In which country of assignment do you work? If you are in-between country programs please leave this blank</p>
+              <Label htmlFor="countryOfWork">10. Country of work</Label>
+              <p className="text-xs text-gray-500 mb-2">In which country of assignment do you work?<br/>If you are in-between country programs please leave this blank</p>
               <Input
                 id="countryOfWork"
                 value={formData.countryOfWork}
@@ -353,8 +353,8 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="projectOfWork">Project of work</Label>
-              <p className="text-xs text-gray-500 mb-2">In which country project do you work? If you are country programs please leave this blank</p>
+              <Label htmlFor="projectOfWork">11. Project of work</Label>
+              <p className="text-xs text-gray-500 mb-2">In which country project do you work?<br/>If you are country programs please leave this blank</p>
               <Input
                 id="projectOfWork"
                 value={formData.projectOfWork}
@@ -363,11 +363,11 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="personalEmail">Personal/Tembo E-mail Address *</Label>
+              <Label htmlFor="personalEmail">12. Personal/Tembo E-mail Address *</Label>
               <p className="text-xs text-gray-500 mb-2">
-                If you are currently enrolled on Tembo with an email address, please use that same email address here.
-                This email address will be used for all communication regarding this course.
-                Please make extra sure that the address is written correctly.
+                If you are currently enrolled on Tembo with an email address, please use that same email address here.<br/><br/>
+                This email address will be used for all communication regarding this course<br/><br/>
+                Please make extra sure that the address is written correctly.<br/><br/>
                 If you are adding more than one address, please separate them with ;
               </p>
               <Input
@@ -380,9 +380,9 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="msfEmail">MSF Email *</Label>
+              <Label htmlFor="msfEmail">13. MSF Email</Label>
               <p className="text-xs text-gray-500 mb-2">
-                Please make extra sure that the address is written correctly.
+                Please make extra sure that the address is written correctly.<br/><br/>
                 If you are adding more than one address, please separate them with ;
               </p>
               <Input
@@ -390,14 +390,13 @@ export default function PublicEventRegistrationPage() {
                 type="email"
                 value={formData.msfEmail}
                 onChange={(e) => handleInputChange('msfEmail', e.target.value)}
-                required
               />
             </div>
 
             <div>
-              <Label htmlFor="hrcoEmail">HRCo Email</Label>
+              <Label htmlFor="hrcoEmail">14. HRCo Email</Label>
               <p className="text-xs text-gray-500 mb-2">
-                Please make extra sure that the address is written correctly.
+                Please make extra sure that the address is written correctly.<br/><br/>
                 If you are adding more than one address, please separate them with ;
               </p>
               <Input
@@ -409,9 +408,9 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="careerManagerEmail">Career Manager Email</Label>
+              <Label htmlFor="careerManagerEmail">15. Career Manager Email</Label>
               <p className="text-xs text-gray-500 mb-2">
-                Please make extra sure that the address is written correctly.
+                Please make extra sure that the address is written correctly.<br/><br/>
                 If you are adding more than one address, please separate them with ;
               </p>
               <Input
@@ -422,24 +421,12 @@ export default function PublicEventRegistrationPage() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="ldManagerEmail">L&D Manager Email</Label>
-              <p className="text-xs text-gray-500 mb-2">
-                Please make extra sure that the address is written correctly. If you are not OCA please add the email of your hosting OC.
-                If you are adding more than one address, please separate them with ;
-              </p>
-              <Input
-                id="ldManagerEmail"
-                type="email"
-                value={formData.ldManagerEmail}
-                onChange={(e) => handleInputChange('ldManagerEmail', e.target.value)}
-              />
-            </div>
+
 
             <div>
-              <Label htmlFor="lineManagerEmail">Line Manager Email</Label>
+              <Label htmlFor="lineManagerEmail">17. Line Manager Email</Label>
               <p className="text-xs text-gray-500 mb-2">
-                Please make extra sure that the address is written correctly. If you are not OCA please add the email of your hosting OC.
+                Please make extra sure that the address is written correctly. If you are not OCA please add the email of your hosting OC.<br/><br/>
                 If you are adding more than one address, please separate them with ;
               </p>
               <Input
@@ -451,11 +438,11 @@ export default function PublicEventRegistrationPage() {
             </div>
 
             <div>
-              <Label htmlFor="phoneNumber">Phone number *</Label>
+              <Label htmlFor="phoneNumber">18. Phone number *</Label>
               <p className="text-xs text-gray-500 mb-2">
-                This will only be used for emergencies or in order to coordinate transportation, if relevant.
-                Please make extra sure that the number is written correctly.
-                Please include the calling code, including 00
+                This will only be used for emergencies or in order to coordinate transportation, if relevant<br/><br/>
+                Please make extra sure that the number is written correctly.<br/><br/>
+                Please include the calling code, including 00<br/><br/>
                 e.g. 00 30 123456789
               </p>
               <Input
