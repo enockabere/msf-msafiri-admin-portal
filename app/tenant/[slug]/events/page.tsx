@@ -45,6 +45,7 @@ interface Event {
   end_date: string;
   location?: string;
   address?: string;
+  country?: string;
   latitude?: number;
   longitude?: number;
   banner_image?: string;
@@ -102,6 +103,7 @@ export default function TenantEventsPage() {
     end_date: "",
     location: "",
     address: "",
+    country: "",
     latitude: "",
     longitude: "",
     banner_image: "",
@@ -266,11 +268,36 @@ export default function TenantEventsPage() {
       !formData.title.trim() ||
       !formData.event_type.trim() ||
       !formData.start_date ||
-      !formData.end_date
+      !formData.end_date ||
+      !formData.country.trim()
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, start date, and end date are required",
+        description: "Title, event type, country, start date, and end date are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+
+    if (startDate < today) {
+      toast({
+        title: "Error",
+        description: "Start date cannot be in the past",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (endDate < startDate) {
+      toast({
+        title: "Error",
+        description: "End date cannot be before start date",
         variant: "destructive",
       });
       return;
@@ -305,6 +332,7 @@ export default function TenantEventsPage() {
         end_date: "",
         location: "",
         address: "",
+        country: "",
         latitude: "",
         longitude: "",
         banner_image: "",
@@ -340,11 +368,36 @@ export default function TenantEventsPage() {
     if (
       !selectedEvent ||
       !formData.title.trim() ||
-      !formData.event_type.trim()
+      !formData.event_type.trim() ||
+      !formData.country.trim()
     ) {
       toast({
         title: "Error",
-        description: "Title and event type are required",
+        description: "Title, event type, and country are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+
+    if (startDate < today) {
+      toast({
+        title: "Error",
+        description: "Start date cannot be in the past",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (endDate < startDate) {
+      toast({
+        title: "Error",
+        description: "End date cannot be before start date",
         variant: "destructive",
       });
       return;
@@ -446,6 +499,7 @@ export default function TenantEventsPage() {
       end_date: event.end_date,
       location: event.location || "",
       address: event.address || "",
+      country: event.country || "",
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
       banner_image: event.banner_image || "",
@@ -469,6 +523,7 @@ export default function TenantEventsPage() {
       end_date: "",
       location: "",
       address: "",
+      country: "",
       latitude: "",
       longitude: "",
       banner_image: "",
@@ -845,6 +900,7 @@ export default function TenantEventsPage() {
                     id="start_date"
                     type="date"
                     value={formData.start_date}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("start_date", e.target.value)
                     }
@@ -858,6 +914,7 @@ export default function TenantEventsPage() {
                     id="end_date"
                     type="date"
                     value={formData.end_date}
+                    min={formData.start_date || new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("end_date", e.target.value)
                     }
@@ -877,7 +934,7 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="location" className="mb-2 block">
                     Location
@@ -902,6 +959,19 @@ export default function TenantEventsPage() {
                       setFormData({ ...formData, address: e.target.value })
                     }
                     placeholder="Street address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country" className="mb-2 block">
+                    Country *
+                  </Label>
+                  <Input
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) =>
+                      setFormData({ ...formData, country: e.target.value })
+                    }
+                    placeholder="Event country"
                   />
                 </div>
               </div>
@@ -1004,6 +1074,7 @@ export default function TenantEventsPage() {
                     id="edit_start_date"
                     type="date"
                     value={formData.start_date}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("start_date", e.target.value)
                     }
@@ -1017,6 +1088,7 @@ export default function TenantEventsPage() {
                     id="edit_end_date"
                     type="date"
                     value={formData.end_date}
+                    min={formData.start_date || new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("end_date", e.target.value)
                     }
@@ -1036,7 +1108,7 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="edit_location" className="mb-2 block">
                     Location
@@ -1061,6 +1133,19 @@ export default function TenantEventsPage() {
                       setFormData({ ...formData, address: e.target.value })
                     }
                     placeholder="Street address"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_country" className="mb-2 block">
+                    Country *
+                  </Label>
+                  <Input
+                    id="edit_country"
+                    value={formData.country}
+                    onChange={(e) =>
+                      setFormData({ ...formData, country: e.target.value })
+                    }
+                    placeholder="Event country"
                   />
                 </div>
               </div>
