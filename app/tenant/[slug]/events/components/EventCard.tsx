@@ -20,6 +20,7 @@ import {
   CheckCircle,
   Users,
   UserCheck,
+  FileText,
 } from "lucide-react";
 
 interface Event {
@@ -56,9 +57,10 @@ interface EventCardProps {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onViewDetails: (event: Event) => void;
+  onRegistrationForm?: (event: Event) => void;
 }
 
-export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDetails }: EventCardProps) {
+export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDetails, onRegistrationForm }: EventCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return 'from-blue-50 to-blue-100';
@@ -140,6 +142,18 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDeta
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
+                  {onRegistrationForm && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRegistrationForm(event);
+                      }}
+                      className="hover:bg-red-50 focus:bg-red-50"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Registration Form
+                    </DropdownMenuItem>
+                  )}
                   {event.status === 'Draft' && event.event_status !== 'ended' && (
                     <DropdownMenuItem
                       onClick={(e) => {

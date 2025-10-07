@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,6 +76,7 @@ interface UserRole {
 
 export default function TenantEventsPage() {
   const params = useParams();
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const [events, setEvents] = useState<Event[]>([]);
@@ -510,6 +511,10 @@ export default function TenantEventsPage() {
     setShowEditModal(true);
   };
 
+  const handleRegistrationForm = (event: Event) => {
+    router.push(`/tenant/${tenantSlug}/events/${event.id}/registration-form`);
+  };
+
   const closeModals = () => {
     setShowCreateModal(false);
     setShowEditModal(false);
@@ -739,6 +744,7 @@ export default function TenantEventsPage() {
                       onEdit={(e) => openEditModal(e)} 
                       onDelete={(e) => handleDeleteEvent(e)} 
                       onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
+                      onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
                     />
                   ))}
                 </div>
@@ -749,6 +755,7 @@ export default function TenantEventsPage() {
                   onEdit={(e) => openEditModal(e)}
                   onDelete={(e) => handleDeleteEvent(e)}
                   onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
+                  onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
                   sortField={sortField}
                   sortDirection={sortDirection}
                   onSort={(field) => {

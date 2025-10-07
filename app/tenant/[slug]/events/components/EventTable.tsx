@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Users,
   UserCheck,
+  FileText,
 } from "lucide-react";
 
 interface Event {
@@ -55,6 +56,7 @@ interface EventTableProps {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onViewDetails: (event: Event) => void;
+  onRegistrationForm?: (event: Event) => void;
   sortField: keyof Event;
   sortDirection: 'asc' | 'desc';
   onSort: (field: keyof Event) => void;
@@ -66,6 +68,7 @@ export function EventTable({
   onEdit, 
   onDelete, 
   onViewDetails, 
+  onRegistrationForm,
   sortField, 
   sortDirection, 
   onSort 
@@ -245,6 +248,18 @@ export function EventTable({
                           <Eye className="w-4 h-4" />
                           View Details
                         </DropdownMenuItem>
+                        {onRegistrationForm && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRegistrationForm(event);
+                            }}
+                            className="gap-2 hover:bg-gray-50 cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Registration Form
+                          </DropdownMenuItem>
+                        )}
                         {event.status === 'Draft' && event.event_status !== 'ended' && (
                           <DropdownMenuItem
                             onClick={(e) => {
