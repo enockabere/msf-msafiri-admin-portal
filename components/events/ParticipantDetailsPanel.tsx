@@ -97,6 +97,14 @@ interface ParticipantDetails {
   registration_type: string;
   registered_by: string;
   created_at: string;
+  country?: string;
+  position?: string;
+  department?: string;
+  gender?: string;
+  eta?: string;
+  requires_eta?: boolean;
+  passport_document?: boolean;
+  ticket_document?: boolean;
 }
 
 export default function ParticipantDetailsPanel({
@@ -507,6 +515,48 @@ export default function ParticipantDetailsPanel({
                         <span className="text-gray-600">By:</span>
                         <span className="font-medium truncate">{participantDetails.registered_by}</span>
                       </div>
+                      {(participantDetails as any).country && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Country:</span>
+                          <span className="font-medium">{(participantDetails as any).country}</span>
+                        </div>
+                      )}
+                      {(participantDetails as any).position && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Position:</span>
+                          <span className="font-medium truncate">{(participantDetails as any).position}</span>
+                        </div>
+                      )}
+                      {(participantDetails as any).department && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Department:</span>
+                          <span className="font-medium truncate">{(participantDetails as any).department}</span>
+                        </div>
+                      )}
+                      {(participantDetails as any).gender && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Gender:</span>
+                          <span className="font-medium">{(participantDetails as any).gender}</span>
+                        </div>
+                      )}
+                      {(participantDetails as any).requires_eta && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">ETA Required:</span>
+                          <Badge className="text-xs px-1 py-0 bg-orange-100 text-orange-800">Yes</Badge>
+                        </div>
+                      )}
+                      {(participantDetails as any).passport_document && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Passport:</span>
+                          <Badge className="text-xs px-1 py-0 bg-green-100 text-green-800">Uploaded</Badge>
+                        </div>
+                      )}
+                      {(participantDetails as any).ticket_document && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Ticket:</span>
+                          <Badge className="text-xs px-1 py-0 bg-green-100 text-green-800">Uploaded</Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
