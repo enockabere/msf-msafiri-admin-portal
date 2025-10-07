@@ -234,21 +234,21 @@ export default function EventRegistrationFormPage() {
   }
 
   const handleShare = async () => {
-    const shareUrl = window.location.href;
+    const publicUrl = `${window.location.origin}/public/event-registration/${eventId}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: `${event?.title} - Registration Form`,
-          url: shareUrl,
+          url: publicUrl,
         });
       } catch (error) {
         console.log('Share cancelled');
       }
     } else {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(publicUrl);
       toast({
         title: "Link Copied",
-        description: "Registration form link copied to clipboard",
+        description: "Public registration form link copied to clipboard",
       });
     }
   };
