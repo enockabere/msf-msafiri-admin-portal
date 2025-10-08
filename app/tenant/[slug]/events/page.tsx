@@ -111,6 +111,7 @@ export default function TenantEventsPage() {
     duration_days: "",
     perdiem_rate: "",
     perdiem_currency: "",
+    registration_deadline: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -340,6 +341,7 @@ export default function TenantEventsPage() {
         duration_days: "",
         perdiem_rate: "",
         perdiem_currency: "",
+        registration_deadline: "",
       });
 
       await fetchEvents();
@@ -507,6 +509,7 @@ export default function TenantEventsPage() {
       duration_days: duration,
       perdiem_rate: event.perdiem_rate?.toString() || "",
       perdiem_currency: event.perdiem_currency || "",
+      registration_deadline: event.registration_deadline || "",
     });
     setShowEditModal(true);
   };
@@ -535,6 +538,7 @@ export default function TenantEventsPage() {
       duration_days: "",
       perdiem_rate: "",
       perdiem_currency: "",
+      registration_deadline: "",
     });
   };
 
@@ -898,7 +902,7 @@ export default function TenantEventsPage() {
                   placeholder="Enter event description"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start_date" className="mb-2 block">
                     Start Date *
@@ -924,6 +928,22 @@ export default function TenantEventsPage() {
                     min={formData.start_date || new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("end_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="registration_deadline" className="mb-2 block">
+                    Registration Deadline
+                  </Label>
+                  <Input
+                    id="registration_deadline"
+                    type="date"
+                    value={formData.registration_deadline}
+                    max={formData.start_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, registration_deadline: e.target.value })
                     }
                   />
                 </div>
@@ -1072,7 +1092,7 @@ export default function TenantEventsPage() {
                   placeholder="Enter event description"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit_start_date" className="mb-2 block">
                     Start Date *
@@ -1098,6 +1118,22 @@ export default function TenantEventsPage() {
                     min={formData.start_date || new Date().toISOString().split('T')[0]}
                     onChange={(e) =>
                       handleDateChange("end_date", e.target.value)
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_registration_deadline" className="mb-2 block">
+                    Registration Deadline
+                  </Label>
+                  <Input
+                    id="edit_registration_deadline"
+                    type="date"
+                    value={formData.registration_deadline}
+                    max={formData.start_date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, registration_deadline: e.target.value })
                     }
                   />
                 </div>
