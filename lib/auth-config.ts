@@ -6,9 +6,26 @@ import { JWT } from "next-auth/jwt";
 // Admin roles that can access the portal (using actual API role strings)
 const ADMIN_ROLES = ['super_admin', 'mt_admin', 'hr_admin', 'event_admin'];
 
-// Token refresh function
+// Token refresh function with rate limiting
+let refreshInProgress = false;
+let lastRefreshAttempt = 0;
+const REFRESH_COOLDOWN = 30000; // 30 seconds
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
+  const now = Date.now();
+  
+  // Rate limiting: don't attempt refresh if one is in progress or too recent
+  if (refreshInProgress || (now - lastRefreshAttempt) < REFRESH_COOLDOWN) {
+    return {
+      ...token,
+      error: 'RefreshRateLimited',
+    };
+  }
+
   try {
+    refreshInProgress = true;
+    lastRefreshAttempt = now;
+    
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
       method: 'POST',
@@ -18,17 +35,18 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       },
     });
 
-    const refreshedTokens = await response.json();
-
     if (!response.ok) {
-      throw refreshedTokens;
+      throw new Error(`Refresh failed: ${response.status}`);
     }
+
+    const refreshedTokens = await response.json();
 
     return {
       ...token,
       accessToken: refreshedTokens.access_token,
       accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 3600) * 1000,
       refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      error: undefined,
     };
   } catch (error) {
     console.error('Error refreshing access token:', error);
@@ -36,6 +54,8 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       ...token,
       error: 'RefreshAccessTokenError',
     };
+  } finally {
+    refreshInProgress = false;
   }
 }
 
@@ -64,9 +84,9 @@ export const authOptions: NextAuthOptions = {
         
         try {
           // First, check if API is reachable via health endpoint
-          console.log('🏥 Checking API health:', healthUrl);
+          console.warn('🏥 Checking API health:', healthUrl);
           const healthResponse = await fetch(healthUrl);
-          console.log('🏥 Health check result:', {
+          console.warn('🏥 Health check result:', {
             status: healthResponse.status,
             ok: healthResponse.ok,
             statusText: healthResponse.statusText
@@ -74,10 +94,10 @@ export const authOptions: NextAuthOptions = {
           
           if (healthResponse.ok) {
             const healthData = await healthResponse.text();
-            console.log('🏥 Health response:', healthData);
+            console.warn('🏥 Health response:', healthData);
           }
           
-          console.log('🔍 Attempting login with:', {
+          console.warn('🔍 Attempting login with:', {
             apiUrl,
             loginUrl,
             email: credentials.email,
@@ -95,7 +115,7 @@ export const authOptions: NextAuthOptions = {
             }),
           });
           
-          console.log('📡 API Response:', {
+          console.warn('📡 API Response:', {
             status: response.status,
             statusText: response.statusText,
             ok: response.ok
@@ -114,7 +134,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           const data = await response.json();
-          console.log('✅ API login success:', {
+          console.warn('✅ API login success:', {
             userId: data.user_id,
             role: data.role,
             tenantId: data.tenant_id,
@@ -217,8 +237,14 @@ export const authOptions: NextAuthOptions = {
         token.accessTokenExpires = Date.now() + (60 * 60 * 1000); // 1 hour from now
       }
 
-      // Return previous token if the access token has not expired yet
-      if (Date.now() < (token.accessTokenExpires as number)) {
+      // If there's a refresh error, force logout
+      if (token.error === 'RefreshAccessTokenError') {
+        return { ...token, error: 'RefreshAccessTokenError' };
+      }
+
+      // Return previous token if the access token has not expired yet (with 5 min buffer)
+      const bufferTime = 5 * 60 * 1000; // 5 minutes
+      if (Date.now() < ((token.accessTokenExpires as number) - bufferTime)) {
         return token;
       }
 
@@ -226,6 +252,11 @@ export const authOptions: NextAuthOptions = {
       return await refreshAccessToken(token);
     },
     async session({ session, token }) {
+      // If token has error, return null to force logout
+      if (token.error === 'RefreshAccessTokenError') {
+        return null;
+      }
+
       if (token) {
         session.user.id = token.sub!;
         session.user.role = token.role as string;
@@ -260,8 +291,8 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-    updateAge: 24 * 60 * 60, // Update session every 24 hours
+    maxAge: 30 * 60, // 30 minutes
+    updateAge: 5 * 60, // Update session every 5 minutes
   },
   events: {
     async signOut() {

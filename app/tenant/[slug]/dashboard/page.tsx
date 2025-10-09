@@ -111,7 +111,7 @@ export default function TenantDashboardPage() {
           user.tenant_id === tenantSlug
         );
         totalUsers = tenantUsers.length;
-        console.log(`Tenant ${tenantSlug}: Found ${totalUsers} users out of ${users.length} total users`);
+        // Debug: Found users for tenant
       } catch (e: unknown) {
         console.error("Error fetching users:", e);
         totalUsers = 0;
@@ -210,30 +210,58 @@ export default function TenantDashboardPage() {
         // Fetch tenant information
         let foundTenant;
         try {
+          // Try the specific tenant endpoint first
           const tenantResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiClient.getToken()}`,
+                "Content-Type": "application/json",
+              },
+            }
           );
           if (tenantResponse.ok) {
             foundTenant = await tenantResponse.json();
           } else {
-            throw new Error("Tenant not found");
+            // Fallback: try to get from all tenants
+            const allTenantsResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${apiClient.getToken()}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            if (allTenantsResponse.ok) {
+              const allTenants = await allTenantsResponse.json();
+              foundTenant = allTenants.find((t: { slug: string }) => t.slug === tenantSlug);
+            }
+            
+            if (!foundTenant) {
+              throw new Error("Tenant not found");
+            }
           }
         } catch (error) {
           console.error("Error fetching tenant:", error);
-          // Fallback tenant object
-          foundTenant = {
-            id: user?.tenantId || tenantSlug,
-            name: `Organization ${
-              tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1)
-            }`,
-            slug: tenantSlug,
-            contact_email: user?.email || "contact@example.com",
-            admin_email: user?.email || "admin@example.com",
-            is_active: true,
-            domain: null,
-            description: `Dashboard for ${tenantSlug} organization`,
-            created_at: new Date().toISOString(),
-          };
+          // Create fallback tenant object based on user's tenant
+          if (user?.tenantId === tenantSlug) {
+            foundTenant = {
+              id: user?.tenantId || tenantSlug,
+              name: `Organization ${
+                tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1)
+              }`,
+              slug: tenantSlug,
+              contact_email: user?.email || "contact@example.com",
+              admin_email: user?.email || "admin@example.com",
+              is_active: true,
+              domain: null,
+              description: `Dashboard for ${tenantSlug} organization`,
+              created_at: new Date().toISOString(),
+            };
+          } else {
+            throw new Error("Access denied: You don't have permission to view this tenant");
+          }
         }
 
         setTenant(foundTenant);
@@ -297,7 +325,7 @@ export default function TenantDashboardPage() {
       icon: UserPlus,
       path: `/tenant/${tenantSlug}/admin-users`,
       color: "blue",
-      enabled: tenant?.admin_email === user?.email,
+      enabled: tenant?.admin_email === user?.email || user?.role?.toLowerCase() === "super_admin" || user?.tenantId === tenantSlug,
     },
     {
       title: "Manage Events",

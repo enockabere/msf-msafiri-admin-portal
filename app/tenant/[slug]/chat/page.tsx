@@ -43,7 +43,7 @@ export default function ChatManagementPage() {
       const response = await apiClient.request("/chat/rooms/", {
         headers: { 'X-Tenant-ID': tenantSlug }
       });
-      const roomsWithType = (response as any[]).map(room => ({
+      const roomsWithType = (response as ChatRoom[]).map(room => ({
         ...room,
         type: "group" as const
       }));

@@ -154,7 +154,7 @@ export default function TenantAdminRolesPage() {
         variant: "destructive",
       });
     }
-  }, [user?.role, user?.email, apiClient, tenantSlug, fetchRoles]);
+  }, [user?.role, user?.email, apiClient, tenantSlug, fetchRoles, fetchAvailableRoles]);
 
   useEffect(() => {
     if (!authLoading && user?.email) {

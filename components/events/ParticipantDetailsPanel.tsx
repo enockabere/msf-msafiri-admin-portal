@@ -122,7 +122,7 @@ export default function ParticipantDetailsPanel({
   const [voucherSummary, setVoucherSummary] = useState<QRAllocationData | null>(null);
   const [accommodationDetails, setAccommodationDetails] = useState<AccommodationDetails[]>([]);
   const [transportDetails, setTransportDetails] = useState<TransportDetails[]>([]);
-  const [eventDetails, setEventDetails] = useState<Record<string, any> | null>(null);
+  const [eventDetails, setEventDetails] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -164,9 +164,9 @@ export default function ParticipantDetailsPanel({
           `/events?tenant_slug=${tenantSlug}`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
-        const eventResponse = eventData as { data?: any[] } | any[];
+        const eventResponse = eventData as { data?: Record<string, unknown>[] } | Record<string, unknown>[];
         const events = Array.isArray(eventResponse) ? eventResponse : (eventResponse.data || []);
-        const currentEvent = events.find((e: Record<string, any>) => e.id === eventId);
+        const currentEvent = events.find((e: Record<string, unknown>) => e.id === eventId);
         
         // Calculate actual event status based on dates
         if (currentEvent) {
@@ -187,7 +187,7 @@ export default function ParticipantDetailsPanel({
             id: currentEvent.id,
             startDate: currentEvent.start_date,
             endDate: currentEvent.end_date,
-            dbStatus: currentEvent.event_status,
+            dbStatus: (currentEvent as Record<string, unknown>).event_status,
             calculatedStatus,
             now: now.toISOString()
           });
@@ -515,43 +515,43 @@ export default function ParticipantDetailsPanel({
                         <span className="text-gray-600">By:</span>
                         <span className="font-medium truncate">{participantDetails.registered_by}</span>
                       </div>
-                      {(participantDetails as any).country && (
+                      {(participantDetails as Record<string, unknown>).country && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Country:</span>
-                          <span className="font-medium">{(participantDetails as any).country}</span>
+                          <span className="font-medium">{(participantDetails as Record<string, unknown>).country as string}</span>
                         </div>
                       )}
-                      {(participantDetails as any).position && (
+                      {(participantDetails as Record<string, unknown>).position && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Position:</span>
-                          <span className="font-medium truncate">{(participantDetails as any).position}</span>
+                          <span className="font-medium truncate">{(participantDetails as Record<string, unknown>).position as string}</span>
                         </div>
                       )}
-                      {(participantDetails as any).department && (
+                      {(participantDetails as Record<string, unknown>).department && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Department:</span>
-                          <span className="font-medium truncate">{(participantDetails as any).department}</span>
+                          <span className="font-medium truncate">{(participantDetails as Record<string, unknown>).department as string}</span>
                         </div>
                       )}
-                      {(participantDetails as any).gender && (
+                      {(participantDetails as Record<string, unknown>).gender && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Gender:</span>
-                          <span className="font-medium">{(participantDetails as any).gender}</span>
+                          <span className="font-medium">{(participantDetails as Record<string, unknown>).gender as string}</span>
                         </div>
                       )}
-                      {(participantDetails as any).requires_eta && (
+                      {(participantDetails as Record<string, unknown>).requires_eta && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">ETA Required:</span>
                           <Badge className="text-xs px-1 py-0 bg-orange-100 text-orange-800">Yes</Badge>
                         </div>
                       )}
-                      {(participantDetails as any).passport_document && (
+                      {(participantDetails as Record<string, unknown>).passport_document && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Passport:</span>
                           <Badge className="text-xs px-1 py-0 bg-green-100 text-green-800">Uploaded</Badge>
                         </div>
                       )}
-                      {(participantDetails as any).ticket_document && (
+                      {(participantDetails as Record<string, unknown>).ticket_document && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">Ticket:</span>
                           <Badge className="text-xs px-1 py-0 bg-green-100 text-green-800">Uploaded</Badge>
@@ -968,7 +968,7 @@ export default function ParticipantDetailsPanel({
                 tenantSlug={tenantSlug}
                 isOpen={showBadge}
                 onClose={() => setShowBadge(false)}
-                eventDetails={eventDetails ? eventDetails as { id: number; title: string; location: string; start_date: string; end_date: string; } : undefined}
+                eventDetails={eventDetails as { id: number; title: string; location: string; start_date: string; end_date: string } | undefined}
               />
 
               {/* PDF Report Modal */}
@@ -976,10 +976,10 @@ export default function ParticipantDetailsPanel({
                 participantId={participantId}
                 participantName={participantName}
                 participantEmail={participantEmail}
-                eventDetails={eventDetails as any}
+                eventDetails={eventDetails as Record<string, unknown> | null}
                 transportDetails={transportDetails}
                 accommodationDetails={accommodationDetails}
-                voucherSummary={voucherSummary as any}
+                voucherSummary={voucherSummary}
                 isOpen={showPDFReport}
                 onClose={() => setShowPDFReport(false)}
               />

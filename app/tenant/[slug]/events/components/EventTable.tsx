@@ -55,6 +55,7 @@ interface EventTableProps {
   canManageEvents: boolean;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
+  onUnpublish?: (event: Event) => void;
   onViewDetails: (event: Event) => void;
   onRegistrationForm?: (event: Event) => void;
   sortField: keyof Event;
@@ -67,6 +68,7 @@ export function EventTable({
   canManageEvents, 
   onEdit, 
   onDelete, 
+  onUnpublish,
   onViewDetails, 
   onRegistrationForm,
   sortField, 
@@ -270,6 +272,18 @@ export function EventTable({
                           >
                             <Edit className="w-4 h-4" />
                             Edit
+                          </DropdownMenuItem>
+                        )}
+                        {event.status === 'Published' && event.event_status === 'upcoming' && onUnpublish && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUnpublish(event);
+                            }}
+                            className="gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Unpublish
                           </DropdownMenuItem>
                         )}
                         {event.status === 'Draft' && event.event_status !== 'ended' && (

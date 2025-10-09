@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ToastContainer } from "@/components/ui/toast";
 import { NavigationLoader } from "@/components/ui/loading";
 import { Toaster } from "sonner";
+import SessionTimeoutHandler from "@/components/auth/SessionTimeoutHandler";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,7 +35,7 @@ export default function RootLayout({
           <SessionProvider>
             <TenantProvider>
               <SidebarProvider>
-                {/* <SessionTimeoutHandler /> */}
+                <SessionTimeoutHandler />
                 {/* <SessionStatus /> */}
                 <NavigationLoader />
                 {children}

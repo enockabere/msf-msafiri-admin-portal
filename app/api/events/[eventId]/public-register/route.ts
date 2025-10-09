@@ -8,7 +8,8 @@ export async function POST(
     const eventId = params.eventId;
     const formData = await request.json();
     
-    console.log('Public registration for event:', eventId, formData);
+    // Log registration for debugging
+    console.warn('Public registration for event:', eventId, formData);
     
     // This would typically send to your backend API
     // For now, just logging and returning success

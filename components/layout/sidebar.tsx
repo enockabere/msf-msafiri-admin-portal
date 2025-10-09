@@ -231,8 +231,8 @@ export default function Sidebar({
           const currentTenantSlug = window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1];
           if (currentTenantSlug && user.email) {
             try {
-              const tenants = await apiClient.getTenants();
-              const currentTenant = tenants.find(t => t.slug === currentTenantSlug);
+              // Try to get the specific tenant by slug instead of all tenants
+              const currentTenant = await apiClient.request(`/tenants/slug/${currentTenantSlug}`);
               setIsTenantAdmin(currentTenant?.admin_email === user.email);
             } catch (error) {
               console.error('Error checking tenant admin status:', error);

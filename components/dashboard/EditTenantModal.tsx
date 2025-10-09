@@ -16,6 +16,7 @@ import { Loader2 } from "lucide-react";
 import { useAuthenticatedApi } from "@/lib/auth";
 import { Tenant } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { CountrySelect } from "@/components/ui/country-select";
 
 interface EditTenantModalProps {
   tenant: Tenant | null;
@@ -33,6 +34,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
     admin_email: "",
     domain: "",
     description: "",
+    country: "",
   });
   const [reason, setReason] = useState("");
 
@@ -44,6 +46,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
         admin_email: tenant.admin_email || "",
         domain: tenant.domain || "",
         description: tenant.description || "",
+        country: tenant.country || "",
       });
     }
   }, [tenant]);
@@ -111,6 +114,14 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
             <p className="text-xs text-gray-500 mt-1">
               Only this email address will have access to the tenant dashboard
             </p>
+          </div>
+          <div className="space-y-3">
+            <Label htmlFor="country">Country</Label>
+            <CountrySelect
+              value={formData.country}
+              onChange={(value) => setFormData({ ...formData, country: value })}
+              placeholder="Select country"
+            />
           </div>
           <div className="space-y-3">
             <Label htmlFor="domain">Domain</Label>

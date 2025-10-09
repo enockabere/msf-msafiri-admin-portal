@@ -22,6 +22,7 @@ import {
   UserCheck,
   FileText,
 } from "lucide-react";
+import { LazyImage } from "@/components/ui/lazy-image";
 
 interface Event {
   id: number;
@@ -56,11 +57,12 @@ interface EventCardProps {
   canManageEvents: boolean;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
+  onUnpublish?: (event: Event) => void;
   onViewDetails: (event: Event) => void;
   onRegistrationForm?: (event: Event) => void;
 }
 
-export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDetails, onRegistrationForm }: EventCardProps) {
+export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublish, onViewDetails, onRegistrationForm }: EventCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return 'from-blue-50 to-blue-100';
@@ -166,6 +168,18 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDeta
                       Edit
                     </DropdownMenuItem>
                   )}
+                  {event.status === 'Published' && event.event_status === 'upcoming' && onUnpublish && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnpublish(event);
+                      }}
+                      className="text-orange-600 hover:bg-orange-50 focus:bg-orange-50"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Unpublish
+                    </DropdownMenuItem>
+                  )}
                   {event.status === 'Draft' && event.event_status !== 'ended' && (
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -182,6 +196,21 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onViewDeta
               </DropdownMenu>
             )}
           </div>
+
+          {event.banner_image && event.banner_image.trim() && (
+            <div className="mb-3">
+              <LazyImage
+                src={event.banner_image}
+                alt={`${event.title} banner`}
+                className="w-full h-32 rounded-lg border"
+                placeholder={
+                  <div className="flex items-center justify-center h-full text-xs text-gray-400">
+                    Loading...
+                  </div>
+                }
+              />
+            </div>
+          )}
 
           <div className="flex-1 space-y-2 sm:space-y-3">
             <div className="text-sm sm:text-base text-gray-600">

@@ -31,6 +31,7 @@ export interface Tenant {
   contact_email: string;
   admin_email: string;
   description?: string;
+  country?: string;
   created_at: string;
   updated_at?: string;
   last_modified_by?: string;
@@ -146,6 +147,7 @@ export interface TenantCreateRequest {
   admin_email: string;
   domain?: string;
   description?: string;
+  country?: string;
 }
 
 export interface NotificationCreateRequest {

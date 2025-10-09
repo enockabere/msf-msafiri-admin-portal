@@ -15,7 +15,7 @@ export default withAuth(
         // Debug logging removed for production
 
         // Public routes that don't require authentication
-        if (pathname === "/" || pathname === "/login") {
+        if (pathname === "/" || pathname === "/login" || pathname.startsWith("/public")) {
           return true;
         }
 

@@ -4,11 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LocationSelect } from "@/components/ui/location-select";
+import { CountrySelect } from "@/components/ui/country-select";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +60,7 @@ interface Event {
   duration_days?: number;
   perdiem_rate?: number;
   perdiem_currency?: string;
+  registration_deadline?: string;
   tenant_id?: number;
   created_by: string;
   created_at?: string;
@@ -82,6 +91,7 @@ export default function TenantEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
+  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -93,7 +103,7 @@ export default function TenantEventsPage() {
   const eventsPerPage = 8;
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof Event>('start_date');
+  const [sortField, setSortField] = useState<string>('start_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [formData, setFormData] = useState({
     title: "",
@@ -103,7 +113,6 @@ export default function TenantEventsPage() {
     start_date: "",
     end_date: "",
     location: "",
-    address: "",
     country: "",
     latitude: "",
     longitude: "",
@@ -198,12 +207,14 @@ export default function TenantEventsPage() {
       }
       setUserRoles([...new Set(roleNames)]);
 
-      // Check if user is tenant admin (owner)
+      // Check if user is tenant admin (owner) and get tenant data
       try {
-        const tenantData = await apiClient.request<{ admin_email: string }>(`/tenants/slug/${tenantSlug}`);
-        setIsTenantAdmin(tenantData.admin_email === user.email);
+        const tenant = await apiClient.request<{ admin_email: string; country?: string }>(`/tenants/slug/${tenantSlug}`);
+        setIsTenantAdmin(tenant.admin_email === user.email);
+        setTenantData({ country: tenant.country });
       } catch {
         setIsTenantAdmin(false);
+        setTenantData(null);
       }
 
       await fetchEvents();
@@ -252,7 +263,7 @@ export default function TenantEventsPage() {
   };
 
   const handleDateChange = (
-    field: "start_date" | "end_date",
+    field: "start_date" | "end_date" | "registration_deadline",
     value: string
   ) => {
     const newFormData = { ...formData, [field]: value };
@@ -261,6 +272,10 @@ export default function TenantEventsPage() {
         newFormData.start_date,
         newFormData.end_date
       );
+      // Reset registration deadline if it's past the new start date
+      if (field === "start_date" && newFormData.registration_deadline && new Date(newFormData.registration_deadline) > new Date(value)) {
+        newFormData.registration_deadline = "";
+      }
     }
     setFormData(newFormData);
   };
@@ -271,11 +286,12 @@ export default function TenantEventsPage() {
       !formData.event_type.trim() ||
       !formData.start_date ||
       !formData.end_date ||
-      !formData.country.trim()
+      !formData.country.trim() ||
+      !formData.location.trim()
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, country, start date, and end date are required",
+        description: "Title, event type, country, location, start date, and end date are required",
         variant: "destructive",
       });
       return;
@@ -286,6 +302,7 @@ export default function TenantEventsPage() {
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(formData.start_date);
     const endDate = new Date(formData.end_date);
+    const registrationDeadline = formData.registration_deadline ? new Date(formData.registration_deadline) : null;
 
     if (startDate < today) {
       toast({
@@ -305,6 +322,15 @@ export default function TenantEventsPage() {
       return;
     }
 
+    if (registrationDeadline && registrationDeadline > startDate) {
+      toast({
+        title: "Error",
+        description: "Registration deadline cannot be after the event start date",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const eventData = {
@@ -312,8 +338,15 @@ export default function TenantEventsPage() {
         duration_days: formData.duration_days
           ? parseInt(formData.duration_days)
           : null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        perdiem_rate: formData.perdiem_rate
+          ? parseFloat(formData.perdiem_rate)
+          : null,
+        latitude: formData.latitude && formData.latitude.trim() 
+          ? parseFloat(formData.latitude) 
+          : null,
+        longitude: formData.longitude && formData.longitude.trim() 
+          ? parseFloat(formData.longitude) 
+          : null,
       };
 
       const newEvent = await apiClient.request<Event>(
@@ -333,8 +366,7 @@ export default function TenantEventsPage() {
         start_date: "",
         end_date: "",
         location: "",
-        address: "",
-        country: "",
+        country: tenantData?.country || "",
         latitude: "",
         longitude: "",
         banner_image: "",
@@ -372,11 +404,12 @@ export default function TenantEventsPage() {
       !selectedEvent ||
       !formData.title.trim() ||
       !formData.event_type.trim() ||
-      !formData.country.trim()
+      !formData.country.trim() ||
+      !formData.location.trim()
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, and country are required",
+        description: "Title, event type, country, and location are required",
         variant: "destructive",
       });
       return;
@@ -413,8 +446,15 @@ export default function TenantEventsPage() {
         duration_days: formData.duration_days
           ? parseInt(formData.duration_days)
           : null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        perdiem_rate: formData.perdiem_rate
+          ? parseFloat(formData.perdiem_rate)
+          : null,
+        latitude: formData.latitude && formData.latitude.trim() 
+          ? parseFloat(formData.latitude) 
+          : null,
+        longitude: formData.longitude && formData.longitude.trim() 
+          ? parseFloat(formData.longitude) 
+          : null,
       };
 
       await apiClient.request(
@@ -437,6 +477,50 @@ export default function TenantEventsPage() {
       console.error("Update event error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update event";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnpublishEvent = async (event: Event) => {
+    const { default: Swal } = await import("sweetalert2");
+
+    const result = await Swal.fire({
+      title: "Unpublish Event?",
+      text: `This will change "${event.title}" status back to Draft so you can delete it.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#f59e0b",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, unpublish it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setSubmitting(true);
+
+      await apiClient.request(`/events/${event.id}?tenant=${tenantSlug}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...event, status: "Draft" }),
+      });
+
+      await fetchEvents();
+
+      toast({
+        title: "Success",
+        description: "Event unpublished successfully",
+      });
+    } catch (error) {
+      console.error("Unpublish event error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to unpublish event";
       toast({
         title: "Error",
         description: errorMessage,
@@ -501,8 +585,7 @@ export default function TenantEventsPage() {
       start_date: event.start_date,
       end_date: event.end_date,
       location: event.location || "",
-      address: event.address || "",
-      country: event.country || "",
+      country: event.country || tenantData?.country || "",
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
       banner_image: event.banner_image || "",
@@ -530,8 +613,7 @@ export default function TenantEventsPage() {
       start_date: "",
       end_date: "",
       location: "",
-      address: "",
-      country: "",
+      country: tenantData?.country || "",
       latitude: "",
       longitude: "",
       banner_image: "",
@@ -739,7 +821,7 @@ export default function TenantEventsPage() {
           {filteredEvents.length > 0 ? (
             <>
               {viewMode === 'card' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
                   {paginatedEvents.map((event) => (
                     <EventCard 
                       key={event.id} 
@@ -747,6 +829,7 @@ export default function TenantEventsPage() {
                       canManageEvents={canManageEvents()} 
                       onEdit={(e) => openEditModal(e)} 
                       onDelete={(e) => handleDeleteEvent(e)} 
+                      onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
                       onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
                       onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
                     />
@@ -758,6 +841,7 @@ export default function TenantEventsPage() {
                   canManageEvents={canManageEvents()}
                   onEdit={(e) => openEditModal(e)}
                   onDelete={(e) => handleDeleteEvent(e)}
+                  onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
                   onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
                   onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
                   sortField={sortField}
@@ -824,45 +908,20 @@ export default function TenantEventsPage() {
             </div>
           )}
 
-          {events.length === 0 && (
-            <div className="col-span-full">
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Calendar className="w-12 h-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    No events found
-                  </h3>
-                  <p className="text-gray-600 text-center mb-4">
-                    {canManageEvents()
-                      ? "Get started by creating your first event"
-                      : "No events have been created yet"}
-                  </p>
-                  {canManageEvents() && (
-                    <Button
-                      onClick={() => setShowCreateModal(true)}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Event
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
+
         </div>
 
         <Dialog open={showCreateModal} onOpenChange={closeModals}>
-          <DialogContent className="max-w-2xl bg-white border shadow-lg">
+          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-y-auto bg-white border shadow-lg">
             <DialogHeader>
               <DialogTitle>Create New Event</DialogTitle>
               <DialogDescription>
                 Fill in the details below to create a new event for your organization.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+            <div className="grid gap-4 py-2">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
                   <Label htmlFor="title" className="mb-2 block">
                     Event Title *
                   </Label>
@@ -879,16 +938,28 @@ export default function TenantEventsPage() {
                   <Label htmlFor="event_type" className="mb-2 block">
                     Event Type *
                   </Label>
-                  <Input
-                    id="event_type"
+                  <Select
                     value={formData.event_type}
-                    onChange={(e) =>
-                      setFormData({ ...formData, event_type: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, event_type: value })
                     }
-                    placeholder="Conference, Workshop, Training, etc."
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Conference">Conference</SelectItem>
+                      <SelectItem value="Workshop">Workshop</SelectItem>
+                      <SelectItem value="Training">Training</SelectItem>
+                      <SelectItem value="Meeting">Meeting</SelectItem>
+                      <SelectItem value="Seminar">Seminar</SelectItem>
+                      <SelectItem value="Webinar">Webinar</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+              
               <div>
                 <Label htmlFor="description" className="mb-2 block">
                   Description
@@ -900,9 +971,23 @@ export default function TenantEventsPage() {
                     setFormData({ ...formData, description: e.target.value })
                   }
                   placeholder="Enter event description"
+                  rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div>
+                <Label htmlFor="country" className="mb-2 block">
+                  Country *
+                </Label>
+                <CountrySelect
+                  value={formData.country || tenantData?.country || ""}
+                  onChange={(value) =>
+                    setFormData({ ...formData, country: value })
+                  }
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <Label htmlFor="start_date" className="mb-2 block">
                     Start Date *
@@ -931,8 +1016,6 @@ export default function TenantEventsPage() {
                     }
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="registration_deadline" className="mb-2 block">
                     Registration Deadline
@@ -961,47 +1044,25 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="location" className="mb-2 block">
-                    Location
-                  </Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                    placeholder="Venue name or city"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="address" className="mb-2 block">
-                    Address
-                  </Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    placeholder="Street address"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="country" className="mb-2 block">
-                    Country *
-                  </Label>
-                  <Input
-                    id="country"
-                    value={formData.country}
-                    onChange={(e) =>
-                      setFormData({ ...formData, country: e.target.value })
-                    }
-                    placeholder="Event country"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="location" className="mb-2 block">
+                  Location *
+                </Label>
+                <LocationSelect
+                  value={formData.location}
+                  country={formData.country}
+                  onChange={(value, placeDetails) => {
+                    setFormData({ 
+                      ...formData, 
+                      location: value,
+                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                    });
+                  }}
+                  placeholder="Search for venue or city"
+                />
               </div>
+              
               <div>
                 <Label htmlFor="banner_image" className="mb-2 block">
                   Banner Image URL
@@ -1014,6 +1075,68 @@ export default function TenantEventsPage() {
                   }
                   placeholder="https://example.com/banner.jpg"
                 />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="perdiem_rate" className="mb-2 block">
+                    Per Diem Rate
+                  </Label>
+                  <Input
+                    id="perdiem_rate"
+                    type="number"
+                    value={formData.perdiem_rate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, perdiem_rate: e.target.value })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="perdiem_currency" className="mb-2 block">
+                    Currency
+                  </Label>
+                  <Select
+                    value={formData.perdiem_currency}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, perdiem_currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="CHF">CHF</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="status" className="mb-2 block">
+                    Status
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Published">Published</SelectItem>
+                      <SelectItem value="Ongoing">Ongoing</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <DialogFooter className="gap-3">
@@ -1043,16 +1166,16 @@ export default function TenantEventsPage() {
         </Dialog>
 
         <Dialog open={showEditModal} onOpenChange={closeModals}>
-          <DialogContent className="max-w-2xl bg-white border shadow-lg">
+          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-y-auto bg-white border shadow-lg">
             <DialogHeader>
               <DialogTitle>Edit Event</DialogTitle>
               <DialogDescription>
                 Update the event details below to modify the existing event.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+            <div className="grid gap-4 py-2">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2">
                   <Label htmlFor="edit_title" className="mb-2 block">
                     Event Title *
                   </Label>
@@ -1069,16 +1192,28 @@ export default function TenantEventsPage() {
                   <Label htmlFor="edit_event_type" className="mb-2 block">
                     Event Type *
                   </Label>
-                  <Input
-                    id="edit_event_type"
+                  <Select
                     value={formData.event_type}
-                    onChange={(e) =>
-                      setFormData({ ...formData, event_type: e.target.value })
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, event_type: value })
                     }
-                    placeholder="Conference, Workshop, Training, etc."
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Conference">Conference</SelectItem>
+                      <SelectItem value="Workshop">Workshop</SelectItem>
+                      <SelectItem value="Training">Training</SelectItem>
+                      <SelectItem value="Meeting">Meeting</SelectItem>
+                      <SelectItem value="Seminar">Seminar</SelectItem>
+                      <SelectItem value="Webinar">Webinar</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+              
               <div>
                 <Label htmlFor="edit_description" className="mb-2 block">
                   Description
@@ -1090,9 +1225,23 @@ export default function TenantEventsPage() {
                     setFormData({ ...formData, description: e.target.value })
                   }
                   placeholder="Enter event description"
+                  rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div>
+                <Label htmlFor="edit_country" className="mb-2 block">
+                  Country *
+                </Label>
+                <CountrySelect
+                  value={formData.country || tenantData?.country || ""}
+                  onChange={(value) =>
+                    setFormData({ ...formData, country: value })
+                  }
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 gap-4">
                 <div>
                   <Label htmlFor="edit_start_date" className="mb-2 block">
                     Start Date *
@@ -1121,8 +1270,6 @@ export default function TenantEventsPage() {
                     }
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit_registration_deadline" className="mb-2 block">
                     Registration Deadline
@@ -1151,47 +1298,25 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="edit_location" className="mb-2 block">
-                    Location
-                  </Label>
-                  <Input
-                    id="edit_location"
-                    value={formData.location}
-                    onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
-                    }
-                    placeholder="Venue name or city"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_address" className="mb-2 block">
-                    Address
-                  </Label>
-                  <Input
-                    id="edit_address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    placeholder="Street address"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_country" className="mb-2 block">
-                    Country *
-                  </Label>
-                  <Input
-                    id="edit_country"
-                    value={formData.country}
-                    onChange={(e) =>
-                      setFormData({ ...formData, country: e.target.value })
-                    }
-                    placeholder="Event country"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="edit_location" className="mb-2 block">
+                  Location *
+                </Label>
+                <LocationSelect
+                  value={formData.location}
+                  country={formData.country}
+                  onChange={(value, placeDetails) => {
+                    setFormData({ 
+                      ...formData, 
+                      location: value,
+                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || formData.latitude,
+                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || formData.longitude
+                    });
+                  }}
+                  placeholder="Search for venue or city"
+                />
               </div>
+              
               <div>
                 <Label htmlFor="edit_banner_image" className="mb-2 block">
                   Banner Image URL
@@ -1204,6 +1329,68 @@ export default function TenantEventsPage() {
                   }
                   placeholder="https://example.com/banner.jpg"
                 />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="edit_perdiem_rate" className="mb-2 block">
+                    Per Diem Rate
+                  </Label>
+                  <Input
+                    id="edit_perdiem_rate"
+                    type="number"
+                    value={formData.perdiem_rate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, perdiem_rate: e.target.value })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_perdiem_currency" className="mb-2 block">
+                    Currency
+                  </Label>
+                  <Select
+                    value={formData.perdiem_currency}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, perdiem_currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="CHF">CHF</SelectItem>
+                      <SelectItem value="CAD">CAD</SelectItem>
+                      <SelectItem value="AUD">AUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit_status" className="mb-2 block">
+                    Status
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Published">Published</SelectItem>
+                      <SelectItem value="Ongoing">Ongoing</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <DialogFooter className="gap-3">

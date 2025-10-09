@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Building2 } from "lucide-react";
 import apiClient, { TenantCreateRequest } from "@/lib/api";
+import { CountrySelect } from "@/components/ui/country-select";
 
 interface AddTenantModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function AddTenantModal({
     admin_email: "",
     domain: "",
     description: "",
+    country: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -88,6 +90,10 @@ export function AddTenantModal({
       newErrors.admin_email = "Please enter a valid email address";
     }
 
+    if (!formData.country?.trim()) {
+      newErrors.country = "Country is required";
+    }
+
     if (
       formData.domain &&
       !/^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(
@@ -124,6 +130,7 @@ export function AddTenantModal({
         admin_email: "",
         domain: "",
         description: "",
+        country: "",
       });
       setErrors({});
 
@@ -180,6 +187,7 @@ export function AddTenantModal({
         admin_email: "",
         domain: "",
         description: "",
+        country: "",
       });
       setErrors({});
       onClose();
@@ -303,24 +311,41 @@ export function AddTenantModal({
 
           </div>
 
-          {/* Domain */}
-          <div className="space-y-3">
-            <Label htmlFor="domain" className="text-gray-700">
-              Domain (Optional)
-            </Label>
-            <Input
-              id="domain"
-              placeholder="e.g., msf-kenya.org"
-              value={formData.domain}
-              onChange={(e) => handleInputChange("domain", e.target.value)}
-              className={`bg-white border-gray-300 ${
-                errors.domain ? "border-red-300" : ""
-              }`}
-              disabled={isSubmitting}
-            />
-            {errors.domain && (
-              <p className="text-sm text-red-600">{errors.domain}</p>
-            )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Country */}
+            <div className="space-y-3">
+              <Label htmlFor="country" className="text-gray-700">
+                Country *
+              </Label>
+              <CountrySelect
+                value={formData.country || ""}
+                onChange={(value) => handleInputChange("country", value)}
+                placeholder="Select country"
+              />
+              {errors.country && (
+                <p className="text-sm text-red-600">{errors.country}</p>
+              )}
+            </div>
+
+            {/* Domain */}
+            <div className="space-y-3">
+              <Label htmlFor="domain" className="text-gray-700">
+                Domain (Optional)
+              </Label>
+              <Input
+                id="domain"
+                placeholder="e.g., msf-kenya.org"
+                value={formData.domain}
+                onChange={(e) => handleInputChange("domain", e.target.value)}
+                className={`bg-white border-gray-300 ${
+                  errors.domain ? "border-red-300" : ""
+                }`}
+                disabled={isSubmitting}
+              />
+              {errors.domain && (
+                <p className="text-sm text-red-600">{errors.domain}</p>
+              )}
+            </div>
           </div>
 
           {/* Description */}

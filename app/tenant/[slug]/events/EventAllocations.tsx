@@ -205,16 +205,14 @@ export default function EventAllocations({
     try {
       const token =
         localStorage.getItem("token") || sessionStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Tenant-ID": tenantSlug,
-          },
-        }
-      );
-
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory/?tenant=${tenantSlug}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         setInventoryItems(data);
@@ -570,12 +568,18 @@ export default function EventAllocations({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="items" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger 
+            value="items" 
+            className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 data-[state=active]:border-red-200 transition-all duration-200"
+          >
             <Package className="h-4 w-4" />
             Items ({itemAllocations.length})
           </TabsTrigger>
-          <TabsTrigger value="vouchers" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="vouchers" 
+            className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-red-600 data-[state=active]:border-red-200 transition-all duration-200"
+          >
             <Wine className="h-4 w-4" />
             Vouchers ({voucherAllocations.length})
           </TabsTrigger>
@@ -642,8 +646,8 @@ export default function EventAllocations({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {itemAllocations.map((allocation) => (
-                      <TableRow key={allocation.id}>
+                    {itemAllocations.map((allocation, index) => (
+                      <TableRow key={`table-allocation-${allocation.id}-${index}`}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {getCategoryIcon(
@@ -720,9 +724,9 @@ export default function EventAllocations({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {itemAllocations.map((allocation) => (
+                {itemAllocations.map((allocation, index) => (
                   <div
-                    key={allocation.id}
+                    key={`card-allocation-${allocation.id}-${index}`}
                     className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -884,8 +888,8 @@ export default function EventAllocations({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {voucherAllocations.map((allocation) => (
-                    <TableRow key={allocation.id}>
+                  {voucherAllocations.map((allocation, index) => (
+                    <TableRow key={`voucher-allocation-${allocation.id}-${index}`}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Wine className="h-5 w-5 text-purple-600" />
@@ -968,11 +972,11 @@ export default function EventAllocations({
 
       {/* Item Request Form Dialog */}
       <Dialog open={showItemForm} onOpenChange={setShowItemForm}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Request Items</DialogTitle>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-50">
+          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
+            <DialogTitle className="text-xl font-semibold text-gray-900">Request Items</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-1">
             <div>
               <label className="block text-sm font-medium mb-2">
                 Category *
@@ -1031,7 +1035,7 @@ export default function EventAllocations({
 
               {itemFormData.items.map((item, index) => (
                 <div
-                  key={index}
+                  key={`item-form-${index}`}
                   className="grid grid-cols-2 gap-4 p-3 border rounded-md mb-2"
                 >
                   <Select
@@ -1052,7 +1056,7 @@ export default function EventAllocations({
                         )
                         .map((invItem) => (
                           <SelectItem
-                            key={invItem.id}
+                            key={`inv-${invItem.id}-${index}`}
                             value={invItem.id.toString()}
                           >
                             {invItem.name} ({invItem.quantity} available)
@@ -1103,11 +1107,19 @@ export default function EventAllocations({
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowItemForm(false)}>
+          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowItemForm(false)}
+              className="border-gray-300 hover:bg-gray-50"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmitItemAllocation} disabled={loading}>
+            <Button 
+              onClick={handleSubmitItemAllocation} 
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               {loading ? "Sending..." : "Send Request"}
             </Button>
           </DialogFooter>
@@ -1116,11 +1128,11 @@ export default function EventAllocations({
 
       {/* Voucher Form Dialog */}
       <Dialog open={showVoucherForm} onOpenChange={setShowVoucherForm}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Voucher Allocation</DialogTitle>
+        <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
+          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
+            <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Allocation</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-1">
             <div>
               <label className="block text-sm font-medium mb-2">
                 Vouchers per Participant *
@@ -1152,11 +1164,19 @@ export default function EventAllocations({
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowVoucherForm(false)}>
+          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowVoucherForm(false)}
+              className="border-gray-300 hover:bg-gray-50"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSubmitVoucherAllocation} disabled={loading}>
+            <Button 
+              onClick={handleSubmitVoucherAllocation} 
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               {loading ? "Creating..." : "Create Allocation"}
             </Button>
           </DialogFooter>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -10,9 +10,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Share2, Eye, Mail, Copy, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Loader2,
+  Calendar,
+  MapPin,
+  Share2,
+  Eye,
+  Mail,
+  Copy,
+  Clock,
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  AlertCircle,
+  X,
+} from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
+import { Progress } from "@/components/ui/progress";
 
 interface Event {
   id: number;
@@ -56,15 +77,18 @@ interface FormData {
 
 export default function EventRegistrationFormPage() {
   const params = useParams();
-  const router = useRouter();
   const { apiClient } = useAuthenticatedApi();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [ccEmails, setCcEmails] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -96,12 +120,67 @@ export default function EventRegistrationFormPage() {
   const tenantSlug = params.slug as string;
   const eventId = params.eventId as string;
 
+  const steps = [
+    {
+      number: 1,
+      title: "Personal Info",
+      fields: [
+        "firstName",
+        "lastName",
+        "oc",
+        "contractStatus",
+        "contractType",
+        "genderIdentity",
+        "sex",
+        "pronouns",
+        "currentPosition",
+        "countryOfWork",
+        "projectOfWork",
+      ],
+    },
+    {
+      number: 2,
+      title: "Contact Details",
+      fields: [
+        "personalEmail",
+        "msfEmail",
+        "hrcoEmail",
+        "careerManagerEmail",
+        "lineManagerEmail",
+        "phoneNumber",
+      ],
+    },
+    {
+      number: 3,
+      title: "Travel & Accommodation",
+      fields: [
+        "travellingInternationally",
+        "accommodationType",
+        "dietaryRequirements",
+        "accommodationNeeds",
+        "dailyMeals",
+      ],
+    },
+    {
+      number: 4,
+      title: "Final Details",
+      fields: [
+        "certificateName",
+        "codeOfConductConfirm",
+        "travelRequirementsConfirm",
+      ],
+    },
+  ];
+
   const fetchEvent = useCallback(async () => {
     try {
-      const eventData = await apiClient.request<Event>(`/events/${eventId}`, {
-        headers: { "X-Tenant-ID": tenantSlug },
-      });
+      const eventData = await apiClient.request<Event>(`/events/${eventId}?tenant=${tenantSlug}`);
       setEvent(eventData);
+      setEmailSubject(`Registration: ${eventData.title}`);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+      setEmailBody(
+        `Please register for ${eventData.title} using this link: ${baseUrl}/public/event-registration/${eventId}`
+      );
     } catch (error) {
       console.error("Error fetching event:", error);
       toast({
@@ -116,6 +195,22 @@ export default function EventRegistrationFormPage() {
 
   useEffect(() => {
     fetchEvent();
+    
+    // Clear form data on page unload for privacy
+    const handleBeforeUnload = () => {
+      setFormData({
+        firstName: "", lastName: "", oc: "", contractStatus: "", contractType: "",
+        genderIdentity: "", sex: "", pronouns: "", currentPosition: "", countryOfWork: "",
+        projectOfWork: "", personalEmail: "", msfEmail: "", hrcoEmail: "",
+        careerManagerEmail: "", lineManagerEmail: "", phoneNumber: "",
+        travellingInternationally: "", accommodationType: "", dietaryRequirements: "",
+        accommodationNeeds: "", dailyMeals: [], certificateName: "",
+        codeOfConductConfirm: "", travelRequirementsConfirm: ""
+      });
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [fetchEvent]);
 
   const handleInputChange = (
@@ -132,6 +227,49 @@ export default function EventRegistrationFormPage() {
         ? [...prev.dailyMeals, meal]
         : prev.dailyMeals.filter((m) => m !== meal),
     }));
+  };
+
+  const getStepRequiredFields = (stepNum: number) => {
+    const required = [
+      "firstName",
+      "lastName",
+      "oc",
+      "contractStatus",
+      "contractType",
+      "genderIdentity",
+      "sex",
+      "pronouns",
+      "currentPosition",
+      "personalEmail",
+      "phoneNumber",
+      "travellingInternationally",
+      "accommodationType",
+      "codeOfConductConfirm",
+      "travelRequirementsConfirm",
+    ];
+
+    const stepFields = steps.find((s) => s.number === stepNum)?.fields || [];
+    return stepFields.filter((field) => required.includes(field));
+  };
+
+  const isStepValid = (stepNum: number) => {
+    const requiredFields = getStepRequiredFields(stepNum);
+
+    for (const field of requiredFields) {
+      if (!formData[field as keyof FormData]) {
+        return false;
+      }
+    }
+
+    if (
+      stepNum === 3 &&
+      formData.accommodationType === "Travelling daily" &&
+      formData.dailyMeals.length === 0
+    ) {
+      return false;
+    }
+
+    return true;
   };
 
   const validateForm = () => {
@@ -153,7 +291,6 @@ export default function EventRegistrationFormPage() {
       "travelRequirementsConfirm",
     ];
 
-    // Additional validation for daily meals if travelling daily
     if (
       formData.accommodationType === "Travelling daily" &&
       formData.dailyMeals.length === 0
@@ -182,6 +319,19 @@ export default function EventRegistrationFormPage() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    // Check registration deadline before submitting
+    if (
+      event?.registration_deadline &&
+      new Date() > new Date(event.registration_deadline)
+    ) {
+      toast({
+        title: "Registration Closed",
+        description: "The registration deadline has passed.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       await apiClient.request(`/events/${eventId}/public-register`, {
@@ -199,34 +349,8 @@ export default function EventRegistrationFormPage() {
           "Thank you for registering! You will be contacted with further details.",
       });
 
-      // Reset form
-      setFormData({
-        firstName: "",
-        lastName: "",
-        oc: "",
-        contractStatus: "",
-        contractType: "",
-        genderIdentity: "",
-        sex: "",
-        pronouns: "",
-        currentPosition: "",
-        countryOfWork: "",
-        projectOfWork: "",
-        personalEmail: "",
-        msfEmail: "",
-        hrcoEmail: "",
-        careerManagerEmail: "",
-        lineManagerEmail: "",
-        phoneNumber: "",
-        travellingInternationally: "",
-        accommodationType: "",
-        dietaryRequirements: "",
-        accommodationNeeds: "",
-        dailyMeals: [],
-        certificateName: "",
-        codeOfConductConfirm: "",
-        travelRequirementsConfirm: "",
-      });
+      // Clear form data for privacy - redirect to prevent back button access
+      window.location.href = `/tenant/${tenantSlug}/events/${eventId}/participants`;
     } catch (error) {
       console.error("Registration error:", error);
       toast({
@@ -239,6 +363,24 @@ export default function EventRegistrationFormPage() {
     }
   };
 
+  const nextStep = () => {
+    if (isStepValid(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      toast({
+        title: "Required Fields Missing",
+        description: "Please complete all required fields before proceeding",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   if (loading) {
     return <LoadingScreen message="Loading event details..." />;
   }
@@ -247,7 +389,8 @@ export default function EventRegistrationFormPage() {
     return (
       <ProtectedRoute>
         <DashboardLayout>
-          <div className="text-center">
+          <div className="text-center py-12">
+            <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Event Not Found
             </h1>
@@ -260,7 +403,9 @@ export default function EventRegistrationFormPage() {
     );
   }
 
-  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/event-registration/${eventId}`;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  const publicUrl = `${baseUrl}/public/event-registration/${eventId}`;
+  const progress = ((currentStep - 1) / (steps.length - 1)) * 100;
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(publicUrl);
@@ -270,36 +415,109 @@ export default function EventRegistrationFormPage() {
     });
   };
 
-  const handleEmailShare = () => {
+  const handleEmailShare = async () => {
     const subject = emailSubject || `Registration: ${event?.title}`;
-    const body = emailBody || `Please register for ${event?.title} using this link: ${publicUrl}`;
-    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoUrl);
+    const body =
+      emailBody ||
+      `Please register for ${event?.title} using this link: ${publicUrl}`;
+    
+    if (!recipientEmail) {
+      toast({
+        title: "Email Required",
+        description: "Please enter a recipient email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setSendingEmail(true);
+      // Send email via API
+      await apiClient.request('/notifications/send-registration-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          to_email: recipientEmail,
+          cc_emails: ccEmails ? ccEmails.split(',').map(email => email.trim()) : [],
+          subject,
+          message: body,
+          registration_url: publicUrl,
+          event_id: eventId
+        })
+      });
+      
+      toast({
+        title: "Email Sent",
+        description: `Registration link sent to ${recipientEmail}${ccEmails ? ` and ${ccEmails.split(',').length} CC recipient(s)` : ''}`
+      });
+    } catch {
+      // Fallback to mailto
+      const ccParam = ccEmails ? `&cc=${encodeURIComponent(ccEmails)}` : '';
+      const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(
+        subject
+      )}&body=${encodeURIComponent(body)}${ccParam}`;
+      window.open(mailtoUrl);
+      
+      toast({
+        title: "Email Client Opened",
+        description: "Please send the email from your email client."
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+    
     setShowShareModal(false);
   };
 
   const handlePreview = () => {
-    window.open(publicUrl, '_blank');
+    window.open(publicUrl, "_blank");
   };
 
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <div className="w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="w-full max-w-none mx-auto px-1 sm:px-2 lg:px-4 xl:px-6 py-6 space-y-6">
           {/* Event Header */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <CardTitle className="text-xl sm:text-2xl text-center sm:text-left">
-                  {event.registration_form_title ||
-                    `${event.title} - Registration Form`}
-                </CardTitle>
-                <div className="flex gap-2 self-center sm:self-auto">
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-indigo-50">
+            <CardHeader className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">MSF</span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700">
+                        Médecins Sans Frontières
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Registration Portal
+                      </p>
+                    </div>
+                  </div>
+                  <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                    {event.registration_form_title ||
+                      `${event.title} - Registration`}
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Complete the registration form below. Takes approximately 8
+                    minutes.
+                  </p>
+                </div>
+                <div className="flex gap-2 self-start">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.location.href = `/tenant/${tenantSlug}/events`}
+                    className="flex items-center gap-2 bg-white"
+                  >
+                    <X className="w-4 h-4" />
+                    Close
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handlePreview}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-white"
                   >
                     <Eye className="w-4 h-4" />
                     Preview
@@ -308,604 +526,797 @@ export default function EventRegistrationFormPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowShareModal(true)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-white"
                   >
                     <Share2 className="w-4 h-4" />
                     Share
                   </Button>
                 </div>
               </div>
-              <div className="text-center sm:text-left text-gray-600 space-y-2">
-                <p className="text-sm">
-                  The survey will take approximately 8 minutes to complete.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-6 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(event.start_date).toLocaleDateString()} -{" "}
-                    {new Date(event.end_date).toLocaleDateString()}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {event.location}
-                  </div>
-                  {event.registration_deadline && (
-                    <div className="flex items-center gap-1 text-red-600">
-                      <Clock className="w-4 h-4" />
-                      Deadline: {new Date(event.registration_deadline).toLocaleDateString()}
-                    </div>
-                  )}
+
+              <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
+                  <Calendar className="w-4 h-4 text-red-600" />
+                  <span>
+                    {new Date(event.start_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    -{" "}
+                    {new Date(event.end_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
                 </div>
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
+                  <MapPin className="w-4 h-4 text-red-600" />
+                  <span>{event.location}</span>
+                </div>
+                {event.registration_deadline && (
+                  <div className="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg text-red-700">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-medium">
+                      Registration Deadline:{" "}
+                      {new Date(event.registration_deadline).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        }
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardHeader>
           </Card>
 
-          {/* Share Modal */}
-          {showShareModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <Card className="w-full max-w-md mx-4">
-                <CardHeader>
-                  <CardTitle>Share Registration Form</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Button onClick={handleCopyLink} className="flex-1">
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Link
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowShareModal(false)}>
-                      Cancel
-                    </Button>
+          {/* Progress Bar */}
+          <Card className="border-0 shadow-md">
+            <CardContent className="pt-6">
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-medium text-gray-700">
+                    Step {currentStep} of {steps.length}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {Math.round(progress)}% Complete
+                  </span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+
+              <div className="flex justify-between">
+                {steps.map((step) => (
+                  <div
+                    key={step.number}
+                    className="flex flex-col items-center flex-1"
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
+                        step.number < currentStep
+                          ? "bg-green-500 text-white"
+                          : step.number === currentStep
+                          ? "bg-red-600 text-white ring-4 ring-red-100"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {step.number < currentStep ? (
+                        <Check className="w-5 h-5" />
+                      ) : (
+                        step.number
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs mt-2 text-center hidden sm:block ${
+                        step.number === currentStep
+                          ? "text-red-600 font-semibold"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {step.title}
+                    </span>
                   </div>
-                  <div className="border-t pt-4">
-                    <Label htmlFor="emailSubject">Email Subject</Label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Share Modal */}
+          <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+            <DialogContent className="sm:max-w-md bg-white">
+              <DialogHeader>
+                <DialogTitle>Share Registration Form</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Registration Link:
+                  </p>
+                  <p className="text-xs text-gray-800 break-all font-mono">
+                    {publicUrl}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleCopyLink}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </Button>
+                </div>
+
+                <div className="border-t pt-3 space-y-3">
+                  <div>
+                    <Label
+                      htmlFor="recipientEmail"
+                      className="text-sm font-medium"
+                    >
+                      Send To (Required)
+                    </Label>
+                    <Input
+                      id="recipientEmail"
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="recipient@example.com"
+                      className="mt-1 border-gray-300 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="ccEmails"
+                      className="text-sm font-medium"
+                    >
+                      CC (Optional)
+                    </Label>
+                    <Input
+                      id="ccEmails"
+                      value={ccEmails}
+                      onChange={(e) => setCcEmails(e.target.value)}
+                      placeholder="cc1@example.com, cc2@example.com"
+                      className="mt-1 border-gray-300 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
+                  </div>
+                  <div>
+                    <Label
+                      htmlFor="emailSubject"
+                      className="text-sm font-medium"
+                    >
+                      Email Subject
+                    </Label>
                     <Input
                       id="emailSubject"
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
                       placeholder={`Registration: ${event?.title}`}
+                      className="mt-1 border-gray-300 focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="emailBody">Email Body</Label>
+                    <Label htmlFor="emailBody" className="text-sm font-medium">
+                      Email Body
+                    </Label>
                     <textarea
                       id="emailBody"
                       value={emailBody}
                       onChange={(e) => setEmailBody(e.target.value)}
                       placeholder={`Please register for ${event?.title} using this link: ${publicUrl}`}
-                      className="w-full p-2 border rounded-md h-24 resize-none"
+                      className="w-full p-2 border border-gray-300 rounded-md h-20 resize-none mt-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
-                  <Button onClick={handleEmailShare} className="w-full">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Send Email
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Form */}
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-              <CardTitle className="text-center">Registration Form</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8 p-8">
-              {/* Personal Information Section */}
-              <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
-                <h3 className="text-lg font-semibold text-blue-800 mb-4">Personal Information</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
-                      1. First Name / Prénom *
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      as stated in passport
-                    </p>
-                    <Input
-                      id="firstName"
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        handleInputChange("firstName", e.target.value)
-                      }
-                      className="border-2 border-gray-200 focus:border-blue-500 rounded-lg"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
-                      2. Last Name / Nom de famille *
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      as stated in passport
-                    </p>
-                    <Input
-                      id="lastName"
-                      value={formData.lastName}
-                      onChange={(e) =>
-                        handleInputChange("lastName", e.target.value)
-                      }
-                      className="border-2 border-gray-200 focus:border-blue-500 rounded-lg"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Organization Section */}
-              <div className="bg-green-50 p-6 rounded-lg border-l-4 border-green-500">
-                <h3 className="text-lg font-semibold text-green-800 mb-4">Organization Details</h3>
-                <div className="space-y-4">
-                  <Label className="text-sm font-medium text-gray-700">3. What is your OC? *</Label>
-                  <RadioGroup
-                    value={formData.oc}
-                    onValueChange={(value) => handleInputChange("oc", value)}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-3"
+                  <Button
+                    onClick={handleEmailShare}
+                    disabled={!recipientEmail || sendingEmail}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
                   >
-                    {["OCA", "OCB", "OCBA", "OCG", "OCP", "WACA"].map((oc) => (
-                      <div key={oc} className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-green-100">
-                        <RadioGroupItem value={oc} id={oc} />
-                        <Label htmlFor={oc} className="font-medium">{oc}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                    {sendingEmail ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send Email
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
 
-              <div>
-                <Label>4. Are you on contract or in between contracts? *</Label>
-                <RadioGroup
-                  value={formData.contractStatus}
-                  onValueChange={(value) =>
-                    handleInputChange("contractStatus", value)
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="On contract" id="on-contract" />
-                    <Label htmlFor="on-contract">On contract</Label>
+          {/* Form Content */}
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-6 sm:p-8">
+              {/* Step 1: Personal Information */}
+              {currentStep === 1 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Personal Information
+                    </h2>
+                    <p className="text-gray-600">
+                      Please provide your basic personal details
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem
-                      value="Between contracts"
-                      id="between-contracts"
-                    />
-                    <Label htmlFor="between-contracts">Between contracts</Label>
-                  </div>
-                </RadioGroup>
-              </div>
 
-              <div>
-                <Label>5. Type of Contract *</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  HQ = Headquarters Contract
-                  <br />
-                  IMS = International Mobile Staff Contract
-                  <br />
-                  LRS = Locally Recruited Staff Contract
-                </p>
-                <RadioGroup
-                  value={formData.contractType}
-                  onValueChange={(value) =>
-                    handleInputChange("contractType", value)
-                  }
-                >
-                  {["HQ", "IMS", "LRS", "Other"].map((type) => (
-                    <div key={type} className="flex items-center space-x-2">
-                      <RadioGroupItem value={type} id={type} />
-                      <Label htmlFor={type}>{type}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <div>
-                <Label>6. Gender Identity *</Label>
-                <RadioGroup
-                  value={formData.genderIdentity}
-                  onValueChange={(value) =>
-                    handleInputChange("genderIdentity", value)
-                  }
-                >
-                  {[
-                    "Man",
-                    "Woman",
-                    "Non-binary",
-                    "Prefer to self-describe",
-                    "Prefer not to disclose",
-                  ].map((gender) => (
-                    <div key={gender} className="flex items-center space-x-2">
-                      <RadioGroupItem value={gender} id={gender} />
-                      <Label htmlFor={gender}>{gender}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <div>
-                <Label>7. Sex *</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  As indicated in your passport. If you do not identify with the
-                  sex written in your passport, please email us.
-                </p>
-                <RadioGroup
-                  value={formData.sex}
-                  onValueChange={(value) => handleInputChange("sex", value)}
-                >
-                  {["Female", "Male", "Other"].map((sex) => (
-                    <div key={sex} className="flex items-center space-x-2">
-                      <RadioGroupItem value={sex} id={sex} />
-                      <Label htmlFor={sex}>{sex}</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-
-              <div>
-                <Label>8. Pronouns *</Label>
-                <RadioGroup
-                  value={formData.pronouns}
-                  onValueChange={(value) =>
-                    handleInputChange("pronouns", value)
-                  }
-                >
-                  {["He / him", "She / her", "They / Them", "Other"].map(
-                    (pronoun) => (
-                      <div
-                        key={pronoun}
-                        className="flex items-center space-x-2"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="firstName"
+                        className="text-sm font-medium flex items-center gap-1"
                       >
-                        <RadioGroupItem value={pronoun} id={pronoun} />
-                        <Label htmlFor={pronoun}>{pronoun}</Label>
-                      </div>
-                    )
-                  )}
-                </RadioGroup>
-              </div>
+                        First Name <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        As stated in passport
+                      </p>
+                      <Input
+                        id="firstName"
+                        value={formData.firstName}
+                        onChange={(e) =>
+                          handleInputChange("firstName", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="Enter your first name"
+                      />
+                    </div>
 
-              <div>
-                <Label htmlFor="currentPosition">
-                  9. Current (or most recent) position *
-                </Label>
-                <Input
-                  id="currentPosition"
-                  value={formData.currentPosition}
-                  onChange={(e) =>
-                    handleInputChange("currentPosition", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="countryOfWork">10. Country of work</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  In which country of assignment do you work?
-                  <br />
-                  If you are in-between country programs please leave this blank
-                </p>
-                <Input
-                  id="countryOfWork"
-                  value={formData.countryOfWork}
-                  onChange={(e) =>
-                    handleInputChange("countryOfWork", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="projectOfWork">11. Project of work</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  In which country project do you work?
-                  <br />
-                  If you are country programs please leave this blank
-                </p>
-                <Input
-                  id="projectOfWork"
-                  value={formData.projectOfWork}
-                  onChange={(e) =>
-                    handleInputChange("projectOfWork", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="personalEmail">
-                  12. Personal/Tembo E-mail Address *
-                </Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  If you are currently enrolled on Tembo with an email address,
-                  please use that same email address here.
-                  <br />
-                  <br />
-                  This email address will be used for all communication
-                  regarding this course
-                  <br />
-                  <br />
-                  Please make extra sure that the address is written correctly.
-                  <br />
-                  <br />
-                  If you are adding more than one address, please separate them
-                  with ;
-                </p>
-                <Input
-                  id="personalEmail"
-                  type="email"
-                  value={formData.personalEmail}
-                  onChange={(e) =>
-                    handleInputChange("personalEmail", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="msfEmail">13. MSF Email</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Please make extra sure that the address is written correctly.
-                  <br />
-                  <br />
-                  If you are adding more than one address, please separate them
-                  with ;
-                </p>
-                <Input
-                  id="msfEmail"
-                  type="email"
-                  value={formData.msfEmail}
-                  onChange={(e) =>
-                    handleInputChange("msfEmail", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="hrcoEmail">14. HRCo Email</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Please make extra sure that the address is written correctly.
-                  <br />
-                  <br />
-                  If you are adding more than one address, please separate them
-                  with ;
-                </p>
-                <Input
-                  id="hrcoEmail"
-                  type="email"
-                  value={formData.hrcoEmail}
-                  onChange={(e) =>
-                    handleInputChange("hrcoEmail", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="careerManagerEmail">
-                  15. Career Manager Email
-                </Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Please make extra sure that the address is written correctly.
-                  <br />
-                  <br />
-                  If you are adding more than one address, please separate them
-                  with ;
-                </p>
-                <Input
-                  id="careerManagerEmail"
-                  type="email"
-                  value={formData.careerManagerEmail}
-                  onChange={(e) =>
-                    handleInputChange("careerManagerEmail", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="lineManagerEmail">17. Line Manager Email</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Please make extra sure that the address is written correctly.
-                  If you are not OCA please add the email of your hosting OC.
-                  <br />
-                  <br />
-                  If you are adding more than one address, please separate them
-                  with ;
-                </p>
-                <Input
-                  id="lineManagerEmail"
-                  type="email"
-                  value={formData.lineManagerEmail}
-                  onChange={(e) =>
-                    handleInputChange("lineManagerEmail", e.target.value)
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phoneNumber">18. Phone number *</Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  This will only be used for emergencies or in order to
-                  coordinate transportation, if relevant
-                  <br />
-                  <br />
-                  Please make extra sure that the number is written correctly.
-                  <br />
-                  <br />
-                  Please include the calling code, including 00
-                  <br />
-                  <br />
-                  e.g. 00 30 123456789
-                </p>
-                <Input
-                  id="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={(e) =>
-                    handleInputChange("phoneNumber", e.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              {/* Page 2 - Travel Details */}
-              <div className="lg:col-span-2">
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    TRAVEL, PASSPORT, AND VISA DETAILS
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Kindly, make sure this section is completed correctly. If
-                    completed incorrectly it may result in your visa documents
-                    taking longer.
-                    <br />
-                    <br />
-                    Please, double-check each section is completed accordingly
-                    and as stated in your passport.
-                  </p>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <Label>
-                  19. Will you be travelling internationally for this training?
-                  *
-                </Label>
-                <RadioGroup
-                  value={formData.travellingInternationally}
-                  onValueChange={(value) =>
-                    handleInputChange("travellingInternationally", value)
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Yes" id="travel-yes" />
-                    <Label htmlFor="travel-yes">Yes</Label>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="lastName"
+                        className="text-sm font-medium flex items-center gap-1"
+                      >
+                        Last Name <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        As stated in passport
+                      </p>
+                      <Input
+                        id="lastName"
+                        value={formData.lastName}
+                        onChange={(e) =>
+                          handleInputChange("lastName", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="Enter your last name"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="No" id="travel-no" />
-                    <Label htmlFor="travel-no">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
 
-              {/* Page 3 - Accommodation */}
-              <div className="lg:col-span-2">
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    ACCOMMODATION REQUESTS
-                  </h3>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <Label>
-                  20. Will you be staying at the MSF OCA-provided accommodation
-                  overnight during the training dates, or will you be travelling
-                  to and from the training venue every day and staying elsewhere
-                  overnight? *
-                </Label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Please note that OCA provides free accommodation for all
-                  participants. If you would not like to accept the offer of
-                  accommodation, here is where you can indicate this to us.
-                </p>
-                <RadioGroup
-                  value={formData.accommodationType}
-                  onValueChange={(value) =>
-                    handleInputChange("accommodationType", value)
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem
-                      value="Staying at MSF accommodation"
-                      id="staying"
-                    />
-                    <Label htmlFor="staying">
-                      Staying at the MSF OCA accommodation overnight
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      What is your OC? <span className="text-red-500">*</span>
                     </Label>
+                    <RadioGroup
+                      value={formData.oc}
+                      onValueChange={(value) => handleInputChange("oc", value)}
+                      className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+                    >
+                      {["OCA", "OCB", "OCBA", "OCG", "OCP", "WACA"].map(
+                        (oc) => (
+                          <div
+                            key={oc}
+                            className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          >
+                            <RadioGroupItem value={oc} id={oc} />
+                            <Label
+                              htmlFor={oc}
+                              className="font-medium cursor-pointer"
+                            >
+                              {oc}
+                            </Label>
+                          </div>
+                        )
+                      )}
+                    </RadioGroup>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Travelling daily" id="travelling" />
-                    <Label htmlFor="travelling">
-                      Travelling to and from the venue daily and staying
-                      somewhere else
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
 
-              {/* Conditional fields based on accommodation type */}
-              {formData.accommodationType ===
-                "Staying at MSF accommodation" && (
-                <>
-                  <div>
-                    <Label htmlFor="dietaryRequirements">
-                      21. Dietary Requirements
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      Contract Status <span className="text-red-500">*</span>
                     </Label>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Do you have any dietary requirements, INCLUDING religious
-                      and/or cultural (such as Halal / no pork / etc.)?
-                    </p>
-                    <Input
-                      id="dietaryRequirements"
-                      value={formData.dietaryRequirements}
-                      onChange={(e) =>
-                        handleInputChange("dietaryRequirements", e.target.value)
+                    <RadioGroup
+                      value={formData.contractStatus}
+                      onValueChange={(value) =>
+                        handleInputChange("contractStatus", value)
                       }
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="accommodationNeeds">
-                      22. Accommodation needs or requirements
-                    </Label>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Do you have any accommodation needs or requirements that
-                      we / the organisation section should be aware of?
-                      <br />
-                      <br />
-                      Please note that we cannot book single rooms for staff.
-                      For most trainings, staff will share a room with one other
-                      person. If you are concerned that you snore loudly, please
-                      consider bringing earplugs for your roommate.
-                    </p>
-                    <Input
-                      id="accommodationNeeds"
-                      value={formData.accommodationNeeds}
-                      onChange={(e) =>
-                        handleInputChange("accommodationNeeds", e.target.value)
-                      }
-                    />
-                  </div>
-                </>
-              )}
-
-              {formData.accommodationType === "Travelling daily" && (
-                <>
-                  <div className="lg:col-span-2">
-                    <Label>
-                      21. When you visit during the day, which meals would you
-                      like to have at the venue daily? *
-                    </Label>
-                    <div className="space-y-2 mt-2">
-                      {["Breakfast", "Lunch", "Dinner", "Other"].map((meal) => (
-                        <div key={meal} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={meal}
-                            checked={formData.dailyMeals.includes(meal)}
-                            onChange={(e) =>
-                              handleMealChange(meal, e.target.checked)
-                            }
-                            className="rounded border-gray-300"
-                          />
-                          <Label htmlFor={meal}>{meal}</Label>
+                      className="space-y-2"
+                    >
+                      {["On contract", "Between contracts"].map((status) => (
+                        <div
+                          key={status}
+                          className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        >
+                          <RadioGroupItem value={status} id={status} />
+                          <Label
+                            htmlFor={status}
+                            className="cursor-pointer flex-1"
+                          >
+                            {status}
+                          </Label>
                         </div>
                       ))}
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      Type of Contract <span className="text-red-500">*</span>
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      HQ = Headquarters Contract | IMS = International Mobile
+                      Staff | LRS = Locally Recruited Staff
+                    </p>
+                    <RadioGroup
+                      value={formData.contractType}
+                      onValueChange={(value) =>
+                        handleInputChange("contractType", value)
+                      }
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      {["HQ", "IMS", "LRS", "Other"].map((type) => (
+                        <div
+                          key={type}
+                          className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        >
+                          <RadioGroupItem value={type} id={type} />
+                          <Label htmlFor={type} className="cursor-pointer">
+                            {type}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium flex items-center gap-1">
+                        Gender Identity <span className="text-red-500">*</span>
+                      </Label>
+                      <RadioGroup
+                        value={formData.genderIdentity}
+                        onValueChange={(value) =>
+                          handleInputChange("genderIdentity", value)
+                        }
+                        className="space-y-2"
+                      >
+                        {[
+                          "Man",
+                          "Woman",
+                          "Non-binary",
+                          "Prefer to self-describe",
+                          "Prefer not to disclose",
+                        ].map((gender) => (
+                          <div
+                            key={gender}
+                            className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          >
+                            <RadioGroupItem value={gender} id={gender} />
+                            <Label
+                              htmlFor={gender}
+                              className="text-sm cursor-pointer"
+                            >
+                              {gender}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium flex items-center gap-1">
+                        Sex <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        As indicated in your passport
+                      </p>
+                      <RadioGroup
+                        value={formData.sex}
+                        onValueChange={(value) =>
+                          handleInputChange("sex", value)
+                        }
+                        className="space-y-2"
+                      >
+                        {["Female", "Male", "Other"].map((sex) => (
+                          <div
+                            key={sex}
+                            className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          >
+                            <RadioGroupItem value={sex} id={sex} />
+                            <Label
+                              htmlFor={sex}
+                              className="text-sm cursor-pointer"
+                            >
+                              {sex}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium flex items-center gap-1">
+                        Pronouns <span className="text-red-500">*</span>
+                      </Label>
+                      <RadioGroup
+                        value={formData.pronouns}
+                        onValueChange={(value) =>
+                          handleInputChange("pronouns", value)
+                        }
+                        className="space-y-2"
+                      >
+                        {["He / him", "She / her", "They / Them", "Other"].map(
+                          (pronoun) => (
+                            <div
+                              key={pronoun}
+                              className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                            >
+                              <RadioGroupItem value={pronoun} id={pronoun} />
+                              <Label
+                                htmlFor={pronoun}
+                                className="text-sm cursor-pointer"
+                              >
+                                {pronoun}
+                              </Label>
+                            </div>
+                          )
+                        )}
+                      </RadioGroup>
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="currentPosition"
+                      className="text-sm font-medium flex items-center gap-1"
+                    >
+                      Current (or most recent) Position{" "}
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="currentPosition"
+                      value={formData.currentPosition}
+                      onChange={(e) =>
+                        handleInputChange("currentPosition", e.target.value)
+                      }
+                      className="border-2 focus:border-red-500"
+                      placeholder="e.g., Project Coordinator"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="countryOfWork"
+                        className="text-sm font-medium"
+                      >
+                        Country of Work
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Leave blank if between programs
+                      </p>
+                      <Input
+                        id="countryOfWork"
+                        value={formData.countryOfWork}
+                        onChange={(e) =>
+                          handleInputChange("countryOfWork", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="e.g., Kenya"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="projectOfWork"
+                        className="text-sm font-medium"
+                      >
+                        Project of Work
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Leave blank if not applicable
+                      </p>
+                      <Input
+                        id="projectOfWork"
+                        value={formData.projectOfWork}
+                        onChange={(e) =>
+                          handleInputChange("projectOfWork", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="e.g., Nairobi Project"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Contact Details */}
+              {currentStep === 2 && (
+                <div className="space-y-6">
                   <div>
-                    <Label htmlFor="dietaryRequirements">
-                      Dietary Requirements
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Contact Details
+                    </h2>
+                    <p className="text-gray-600">
+                      Provide your email addresses and phone number
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="personalEmail"
+                      className="text-sm font-medium flex items-center gap-1"
+                    >
+                      Personal/Tembo Email Address{" "}
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      This will be used for all communication. If on Tembo, use
+                      that email.
+                    </p>
+                    <Input
+                      id="personalEmail"
+                      type="email"
+                      value={formData.personalEmail}
+                      onChange={(e) =>
+                        handleInputChange("personalEmail", e.target.value)
+                      }
+                      className="border-2 focus:border-red-500"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="msfEmail" className="text-sm font-medium">
+                        MSF Email
+                      </Label>
+                      <Input
+                        id="msfEmail"
+                        type="email"
+                        value={formData.msfEmail}
+                        onChange={(e) =>
+                          handleInputChange("msfEmail", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="your.name@msf.org"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="hrcoEmail"
+                        className="text-sm font-medium"
+                      >
+                        HRCo Email
+                      </Label>
+                      <Input
+                        id="hrcoEmail"
+                        type="email"
+                        value={formData.hrcoEmail}
+                        onChange={(e) =>
+                          handleInputChange("hrcoEmail", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="hrco@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="careerManagerEmail"
+                        className="text-sm font-medium"
+                      >
+                        Career Manager Email
+                      </Label>
+                      <Input
+                        id="careerManagerEmail"
+                        type="email"
+                        value={formData.careerManagerEmail}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "careerManagerEmail",
+                            e.target.value
+                          )
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="manager@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="lineManagerEmail"
+                        className="text-sm font-medium"
+                      >
+                        Line Manager Email
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        If not OCA, add hosting OC email
+                      </p>
+                      <Input
+                        id="lineManagerEmail"
+                        type="email"
+                        value={formData.lineManagerEmail}
+                        onChange={(e) =>
+                          handleInputChange("lineManagerEmail", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="line.manager@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="phoneNumber"
+                        className="text-sm font-medium flex items-center gap-1"
+                      >
+                        Phone Number <span className="text-red-500">*</span>
+                      </Label>
+                      <p className="text-xs text-gray-500">
+                        Include country code (e.g., 00 30 123456789)
+                      </p>
+                      <Input
+                        id="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          handleInputChange("phoneNumber", e.target.value)
+                        }
+                        className="border-2 focus:border-red-500"
+                        placeholder="00 XX XXXXXXXXX"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Travel & Accommodation */}
+              {currentStep === 3 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Travel & Accommodation
+                    </h2>
+                    <p className="text-gray-600">
+                      Tell us about your travel and accommodation needs
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      Will you be travelling internationally for this training?{" "}
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <RadioGroup
+                      value={formData.travellingInternationally}
+                      onValueChange={(value) =>
+                        handleInputChange("travellingInternationally", value)
+                      }
+                      className="space-y-2"
+                    >
+                      {["Yes", "No"].map((option) => (
+                        <div
+                          key={option}
+                          className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        >
+                          <RadioGroupItem
+                            value={option}
+                            id={`travel-${option}`}
+                          />
+                          <Label
+                            htmlFor={`travel-${option}`}
+                            className="cursor-pointer flex-1"
+                          >
+                            {option}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      Accommodation Type <span className="text-red-500">*</span>
                     </Label>
                     <p className="text-xs text-gray-500 mb-2">
-                      Do you have any dietary requirements, INCLUDING religious
-                      and/or cultural (such as Halal / no pork / etc.)?
+                      OCA provides free accommodation for all participants
+                    </p>
+                    <RadioGroup
+                      value={formData.accommodationType}
+                      onValueChange={(value) =>
+                        handleInputChange("accommodationType", value)
+                      }
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                        <RadioGroupItem
+                          value="Staying at MSF accommodation"
+                          id="staying"
+                        />
+                        <Label
+                          htmlFor="staying"
+                          className="cursor-pointer flex-1"
+                        >
+                          <span className="font-medium">
+                            Staying at MSF OCA accommodation overnight
+                          </span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                        <RadioGroupItem
+                          value="Travelling daily"
+                          id="travelling"
+                        />
+                        <Label
+                          htmlFor="travelling"
+                          className="cursor-pointer flex-1"
+                        >
+                          <span className="font-medium">
+                            Travelling daily and staying elsewhere
+                          </span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {formData.accommodationType === "Travelling daily" && (
+                    <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-4">
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-1">
+                          Which meals would you like at the venue?{" "}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="space-y-2">
+                          {["Breakfast", "Lunch", "Dinner", "Other"].map(
+                            (meal) => (
+                              <div
+                                key={meal}
+                                className="flex items-center space-x-2 p-3 bg-white border rounded-lg hover:bg-red-50 transition-all"
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={meal}
+                                  checked={formData.dailyMeals.includes(meal)}
+                                  onChange={(e) =>
+                                    handleMealChange(meal, e.target.checked)
+                                  }
+                                  className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                                />
+                                <Label
+                                  htmlFor={meal}
+                                  className="cursor-pointer flex-1"
+                                >
+                                  {meal}
+                                </Label>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="dietaryRequirements"
+                      className="text-sm font-medium"
+                    >
+                      Dietary Requirements
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Include religious, cultural, or medical requirements
+                      (e.g., Halal, vegetarian, allergies)
                     </p>
                     <Input
                       id="dietaryRequirements"
@@ -913,163 +1324,197 @@ export default function EventRegistrationFormPage() {
                       onChange={(e) =>
                         handleInputChange("dietaryRequirements", e.target.value)
                       }
+                      className="border-2 focus:border-red-500"
+                      placeholder="e.g., Vegetarian, no nuts"
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="accommodationNeeds">
-                      Accommodation needs or requirements
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="accommodationNeeds"
+                      className="text-sm font-medium"
+                    >
+                      Accommodation Needs or Requirements
                     </Label>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Do you have any accommodation needs or requirements that
-                      we / the organisation section should be aware of?
-                      <br />
-                      <br />
-                      Please note that we cannot book single rooms for staff.
-                      For most trainings, staff will share a room with one other
-                      person. If you are concerned that you snore loudly, please
-                      consider bringing earplugs for your roommate.
+                    <p className="text-xs text-gray-500">
+                      Any special requirements we should know about? Note:
+                      Single rooms are not available.
                     </p>
-                    <Input
+                    <textarea
                       id="accommodationNeeds"
                       value={formData.accommodationNeeds}
                       onChange={(e) =>
                         handleInputChange("accommodationNeeds", e.target.value)
                       }
+                      className="w-full p-3 border-2 rounded-lg focus:border-red-500 h-24 resize-none"
+                      placeholder="Any special requirements..."
                     />
                   </div>
-                </>
+                </div>
               )}
 
-              {/* Section 4 - Certificate */}
-              <div className="lg:col-span-2">
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-2">CERTIFICATE</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Some courses award certificates to participants who
-                    successfully complete all necessary elements. If you are
-                    awarded a certificate at the end of this course, we want to
-                    know exactly how you would like your name printed on your
-                    certificate. Below, please write exactly how you would like
-                    your name to appear on your certificate, including the
-                    order, any titles (if relevant), and the appropriate case
-                    (capitals / lower case / etc.).
-                  </p>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <Label htmlFor="certificateName">23. Certificate name</Label>
-                <Input
-                  id="certificateName"
-                  value={formData.certificateName}
-                  onChange={(e) =>
-                    handleInputChange("certificateName", e.target.value)
-                  }
-                  placeholder="Enter exactly how you want your name to appear on the certificate"
-                />
-              </div>
-
-              {/* Section 5 - MSF Code of Conduct */}
-              <div className="lg:col-span-2">
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    MSF CODE OF CONDUCT
-                  </h3>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <Label>
-                  24. I confirm that I have read the MSF code of conduct linked
-                  to my work contract. I affirm my commitment to abide by the
-                  code of conduct. I understand that the code of conduct applies
-                  in full during this training. *
-                </Label>
-                <RadioGroup
-                  value={formData.codeOfConductConfirm}
-                  onValueChange={(value) =>
-                    handleInputChange("codeOfConductConfirm", value)
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Yes" id="conduct-yes" />
-                    <Label htmlFor="conduct-yes">Yes</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Section 6 - To Note */}
-              <div className="lg:col-span-2">
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-2">TO NOTE</h3>
-                  <div className="text-sm text-gray-600 mb-4 space-y-2">
-                    <p>
-                      It is the responsibility of the applicant and the country
-                      program/person recommending them to inquire about the
-                      vaccination and travel requirement to enter the country in
-                      which the course is hosted.
-                    </p>
-                    <p>
-                      It is the responsibility of the applicant and the country
-                      program/person recommending them to inquire about the
-                      rules to re-enter your home country/country in which you
-                      currently work (country program)
-                    </p>
-                    <p>
-                      If you are currently in country program, HRCOs are
-                      responsible for booking travel/flights. You should provide
-                      travel details to{" "}
-                      <a
-                        href="mailto:amsterdam.developmentofficer@amsterdam.msf.org"
-                        className="text-blue-600 underline"
-                      >
-                        amsterdam.developmentofficer@amsterdam.msf.org
-                      </a>{" "}
-                      as soon as they are confirmed so that we can issue the
-                      documents you will require for your VISA application.
+              {/* Step 4: Final Details */}
+              {currentStep === 4 && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Final Details
+                    </h2>
+                    <p className="text-gray-600">
+                      Just a few more details to complete your registration
                     </p>
                   </div>
-                </div>
-              </div>
 
-              <div className="lg:col-span-2">
-                <Label>25. I confirm I have read the reminder above *</Label>
-                <RadioGroup
-                  value={formData.travelRequirementsConfirm}
-                  onValueChange={(value) =>
-                    handleInputChange("travelRequirementsConfirm", value)
-                  }
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Yes" id="travel-confirm-yes" />
-                    <Label htmlFor="travel-confirm-yes">Yes</Label>
+                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                    <h3 className="font-semibold text-purple-900 mb-2">
+                      Certificate Name
+                    </h3>
+                    <p className="text-sm text-purple-800 mb-3">
+                      If a certificate is awarded, how would you like your name
+                      to appear?
+                    </p>
+                    <Input
+                      id="certificateName"
+                      value={formData.certificateName}
+                      onChange={(e) =>
+                        handleInputChange("certificateName", e.target.value)
+                      }
+                      className="border-2 focus:border-purple-500 bg-white"
+                      placeholder="e.g., Dr. Jane Elizabeth Smith"
+                    />
                   </div>
-                </RadioGroup>
-              </div>
 
-              <div className="lg:col-span-2 flex flex-col sm:flex-row gap-3 justify-between pt-6">
+                  <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-500 space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-amber-900 mb-2">
+                        MSF Code of Conduct
+                      </h3>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-1">
+                          I confirm that I have read and will abide by the MSF
+                          code of conduct{" "}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <RadioGroup
+                          value={formData.codeOfConductConfirm}
+                          onValueChange={(value) =>
+                            handleInputChange("codeOfConductConfirm", value)
+                          }
+                        >
+                          <div className="flex items-center space-x-2 p-3 bg-white border-2 rounded-lg hover:border-amber-500 transition-all cursor-pointer">
+                            <RadioGroupItem value="Yes" id="conduct-yes" />
+                            <Label
+                              htmlFor="conduct-yes"
+                              className="cursor-pointer"
+                            >
+                              Yes, I confirm
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-red-900 mb-2">
+                        Important Travel Information
+                      </h3>
+                      <div className="text-sm text-red-800 space-y-2 mb-4">
+                        <p>
+                          • Check vaccination and travel requirements for the
+                          host country
+                        </p>
+                        <p>
+                          • Verify re-entry requirements for your home/work
+                          country
+                        </p>
+                        <p>• HRCOs book travel for country program staff</p>
+                        <p>
+                          • Send travel details to
+                          amsterdam.developmentofficer@amsterdam.msf.org for
+                          visa documents
+                        </p>
+                      </div>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium flex items-center gap-1">
+                          I confirm I have read and understood the above{" "}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <RadioGroup
+                          value={formData.travelRequirementsConfirm}
+                          onValueChange={(value) =>
+                            handleInputChange(
+                              "travelRequirementsConfirm",
+                              value
+                            )
+                          }
+                        >
+                          <div className="flex items-center space-x-2 p-3 bg-white border-2 rounded-lg hover:border-red-500 transition-all cursor-pointer">
+                            <RadioGroupItem
+                              value="Yes"
+                              id="travel-confirm-yes"
+                            />
+                            <Label
+                              htmlFor="travel-confirm-yes"
+                              className="cursor-pointer"
+                            >
+                              Yes, I confirm
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-between pt-8 border-t mt-8">
                 <Button
                   variant="outline"
-                  onClick={() => router.push(`/tenant/${tenantSlug}/events`)}
+                  onClick={prevStep}
+                  disabled={currentStep === 1}
                   className="w-full sm:w-auto"
                 >
-                  Back to Events
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Previous
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="w-full sm:w-auto"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit Registration"
-                  )}
-                </Button>
+
+                {currentStep < steps.length ? (
+                  <Button
+                    onClick={nextStep}
+                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={
+                      submitting ||
+                      !isStepValid(currentStep) ||
+                      Boolean(
+                        event?.registration_deadline &&
+                          new Date() > new Date(event.registration_deadline)
+                      )
+                    }
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Submit Registration
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

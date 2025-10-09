@@ -30,6 +30,8 @@ import EventAttachments from "./EventAttachments";
 import EventAllocations from "./EventAllocations";
 import EventAgenda from "./EventAgenda";
 import SessionFeedback from "@/components/events/SessionFeedback";
+import { LazyImage } from "@/components/ui/lazy-image";
+import { GoogleMap } from "@/components/ui/google-map";
 
 interface Event {
   id: number;
@@ -41,9 +43,14 @@ interface Event {
   end_date: string;
   location?: string;
   address?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
   banner_image?: string;
   duration_days?: number;
   perdiem_rate?: number;
+  perdiem_currency?: string;
+  registration_deadline?: string;
 }
 
 interface Participant {
@@ -831,6 +838,34 @@ export default function EventDetailsModal({
                             </div>
                           </div>
                         )}
+                        {(() => {
+                          const lat = typeof event.latitude === 'string' ? parseFloat(event.latitude) : event.latitude;
+                          const lng = typeof event.longitude === 'string' ? parseFloat(event.longitude) : event.longitude;
+                          
+                          const hasValidCoords = lat && lng && 
+                            typeof lat === 'number' && typeof lng === 'number' &&
+                            isFinite(lat) && isFinite(lng) &&
+                            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+                            
+                          return hasValidCoords ? { lat, lng } : null;
+                        })() && (() => {
+                          const lat = typeof event.latitude === 'string' ? parseFloat(event.latitude) : event.latitude;
+                          const lng = typeof event.longitude === 'string' ? parseFloat(event.longitude) : event.longitude;
+                          
+                          return (
+                            <div>
+                              <span className="font-medium text-gray-700 block mb-2">
+                                Map:
+                              </span>
+                              <GoogleMap
+                                latitude={lat}
+                                longitude={lng}
+                                markerTitle={event.location || "Event Location"}
+                                className="h-48 rounded-lg border"
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -846,6 +881,24 @@ export default function EventDetailsModal({
                         {event.description}
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {!editMode && event.banner_image && event.banner_image.trim() && (
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="font-bold text-lg mb-4 text-gray-800">
+                      Event Banner
+                    </h3>
+                    <LazyImage
+                      src={event.banner_image}
+                      alt={`${event.title} banner`}
+                      className="w-full h-64 rounded-lg border"
+                      placeholder={
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-gray-400">Loading banner...</div>
+                        </div>
+                      }
+                    />
                   </div>
                 )}
               </TabsContent>
