@@ -156,6 +156,17 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
             console.log('QR Response from API:', qrData);
             console.log('QR Token:', qrData.qr_token);
             console.log('QR Data URL length:', qrData.qr_data_url?.length);
+            
+            // Try to decode what's in the QR code by creating a temporary image
+            if (qrData.qr_data_url) {
+              const img = new Image();
+              img.onload = () => {
+                console.log('QR Code image loaded, dimensions:', img.width, 'x', img.height);
+                // The QR code content is embedded in the image, we can't easily decode it here
+                // But we can test by scanning it or checking API logs
+              };
+              img.src = qrData.qr_data_url;
+            }
 
             setVoucherData({
               ...qrData.allocation_summary,
