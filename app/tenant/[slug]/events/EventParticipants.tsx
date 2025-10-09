@@ -96,10 +96,43 @@ export default function EventParticipants({
   const [processingBulk, setProcessingBulk] = useState(false);
 
 // Participant Details Modal Component
-function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor }) {
-  const [transportData, setTransportData] = useState([]);
-  const [accommodationData, setAccommodationData] = useState([]);
-  const [voucherData, setVoucherData] = useState(null);
+interface ParticipantDetailsModalProps {
+  participant: Participant;
+  onClose: () => void;
+  eventId: number;
+  getStatusColor: (status: string) => string;
+}
+
+interface TransportBooking {
+  booking_type?: string;
+  pickup_locations?: string[];
+  status?: string;
+  scheduled_time?: string;
+}
+
+interface AccommodationData {
+  name?: string;
+  address?: string;
+  location?: string;
+  status?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+}
+
+interface VoucherData {
+  total_drinks?: number;
+  remaining_drinks?: number;
+  redeemed_drinks?: number;
+  qr_token?: string;
+  qr_data_url?: string;
+  participant_id?: number;
+  event_id?: number;
+}
+
+function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor }: ParticipantDetailsModalProps) {
+  const [transportData, setTransportData] = useState<TransportBooking[]>([]);
+  const [accommodationData, setAccommodationData] = useState<AccommodationData[]>([]);
+  const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -134,9 +167,9 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
             );
             if (allocationsResponse.ok) {
               const allocations = await allocationsResponse.json();
-              const drinkAllocations = allocations.filter(a => a.drink_vouchers_per_participant > 0);
+              const drinkAllocations = allocations.filter((a: any) => a.drink_vouchers_per_participant > 0);
               if (drinkAllocations.length > 0) {
-                const totalVouchers = drinkAllocations.reduce((sum, a) => sum + (a.drink_vouchers_per_participant || 0), 0);
+                const totalVouchers = drinkAllocations.reduce((sum: number, a: any) => sum + (a.drink_vouchers_per_participant || 0), 0);
                 setVoucherData({
                   total_drinks: totalVouchers,
                   remaining_drinks: totalVouchers,
@@ -262,7 +295,7 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                     <h5 className="font-semibold text-purple-900 mb-4">Transport Bookings</h5>
                     {transportData && transportData.length > 0 ? (
                       <div className="space-y-3">
-                        {transportData.map((booking, index) => (
+                        {transportData.map((booking: TransportBooking, index) => (
                           <div key={index} className="bg-white p-3 rounded border">
                             <p className="font-medium text-sm">{booking.booking_type || 'Transport'}</p>
                             <p className="text-xs text-gray-600">{booking.pickup_locations?.[0] || 'TBD'}</p>
@@ -330,9 +363,16 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                             <div className="text-gray-500 text-sm">QR Code not available</div>
                           )}
                           {voucherData.qr_token && (
-                            <p className="text-xs text-gray-500 mt-2 font-mono">
-                              Token: {voucherData.qr_token.slice(0, 8)}...
-                            </p>
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500 font-mono">
+                                Token: {voucherData.qr_token.slice(0, 8)}...
+                              </p>
+                              <p className="text-xs text-blue-600 mt-1">
+                                QR URL: <a href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`} target="_blank" rel="noopener noreferrer" className="underline">
+                                  {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{voucherData.qr_token}
+                                </a>
+                              </p>
+                            </div>
                           )}
                         </div>
                         <div className="text-sm space-y-2">

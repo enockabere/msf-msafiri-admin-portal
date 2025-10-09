@@ -40,6 +40,7 @@ export default function ParticipantQRCode({
 
   tenantSlug,
 }: ParticipantQRCodeProps) {
+  console.warn('🏷️ ParticipantQRCode component rendered for participant:', participantId);
   const [qrData, setQrData] = useState<ParticipantQRResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +48,7 @@ export default function ParticipantQRCode({
   const { apiClient } = useAuthenticatedApi();
 
   const fetchQRCode = useCallback(async () => {
+    console.warn('🔄 Starting QR code fetch for participant:', participantId);
     setLoading(true);
     setError(null);
     try {
@@ -54,16 +56,33 @@ export default function ParticipantQRCode({
         `/participants/${participantId}/qr`,
         { headers: { 'X-Tenant-ID': tenantSlug } }
       );
-      setQrData(response as ParticipantQRResponse);
+      console.warn('QR Code API Response:', response);
+      const qrResponse = response as ParticipantQRResponse;
+      
+      console.warn('QR Token:', qrResponse.qr_token);
+      console.warn('Original QR Data URL:', qrResponse.qr_data_url);
+      
+      // Always generate a new QR code with the full URL
+      const fullUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${qrResponse.qr_token}`;
+      console.warn('Full URL for QR code:', fullUrl);
+      
+      // Generate a new QR code with the full URL using QR Server API
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(fullUrl)}`;
+      console.warn('Generated QR Code URL:', qrCodeUrl);
+      
+      qrResponse.qr_data_url = qrCodeUrl;
+      setQrData(qrResponse);
     } catch (error) {
-      console.error('Failed to fetch QR code:', error);
+      console.error('❌ Failed to fetch QR code:', error);
       setError('Failed to generate QR code');
     } finally {
+      console.warn('✅ QR code fetch completed');
       setLoading(false);
     }
   }, [participantId, apiClient, tenantSlug]);
 
   useEffect(() => {
+    console.warn('🚀 ParticipantQRCode useEffect triggered, calling fetchQRCode');
     fetchQRCode();
   }, [fetchQRCode]);
 
@@ -124,6 +143,21 @@ export default function ParticipantQRCode({
               <p className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
                 {qrData.qr_token.substring(0, 8)}...
               </p>
+              <div className="mt-2 space-y-1">
+                <div>
+                  <a 
+                    href={`/public/qr/${qrData.qr_token}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Test QR Link
+                  </a>
+                </div>
+                <div className="text-xs text-gray-500">
+                  QR should contain: {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{qrData.qr_token}
+                </div>
+              </div>
             </div>
           </div>
 

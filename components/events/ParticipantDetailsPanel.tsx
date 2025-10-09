@@ -136,6 +136,7 @@ export default function ParticipantDetailsPanel({
   const [editing, setEditing] = useState(false);
   const [selectedAllocation, setSelectedAllocation] = useState<DrinkVoucherAllocation | null>(null);
   const [qrRefreshKey, setQrRefreshKey] = useState(0);
+  const [qrToken, setQrToken] = useState<string | null>(null);
 
   const { apiClient } = useAuthenticatedApi();
 
@@ -222,7 +223,12 @@ export default function ParticipantDetailsPanel({
           `/participants/${participantId}/qr`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
-        setVoucherSummary((qrData as ParticipantQRResponse).allocation_summary);
+        const qrResponse = qrData as ParticipantQRResponse;
+        console.warn('🎫 QR Data fetched:', qrResponse);
+        console.warn('🔗 QR Token:', qrResponse.qr_token);
+        console.warn('📱 QR URL should be:', `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${qrResponse.qr_token}`);
+        setVoucherSummary(qrResponse.allocation_summary);
+        setQrToken(qrResponse.qr_token);
       } catch (error) {
         console.error('Failed to fetch voucher summary:', error);
         setVoucherSummary(null);
@@ -769,6 +775,24 @@ export default function ParticipantDetailsPanel({
                               <Edit className="h-3 w-3 mr-1" />
                               Edit Vouchers
                             </Button>
+                          </div>
+                        )}
+                        {qrToken && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <div className="text-xs text-blue-800 font-medium mb-1">QR Code URL:</div>
+                            <div className="text-xs font-mono text-blue-600 break-all">
+                              {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{qrToken}
+                            </div>
+                            <div className="mt-1">
+                              <a 
+                                href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${qrToken}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              >
+                                Test QR Link
+                              </a>
+                            </div>
                           </div>
                         )}
                       </div>
