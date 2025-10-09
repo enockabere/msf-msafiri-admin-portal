@@ -153,6 +153,9 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
           );
           if (qrResponse.ok) {
             const qrData = await qrResponse.json();
+            console.log('QR Response from API:', qrData);
+            console.log('QR Token:', qrData.qr_token);
+            console.log('QR Data URL length:', qrData.qr_data_url?.length);
 
             setVoucherData({
               ...qrData.allocation_summary,
@@ -367,8 +370,10 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                               <p className="text-xs text-gray-500 font-mono">
                                 Token: {voucherData.qr_token.slice(0, 8)}...
                               </p>
+                              {console.log('Displaying QR token:', voucherData.qr_token)}
+                              {console.log('Frontend base URL:', process.env.NEXT_PUBLIC_BASE_URL)}
                               <p className="text-xs text-blue-600 mt-1">
-                                QR URL: <a href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`} target="_blank" rel="noopener noreferrer" className="underline">
+                                QR URL: <a href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`} target="_blank" rel="noopener noreferrer" className="underline" onClick={() => console.log('Frontend QR URL clicked:', `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`)}>
                                   {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{voucherData.qr_token}
                                 </a>
                               </p>
