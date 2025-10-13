@@ -31,6 +31,12 @@ interface Event {
   registration_form_title?: string;
   registration_form_description?: string;
   registration_deadline?: string;
+  tenant_slug?: string;
+}
+
+interface Tenant {
+  slug: string;
+  name: string;
 }
 
 interface FormData {
@@ -64,10 +70,12 @@ interface FormData {
 export default function PublicEventRegistrationPage() {
   const params = useParams();
   const [event, setEvent] = useState<Event | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [countries, setCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [hasDietaryRequirements, setHasDietaryRequirements] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -172,6 +180,17 @@ export default function PublicEventRegistrationPage() {
       if (!response.ok) throw new Error("Failed to fetch event");
       const eventData = await response.json();
       setEvent(eventData);
+      
+      // Extract tenant from event or URL
+      if (eventData.tenant_slug) {
+        setTenant({ slug: eventData.tenant_slug, name: eventData.tenant_slug.toUpperCase() });
+      } else {
+        // Fallback: try to get tenant from URL or default to OCA
+        const urlPath = window.location.pathname;
+        const tenantMatch = urlPath.match(/\/tenant\/([^/]+)/);
+        const tenantSlug = tenantMatch ? tenantMatch[1] : 'oca';
+        setTenant({ slug: tenantSlug, name: tenantSlug.toUpperCase() });
+      }
     } catch (error) {
       console.error("Error fetching event:", error);
       toast({
@@ -473,11 +492,11 @@ export default function PublicEventRegistrationPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">MSF</span>
+                    <span className="text-white font-bold text-lg">{tenant?.name || 'MSF'}</span>
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700">
-                      Médecins Sans Frontières
+                      {tenant?.name === 'OCA' ? 'Médecins Sans Frontières' : tenant?.name || 'Médecins Sans Frontières'}
                     </h3>
                     <p className="text-xs text-gray-500">Registration Portal</p>
                   </div>
@@ -1013,7 +1032,7 @@ export default function PublicEventRegistrationPage() {
                       Line Manager Email
                     </Label>
                     <p className="text-xs text-gray-500">
-                      If not OCA, add hosting OC email
+                      If not {tenant?.name || 'OCA'}, add hosting OC email
                     </p>
                     <Input
                       id="lineManagerEmail"
@@ -1100,7 +1119,7 @@ export default function PublicEventRegistrationPage() {
                     Accommodation Type <span className="text-red-500">*</span>
                   </Label>
                   <p className="text-xs text-gray-500 mb-2">
-                    OCA provides free accommodation for all participants
+                    {tenant?.name || 'OCA'} provides free accommodation for all participants
                   </p>
                   <RadioGroup
                     value={formData.accommodationType}
@@ -1111,7 +1130,7 @@ export default function PublicEventRegistrationPage() {
                   >
                     <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
                       <RadioGroupItem
-                        value="Staying at MSF accommodation"
+                        value="Staying at accommodation"
                         id="staying"
                       />
                       <Label
@@ -1119,7 +1138,7 @@ export default function PublicEventRegistrationPage() {
                         className="cursor-pointer flex-1"
                       >
                         <span className="font-medium">
-                          Staying at MSF OCA accommodation overnight
+                          Staying at {tenant?.name || 'MSF'} accommodation overnight
                         </span>
                       </Label>
                     </div>
@@ -1177,26 +1196,51 @@ export default function PublicEventRegistrationPage() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="dietaryRequirements"
-                    className="text-sm font-medium"
-                  >
-                    Dietary Requirements
-                  </Label>
-                  <p className="text-xs text-gray-500">
-                    Include religious, cultural, or medical requirements (e.g.,
-                    Halal, vegetarian, allergies)
-                  </p>
-                  <Input
-                    id="dietaryRequirements"
-                    value={formData.dietaryRequirements}
-                    onChange={(e) =>
-                      handleInputChange("dietaryRequirements", e.target.value)
-                    }
-                    className="border-2 focus:border-red-500"
-                    placeholder="e.g., Vegetarian, no nuts"
-                  />
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="hasDietaryRequirements"
+                      checked={hasDietaryRequirements}
+                      onChange={(e) => {
+                        setHasDietaryRequirements(e.target.checked);
+                        if (!e.target.checked) {
+                          handleInputChange("dietaryRequirements", "");
+                        }
+                      }}
+                      className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                    />
+                    <Label
+                      htmlFor="hasDietaryRequirements"
+                      className="cursor-pointer flex-1 font-medium"
+                    >
+                      I have special dietary requirements
+                    </Label>
+                  </div>
+                  
+                  {hasDietaryRequirements && (
+                    <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-2">
+                      <Label
+                        htmlFor="dietaryRequirements"
+                        className="text-sm font-medium"
+                      >
+                        Please specify your dietary requirements
+                      </Label>
+                      <p className="text-xs text-gray-600">
+                        Include religious, cultural, or medical requirements
+                        (e.g., Halal, vegetarian, allergies)
+                      </p>
+                      <textarea
+                        id="dietaryRequirements"
+                        value={formData.dietaryRequirements}
+                        onChange={(e) =>
+                          handleInputChange("dietaryRequirements", e.target.value)
+                        }
+                        className="w-full p-3 border-2 rounded-lg focus:border-red-500 h-20 resize-none bg-white"
+                        placeholder="e.g., Vegetarian, no nuts, Halal food only"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1261,7 +1305,7 @@ export default function PublicEventRegistrationPage() {
                     </h3>
                     <div className="space-y-3">
                       <Label className="text-sm font-medium flex items-center gap-1">
-                        I confirm that I have read and will abide by the MSF
+                        I confirm that I have read and will abide by the {tenant?.name || 'MSF'}
                         code of conduct <span className="text-red-500">*</span>
                       </Label>
                       <RadioGroup
