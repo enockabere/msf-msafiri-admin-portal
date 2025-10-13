@@ -36,7 +36,7 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
 
   const fetchAttachments = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/events/${eventId}/attachments/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/attachments/`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -61,7 +61,7 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
     
     setLoading(true)
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/events/${eventId}/attachments/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/attachments/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
 
   const handleRemoveAttachment = async (attachmentId: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/events/${eventId}/attachments/${attachmentId}/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/attachments/${attachmentId}/`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

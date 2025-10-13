@@ -23,12 +23,14 @@ import {
   PlayCircle,
   PauseCircle,
   Edit3,
+  UtensilsCrossed,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import EventParticipants from "./EventParticipants";
 import EventAttachments from "./EventAttachments";
 import EventAllocations from "./EventAllocations";
 import EventAgenda from "./EventAgenda";
+import EventFood from "./EventFood";
 import SessionFeedback from "@/components/events/SessionFeedback";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { GoogleMap } from "@/components/ui/google-map";
@@ -56,6 +58,7 @@ interface Event {
 interface Participant {
   id: number;
   role: string;
+  participant_role?: string;
   status: string;
   participant_name?: string;
 }
@@ -143,14 +146,13 @@ export default function EventDetailsModal({
       if (response.ok) {
         const data = await response.json();
         setParticipants(data);
-        // Set separate counts for participants and facilitators
-        const actualParticipants = data.filter(
-          (p: Participant) => p.role !== "facilitator"
-        );
+        // Set counts for all participants (no filtering needed since we removed facilitator tab)
+        setParticipantsCount(data.length);
+        
+        // Count facilitators for overview display
         const facilitators = data.filter(
-          (p: Participant) => p.role === "facilitator"
+          (p: Participant) => (p.participant_role || p.role) === "facilitator"
         );
-        setParticipantsCount(actualParticipants.length);
         setFacilitatorsCount(facilitators.length);
       }
     } catch {
@@ -482,7 +484,7 @@ export default function EventDetailsModal({
             }}
             className="h-full flex flex-col"
           >
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 bg-white border-b border-gray-200 p-0 mx-3 sm:mx-4 lg:mx-6 mt-2 sm:mt-3 rounded-none h-12 sm:h-11 text-xs overflow-x-auto">
+            <TabsList className="grid w-full grid-cols-5 sm:grid-cols-7 bg-white border-b border-gray-200 p-0 mx-3 sm:mx-4 lg:mx-6 mt-2 sm:mt-3 rounded-none h-12 sm:h-11 text-xs overflow-x-auto">
               <TabsTrigger
                 value="overview"
                 className="text-xs font-medium px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
@@ -498,14 +500,7 @@ export default function EventDetailsModal({
                 <span className="sm:hidden">P</span>
                 <span className="ml-1">({participantsCount})</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="facilitators"
-                className="text-xs font-medium px-1 sm:px-2 py-2 hidden sm:flex data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
-              >
-                <span className="hidden lg:inline">Facilitators</span>
-                <span className="lg:hidden">Fac</span>
-                <span className="ml-1">({facilitatorsCount})</span>
-              </TabsTrigger>
+
               <TabsTrigger
                 value="attachments"
                 className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
@@ -530,6 +525,14 @@ export default function EventDetailsModal({
                 <Calendar className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Agenda</span>
                 <span className="sm:hidden">A</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="food"
+                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+              >
+                <UtensilsCrossed className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Food</span>
+                <span className="sm:hidden">F</span>
               </TabsTrigger>
               <TabsTrigger
                 value="feedback"
@@ -725,7 +728,7 @@ export default function EventDetailsModal({
                             Duration:
                           </span>
                           <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                            {event.duration_days} days
+                            {Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
                           </span>
                         </div>
                       </div>
@@ -742,12 +745,7 @@ export default function EventDetailsModal({
                             Registered:
                           </span>
                           <span className="text-gray-900 font-semibold">
-                            {
-                              participants.filter(
-                                (p) => p.role !== "facilitator"
-                              ).length
-                            }{" "}
-                            visitors
+                            {participants.length} participants
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
@@ -759,7 +757,7 @@ export default function EventDetailsModal({
                               participants.filter(
                                 (p) =>
                                   p.status === "selected" &&
-                                  p.role !== "facilitator"
+                                  (p.participant_role || p.role) !== "facilitator"
                               ).length
                             }{" "}
                             visitors
@@ -772,10 +770,23 @@ export default function EventDetailsModal({
                           <span className="text-purple-700 font-semibold">
                             {
                               participants.filter(
-                                (p) => p.role === "facilitator"
+                                (p) => (p.participant_role || p.role) === "facilitator"
                               ).length
                             }{" "}
                             facilitators
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="font-medium text-gray-700">
+                            Organizers:
+                          </span>
+                          <span className="text-blue-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) => (p.participant_role || p.role) === "organizer"
+                              ).length
+                            }{" "}
+                            organizers
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
@@ -787,7 +798,7 @@ export default function EventDetailsModal({
                               participants.filter(
                                 (p) =>
                                   p.status === "waiting" &&
-                                  p.role !== "facilitator"
+                                  (p.participant_role || p.role) !== "facilitator"
                               ).length
                             }{" "}
                             visitors
@@ -802,7 +813,7 @@ export default function EventDetailsModal({
                               participants.filter(
                                 (p) =>
                                   p.status === "attended" &&
-                                  p.role !== "facilitator"
+                                  (p.participant_role || p.role) !== "facilitator"
                               ).length
                             }{" "}
                             visitors
@@ -916,20 +927,7 @@ export default function EventDetailsModal({
                 />
               </TabsContent>
 
-              <TabsContent
-                value="facilitators"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
-              >
-                <EventParticipants
-                  eventId={event.id}
-                  tenantSlug={tenantSlug}
-                  roleFilter="facilitator"
-                  allowAdminAdd={canManageEvents}
-                  onParticipantsChange={handleFacilitatorsChange}
-                  eventHasEnded={eventHasEnded}
-                  canManageEvents={canManageEvents}
-                />
-              </TabsContent>
+
 
               <TabsContent
                 value="attachments"
@@ -962,6 +960,18 @@ export default function EventDetailsModal({
                   eventId={event.id}
                   tenantSlug={tenantSlug}
                   eventHasEnded={eventHasEnded}
+                />
+              </TabsContent>
+
+              <TabsContent
+                value="food"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventFood
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  eventHasEnded={eventHasEnded}
+                  eventDays={Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1}
                 />
               </TabsContent>
 

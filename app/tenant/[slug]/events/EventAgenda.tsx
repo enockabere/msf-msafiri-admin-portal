@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +61,7 @@ export default function EventAgenda({
   eventId,
   eventHasEnded = false,
 }: EventAgendaProps) {
+  const { accessToken } = useAuth();
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(false);
@@ -72,33 +74,65 @@ export default function EventAgenda({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    date: "",
-    start_time: "",
-    end_time: "",
-    location: "",
-    presenter: "",
+    day_number: 1,
+    start_time: "09:00",
+    end_time: "10:00",
+    speaker: "",
   });
+  const [facilitators, setFacilitators] = useState<any[]>([]);
 
   const fetchEventDetails = useCallback(async () => {
     try {
+      console.log('Fetching event details for eventId:', eventId);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      console.log('Event details response status:', response.status);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Event details data:', data);
+        setEventDetails({
+          start_date: data.start_date,
+          end_date: data.end_date,
+        });
+      } else {
+        console.error('Failed to fetch event details - status:', response.status);
+        if (response.status === 401) {
+          console.error('Authentication failed - token may be expired');
+          // Try to refresh the page or redirect to login
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch event details:", error);
+    }
+  }, [eventId]);
+
+  const fetchFacilitators = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/event/${eventId}/registrations`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        setEventDetails({
-          start_date: data.start_date,
-          end_date: data.end_date,
-        });
+        const facilitatorList = data.filter((p: any) => 
+          (p.participant_role || p.role) === "facilitator"
+        );
+        setFacilitators(facilitatorList);
       }
     } catch (error) {
-      console.error("Failed to fetch event details:", error);
+      console.error("Failed to fetch facilitators:", error);
     }
   }, [eventId]);
 
@@ -108,7 +142,7 @@ export default function EventAgenda({
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -125,7 +159,8 @@ export default function EventAgenda({
   useEffect(() => {
     fetchEventDetails();
     fetchAgendaItems();
-  }, [fetchEventDetails, fetchAgendaItems]);
+    fetchFacilitators();
+  }, [fetchEventDetails, fetchAgendaItems, fetchFacilitators]);
 
   const isDateWithinEvent = (date: Date) => {
     if (!eventDetails) return false;
@@ -152,12 +187,14 @@ export default function EventAgenda({
   };
 
   const handleSubmit = async () => {
+    console.log('Submit clicked, form data:', formData);
+    
     if (
       !formData.title ||
-      !formData.date ||
       !formData.start_time ||
       !formData.end_time
     ) {
+      console.log('Validation failed - missing required fields');
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -167,20 +204,9 @@ export default function EventAgenda({
       return;
     }
 
-    // Validate that selected date is within event dates
-    const selectedDateTime = new Date(formData.date);
-    if (!isDateWithinEvent(selectedDateTime)) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Selected date must be within the event date range.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Validate that end time is after start time
     if (formData.end_time <= formData.start_time) {
+      console.log('Validation failed - end time before start time');
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -190,18 +216,35 @@ export default function EventAgenda({
       return;
     }
 
+    if (!eventDetails) {
+      console.log('No event details available');
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Event details not loaded. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const startDateTime = `${formData.date}T${formData.start_time}:00`;
-      const endDateTime = `${formData.date}T${formData.end_time}:00`;
+      // Calculate the actual date based on day number
+      const eventStartDate = new Date(eventDetails.start_date);
+      const agendaDate = new Date(eventStartDate);
+      agendaDate.setDate(eventStartDate.getDate() + (formData.day_number - 1));
+      
+      const dateStr = agendaDate.toISOString().split('T')[0];
+      const startDateTime = `${dateStr}T${formData.start_time}:00`;
+      const endDateTime = `${dateStr}T${formData.end_time}:00`;
 
       const payload = {
         title: formData.title,
         description: formData.description,
         start_datetime: startDateTime,
         end_datetime: endDateTime,
-        location: formData.location,
-        presenter: formData.presenter,
+        day_number: formData.day_number,
+        speaker: formData.speaker,
         session_number: editingId ? undefined : generateSessionNumber(),
       };
 
@@ -211,16 +254,21 @@ export default function EventAgenda({
 
       const method = editingId ? "PUT" : "POST";
 
+      console.log('Making API request:', { method, url, payload });
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(payload),
       });
 
+      console.log('API response status:', response.status);
+
       if (response.ok) {
+        console.log('Agenda item saved successfully');
         await fetchAgendaItems();
         handleCloseForm();
 
@@ -232,9 +280,12 @@ export default function EventAgenda({
           } successfully.`,
         });
       } else {
-        throw new Error("Failed to save agenda item");
+        const errorText = await response.text();
+        console.error('API error:', response.status, errorText);
+        throw new Error(`Failed to save agenda item: ${response.status}`);
       }
-    } catch {
+    } catch (error) {
+      console.error('Submit error:', error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -249,16 +300,20 @@ export default function EventAgenda({
   const handleEdit = (item: AgendaItem) => {
     const startDate = parseISO(item.start_datetime);
     const endDate = parseISO(item.end_datetime);
+    
+    // Calculate day number from start date
+    const eventStartDate = new Date(eventDetails!.start_date);
+    const itemDate = new Date(startDate);
+    const dayNumber = Math.floor((itemDate.getTime() - eventStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     setEditingId(item.id);
     setFormData({
       title: item.title,
       description: item.description || "",
-      date: format(startDate, "yyyy-MM-dd"),
+      day_number: dayNumber,
       start_time: format(startDate, "HH:mm"),
       end_time: format(endDate, "HH:mm"),
-      location: item.location || "",
-      presenter: item.presenter || "",
+      speaker: item.presenter || "",
     });
     setShowForm(true);
   };
@@ -270,7 +325,7 @@ export default function EventAgenda({
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -299,11 +354,10 @@ export default function EventAgenda({
     setFormData({
       title: "",
       description: "",
-      date: "",
-      start_time: "",
-      end_time: "",
-      location: "",
-      presenter: "",
+      day_number: 1,
+      start_time: "09:00",
+      end_time: "10:00",
+      speaker: "",
     });
   };
 
@@ -340,14 +394,17 @@ export default function EventAgenda({
   };
 
   const handleAddForDate = (date: Date) => {
+    // Calculate day number from selected date
+    const eventStartDate = new Date(eventDetails!.start_date);
+    const dayNumber = Math.floor((date.getTime() - eventStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
     setFormData({
       title: "",
       description: "",
-      date: format(date, "yyyy-MM-dd"),
+      day_number: dayNumber,
       start_time: "09:00",
       end_time: "10:00",
-      location: "",
-      presenter: "",
+      speaker: "",
     });
     setShowForm(true);
   };
@@ -363,7 +420,8 @@ export default function EventAgenda({
           {eventDetails && (
             <p className="text-xs text-gray-500 mt-1">
               Event dates: {format(parseISO(eventDetails.start_date), "MMM dd")}{" "}
-              - {format(parseISO(eventDetails.end_date), "MMM dd, yyyy")}
+              - {format(parseISO(eventDetails.end_date), "MMM dd, yyyy")} 
+              ({Math.floor(Math.abs(new Date(eventDetails.end_date).getTime() - new Date(eventDetails.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days)
             </p>
           )}
         </div>
@@ -682,7 +740,7 @@ export default function EventAgenda({
 
       {/* Add/Edit Form Dialog */}
       <Dialog open={showForm} onOpenChange={handleCloseForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl bg-white border shadow-lg">
           <DialogHeader>
             <DialogTitle>
               {editingId ? "Edit Agenda Item" : "Add Agenda Item"}
@@ -719,16 +777,37 @@ export default function EventAgenda({
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Date *</label>
-                <Input
-                  type="date"
-                  value={formData.date}
+                <label className="block text-sm font-medium mb-2">Day *</label>
+                <select
+                  value={formData.day_number}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, date: e.target.value }))
+                    setFormData((prev) => ({ ...prev, day_number: parseInt(e.target.value) }))
                   }
-                  min={eventDetails?.start_date}
-                  max={eventDetails?.end_date}
-                />
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  {eventDetails ? (
+                    (() => {
+                      const startDate = new Date(eventDetails.start_date);
+                      const endDate = new Date(eventDetails.end_date);
+                      console.log('Start date:', startDate, 'End date:', endDate);
+                      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+                      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                      console.log('Calculated days:', diffDays);
+                      
+                      return Array.from({ length: diffDays }, (_, i) => {
+                        const dayDate = new Date(startDate);
+                        dayDate.setDate(startDate.getDate() + i);
+                        return (
+                          <option key={i + 1} value={i + 1}>
+                            Day {i + 1} ({format(dayDate, "MMM dd, yyyy")})
+                          </option>
+                        );
+                      });
+                    })()
+                  ) : (
+                    <option value={1}>Day 1 (Loading...)</option>
+                  )}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -762,45 +841,43 @@ export default function EventAgenda({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Location
-                </label>
-                <Input
-                  value={formData.location}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      location: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter location (optional)"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Presenter
-                </label>
-                <Input
-                  value={formData.presenter}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      presenter: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter presenter name (optional)"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Speaker
+              </label>
+              <select
+                value={formData.speaker}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    speaker: e.target.value,
+                  }))
+                }
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select a speaker (optional)</option>
+                {facilitators.map((facilitator) => (
+                  <option key={facilitator.id} value={facilitator.full_name}>
+                    {facilitator.full_name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseForm}>
+            <Button variant="outline" onClick={handleCloseForm} className="border-gray-300 text-gray-700 hover:bg-gray-50">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={loading}>
+            <Button 
+              onClick={(e) => {
+                e.preventDefault();
+                console.log('Create button clicked');
+                handleSubmit();
+              }} 
+              disabled={loading} 
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               {loading ? "Saving..." : editingId ? "Update" : "Create"}
             </Button>
           </DialogFooter>

@@ -27,6 +27,7 @@ interface Participant {
   invitation_accepted?: boolean;
   invitation_accepted_at?: string;
   role?: string;
+  participant_role?: string;
   oc?: string;
   position?: string;
   country?: string;
@@ -91,9 +92,25 @@ export default function EventParticipants({
   const [itemsPerPage] = useState(10);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewingParticipant, setViewingParticipant] = useState<Participant | null>(null);
+  
+  // Log when viewing participant changes
+  useEffect(() => {
+    if (viewingParticipant) {
+      console.log('=== VIEWING PARTICIPANT DETAILS ===');
+      console.log('Participant ID:', viewingParticipant.id);
+      console.log('Name:', viewingParticipant.full_name);
+      console.log('Email:', viewingParticipant.email);
+      console.log('Status:', viewingParticipant.status);
+      console.log('Role:', viewingParticipant.role);
+      console.log('Full participant object:', viewingParticipant);
+    }
+  }, [viewingParticipant]);
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const [processingBulk, setProcessingBulk] = useState(false);
+  const [bulkRole, setBulkRole] = useState<string>("");
+  const [processingBulkRole, setProcessingBulkRole] = useState(false);
+  const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
 
 // Participant Details Modal Component
 interface ParticipantDetailsModalProps {
@@ -443,14 +460,31 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
         const data = await response.json();
 
         const filteredData = roleFilter
-          ? data.filter((p: Participant) => p.role === roleFilter)
-          : data.filter((p: Participant) => p.role !== "facilitator");
+          ? data.filter((p: Participant) => (p.participant_role || p.role) === roleFilter)
+          : data; // Show all participants when no role filter is applied
 
         setParticipants(filteredData);
         const countForCallback = roleFilter
           ? filteredData.length
-          : data.filter((p: Participant) => p.role !== "facilitator").length;
+          : data.length; // Count all participants when no role filter
         onParticipantsChange?.(countForCallback);
+        
+        // Print participant details to console
+        console.log('=== EVENT PARTICIPANTS LOADED ===');
+        console.log('Event ID:', eventId);
+        console.log('Role Filter:', roleFilter);
+        console.log('Status Filter:', statusFilter);
+        console.log('Total participants fetched:', data.length);
+        console.log('Filtered participants:', filteredData.length);
+        console.log('Participants:', filteredData.map(p => ({
+          id: p.id,
+          name: p.full_name,
+          email: p.email,
+          status: p.status,
+          role: p.role,
+          participant_role: p.participant_role
+        })));
+        console.log('Raw data from API:', data.slice(0, 2)); // Show first 2 participants raw data
       }
     } catch {
       // Error handled silently
@@ -471,7 +505,7 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
       event_id: eventId,
       user_email: newParticipant.email,
       full_name: newParticipant.full_name,
-      role: roleFilter || "attendee",
+      role: "attendee",  // System role
     };
 
     setLoading(true);
@@ -741,6 +775,49 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
     }
   };
 
+  const handleRoleChange = async (participantId: number, newRole: string) => {
+    setUpdatingRoleId(participantId);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participantId}/role`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ role: newRole }),
+        }
+      );
+
+      if (response.ok) {
+        fetchParticipants();
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Success!",
+          description: `Participant role updated to ${newRole}.`,
+        });
+      } else {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Failed to update participant role.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update participant role:", error);
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to update participant role.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingRoleId(null);
+    }
+  };
+
   const handleBulkStatusChange = async () => {
     if (!bulkStatus || selectedParticipants.length === 0) return;
     
@@ -766,6 +843,34 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
       });
     } finally {
       setProcessingBulk(false);
+    }
+  };
+
+  const handleBulkRoleChange = async () => {
+    if (!bulkRole || selectedParticipants.length === 0) return;
+    
+    setProcessingBulkRole(true);
+    try {
+      for (const participantId of selectedParticipants) {
+        await handleRoleChange(participantId, bulkRole);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      setSelectedParticipants([]);
+      setBulkRole("");
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Success!",
+        description: `Updated ${selectedParticipants.length} participants to ${bulkRole} role`,
+      });
+    } catch {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to update some participant roles",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingBulkRole(false);
     }
   };
 
@@ -829,6 +934,24 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                 className="bg-blue-600 hover:bg-blue-700 text-white h-8"
               >
                 {processingBulk ? "Processing..." : "Update"}
+              </Button>
+              <Select value={bulkRole} onValueChange={setBulkRole}>
+                <SelectTrigger className="w-32 h-8 bg-white">
+                  <SelectValue placeholder="Set role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="visitor">Visitor</SelectItem>
+                  <SelectItem value="facilitator">Facilitator</SelectItem>
+                  <SelectItem value="organizer">Organizer</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleBulkRoleChange}
+                disabled={!bulkRole || processingBulkRole}
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700 text-white h-8"
+              >
+                {processingBulkRole ? "Processing..." : "Set Role"}
               </Button>
             </div>
           )}
@@ -952,6 +1075,7 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OC</th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -992,6 +1116,29 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
                   {participant.country || '-'}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  <Select 
+                    value={participant.participant_role || participant.role || 'visitor'} 
+                    onValueChange={(value) => handleRoleChange(participant.id, value)}
+                    disabled={eventHasEnded || updatingRoleId === participant.id}
+                  >
+                    <SelectTrigger className="w-24 h-7 text-xs">
+                      {updatingRoleId === participant.id ? (
+                        <div className="flex items-center gap-1">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                          <span className="text-xs">Updating...</span>
+                        </div>
+                      ) : (
+                        <SelectValue />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="visitor">Visitor</SelectItem>
+                      <SelectItem value="facilitator">Facilitator</SelectItem>
+                      <SelectItem value="organizer">Organizer</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
                   <Badge

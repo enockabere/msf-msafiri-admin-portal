@@ -117,6 +117,8 @@ export default function EventRegistrationFormPage() {
     travelRequirementsConfirm: "",
   });
 
+  const [hasDietaryRequirements, setHasDietaryRequirements] = useState(false);
+
   const tenantSlug = params.slug as string;
   const eventId = params.eventId as string;
 
@@ -483,11 +485,11 @@ export default function EventRegistrationFormPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-lg">MSF</span>
+                      <span className="text-white font-bold text-lg">{tenantSlug.toUpperCase()}</span>
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-gray-700">
-                        Médecins Sans Frontières
+                        {tenantSlug.toUpperCase() === 'OCA' ? 'Médecins Sans Frontières' : tenantSlug.toUpperCase()}
                       </h3>
                       <p className="text-xs text-gray-500">
                         Registration Portal
@@ -1230,7 +1232,7 @@ export default function EventRegistrationFormPage() {
                       Accommodation Type <span className="text-red-500">*</span>
                     </Label>
                     <p className="text-xs text-gray-500 mb-2">
-                      OCA provides free accommodation for all participants
+                      {tenantSlug.toUpperCase()} provides free accommodation for all participants
                     </p>
                     <RadioGroup
                       value={formData.accommodationType}
@@ -1241,7 +1243,7 @@ export default function EventRegistrationFormPage() {
                     >
                       <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
                         <RadioGroupItem
-                          value="Staying at MSF accommodation"
+                          value="Staying at accommodation"
                           id="staying"
                         />
                         <Label
@@ -1249,7 +1251,7 @@ export default function EventRegistrationFormPage() {
                           className="cursor-pointer flex-1"
                         >
                           <span className="font-medium">
-                            Staying at MSF OCA accommodation overnight
+                            Staying at {tenantSlug.toUpperCase()} accommodation overnight
                           </span>
                         </Label>
                       </div>
@@ -1307,26 +1309,51 @@ export default function EventRegistrationFormPage() {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="dietaryRequirements"
-                      className="text-sm font-medium"
-                    >
-                      Dietary Requirements
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      Include religious, cultural, or medical requirements
-                      (e.g., Halal, vegetarian, allergies)
-                    </p>
-                    <Input
-                      id="dietaryRequirements"
-                      value={formData.dietaryRequirements}
-                      onChange={(e) =>
-                        handleInputChange("dietaryRequirements", e.target.value)
-                      }
-                      className="border-2 focus:border-red-500"
-                      placeholder="e.g., Vegetarian, no nuts"
-                    />
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="hasDietaryRequirements"
+                        checked={hasDietaryRequirements}
+                        onChange={(e) => {
+                          setHasDietaryRequirements(e.target.checked);
+                          if (!e.target.checked) {
+                            handleInputChange("dietaryRequirements", "");
+                          }
+                        }}
+                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+                      />
+                      <Label
+                        htmlFor="hasDietaryRequirements"
+                        className="cursor-pointer flex-1 font-medium"
+                      >
+                        I have special dietary requirements
+                      </Label>
+                    </div>
+                    
+                    {hasDietaryRequirements && (
+                      <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-2">
+                        <Label
+                          htmlFor="dietaryRequirements"
+                          className="text-sm font-medium"
+                        >
+                          Please specify your dietary requirements
+                        </Label>
+                        <p className="text-xs text-gray-600">
+                          Include religious, cultural, or medical requirements
+                          (e.g., Halal, vegetarian, allergies)
+                        </p>
+                        <textarea
+                          id="dietaryRequirements"
+                          value={formData.dietaryRequirements}
+                          onChange={(e) =>
+                            handleInputChange("dietaryRequirements", e.target.value)
+                          }
+                          className="w-full p-3 border-2 rounded-lg focus:border-red-500 h-20 resize-none bg-white"
+                          placeholder="e.g., Vegetarian, no nuts, Halal food only"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">

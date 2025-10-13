@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -25,7 +26,12 @@ import {
   Calendar,
   Clock,
   Eye,
+  Home,
+  Utensils,
+  Car,
+  Building,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
 
 interface SessionFeedback {
@@ -53,40 +59,99 @@ interface SessionStats {
   response_rate: number;
 }
 
+interface EventFeedback {
+  participant_name: string;
+  participant_email: string;
+  overall_rating: number;
+  accommodation_rating?: number;
+  transport_rating?: number;
+  food_rating?: number;
+  venue_rating?: number;
+  organization_rating?: number;
+  content_rating?: number;
+  feedback_text?: string;
+  suggestions?: string;
+  would_recommend?: boolean;
+  submitted_at: string;
+}
+
+interface FeedbackStats {
+  event_feedback: {
+    total_responses: number;
+    average_overall_rating: number;
+    average_accommodation_rating: number;
+    average_transport_rating: number;
+    average_food_rating: number;
+    average_venue_rating: number;
+    average_organization_rating: number;
+    average_content_rating: number;
+    recommendation_percentage: number;
+  };
+  session_feedback: {
+    session_title: string;
+    response_count: number;
+    average_session_rating: number;
+    average_content_rating: number;
+  }[];
+}
+
 interface SessionFeedbackProps {
   eventId: number;
   tenantSlug: string;
 }
 
 export default function SessionFeedback({ eventId, tenantSlug }: SessionFeedbackProps) {
+  const { accessToken } = useAuth();
   const [sessionStats, setSessionStats] = useState<SessionStats[]>([]);
   const [selectedSession, setSelectedSession] = useState<SessionStats | null>(null);
   const [sessionFeedback, setSessionFeedback] = useState<SessionFeedback[]>([]);
+  const [eventFeedback, setEventFeedback] = useState<EventFeedback[]>([]);
+  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState("event");
 
-  const fetchSessionStats = useCallback(async () => {
+  const fetchFeedbackStats = useCallback(async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/sessions/feedback/stats`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/feedback/stats`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            'X-Tenant-ID': tenantSlug,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        setSessionStats(data);
+        setFeedbackStats(data);
       }
     } catch (error) {
-      console.error("Failed to fetch session stats:", error);
+      console.error("Failed to fetch feedback stats:", error);
     } finally {
       setLoading(false);
     }
-  }, [eventId, tenantSlug]);
+  }, [eventId, accessToken]);
+
+  const fetchEventFeedback = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/feedback/event`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setEventFeedback(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch event feedback:", error);
+    }
+  }, [eventId, accessToken]);
 
   const fetchSessionFeedback = useCallback(async (sessionId: number) => {
     try {
@@ -110,8 +175,9 @@ export default function SessionFeedback({ eventId, tenantSlug }: SessionFeedback
   }, [eventId, tenantSlug]);
 
   useEffect(() => {
-    fetchSessionStats();
-  }, [fetchSessionStats]);
+    fetchFeedbackStats();
+    fetchEventFeedback();
+  }, [fetchFeedbackStats, fetchEventFeedback]);
 
   const handleViewDetails = async (session: SessionStats) => {
     setSelectedSession(session);
@@ -158,116 +224,254 @@ export default function SessionFeedback({ eventId, tenantSlug }: SessionFeedback
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Session Feedback</h3>
+          <h3 className="text-xl font-bold text-gray-900">Event Feedback</h3>
           <p className="text-sm text-gray-600 mt-1">
-            View feedback and ratings for each session
+            View event and session feedback from participants
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <TrendingUp className="h-4 w-4" />
-          <span>{sessionStats.length} sessions</span>
-        </div>
+        {feedbackStats && feedbackStats.event_feedback && (
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>{feedbackStats.event_feedback.total_responses} event responses</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>{feedbackStats.session_feedback?.length || 0} sessions</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {sessionStats.length > 0 ? (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Session</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Responses</TableHead>
-                <TableHead>Session Rating</TableHead>
-                <TableHead>Content Rating</TableHead>
-                <TableHead>Presenter Rating</TableHead>
-                <TableHead>Response Rate</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessionStats.map((session) => (
-                <TableRow key={session.session_id}>
-                  <TableCell>
-                    <div>
-                      <Badge variant="secondary" className="text-xs mb-1">
-                        {session.session_number}
-                      </Badge>
-                      <div className="font-medium text-sm">{session.session_title}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Calendar className="h-3 w-3" />
-                        {format(parseISO(session.start_datetime), "MMM dd")}
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-500">
-                        <Clock className="h-3 w-3" />
-                        {format(parseISO(session.start_datetime), "HH:mm")} - {format(parseISO(session.end_datetime), "HH:mm")}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">{session.total_responses}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">{renderStars(session.average_session_rating)}</div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getRatingColor(session.average_session_rating)}`}>
-                        {session.average_session_rating.toFixed(1)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">{renderStars(session.average_content_rating)}</div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getRatingColor(session.average_content_rating)}`}>
-                        {session.average_content_rating.toFixed(1)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">{renderStars(session.average_presenter_rating)}</div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getRatingColor(session.average_presenter_rating)}`}>
-                        {session.average_presenter_rating.toFixed(1)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={session.response_rate >= 70 ? "default" : session.response_rate >= 40 ? "secondary" : "destructive"}
-                      className="text-xs"
-                    >
-                      {session.response_rate.toFixed(0)}%
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewDetails(session)}
-                      className="gap-2"
-                    >
-                      <Eye className="h-4 w-4" />
-                      View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h4 className="text-lg font-medium text-gray-900 mb-2">No session feedback yet</h4>
-          <p className="text-gray-500">Feedback will appear here once participants start rating sessions</p>
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
+          <TabsTrigger 
+            value="event" 
+            className="flex items-center gap-2 px-4 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all"
+          >
+            <Star className="h-4 w-4" />
+            Event Feedback
+          </TabsTrigger>
+          <TabsTrigger 
+            value="sessions" 
+            className="flex items-center gap-2 px-4 py-2 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600 font-medium transition-all"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Session Feedback
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="event" className="space-y-6">
+          {/* Event Feedback Stats */}
+          {feedbackStats && feedbackStats.event_feedback && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">Overall</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {(feedbackStats.event_feedback.average_overall_rating || 0).toFixed(1)}
+                </div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Home className="h-5 w-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Accommodation</span>
+                </div>
+                <div className="text-2xl font-bold text-green-600">
+                  {(feedbackStats.event_feedback.average_accommodation_rating || 0).toFixed(1)}
+                </div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Car className="h-5 w-5 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">Transport</span>
+                </div>
+                <div className="text-2xl font-bold text-purple-600">
+                  {(feedbackStats.event_feedback.average_transport_rating || 0).toFixed(1)}
+                </div>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Utensils className="h-5 w-5 text-orange-600" />
+                  <span className="text-sm font-medium text-orange-700">Food</span>
+                </div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {(feedbackStats.event_feedback.average_food_rating || 0).toFixed(1)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Event Feedback List */}
+          {eventFeedback.length > 0 ? (
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Participant</TableHead>
+                    <TableHead>Overall</TableHead>
+                    <TableHead>Accommodation</TableHead>
+                    <TableHead>Transport</TableHead>
+                    <TableHead>Food</TableHead>
+                    <TableHead>Venue</TableHead>
+                    <TableHead>Recommend</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {eventFeedback.map((feedback, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{feedback.participant_name}</div>
+                          <div className="text-sm text-gray-500">{feedback.participant_email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex">{renderStars(feedback.overall_rating)}</div>
+                          <span className="text-sm font-medium">{feedback.overall_rating}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {feedback.accommodation_rating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex">{renderStars(feedback.accommodation_rating)}</div>
+                            <span className="text-sm font-medium">{feedback.accommodation_rating}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {feedback.transport_rating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex">{renderStars(feedback.transport_rating)}</div>
+                            <span className="text-sm font-medium">{feedback.transport_rating}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {feedback.food_rating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex">{renderStars(feedback.food_rating)}</div>
+                            <span className="text-sm font-medium">{feedback.food_rating}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {feedback.venue_rating ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex">{renderStars(feedback.venue_rating)}</div>
+                            <span className="text-sm font-medium">{feedback.venue_rating}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {feedback.would_recommend !== null ? (
+                          <Badge variant={feedback.would_recommend ? "default" : "destructive"}>
+                            {feedback.would_recommend ? "Yes" : "No"}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-500">
+                          {format(parseISO(feedback.submitted_at), "MMM dd, HH:mm")}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h4 className="text-lg font-medium text-gray-900 mb-2">No event feedback yet</h4>
+              <p className="text-gray-500">Event feedback will appear here once participants submit their reviews</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="sessions" className="space-y-6">
+          {/* Session Feedback Stats */}
+          {feedbackStats && feedbackStats.session_feedback && feedbackStats.session_feedback.length > 0 ? (
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Session</TableHead>
+                    <TableHead>Responses</TableHead>
+                    <TableHead>Session Rating</TableHead>
+                    <TableHead>Content Rating</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {feedbackStats.session_feedback.map((session, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div className="font-medium">{session.session_title}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{session.response_count}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex">{renderStars(session.average_session_rating)}</div>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getRatingColor(session.average_session_rating)}`}>
+                            {session.average_session_rating.toFixed(1)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex">{renderStars(session.average_content_rating)}</div>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getRatingColor(session.average_content_rating)}`}>
+                            {session.average_content_rating.toFixed(1)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled
+                        >
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h4 className="text-lg font-medium text-gray-900 mb-2">No session feedback yet</h4>
+              <p className="text-gray-500">Session feedback will appear here once participants rate individual sessions</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+
 
       {/* Session Details Modal */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
