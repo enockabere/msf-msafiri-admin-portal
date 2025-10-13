@@ -54,6 +54,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
     content: '',
     document_url: '',
     video_url: '',
+    status: 'draft' as SecurityBriefing['status'],
     publish_start_date: '',
     publish_end_date: ''
   })
@@ -133,6 +134,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
           content: '',
           document_url: '',
           video_url: '',
+          status: 'draft',
           publish_start_date: '',
           publish_end_date: ''
         })
@@ -217,6 +219,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
       content: briefing.content || '',
       document_url: briefing.document_url || '',
       video_url: briefing.video_url || '',
+      status: briefing.status || 'draft',
       publish_start_date: briefing.publish_start_date || '',
       publish_end_date: briefing.publish_end_date || ''
     })
@@ -396,7 +399,7 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
                       </Button>
                     </TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Content Type</TableHead>
+                    <TableHead>Content & Status</TableHead>
                     <TableHead>Publish Dates</TableHead>
                     <TableHead>Created By</TableHead>
                     <TableHead>Actions</TableHead>
@@ -425,9 +428,19 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
-                          {contentTypes.find(t => t.value === briefing.content_type)?.label}
-                        </Badge>
+                        <div className="space-y-1">
+                          <Badge variant="secondary">
+                            {contentTypes.find(t => t.value === briefing.content_type)?.label}
+                          </Badge>
+                          <div>
+                            <Badge 
+                              variant={briefing.status === 'published' ? 'default' : briefing.status === 'draft' ? 'secondary' : 'outline'}
+                              className={briefing.status === 'published' ? 'bg-green-100 text-green-800' : briefing.status === 'draft' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}
+                            >
+                              {briefing.status?.toUpperCase() || 'DRAFT'}
+                            </Badge>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -447,13 +460,15 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditModal(briefing)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {briefing.status === 'draft' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditModal(briefing)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           {briefing.status === 'draft' && (
                             <Button
                               variant="outline"
@@ -474,14 +489,16 @@ export default function SecurityBriefings({ eventId, tenantSlug }: SecurityBrief
                               <Archive className="h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(briefing.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {briefing.status === 'draft' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(briefing.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
