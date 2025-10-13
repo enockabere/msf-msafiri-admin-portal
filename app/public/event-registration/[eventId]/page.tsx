@@ -363,15 +363,24 @@ export default function PublicEventRegistrationPage() {
 
     try {
       setSubmitting(true);
+      
+      const registrationData = {
+        ...formData,
+        eventId: parseInt(eventId),
+      };
+      
+      console.log('🔥 FRONTEND DEBUG: Registration data being sent:', registrationData);
+      console.log('🔥 FRONTEND DEBUG: travellingInternationally =', registrationData.travellingInternationally);
+      console.log('🔥 FRONTEND DEBUG: accommodationType =', registrationData.accommodationType);
+      console.log('🔥 FRONTEND DEBUG: dailyMeals =', registrationData.dailyMeals);
+      console.log('🔥 FRONTEND DEBUG: dietaryRequirements =', registrationData.dietaryRequirements);
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/public-register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...formData,
-            eventId: parseInt(eventId),
-          }),
+          body: JSON.stringify(registrationData),
         }
       );
 
