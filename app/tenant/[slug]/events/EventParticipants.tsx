@@ -69,6 +69,9 @@ interface Participant {
   dailyMeals?: string;
   travellingInternationally?: string;
   accommodationType?: string;
+  // Document upload fields
+  passport_document?: string;
+  ticket_document?: string;
 }
 
 interface EventParticipantsProps {
@@ -1446,6 +1449,9 @@ export default function EventParticipants({
                 Confirmed
               </th>
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Documents
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -1540,6 +1546,33 @@ export default function EventParticipants({
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                       <span className="text-xs text-orange-700 font-medium">Pending</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <span className="text-xs text-gray-500 font-medium">N/A</span>
+                    </div>
+                  )}
+                </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  {participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          participant.passport_document ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className={`text-xs font-medium ${
+                          participant.passport_document ? 'text-green-700' : 'text-red-700'
+                        }`}>P</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          participant.ticket_document ? 'bg-green-500' : 'bg-red-500'
+                        }`}></div>
+                        <span className={`text-xs font-medium ${
+                          participant.ticket_document ? 'text-green-700' : 'text-red-700'
+                        }`}>T</span>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
