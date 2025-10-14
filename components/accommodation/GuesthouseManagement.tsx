@@ -1,22 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { LocationSelect } from "@/components/ui/location-select";
 import { Plus, Loader2, Save, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
 interface GuesthouseForm {
   name: string;
   location: string;
+  latitude?: string;
+  longitude?: string;
   description: string;
-  contact_person: string;
-  contact_phone: string;
-  contact_email: string;
 }
 
 interface GuesthouseManagementProps {
@@ -34,14 +34,38 @@ export default function GuesthouseManagement({
 }: GuesthouseManagementProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [guesthouseForm, setGuesthouseForm] = useState<GuesthouseForm>({
     name: "",
     location: "",
+    latitude: "",
+    longitude: "",
     description: "",
-    contact_person: "",
-    contact_phone: "",
-    contact_email: "",
   });
+
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.ok) {
+          const tenant = await response.json();
+          setTenantData({ country: tenant.country });
+        }
+      } catch (error) {
+        console.error('Failed to fetch tenant data:', error);
+      }
+    };
+
+    fetchTenantData();
+  }, [apiClient, tenantSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,10 +90,9 @@ export default function GuesthouseManagement({
         setGuesthouseForm({ 
           name: "", 
           location: "", 
-          description: "", 
-          contact_person: "", 
-          contact_phone: "", 
-          contact_email: "" 
+          latitude: "",
+          longitude: "",
+          description: ""
         });
         toast({ title: "Success", description: "Guesthouse created successfully" });
       } else {
@@ -109,39 +132,21 @@ export default function GuesthouseManagement({
           </div>
           <div className="space-y-2">
             <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
-            <Textarea
-              id="location"
+            <LocationSelect
               value={guesthouseForm.location}
-              onChange={(e) => setGuesthouseForm({ ...guesthouseForm, location: e.target.value })}
+              country={tenantData?.country}
+              onChange={(value, placeDetails) => {
+                setGuesthouseForm({ 
+                  ...guesthouseForm, 
+                  location: value,
+                  latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                  longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                });
+              }}
+              placeholder="Search for guesthouse location"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="contact_person" className="text-sm font-medium text-gray-700">Contact Person</Label>
-            <Input
-              id="contact_person"
-              value={guesthouseForm.contact_person}
-              onChange={(e) => setGuesthouseForm({ ...guesthouseForm, contact_person: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="contact_phone" className="text-sm font-medium text-gray-700">Phone</Label>
-              <Input
-                id="contact_phone"
-                value={guesthouseForm.contact_phone}
-                onChange={(e) => setGuesthouseForm({ ...guesthouseForm, contact_phone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact_email" className="text-sm font-medium text-gray-700">Email</Label>
-              <Input
-                id="contact_email"
-                type="email"
-                value={guesthouseForm.contact_email}
-                onChange={(e) => setGuesthouseForm({ ...guesthouseForm, contact_email: e.target.value })}
-              />
-            </div>
-          </div>
+
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-gray-700">Facilities Description</Label>
             <Textarea

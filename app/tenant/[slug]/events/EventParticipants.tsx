@@ -1558,20 +1558,12 @@ export default function EventParticipants({
                   {participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes' ? (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded-full ${
-                          participant.passport_document ? 'bg-green-500' : 'bg-red-500'
-                        }`}></div>
-                        <span className={`text-xs font-medium ${
-                          participant.passport_document ? 'text-green-700' : 'text-red-700'
-                        }`}>P</span>
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-xs font-medium text-green-700">P</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className={`w-2 h-2 rounded-full ${
-                          participant.ticket_document ? 'bg-green-500' : 'bg-red-500'
-                        }`}></div>
-                        <span className={`text-xs font-medium ${
-                          participant.ticket_document ? 'text-green-700' : 'text-red-700'
-                        }`}>T</span>
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-xs font-medium text-green-700">T</span>
                       </div>
                     </div>
                   ) : (

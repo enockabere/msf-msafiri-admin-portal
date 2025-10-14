@@ -15,8 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LocationSelect } from "@/components/ui/location-select";
-import { CountrySelect } from "@/components/ui/country-select";
+
 import {
   Dialog,
   DialogContent,
@@ -61,6 +60,7 @@ interface Event {
   perdiem_rate?: number;
   perdiem_currency?: string;
   registration_deadline?: string;
+  vendor_accommodation_id?: number;
   tenant_id?: number;
   created_by: string;
   created_at?: string;
@@ -112,6 +112,7 @@ export default function TenantEventsPage() {
     status: "Draft",
     start_date: "",
     end_date: "",
+    vendor_accommodation_id: "",
     location: "",
     country: "",
     latitude: "",
@@ -123,8 +124,20 @@ export default function TenantEventsPage() {
     registration_deadline: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
 
   const tenantSlug = params.slug as string;
+
+  const fetchVendorHotels = useCallback(async () => {
+    try {
+      const hotels = await apiClient.request<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>(
+        `/accommodation/vendor-accommodations`
+      );
+      setVendorHotels(hotels);
+    } catch (error) {
+      console.error("Fetch vendor hotels error:", error);
+    }
+  }, [apiClient]);
 
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date();
@@ -217,7 +230,7 @@ export default function TenantEventsPage() {
         setTenantData(null);
       }
 
-      await fetchEvents();
+      await Promise.all([fetchEvents(), fetchVendorHotels()]);
     } catch (error) {
       console.error("Access check error:", error);
       toast({
@@ -286,12 +299,11 @@ export default function TenantEventsPage() {
       !formData.event_type.trim() ||
       !formData.start_date ||
       !formData.end_date ||
-      !formData.country.trim() ||
-      !formData.location.trim()
+      !formData.vendor_accommodation_id
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, country, location, start date, and end date are required",
+        description: "Title, event type, venue, start date, and end date are required",
         variant: "destructive",
       });
       return;
@@ -365,8 +377,9 @@ export default function TenantEventsPage() {
         status: "Draft",
         start_date: "",
         end_date: "",
+        vendor_accommodation_id: "",
         location: "",
-        country: tenantData?.country || "",
+        country: "",
         latitude: "",
         longitude: "",
         banner_image: "",
@@ -404,12 +417,11 @@ export default function TenantEventsPage() {
       !selectedEvent ||
       !formData.title.trim() ||
       !formData.event_type.trim() ||
-      !formData.country.trim() ||
-      !formData.location.trim()
+      !formData.vendor_accommodation_id
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, country, and location are required",
+        description: "Title, event type, and venue are required",
         variant: "destructive",
       });
       return;
@@ -584,8 +596,9 @@ export default function TenantEventsPage() {
       status: event.status || "Draft",
       start_date: event.start_date,
       end_date: event.end_date,
+      vendor_accommodation_id: (event as any).vendor_accommodation_id?.toString() || "",
       location: event.location || "",
-      country: event.country || tenantData?.country || "",
+      country: event.country || "",
       latitude: event.latitude?.toString() || "",
       longitude: event.longitude?.toString() || "",
       banner_image: event.banner_image || "",
@@ -612,8 +625,9 @@ export default function TenantEventsPage() {
       status: "Draft",
       start_date: "",
       end_date: "",
+      vendor_accommodation_id: "",
       location: "",
-      country: tenantData?.country || "",
+      country: "",
       latitude: "",
       longitude: "",
       banner_image: "",
@@ -976,15 +990,33 @@ export default function TenantEventsPage() {
               </div>
               
               <div>
-                <Label htmlFor="country" className="mb-2 block">
-                  Country *
+                <Label htmlFor="vendor_accommodation_id" className="mb-2 block">
+                  Venue (Hotel) *
                 </Label>
-                <CountrySelect
-                  value={formData.country || tenantData?.country || ""}
-                  onChange={(value) =>
-                    setFormData({ ...formData, country: value })
-                  }
-                />
+                <Select
+                  value={formData.vendor_accommodation_id}
+                  onValueChange={(value) => {
+                    const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                    setFormData({ 
+                      ...formData, 
+                      vendor_accommodation_id: value,
+                      location: selectedHotel?.location || "",
+                      latitude: selectedHotel?.latitude || "",
+                      longitude: selectedHotel?.longitude || ""
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select venue hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendorHotels.map((hotel) => (
+                      <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                        {hotel.vendor_name} - {hotel.location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="grid grid-cols-4 gap-4">
@@ -1044,24 +1076,17 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="location" className="mb-2 block">
-                  Location *
-                </Label>
-                <LocationSelect
-                  value={formData.location}
-                  country={formData.country}
-                  onChange={(value, placeDetails) => {
-                    setFormData({ 
-                      ...formData, 
-                      location: value,
-                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
-                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
-                    });
-                  }}
-                  placeholder="Search for venue or city"
-                />
-              </div>
+              {formData.vendor_accommodation_id && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <Label className="mb-2 block text-sm font-medium text-gray-700">
+                    Selected Venue Details
+                  </Label>
+                  <div className="text-sm text-gray-600">
+                    <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                    <p><strong>Location:</strong> {formData.location}</p>
+                  </div>
+                </div>
+              )}
               
               <div>
                 <Label htmlFor="banner_image" className="mb-2 block">
@@ -1230,15 +1255,33 @@ export default function TenantEventsPage() {
               </div>
               
               <div>
-                <Label htmlFor="edit_country" className="mb-2 block">
-                  Country *
+                <Label htmlFor="edit_vendor_accommodation_id" className="mb-2 block">
+                  Venue (Hotel) *
                 </Label>
-                <CountrySelect
-                  value={formData.country || tenantData?.country || ""}
-                  onChange={(value) =>
-                    setFormData({ ...formData, country: value })
-                  }
-                />
+                <Select
+                  value={formData.vendor_accommodation_id}
+                  onValueChange={(value) => {
+                    const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                    setFormData({ 
+                      ...formData, 
+                      vendor_accommodation_id: value,
+                      location: selectedHotel?.location || "",
+                      latitude: selectedHotel?.latitude || "",
+                      longitude: selectedHotel?.longitude || ""
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select venue hotel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendorHotels.map((hotel) => (
+                      <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                        {hotel.vendor_name} - {hotel.location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="grid grid-cols-4 gap-4">
@@ -1298,24 +1341,17 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="edit_location" className="mb-2 block">
-                  Location *
-                </Label>
-                <LocationSelect
-                  value={formData.location}
-                  country={formData.country}
-                  onChange={(value, placeDetails) => {
-                    setFormData({ 
-                      ...formData, 
-                      location: value,
-                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || formData.latitude,
-                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || formData.longitude
-                    });
-                  }}
-                  placeholder="Search for venue or city"
-                />
-              </div>
+              {formData.vendor_accommodation_id && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <Label className="mb-2 block text-sm font-medium text-gray-700">
+                    Selected Venue Details
+                  </Label>
+                  <div className="text-sm text-gray-600">
+                    <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                    <p><strong>Location:</strong> {formData.location}</p>
+                  </div>
+                </div>
+              )}
               
               <div>
                 <Label htmlFor="edit_banner_image" className="mb-2 block">

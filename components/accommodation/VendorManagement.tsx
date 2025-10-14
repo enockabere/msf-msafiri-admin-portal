@@ -1,23 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { LocationSelect } from "@/components/ui/location-select";
 import { Plus, Loader2, Save, X } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
 interface VendorForm {
   vendor_name: string;
   location: string;
+  latitude?: string;
+  longitude?: string;
   accommodation_type: string;
-  capacity: number;
-  contact_person: string;
-  contact_phone: string;
-  contact_email: string;
+  single_rooms: number;
+  double_rooms: number;
   description: string;
 }
 
@@ -36,16 +37,41 @@ export default function VendorManagement({
 }: VendorManagementProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [vendorForm, setVendorForm] = useState<VendorForm>({
     vendor_name: "",
     location: "",
+    latitude: "",
+    longitude: "",
     accommodation_type: "Hotel",
-    capacity: 1,
-    contact_person: "",
-    contact_phone: "",
-    contact_email: "",
+    single_rooms: 0,
+    double_rooms: 0,
     description: "",
   });
+
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.ok) {
+          const tenant = await response.json();
+          setTenantData({ country: tenant.country });
+        }
+      } catch (error) {
+        console.error('Failed to fetch tenant data:', error);
+      }
+    };
+
+    fetchTenantData();
+  }, [apiClient, tenantSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,11 +96,11 @@ export default function VendorManagement({
         setVendorForm({ 
           vendor_name: "",
           location: "",
+          latitude: "",
+          longitude: "",
           accommodation_type: "Hotel",
-          capacity: 1,
-          contact_person: "",
-          contact_phone: "",
-          contact_email: "",
+          single_rooms: 0,
+          double_rooms: 0,
           description: "",
         });
         toast({ title: "Success", description: "Vendor hotel created successfully" });
@@ -115,62 +141,54 @@ export default function VendorManagement({
           </div>
           <div className="space-y-2">
             <Label htmlFor="location" className="text-sm font-medium text-gray-700">Location</Label>
-            <Textarea
-              id="location"
+            <LocationSelect
               value={vendorForm.location}
-              onChange={(e) => setVendorForm({ ...vendorForm, location: e.target.value })}
-              required
+              country={tenantData?.country}
+              onChange={(value, placeDetails) => {
+                setVendorForm({ 
+                  ...vendorForm, 
+                  location: value,
+                  latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                  longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                });
+              }}
+              placeholder="Search for hotel location"
             />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="accommodation_type" className="text-sm font-medium text-gray-700">Type</Label>
-              <Input
-                id="accommodation_type"
-                value={vendorForm.accommodation_type}
-                onChange={(e) => setVendorForm({ ...vendorForm, accommodation_type: e.target.value })}
-                placeholder="Hotel, Lodge, etc."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="capacity" className="text-sm font-medium text-gray-700">Capacity</Label>
-              <Input
-                id="capacity"
-                type="number"
-                min="1"
-                value={vendorForm.capacity}
-                onChange={(e) => setVendorForm({ ...vendorForm, capacity: parseInt(e.target.value) || 1 })}
-                required
-              />
-            </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="contact_person" className="text-sm font-medium text-gray-700">Contact Person</Label>
+            <Label htmlFor="accommodation_type" className="text-sm font-medium text-gray-700">Type</Label>
             <Input
-              id="contact_person"
-              value={vendorForm.contact_person}
-              onChange={(e) => setVendorForm({ ...vendorForm, contact_person: e.target.value })}
+              id="accommodation_type"
+              value={vendorForm.accommodation_type}
+              onChange={(e) => setVendorForm({ ...vendorForm, accommodation_type: e.target.value })}
+              placeholder="Hotel, Lodge, etc."
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="contact_phone" className="text-sm font-medium text-gray-700">Phone</Label>
+              <Label htmlFor="single_rooms" className="text-sm font-medium text-gray-700">Single Rooms</Label>
               <Input
-                id="contact_phone"
-                value={vendorForm.contact_phone}
-                onChange={(e) => setVendorForm({ ...vendorForm, contact_phone: e.target.value })}
+                id="single_rooms"
+                type="number"
+                min="0"
+                value={vendorForm.single_rooms || ""}
+                onChange={(e) => setVendorForm({ ...vendorForm, single_rooms: parseInt(e.target.value) || 0 })}
+                placeholder="0"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contact_email" className="text-sm font-medium text-gray-700">Email</Label>
+              <Label htmlFor="double_rooms" className="text-sm font-medium text-gray-700">Double Rooms</Label>
               <Input
-                id="contact_email"
-                type="email"
-                value={vendorForm.contact_email}
-                onChange={(e) => setVendorForm({ ...vendorForm, contact_email: e.target.value })}
+                id="double_rooms"
+                type="number"
+                min="0"
+                value={vendorForm.double_rooms || ""}
+                onChange={(e) => setVendorForm({ ...vendorForm, double_rooms: parseInt(e.target.value) || 0 })}
+                placeholder="0"
               />
             </div>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
             <Textarea

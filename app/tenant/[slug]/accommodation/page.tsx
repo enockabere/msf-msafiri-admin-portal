@@ -459,6 +459,47 @@ export default function AccommodationPage() {
     setAllocationModalOpen(true);
   };
 
+  const handleDeleteVendor = async (vendor: VendorAccommodation) => {
+    const { default: Swal } = await import("sweetalert2");
+
+    const result = await Swal.fire({
+      title: "Delete Vendor Hotel?",
+      text: `This will permanently delete "${vendor.vendor_name}". This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${vendor.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchData();
+        toast({ title: "Success", description: "Vendor hotel deleted successfully" });
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Delete vendor error:", error);
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    }
+  };
+
   const toggleRoomSelection = (roomId: number) => {
     setSelectedRooms(prev => 
       prev.includes(roomId) 
@@ -959,7 +1000,9 @@ export default function AccommodationPage() {
                   <VendorCard 
                     key={vendor.id} 
                     vendor={vendor} 
-                    onBook={handleBookVendor} 
+                    onBook={handleBookVendor}
+                    onDelete={canEdit ? handleDeleteVendor : undefined}
+                    canEdit={canEdit}
                   />
                 ))
               )}

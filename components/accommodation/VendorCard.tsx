@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Hotel, Users, Calendar, MapPin } from "lucide-react";
+import { Hotel, Users, Calendar, MapPin, Trash2 } from "lucide-react";
 
 interface VendorAccommodation {
   id: number;
@@ -18,9 +18,11 @@ interface VendorAccommodation {
 interface VendorCardProps {
   vendor: VendorAccommodation;
   onBook: (vendor: VendorAccommodation) => void;
+  onDelete?: (vendor: VendorAccommodation) => void;
+  canEdit?: boolean;
 }
 
-export default function VendorCard({ vendor, onBook }: VendorCardProps) {
+export default function VendorCard({ vendor, onBook, onDelete, canEdit }: VendorCardProps) {
   const occupancyPercentage = vendor.capacity > 0 
     ? Math.round((vendor.current_occupants / vendor.capacity) * 100) 
     : 0;
@@ -81,14 +83,26 @@ export default function VendorCard({ vendor, onBook }: VendorCardProps) {
           <Progress value={occupancyPercentage} className="h-2" />
         </div>
 
-        <Button 
-          onClick={() => onBook(vendor)}
-          disabled={vendor.current_occupants >= vendor.capacity}
-          className="w-full bg-red-600 hover:bg-red-700 text-white"
-        >
-          <Calendar className="w-4 h-4 mr-2" />
-          Book
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => onBook(vendor)}
+            disabled={vendor.current_occupants >= vendor.capacity}
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Book
+          </Button>
+          {canEdit && onDelete && (
+            <Button 
+              onClick={() => onDelete(vendor)}
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
