@@ -11,7 +11,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Send, Search, Printer, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Send,
+  Search,
+  Printer,
+  Download,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Participant {
   id: number;
@@ -91,354 +100,645 @@ export default function EventParticipants({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [viewingParticipant, setViewingParticipant] = useState<Participant | null>(null);
-  
+  const [viewingParticipant, setViewingParticipant] =
+    useState<Participant | null>(null);
+
   // Log when viewing participant changes
   useEffect(() => {
     if (viewingParticipant) {
-      console.log('=== VIEWING PARTICIPANT DETAILS ===');
-      console.log('Participant ID:', viewingParticipant.id);
-      console.log('Name:', viewingParticipant.full_name);
-      console.log('Email:', viewingParticipant.email);
-      console.log('Status:', viewingParticipant.status);
-      console.log('Role:', viewingParticipant.role);
-      console.log('Full participant object:', viewingParticipant);
+      console.log("=== VIEWING PARTICIPANT DETAILS ===");
+      console.log("Participant ID:", viewingParticipant.id);
+      console.log("Name:", viewingParticipant.full_name);
+      console.log("Email:", viewingParticipant.email);
+      console.log("Status:", viewingParticipant.status);
+      console.log("Role:", viewingParticipant.role);
+      console.log("Full participant object:", viewingParticipant);
     }
   }, [viewingParticipant]);
-  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
+  const [selectedParticipants, setSelectedParticipants] = useState<number[]>(
+    []
+  );
   const [bulkStatus, setBulkStatus] = useState<string>("");
   const [processingBulk, setProcessingBulk] = useState(false);
   const [bulkRole, setBulkRole] = useState<string>("");
   const [processingBulkRole, setProcessingBulkRole] = useState(false);
   const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
 
-// Participant Details Modal Component
-interface ParticipantDetailsModalProps {
-  participant: Participant;
-  onClose: () => void;
-  eventId: number;
-  getStatusColor: (status: string) => string;
-}
+  // Participant Details Modal Component
+  interface ParticipantDetailsModalProps {
+    participant: Participant;
+    onClose: () => void;
+    eventId: number;
+    getStatusColor: (status: string) => string;
+  }
 
-interface TransportBooking {
-  booking_type?: string;
-  pickup_locations?: string[];
-  status?: string;
-  scheduled_time?: string;
-}
+  interface TransportBooking {
+    booking_type?: string;
+    pickup_locations?: string[];
+    status?: string;
+    scheduled_time?: string;
+  }
 
-interface AccommodationData {
-  name?: string;
-  address?: string;
-  location?: string;
-  status?: string;
-  check_in_date?: string;
-  check_out_date?: string;
-}
+  interface AccommodationData {
+    name?: string;
+    address?: string;
+    location?: string;
+    status?: string;
+    check_in_date?: string;
+    check_out_date?: string;
+  }
 
-interface VoucherData {
-  total_drinks?: number;
-  remaining_drinks?: number;
-  redeemed_drinks?: number;
-  qr_token?: string;
-  qr_data_url?: string;
-  participant_id?: number;
-  event_id?: number;
-}
+  interface VoucherData {
+    total_drinks?: number;
+    remaining_drinks?: number;
+    redeemed_drinks?: number;
+    qr_token?: string;
+    qr_data_url?: string;
+    participant_id?: number;
+    event_id?: number;
+  }
 
-function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor }: ParticipantDetailsModalProps) {
-  const [transportData, setTransportData] = useState<TransportBooking[]>([]);
-  const [accommodationData, setAccommodationData] = useState<AccommodationData[]>([]);
-  const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
-  const [loading, setLoading] = useState(true);
+  function ParticipantDetailsModal({
+    participant,
+    onClose,
+    eventId,
+    getStatusColor,
+  }: ParticipantDetailsModalProps) {
+    const [transportData, setTransportData] = useState<TransportBooking[]>([]);
+    const [accommodationData, setAccommodationData] = useState<
+      AccommodationData[]
+    >([]);
+    const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchParticipantServices = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
-
-        // Skip transport and accommodation API calls for now - services not implemented
-        setTransportData([]);
-        setAccommodationData([]);
-
-        // Fetch QR/voucher data with proper error handling
+    useEffect(() => {
+      const fetchParticipantServices = async () => {
         try {
-          const qrResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/participants/${participant.id}/qr`,
-            { headers }
-          );
-          if (qrResponse.ok) {
-            const qrData = await qrResponse.json();
-            console.log('QR Response from API:', qrData);
-            console.log('QR Token:', qrData.qr_token);
-            console.log('QR Data URL length:', qrData.qr_data_url?.length);
-            
-            // Try to decode what's in the QR code by creating a temporary image
-            if (qrData.qr_data_url) {
-              const img = new Image();
-              img.onload = () => {
-                console.log('QR Code image loaded, dimensions:', img.width, 'x', img.height);
-                // The QR code content is embedded in the image, we can't easily decode it here
-                // But we can test by scanning it or checking API logs
-              };
-              img.src = qrData.qr_data_url;
-            }
+          const token = localStorage.getItem("token");
+          const headers = { Authorization: `Bearer ${token}` };
 
-            setVoucherData({
-              ...qrData.allocation_summary,
-              qr_token: qrData.qr_token,
-              qr_data_url: qrData.qr_data_url
-            });
-          } else {
-            // Fallback to event allocations
-            const allocationsResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/event/${eventId}`,
+          // Skip transport and accommodation API calls for now - services not implemented
+          setTransportData([]);
+          setAccommodationData([]);
+
+          // Fetch QR/voucher data with proper error handling
+          try {
+            const qrResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/participants/${participant.id}/qr`,
               { headers }
             );
-            if (allocationsResponse.ok) {
-              const allocations = await allocationsResponse.json();
-              const drinkAllocations = allocations.filter((a: any) => a.drink_vouchers_per_participant > 0);
-              if (drinkAllocations.length > 0) {
-                const totalVouchers = drinkAllocations.reduce((sum: number, a: any) => sum + (a.drink_vouchers_per_participant || 0), 0);
-                setVoucherData({
-                  total_drinks: totalVouchers,
-                  remaining_drinks: totalVouchers,
-                  redeemed_drinks: 0,
-                  participant_id: participant.id,
-                  event_id: eventId
-                });
+            if (qrResponse.ok) {
+              const qrData = await qrResponse.json();
+              console.log("QR Response from API:", qrData);
+              console.log("QR Token:", qrData.qr_token);
+              console.log("QR Data URL length:", qrData.qr_data_url?.length);
+
+              // Try to decode what's in the QR code by creating a temporary image
+              if (qrData.qr_data_url) {
+                const img = new Image();
+                img.onload = () => {
+                  console.log(
+                    "QR Code image loaded, dimensions:",
+                    img.width,
+                    "x",
+                    img.height
+                  );
+                  // The QR code content is embedded in the image, we can't easily decode it here
+                  // But we can test by scanning it or checking API logs
+                };
+                img.src = qrData.qr_data_url;
+              }
+
+              setVoucherData({
+                ...qrData.allocation_summary,
+                qr_token: qrData.qr_token,
+                qr_data_url: qrData.qr_data_url,
+              });
+            } else {
+              // Fallback to event allocations
+              const allocationsResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/event/${eventId}`,
+                { headers }
+              );
+              if (allocationsResponse.ok) {
+                const allocations = await allocationsResponse.json();
+                const drinkAllocations = allocations.filter(
+                  (a: any) => a.drink_vouchers_per_participant > 0
+                );
+                if (drinkAllocations.length > 0) {
+                  const totalVouchers = drinkAllocations.reduce(
+                    (sum: number, a: any) =>
+                      sum + (a.drink_vouchers_per_participant || 0),
+                    0
+                  );
+                  setVoucherData({
+                    total_drinks: totalVouchers,
+                    remaining_drinks: totalVouchers,
+                    redeemed_drinks: 0,
+                    participant_id: participant.id,
+                    event_id: eventId,
+                  });
+                } else {
+                  setVoucherData(null);
+                }
               } else {
                 setVoucherData(null);
               }
-            } else {
-              setVoucherData(null);
             }
+          } catch {
+            setVoucherData(null);
           }
         } catch {
-          setVoucherData(null);
+          // Error handled silently
+        } finally {
+          setLoading(false);
         }
-      } catch {
-        // Error handled silently
-      } finally {
+      };
+
+      if (participant.status === "selected") {
+        fetchParticipantServices();
+      } else {
         setLoading(false);
       }
-    };
+    }, [participant.id, participant.status, eventId]);
 
-    if (participant.status === 'selected') {
-      fetchParticipantServices();
-    } else {
-      setLoading(false);
-    }
-  }, [participant.id, participant.status, eventId]);
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="bg-white w-full h-full overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {participant.full_name}
+                </h3>
+                <p className="text-gray-600 mt-1">{participant.email}</p>
+                <Badge className={`mt-2 ${getStatusColor(participant.status)}`}>
+                  {participant.status.replace("_", " ").toUpperCase()}
+                </Badge>
+              </div>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 text-xl px-3 py-2"
+              >
+                ×
+              </Button>
+            </div>
 
-
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white w-full h-full overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900">{participant.full_name}</h3>
-              <p className="text-gray-600 mt-1">{participant.email}</p>
-              <Badge className={`mt-2 ${getStatusColor(participant.status)}`}>
-                {participant.status.replace("_", " ").toUpperCase()}
-              </Badge>
-            </div>
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-xl px-3 py-2"
-            >
-              ×
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Personal Information */}
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-gray-200 pb-2">Personal Information</h4>
-              <div className="space-y-3 text-sm">
-                <div><span className="font-medium text-gray-700">Personal Email:</span><br/><span className="text-gray-900">{participant.personal_email || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">MSF Email:</span><br/><span className="text-gray-900">{participant.msf_email || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Phone:</span><br/><span className="text-gray-900">{participant.phone_number || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Gender Identity:</span><br/><span className="text-gray-900">{participant.gender_identity || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Sex:</span><br/><span className="text-gray-900">{participant.sex || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Pronouns:</span><br/><span className="text-gray-900">{participant.pronouns || '-'}</span></div>
-              </div>
-            </div>
-            
-            {/* Work Information */}
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-blue-200 pb-2">Work Information</h4>
-              <div className="space-y-3 text-sm">
-                <div><span className="font-medium text-gray-700">OC:</span><br/><span className="text-gray-900">{participant.oc || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Position:</span><br/><span className="text-gray-900">{participant.position || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Country:</span><br/><span className="text-gray-900">{participant.country || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Project:</span><br/><span className="text-gray-900">{participant.project_of_work || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Contract Status:</span><br/><span className="text-gray-900">{participant.contract_status || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Contract Type:</span><br/><span className="text-gray-900">{participant.contract_type || '-'}</span></div>
-              </div>
-            </div>
-            
-            {/* Contact Information */}
-            <div className="bg-green-50 p-6 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-green-200 pb-2">Contact Information</h4>
-              <div className="space-y-3 text-sm">
-                <div><span className="font-medium text-gray-700">HRCO Email:</span><br/><span className="text-gray-900">{participant.hrco_email || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Career Manager:</span><br/><span className="text-gray-900">{participant.career_manager_email || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Line Manager:</span><br/><span className="text-gray-900">{participant.line_manager_email || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Registered:</span><br/><span className="text-gray-900">{new Date(participant.created_at).toLocaleDateString()}</span></div>
-              </div>
-            </div>
-            
-            {/* Registration Details */}
-            <div className="bg-purple-50 p-6 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-purple-200 pb-2">Registration Details</h4>
-              <div className="space-y-3 text-sm">
-                <div><span className="font-medium text-gray-700">Certificate Name:</span><br/><span className="text-gray-900">{participant.certificate_name || participant.certificateName || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Travelling Internationally:</span><br/><span className="text-gray-900">{participant.travelling_internationally || participant.travellingInternationally || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Accommodation Type:</span><br/><span className="text-gray-900">{participant.accommodation_type || participant.accommodationType || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Daily Meals:</span><br/><span className="text-gray-900">{participant.daily_meals || participant.dailyMeals || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Dietary Requirements:</span><br/><span className="text-gray-900">{participant.dietary_requirements || participant.dietaryRequirements || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Accommodation Needs:</span><br/><span className="text-gray-900">{participant.accommodation_needs || participant.accommodationNeeds || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Code of Conduct:</span><br/><span className="text-gray-900">{participant.code_of_conduct_confirm || participant.codeOfConductConfirm || '-'}</span></div>
-                <div><span className="font-medium text-gray-700">Travel Requirements:</span><br/><span className="text-gray-900">{participant.travel_requirements_confirm || participant.travelRequirementsConfirm || '-'}</span></div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Event Services - Only show if participant is selected */}
-          {participant.status === 'selected' && (
-            <div className="mt-8">
-              <h4 className="font-semibold text-gray-900 mb-6 text-xl border-b border-gray-300 pb-3">Event Services</h4>
-              
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-                  <p className="text-gray-600 mt-2">Loading services...</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Transport */}
-                  <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
-                    <h5 className="font-semibold text-purple-900 mb-4">Transport Bookings</h5>
-                    {transportData && transportData.length > 0 ? (
-                      <div className="space-y-3">
-                        {transportData.map((booking: TransportBooking, index) => (
-                          <div key={index} className="bg-white p-3 rounded border">
-                            <p className="font-medium text-sm">{booking.booking_type || 'Transport'}</p>
-                            <p className="text-xs text-gray-600">{booking.pickup_locations?.[0] || 'TBD'}</p>
-                            <p className="text-xs text-gray-600">Status: {booking.status || 'Pending'}</p>
-                            {booking.scheduled_time && (
-                              <p className="text-xs text-gray-600">{new Date(booking.scheduled_time).toLocaleString()}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        <p>No transport bookings assigned</p>
-                        <p className="text-xs mt-1 text-gray-500">Transport services will be arranged closer to the event date</p>
-                      </div>
-                    )}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Personal Information */}
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-gray-200 pb-2">
+                  Personal Information
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Personal Email:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.personal_email || "-"}
+                    </span>
                   </div>
-                  
-                  {/* Accommodation */}
-                  <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
-                    <h5 className="font-semibold text-orange-900 mb-4">Accommodation</h5>
-                    {accommodationData && accommodationData.length > 0 ? (
-                      <div className="space-y-3">
-                        {accommodationData.map((accommodation, index) => (
-                          <div key={index} className="bg-white p-3 rounded border">
-                            <p className="font-medium text-sm">{accommodation.name || 'Accommodation'}</p>
-                            <p className="text-xs text-gray-600">{accommodation.address || accommodation.location || 'TBD'}</p>
-                            <p className="text-xs text-gray-600">Status: {accommodation.status || 'Pending'}</p>
-                            {accommodation.check_in_date && (
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      MSF Email:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.msf_email || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Phone:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.phone_number || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Gender Identity:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.gender_identity || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Sex:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.sex || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Pronouns:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.pronouns || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Information */}
+              <div className="bg-blue-50 p-6 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-blue-200 pb-2">
+                  Work Information
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">OC:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.oc || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Position:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.position || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Country:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.country || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Project:</span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.project_of_work || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Contract Status:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.contract_status || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Contract Type:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.contract_type || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-green-50 p-6 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-green-200 pb-2">
+                  Contact Information
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      HRCO Email:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.hrco_email || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Career Manager:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.career_manager_email || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Line Manager:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.line_manager_email || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Registered:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {new Date(participant.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Details */}
+              <div className="bg-purple-50 p-6 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-purple-200 pb-2">
+                  Registration Details
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Certificate Name:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.certificate_name ||
+                        participant.certificateName ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Travelling Internationally:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.travelling_internationally ||
+                        participant.travellingInternationally ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Accommodation Type:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.accommodation_type ||
+                        participant.accommodationType ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Daily Meals:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.daily_meals || participant.dailyMeals || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Dietary Requirements:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.dietary_requirements ||
+                        participant.dietaryRequirements ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Accommodation Needs:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.accommodation_needs ||
+                        participant.accommodationNeeds ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Code of Conduct:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.code_of_conduct_confirm ||
+                        participant.codeOfConductConfirm ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Travel Requirements:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.travel_requirements_confirm ||
+                        participant.travelRequirementsConfirm ||
+                        "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Services - Only show if participant is selected */}
+            {participant.status === "selected" && (
+              <div className="mt-8">
+                <h4 className="font-semibold text-gray-900 mb-6 text-xl border-b border-gray-300 pb-3">
+                  Event Services
+                </h4>
+
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+                    <p className="text-gray-600 mt-2">Loading services...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Transport */}
+                    <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
+                      <h5 className="font-semibold text-purple-900 mb-4">
+                        Transport Bookings
+                      </h5>
+                      {transportData && transportData.length > 0 ? (
+                        <div className="space-y-3">
+                          {transportData.map(
+                            (booking: TransportBooking, index) => (
+                              <div
+                                key={index}
+                                className="bg-white p-3 rounded border"
+                              >
+                                <p className="font-medium text-sm">
+                                  {booking.booking_type || "Transport"}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {booking.pickup_locations?.[0] || "TBD"}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  Status: {booking.status || "Pending"}
+                                </p>
+                                {booking.scheduled_time && (
+                                  <p className="text-xs text-gray-600">
+                                    {new Date(
+                                      booking.scheduled_time
+                                    ).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          <p>No transport bookings assigned</p>
+                          <p className="text-xs mt-1 text-gray-500">
+                            Transport services will be arranged closer to the
+                            event date
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accommodation */}
+                    <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
+                      <h5 className="font-semibold text-orange-900 mb-4">
+                        Accommodation
+                      </h5>
+                      {accommodationData && accommodationData.length > 0 ? (
+                        <div className="space-y-3">
+                          {accommodationData.map((accommodation, index) => (
+                            <div
+                              key={index}
+                              className="bg-white p-3 rounded border"
+                            >
+                              <p className="font-medium text-sm">
+                                {accommodation.name || "Accommodation"}
+                              </p>
                               <p className="text-xs text-gray-600">
-                                {new Date(accommodation.check_in_date).toLocaleDateString()} - 
-                                {accommodation.check_out_date ? new Date(accommodation.check_out_date).toLocaleDateString() : 'TBD'}
+                                {accommodation.address ||
+                                  accommodation.location ||
+                                  "TBD"}
                               </p>
+                              <p className="text-xs text-gray-600">
+                                Status: {accommodation.status || "Pending"}
+                              </p>
+                              {accommodation.check_in_date && (
+                                <p className="text-xs text-gray-600">
+                                  {new Date(
+                                    accommodation.check_in_date
+                                  ).toLocaleDateString()}{" "}
+                                  -
+                                  {accommodation.check_out_date
+                                    ? new Date(
+                                        accommodation.check_out_date
+                                      ).toLocaleDateString()
+                                    : "TBD"}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          <p>No accommodation assigned</p>
+                          <p className="text-xs mt-1 text-gray-500">
+                            Accommodation will be arranged closer to the event
+                            date
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Drink Vouchers */}
+                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                      <h5 className="font-semibold text-blue-900 mb-4">
+                        Drink Vouchers
+                      </h5>
+                      {voucherData ? (
+                        <div className="bg-white p-4 rounded border">
+                          <div className="text-center mb-4">
+                            {voucherData.qr_data_url ? (
+                              <div className="inline-block p-4 bg-white rounded-lg shadow-sm border">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={voucherData.qr_data_url}
+                                  alt="Drink Voucher QR Code"
+                                  className="w-40 h-40 mx-auto"
+                                />
+                                <p className="text-xs text-gray-500 mt-2">
+                                  Scan to redeem vouchers
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-sm">
+                                QR Code not available
+                              </div>
+                            )}
+                            {voucherData.qr_token && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-500 font-mono">
+                                  Token: {voucherData.qr_token.slice(0, 8)}...
+                                </p>
+
+                                <p className="text-xs text-blue-600 mt-1">
+                                  QR URL:{" "}
+                                  <a
+                                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline"
+                                    onClick={() =>
+                                      console.log(
+                                        "Frontend QR URL clicked:",
+                                        `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`
+                                      )
+                                    }
+                                  >
+                                    {process.env.NEXT_PUBLIC_BASE_URL}
+                                    /public/qr/{voucherData.qr_token}
+                                  </a>
+                                </p>
+                              </div>
                             )}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        <p>No accommodation assigned</p>
-                        <p className="text-xs mt-1 text-gray-500">Accommodation will be arranged closer to the event date</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Drink Vouchers */}
-                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                    <h5 className="font-semibold text-blue-900 mb-4">Drink Vouchers</h5>
-                    {voucherData ? (
-                      <div className="bg-white p-4 rounded border">
-                        <div className="text-center mb-4">
-                          {voucherData.qr_data_url ? (
-                            <div className="inline-block p-4 bg-white rounded-lg shadow-sm border">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img 
-                                src={voucherData.qr_data_url} 
-                                alt="Drink Voucher QR Code"
-                                className="w-40 h-40 mx-auto"
-                              />
-                              <p className="text-xs text-gray-500 mt-2">
-                                Scan to redeem vouchers
-                              </p>
+                          <div className="text-sm space-y-2">
+                            <div className="flex justify-between">
+                              <span>Total Vouchers:</span>
+                              <span className="font-medium">
+                                {voucherData.total_drinks || 0}
+                              </span>
                             </div>
-                          ) : (
-                            <div className="text-gray-500 text-sm">QR Code not available</div>
-                          )}
-                          {voucherData.qr_token && (
-                            <div className="mt-2">
-                              <p className="text-xs text-gray-500 font-mono">
-                                Token: {voucherData.qr_token.slice(0, 8)}...
-                              </p>
-                              {console.log('Displaying QR token:', voucherData.qr_token)}
-                              {console.log('Frontend base URL:', process.env.NEXT_PUBLIC_BASE_URL)}
-                              <p className="text-xs text-blue-600 mt-1">
-                                QR URL: <a href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`} target="_blank" rel="noopener noreferrer" className="underline" onClick={() => console.log('Frontend QR URL clicked:', `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`)}>
-                                  {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{voucherData.qr_token}
-                                </a>
-                              </p>
+                            <div className="flex justify-between">
+                              <span>Remaining:</span>
+                              <span className="font-medium text-green-600">
+                                {voucherData.remaining_drinks || 0}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        <div className="text-sm space-y-2">
-                          <div className="flex justify-between">
-                            <span>Total Vouchers:</span>
-                            <span className="font-medium">{voucherData.total_drinks || 0}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Remaining:</span>
-                            <span className="font-medium text-green-600">{voucherData.remaining_drinks || 0}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Redeemed:</span>
-                            <span className="font-medium text-red-600">{voucherData.redeemed_drinks || 0}</span>
+                            <div className="flex justify-between">
+                              <span>Redeemed:</span>
+                              <span className="font-medium text-red-600">
+                                {voucherData.redeemed_drinks || 0}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        <p>No drink vouchers assigned</p>
-                        <p className="text-xs mt-1 text-gray-500">Vouchers will be available once event allocations are configured</p>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          <p>No drink vouchers assigned</p>
+                          <p className="text-xs mt-1 text-gray-500">
+                            Vouchers will be available once event allocations
+                            are configured
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   const fetchParticipants = useCallback(async () => {
     try {
@@ -460,31 +760,16 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
         const data = await response.json();
 
         const filteredData = roleFilter
-          ? data.filter((p: Participant) => (p.participant_role || p.role) === roleFilter)
+          ? data.filter(
+              (p: Participant) => (p.participant_role || p.role) === roleFilter
+            )
           : data; // Show all participants when no role filter is applied
 
         setParticipants(filteredData);
-        const countForCallback = roleFilter
-          ? filteredData.length
-          : data.length; // Count all participants when no role filter
+        const countForCallback = roleFilter ? filteredData.length : data.length; // Count all participants when no role filter
         onParticipantsChange?.(countForCallback);
-        
-        // Print participant details to console
-        console.log('=== EVENT PARTICIPANTS LOADED ===');
-        console.log('Event ID:', eventId);
-        console.log('Role Filter:', roleFilter);
-        console.log('Status Filter:', statusFilter);
-        console.log('Total participants fetched:', data.length);
-        console.log('Filtered participants:', filteredData.length);
-        console.log('Participants:', filteredData.map(p => ({
-          id: p.id,
-          name: p.full_name,
-          email: p.email,
-          status: p.status,
-          role: p.role,
-          participant_role: p.participant_role
-        })));
-        console.log('Raw data from API:', data.slice(0, 2)); // Show first 2 participants raw data
+
+        // Show first 2 participants raw data
       }
     } catch {
       // Error handled silently
@@ -505,7 +790,7 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
       event_id: eventId,
       user_email: newParticipant.email,
       full_name: newParticipant.full_name,
-      role: "attendee",  // System role
+      role: "attendee", // System role
     };
 
     setLoading(true);
@@ -657,15 +942,18 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
     }
   };
 
-  const filteredParticipants = participants.filter(participant => {
+  const filteredParticipants = participants.filter((participant) => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = !searchTerm || 
+    const matchesSearch =
+      !searchTerm ||
       participant.full_name.toLowerCase().includes(searchLower) ||
       participant.email.toLowerCase().includes(searchLower) ||
       (participant.oc && participant.oc.toLowerCase().includes(searchLower)) ||
-      (participant.position && participant.position.toLowerCase().includes(searchLower)) ||
-      (participant.country && participant.country.toLowerCase().includes(searchLower));
-    
+      (participant.position &&
+        participant.position.toLowerCase().includes(searchLower)) ||
+      (participant.country &&
+        participant.country.toLowerCase().includes(searchLower));
+
     return matchesSearch;
   });
 
@@ -675,32 +963,53 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
 
   const handleExport = () => {
     const csvContent = [
-      ['Name', 'Email', 'OC', 'Position', 'Country', 'Contract Status', 'Contract Type', 'Gender Identity', 'Sex', 'Pronouns', 'Project', 'Personal Email', 'MSF Email', 'HRCO Email', 'Career Manager', 'Line Manager', 'Phone', 'Status'].join(','),
-      ...filteredParticipants.map(p => [
-        p.full_name,
-        p.email,
-        p.oc || '',
-        p.position || '',
-        p.country || '',
-        p.contract_status || '',
-        p.contract_type || '',
-        p.gender_identity || '',
-        p.sex || '',
-        p.pronouns || '',
-        p.project_of_work || '',
-        p.personal_email || '',
-        p.msf_email || '',
-        p.hrco_email || '',
-        p.career_manager_email || '',
-        p.line_manager_email || '',
-        p.phone_number || '',
-        p.status
-      ].join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+      [
+        "Name",
+        "Email",
+        "OC",
+        "Position",
+        "Country",
+        "Contract Status",
+        "Contract Type",
+        "Gender Identity",
+        "Sex",
+        "Pronouns",
+        "Project",
+        "Personal Email",
+        "MSF Email",
+        "HRCO Email",
+        "Career Manager",
+        "Line Manager",
+        "Phone",
+        "Status",
+      ].join(","),
+      ...filteredParticipants.map((p) =>
+        [
+          p.full_name,
+          p.email,
+          p.oc || "",
+          p.position || "",
+          p.country || "",
+          p.contract_status || "",
+          p.contract_type || "",
+          p.gender_identity || "",
+          p.sex || "",
+          p.pronouns || "",
+          p.project_of_work || "",
+          p.personal_email || "",
+          p.msf_email || "",
+          p.hrco_email || "",
+          p.career_manager_email || "",
+          p.line_manager_email || "",
+          p.phone_number || "",
+          p.status,
+        ].join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `event-${eventId}-participants.csv`;
     a.click();
@@ -760,9 +1069,9 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
   };
 
   const handleSelectParticipant = (participantId: number) => {
-    setSelectedParticipants(prev => 
-      prev.includes(participantId) 
-        ? prev.filter(id => id !== participantId)
+    setSelectedParticipants((prev) =>
+      prev.includes(participantId)
+        ? prev.filter((id) => id !== participantId)
         : [...prev, participantId]
     );
   };
@@ -771,7 +1080,7 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
     if (selectedParticipants.length === currentParticipants.length) {
       setSelectedParticipants([]);
     } else {
-      setSelectedParticipants(currentParticipants.map(p => p.id));
+      setSelectedParticipants(currentParticipants.map((p) => p.id));
     }
   };
 
@@ -820,12 +1129,12 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
 
   const handleBulkStatusChange = async () => {
     if (!bulkStatus || selectedParticipants.length === 0) return;
-    
+
     setProcessingBulk(true);
     try {
       for (const participantId of selectedParticipants) {
         await handleStatusChange(participantId, bulkStatus);
-        await new Promise(resolve => setTimeout(resolve, 100)); // Queue emails
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Queue emails
       }
       setSelectedParticipants([]);
       setBulkStatus("");
@@ -848,12 +1157,12 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
 
   const handleBulkRoleChange = async () => {
     if (!bulkRole || selectedParticipants.length === 0) return;
-    
+
     setProcessingBulkRole(true);
     try {
       for (const participantId of selectedParticipants) {
         await handleRoleChange(participantId, bulkRole);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
       setSelectedParticipants([]);
       setBulkRole("");
@@ -885,7 +1194,8 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
             {filteredParticipants.length} {roleFilter || "participants"}{" "}
             {statusFilter && statusFilter !== "all"
               ? `(${statusFilter.replace("_", " ")})`
-              : "total"} • Page {currentPage} of {totalPages || 1}
+              : "total"}{" "}
+            • Page {currentPage} of {totalPages || 1}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -903,18 +1213,55 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent className="bg-white border-2 border-gray-200 rounded-lg shadow-lg">
-              <SelectItem value="all" className="hover:bg-red-50 focus:bg-red-50">All Statuses</SelectItem>
-              <SelectItem value="registered" className="hover:bg-red-50 focus:bg-red-50">Registered</SelectItem>
-              <SelectItem value="selected" className="hover:bg-red-50 focus:bg-red-50">Selected</SelectItem>
-              <SelectItem value="not_selected" className="hover:bg-red-50 focus:bg-red-50">Not Selected</SelectItem>
-              <SelectItem value="waiting" className="hover:bg-red-50 focus:bg-red-50">Waiting</SelectItem>
-              <SelectItem value="canceled" className="hover:bg-red-50 focus:bg-red-50">Canceled</SelectItem>
-              <SelectItem value="attended" className="hover:bg-red-50 focus:bg-red-50">Attended</SelectItem>
+              <SelectItem
+                value="all"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                All Statuses
+              </SelectItem>
+              <SelectItem
+                value="registered"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Registered
+              </SelectItem>
+              <SelectItem
+                value="selected"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Selected
+              </SelectItem>
+              <SelectItem
+                value="not_selected"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Not Selected
+              </SelectItem>
+              <SelectItem
+                value="waiting"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Waiting
+              </SelectItem>
+              <SelectItem
+                value="canceled"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Canceled
+              </SelectItem>
+              <SelectItem
+                value="attended"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Attended
+              </SelectItem>
             </SelectContent>
           </Select>
           {selectedParticipants.length > 0 && (
             <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border">
-              <span className="text-sm text-blue-700">{selectedParticipants.length} selected</span>
+              <span className="text-sm text-blue-700">
+                {selectedParticipants.length} selected
+              </span>
               <Select value={bulkStatus} onValueChange={setBulkStatus}>
                 <SelectTrigger className="w-32 h-8 bg-white">
                   <SelectValue placeholder="Set status" />
@@ -1065,19 +1412,42 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
               <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 <input
                   type="checkbox"
-                  checked={selectedParticipants.length === currentParticipants.length && currentParticipants.length > 0}
+                  checked={
+                    selectedParticipants.length ===
+                      currentParticipants.length &&
+                    currentParticipants.length > 0
+                  }
                   onChange={handleSelectAll}
                   className="rounded border-gray-300"
                 />
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OC</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                OC
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Position
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Country
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Confirmed
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -1091,7 +1461,10 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                     className="rounded border-gray-300"
                   />
                 </td>
-                <td className="px-3 py-4 whitespace-nowrap cursor-pointer" onClick={() => setViewingParticipant(participant)}>
+                <td
+                  className="px-3 py-4 whitespace-nowrap cursor-pointer"
+                  onClick={() => setViewingParticipant(participant)}
+                >
                   <div className="flex items-center">
                     <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
                       {participant.full_name
@@ -1109,19 +1482,27 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                   {participant.email}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.oc || '-'}
+                  {participant.oc || "-"}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.position || '-'}
+                  {participant.position || "-"}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.country || '-'}
+                  {participant.country || "-"}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
-                  <Select 
-                    value={participant.participant_role || participant.role || 'visitor'} 
-                    onValueChange={(value) => handleRoleChange(participant.id, value)}
-                    disabled={eventHasEnded || updatingRoleId === participant.id}
+                  <Select
+                    value={
+                      participant.participant_role ||
+                      participant.role ||
+                      "visitor"
+                    }
+                    onValueChange={(value) =>
+                      handleRoleChange(participant.id, value)
+                    }
+                    disabled={
+                      eventHasEnded || updatingRoleId === participant.id
+                    }
                   >
                     <SelectTrigger className="w-24 h-7 text-xs">
                       {updatingRoleId === participant.id ? (
@@ -1149,6 +1530,24 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                     {participant.status.replace("_", " ").toUpperCase()}
                   </Badge>
                 </td>
+                <td className="px-3 py-4 whitespace-nowrap">
+                  {participant.status === 'confirmed' ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-xs text-green-700 font-medium">Yes</span>
+                    </div>
+                  ) : participant.status === 'selected' || participant.status === 'approved' ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <span className="text-xs text-orange-700 font-medium">Pending</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      <span className="text-xs text-gray-500 font-medium">N/A</span>
+                    </div>
+                  )}
+                </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-1">
                     {participant.status === "selected" &&
@@ -1158,7 +1557,9 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
                           size="sm"
                           variant="outline"
                           onClick={() => handleResendInvitation(participant.id)}
-                          disabled={resendingId === participant.id || eventHasEnded}
+                          disabled={
+                            resendingId === participant.id || eventHasEnded
+                          }
                           className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {resendingId === participant.id ? (
@@ -1192,7 +1593,9 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t">
             <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(endIndex, filteredParticipants.length)} of {filteredParticipants.length} participants
+              Showing {startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredParticipants.length)} of{" "}
+              {filteredParticipants.length} participants
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -1257,8 +1660,8 @@ function ParticipantDetailsModal({ participant, onClose, eventId, getStatusColor
 
       {/* Participant Details Modal */}
       {viewingParticipant && (
-        <ParticipantDetailsModal 
-          participant={viewingParticipant} 
+        <ParticipantDetailsModal
+          participant={viewingParticipant}
           onClose={() => setViewingParticipant(null)}
           eventId={eventId}
           getStatusColor={getStatusColor}
