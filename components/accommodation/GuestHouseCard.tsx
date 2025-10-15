@@ -95,14 +95,15 @@ export default function GuestHouseCard({ guesthouse, onBook, onViewRooms }: Gues
             <Building2 className="w-4 h-4 mr-2" />
             View Rooms
           </Button>
-          <Button 
+          {/* Manual booking disabled - using automatic booking system */}
+          {/* <Button 
             onClick={() => onBook(guesthouse)}
             disabled={guesthouse.available_rooms === 0}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white"
           >
             <Calendar className="w-4 h-4 mr-2" />
             Book
-          </Button>
+          </Button> */}
         </div>
       </CardContent>
     </Card>

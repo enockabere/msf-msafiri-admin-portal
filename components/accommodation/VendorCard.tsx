@@ -84,14 +84,15 @@ export default function VendorCard({ vendor, onBook, onDelete, canEdit }: Vendor
         </div>
 
         <div className="flex gap-2">
-          <Button 
+          {/* Manual booking disabled - using automatic booking system */}
+          {/* <Button 
             onClick={() => onBook(vendor)}
             disabled={vendor.current_occupants >= vendor.capacity}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white"
           >
             <Calendar className="w-4 h-4 mr-2" />
             Book
-          </Button>
+          </Button> */}
           {canEdit && onDelete && (
             <Button 
               onClick={() => onDelete(vendor)}

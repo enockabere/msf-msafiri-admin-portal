@@ -231,7 +231,7 @@ export default function AccommodationPage() {
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations?event_id=${eventId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/available-participants?event_id=${eventId}&accommodation_type=vendor`,
         {
           headers: { 
             Authorization: `Bearer ${apiClient.getToken()}`,
@@ -240,15 +240,26 @@ export default function AccommodationPage() {
         }
       );
       if (response.ok) {
-        const allocationsData = await response.json();
-        // Extract participant IDs from allocations for the specific event
-        const participantIds: number[] = [];
-        allocationsData.forEach((allocation: { participant_id?: number; event_id?: number }) => {
-          if (allocation.participant_id && allocation.event_id === parseInt(eventId)) {
-            participantIds.push(allocation.participant_id);
+        const availableParticipants = await response.json();
+        // Get all participants for this event
+        const allParticipantsResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants`,
+          {
+            headers: { 
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              'X-Tenant-ID': tenantSlug
+            },
           }
-        });
-        setAllocatedParticipants(participantIds);
+        );
+        
+        if (allParticipantsResponse.ok) {
+          const allParticipants = await allParticipantsResponse.json();
+          const availableIds = availableParticipants.map((p: any) => p.id);
+          const allocatedIds = allParticipants
+            .filter((p: any) => !availableIds.includes(p.id))
+            .map((p: any) => p.id);
+          setAllocatedParticipants(allocatedIds);
+        }
       }
     } catch (error) {
       console.error("Error fetching allocated participants:", error);
@@ -725,43 +736,35 @@ export default function AccommodationPage() {
           }
         }
       } else {
-        // Handle vendor allocations for multiple participants
-        for (const participantId of selectedParticipants) {
-          const participant = participants.find(p => p.id === participantId);
-          if (participant) {
-            const payload = {
-              accommodation_type: "vendor",
-              room_id: null,
-              vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
-              room_type: allocationForm.room_type, // Include room type
-              guest_name: participant.full_name || participant.name || `Participant ${participantId}`,
-              guest_email: participant.email,
-              guest_phone: participant.phone || "",
-              check_in_date: allocationForm.check_in_date,
-              check_out_date: allocationForm.check_out_date,
-              number_of_guests: 1,
-              participant_id: participantId,
-              event_id: parseInt(allocationForm.event_id)
-            };
-            
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${apiClient.getToken()}`,
-                  "Content-Type": "application/json",
-                  'X-Tenant-ID': tenantSlug
-                },
-                body: JSON.stringify(payload),
-              }
-            );
-            
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-              throw new Error(errorData.detail);
-            }
+        // Handle vendor allocations - send all participants in one request
+        const payload = {
+          accommodation_type: "vendor",
+          room_id: null,
+          vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
+          room_type: allocationForm.room_type,
+          participant_ids: selectedParticipants,
+          check_in_date: allocationForm.check_in_date,
+          check_out_date: allocationForm.check_out_date,
+          number_of_guests: selectedParticipants.length,
+          event_id: parseInt(allocationForm.event_id)
+        };
+        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+              'X-Tenant-ID': tenantSlug
+            },
+            body: JSON.stringify(payload),
           }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+          throw new Error(errorData.detail);
         }
       }
 
