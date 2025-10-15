@@ -205,7 +205,10 @@ export default function EventAgenda({
     }
 
     // Validate that end time is after start time
-    if (formData.end_time <= formData.start_time) {
+    const startTimeMinutes = parseInt(formData.start_time.split(':')[0]) * 60 + parseInt(formData.start_time.split(':')[1]);
+    const endTimeMinutes = parseInt(formData.end_time.split(':')[0]) * 60 + parseInt(formData.end_time.split(':')[1]);
+    
+    if (endTimeMinutes <= startTimeMinutes) {
       console.log('Validation failed - end time before start time');
       const { toast } = await import("@/hooks/use-toast");
       toast({
@@ -306,13 +309,21 @@ export default function EventAgenda({
     const itemDate = new Date(startDate);
     const dayNumber = Math.floor((itemDate.getTime() - eventStartDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+    const startTime = format(startDate, "HH:mm");
+    const endTime = format(endDate, "HH:mm");
+    
+    // Ensure end time is different from start time
+    const finalEndTime = endTime === startTime ? 
+      format(new Date(endDate.getTime() + 60 * 60 * 1000), "HH:mm") : // Add 1 hour if same
+      endTime;
+
     setEditingId(item.id);
     setFormData({
       title: item.title,
       description: item.description || "",
       day_number: dayNumber,
-      start_time: format(startDate, "HH:mm"),
-      end_time: format(endDate, "HH:mm"),
+      start_time: startTime,
+      end_time: finalEndTime,
       speaker: item.presenter || "",
     });
     setShowForm(true);
