@@ -312,8 +312,11 @@ export default function AccommodationPage() {
 
       if (allocationsResponse.ok) {
         const allocationsData = await allocationsResponse.json();
-
+        console.log('🏨 Fetched allocations:', allocationsData);
+        console.log('🏨 Number of allocations:', allocationsData.length);
         setAllocations(allocationsData);
+      } else {
+        console.error('❌ Failed to fetch allocations:', allocationsResponse.status, allocationsResponse.statusText);
       }
 
       if (eventsResponse.ok) {
@@ -912,6 +915,17 @@ export default function AccommodationPage() {
               <div className="text-sm font-medium text-purple-900">{allocations.length}</div>
               <div className="text-xs text-purple-600">Active Bookings</div>
             </div>
+            <Button 
+              onClick={() => {
+                console.log('🔄 Refreshing data...');
+                fetchData();
+              }}
+              variant="outline"
+              size="sm"
+              className="bg-white"
+            >
+              🔄 Refresh Data
+            </Button>
           </div>
         </div>
 
