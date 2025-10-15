@@ -768,11 +768,15 @@ export default function EventDetailsModal({
                             Facilitators:
                           </span>
                           <span className="text-purple-700 font-semibold">
-                            {
-                              participants.filter(
+                            {(() => {
+                              console.log('All participants:', participants);
+                              console.log('Participant roles:', participants.map(p => ({ id: p.id, role: p.role, participant_role: p.participant_role, name: p.participant_name })));
+                              const facilitators = participants.filter(
                                 (p) => (p.participant_role || p.role) === "facilitator"
-                              ).length
-                            }{" "}
+                              );
+                              console.log('Filtered facilitators:', facilitators);
+                              return facilitators.length;
+                            })()}{" "}
                             facilitators
                           </span>
                         </div>
@@ -781,11 +785,13 @@ export default function EventDetailsModal({
                             Organizers:
                           </span>
                           <span className="text-blue-700 font-semibold">
-                            {
-                              participants.filter(
+                            {(() => {
+                              const organizers = participants.filter(
                                 (p) => (p.participant_role || p.role) === "organizer"
-                              ).length
-                            }{" "}
+                              );
+                              console.log('Filtered organizers:', organizers);
+                              return organizers.length;
+                            })()}{" "}
                             organizers
                           </span>
                         </div>
