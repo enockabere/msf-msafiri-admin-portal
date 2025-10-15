@@ -416,43 +416,20 @@ export default function AccommodationPage() {
       );
       if (response.ok) {
         const participantData = await response.json();
-        // Get detailed participant data with registration information
-        const participantsWithDetails = await Promise.all(
-          participantData.map(async (participant: Participant) => {
-            try {
-              // Get detailed participant data including registration info
-              const detailResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participant.id}/details`,
-                {
-                  headers: { 
-                    Authorization: `Bearer ${apiClient.getToken()}`,
-                    'X-Tenant-ID': tenantSlug
-                  },
-                }
-              );
-              
-              if (detailResponse.ok) {
-                const detailData = await detailResponse.json();
-                return { 
-                  ...participant, 
-                  gender: detailData.gender || participant.gender || undefined,
-                  accommodationNeeds: detailData.accommodation_needs || undefined
-                };
-              }
-            } catch (error) {
-              console.error(`Error fetching details for participant ${participant.id}:`, error);
-            }
-            
-            // Fallback: participant data should already include gender from event_participants table
-            return { 
-              ...participant, 
-              gender: participant.gender || undefined,
-              accommodationNeeds: undefined
-            };
-          })
-        );
-        console.log('Participants with details:', participantsWithDetails);
-        setParticipants(participantsWithDetails);
+        // Map to ensure consistent field names
+        const participants = participantData.map((participant: any) => ({
+          id: participant.id,
+          name: participant.full_name,
+          full_name: participant.full_name,
+          email: participant.email,
+          role: participant.role,
+          event_id: participant.event_id,
+          gender: participant.gender,
+          accommodationNeeds: participant.accommodation_needs
+        }));
+        
+        console.log('Participants with registration data:', participants);
+        setParticipants(participants);
         // Also fetch allocated participants for this event
         await fetchAllocatedParticipants(eventId);
       }
