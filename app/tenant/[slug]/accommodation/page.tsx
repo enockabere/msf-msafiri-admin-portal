@@ -915,17 +915,6 @@ export default function AccommodationPage() {
               <div className="text-sm font-medium text-purple-900">{allocations.length}</div>
               <div className="text-xs text-purple-600">Active Bookings</div>
             </div>
-            <Button 
-              onClick={() => {
-                console.log('🔄 Refreshing data...');
-                fetchData();
-              }}
-              variant="outline"
-              size="sm"
-              className="bg-white"
-            >
-              🔄 Refresh Data
-            </Button>
           </div>
         </div>
 
