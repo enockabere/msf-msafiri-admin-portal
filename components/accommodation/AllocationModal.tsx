@@ -197,6 +197,76 @@ export default function AllocationModal({
               </Select>
             </div>
           </div>
+          {form.accommodation_type === "vendor" && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">Vendor Hotel</Label>
+                  <Select 
+                    value={form.vendor_accommodation_id} 
+                    onValueChange={(value) => onFormChange({ ...form, vendor_accommodation_id: value, room_type: undefined })}
+                  >
+                    <SelectTrigger className="bg-white border border-gray-300">
+                      <SelectValue placeholder="Select vendor hotel" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
+                      {vendors.filter(vendor => (vendor.single_rooms > 0 || vendor.double_rooms > 0)).map((vendor) => {
+                        const hasAvailableRooms = vendor.single_rooms > 0 || vendor.double_rooms > 0;
+                        return (
+                          <SelectItem key={vendor.id} value={vendor.id.toString()} disabled={!hasAvailableRooms}>
+                            <div className="flex flex-col">
+                              <span>{vendor.vendor_name}</span>
+                              <div className="text-xs text-gray-500">
+                                Single: {vendor.single_rooms} | Double: {vendor.double_rooms}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="room_type" className="text-sm font-medium text-gray-700">Room Type</Label>
+                  <Select 
+                    value={form.room_type || ""} 
+                    onValueChange={(value: "single" | "double") => onFormChange({ ...form, room_type: value })}
+                    disabled={!form.vendor_accommodation_id}
+                  >
+                    <SelectTrigger className="bg-white border border-gray-300">
+                      <SelectValue placeholder={form.vendor_accommodation_id ? "Select room type" : "Select vendor first"} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
+                      {form.vendor_accommodation_id && (() => {
+                        const selectedVendor = vendors.find(v => v.id.toString() === form.vendor_accommodation_id);
+                        return [
+                          selectedVendor?.single_rooms > 0 && (
+                            <SelectItem key="single" value="single">
+                              Single Room ({selectedVendor.single_rooms} available)
+                            </SelectItem>
+                          ),
+                          selectedVendor?.double_rooms > 0 && (
+                            <SelectItem key="double" value="double">
+                              Double Room ({selectedVendor.double_rooms} available)
+                            </SelectItem>
+                          )
+                        ].filter(Boolean);
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {form.room_type && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-800">
+                    <strong>Room Type:</strong> {form.room_type === "single" ? "Single Room" : "Double Room"}
+                    {form.room_type === "single" && " - Individual occupancy, any gender"}
+                    {form.room_type === "double" && " - Maximum 2 participants, same gender required"}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           {form.accommodation_type === "guesthouse" && (
             <>
               {!preSelectedGuesthouse ? (
@@ -509,76 +579,6 @@ export default function AllocationModal({
               />
             </div>
           </div>
-          {form.accommodation_type === "vendor" && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">Vendor Hotel</Label>
-                  <Select 
-                    value={form.vendor_accommodation_id} 
-                    onValueChange={(value) => onFormChange({ ...form, vendor_accommodation_id: value, room_type: undefined })}
-                  >
-                    <SelectTrigger className="bg-white border border-gray-300">
-                      <SelectValue placeholder="Select vendor hotel" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
-                      {vendors.filter(vendor => (vendor.single_rooms > 0 || vendor.double_rooms > 0)).map((vendor) => {
-                        const hasAvailableRooms = vendor.single_rooms > 0 || vendor.double_rooms > 0;
-                        return (
-                          <SelectItem key={vendor.id} value={vendor.id.toString()} disabled={!hasAvailableRooms}>
-                            <div className="flex flex-col">
-                              <span>{vendor.vendor_name}</span>
-                              <div className="text-xs text-gray-500">
-                                Single: {vendor.single_rooms} | Double: {vendor.double_rooms}
-                              </div>
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="room_type" className="text-sm font-medium text-gray-700">Room Type</Label>
-                  <Select 
-                    value={form.room_type || ""} 
-                    onValueChange={(value: "single" | "double") => onFormChange({ ...form, room_type: value })}
-                    disabled={!form.vendor_accommodation_id}
-                  >
-                    <SelectTrigger className="bg-white border border-gray-300">
-                      <SelectValue placeholder={form.vendor_accommodation_id ? "Select room type" : "Select vendor first"} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
-                      {form.vendor_accommodation_id && (() => {
-                        const selectedVendor = vendors.find(v => v.id.toString() === form.vendor_accommodation_id);
-                        return [
-                          selectedVendor?.single_rooms > 0 && (
-                            <SelectItem key="single" value="single">
-                              Single Room ({selectedVendor.single_rooms} available)
-                            </SelectItem>
-                          ),
-                          selectedVendor?.double_rooms > 0 && (
-                            <SelectItem key="double" value="double">
-                              Double Room ({selectedVendor.double_rooms} available)
-                            </SelectItem>
-                          )
-                        ].filter(Boolean);
-                      })()}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {form.room_type && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="text-sm text-blue-800">
-                    <strong>Room Type:</strong> {form.room_type === "single" ? "Single Room" : "Double Room"}
-                    {form.room_type === "single" && " - Individual occupancy, any gender"}
-                    {form.room_type === "double" && " - Maximum 2 participants, same gender required"}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t bg-white">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
