@@ -69,6 +69,7 @@ interface Allocation {
   number_of_guests: number;
   accommodation_type: string;
   status: string;
+  room_type?: string; // single, double - for vendor accommodations
   room?: {
     id: number;
     room_number: string;
@@ -120,6 +121,7 @@ interface AllocationForm {
   accommodation_type: "guesthouse" | "vendor";
   room_id: string;
   vendor_accommodation_id: string;
+  room_type?: "single" | "double";
 }
 
 export default function AccommodationPage() {
@@ -162,6 +164,7 @@ export default function AccommodationPage() {
     accommodation_type: "guesthouse",
     room_id: "",
     vendor_accommodation_id: "",
+    room_type: undefined,
   });
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
 
@@ -367,6 +370,7 @@ export default function AccommodationPage() {
       accommodation_type: "guesthouse",
       room_id: "",
       vendor_accommodation_id: "",
+      room_type: undefined,
     });
     setSelectedRooms([]);
     await fetchRoomsForGuesthouses([guesthouse.id]);
@@ -453,6 +457,7 @@ export default function AccommodationPage() {
       accommodation_type: "vendor",
       vendor_accommodation_id: vendor.id.toString(),
       room_id: "",
+      room_type: undefined,
     });
     setAllocationModalOpen(true);
   };
@@ -564,6 +569,44 @@ export default function AccommodationPage() {
     if (selectedParticipants.length === 0) {
       toast({ title: "Error", description: "Please select at least one participant", variant: "destructive" });
       return;
+    }
+    
+    // Validate vendor accommodation requirements
+    if (allocationForm.accommodation_type === "vendor") {
+      if (!allocationForm.vendor_accommodation_id) {
+        toast({ title: "Error", description: "Please select a vendor hotel", variant: "destructive" });
+        return;
+      }
+      
+      if (!allocationForm.room_type) {
+        toast({ title: "Error", description: "Please select a room type", variant: "destructive" });
+        return;
+      }
+      
+      // Validate double room capacity and gender compatibility
+      if (allocationForm.room_type === "double") {
+        if (selectedParticipants.length > 2) {
+          toast({ title: "Error", description: "Double rooms can accommodate maximum 2 participants", variant: "destructive" });
+          return;
+        }
+        
+        if (selectedParticipants.length === 2) {
+          const selectedGenders = selectedParticipants.map(participantId => {
+            const participant = participants.find(p => p.id === participantId);
+            return participant?.gender;
+          }).filter(Boolean);
+          
+          const uniqueGenders = [...new Set(selectedGenders)];
+          if (uniqueGenders.length > 1 || uniqueGenders.includes('other')) {
+            toast({ 
+              title: "Error", 
+              description: "Double room sharing requires same gender (male/female only). Selected participants have different genders or include non-binary gender.", 
+              variant: "destructive" 
+            });
+            return;
+          }
+        }
+      }
     }
     
     // Validate participants have gender information
@@ -690,6 +733,7 @@ export default function AccommodationPage() {
               accommodation_type: "vendor",
               room_id: null,
               vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
+              room_type: allocationForm.room_type, // Include room type
               guest_name: participant.full_name || participant.name || `Participant ${participantId}`,
               guest_email: participant.email,
               guest_phone: participant.phone || "",
@@ -737,6 +781,7 @@ export default function AccommodationPage() {
         accommodation_type: "guesthouse",
         room_id: "",
         vendor_accommodation_id: "",
+        room_type: undefined,
       });
       setSelectedParticipants([]);
       setSelectedGuesthouses([]);

@@ -23,6 +23,7 @@ interface Allocation {
   vendor_accommodation_id?: number;
   event_id?: number;
   participant_id?: number;
+  room_type?: string; // single, double - for vendor accommodations
   room?: {
     id: number;
     room_number: string;
@@ -84,12 +85,15 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
         icon: Building
       };
     } else if (allocation.vendor_accommodation) {
+      const roomTypeDisplay = allocation.room_type ? 
+        `${allocation.room_type.charAt(0).toUpperCase() + allocation.room_type.slice(1)} Room` : 
+        "Room";
       return {
         type: "Vendor Hotel",
         name: allocation.vendor_accommodation.vendor_name,
-        room: "-",
+        room: roomTypeDisplay,
         occupancy: `${allocation.vendor_accommodation.current_occupants}/${allocation.vendor_accommodation.capacity}`,
-        shared: "No",
+        shared: allocation.room_type === "double" ? "Possible" : "No",
         icon: Hotel
       };
     }

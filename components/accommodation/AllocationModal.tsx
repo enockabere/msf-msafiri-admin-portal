@@ -442,6 +442,11 @@ export default function AllocationModal({
                       }, 0)} people)
                     </span>
                   )}
+                  {form.accommodation_type === "vendor" && form.room_type && (
+                    <span className="ml-2">
+                      (Max: {form.room_type === "single" ? "1 person per room" : "2 people per room"})
+                    </span>
+                  )}
                   {allConstrainingGenders.length > 0 && (
                     <div className="text-xs text-blue-600 mt-1 capitalize">
                       Only {allConstrainingGenders.join('/')} participants can be selected
@@ -544,6 +549,15 @@ export default function AllocationModal({
                   </Select>
                 </div>
               </div>
+              {form.room_type && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-800">
+                    <strong>Room Type:</strong> {form.room_type === "single" ? "Single Room" : "Double Room"}
+                    {form.room_type === "single" && " - Individual occupancy"}
+                    {form.room_type === "double" && " - Maximum 2 participants, same gender required"}
+                  </div>
+                </div>
+              )}
               {form.room_type === "double" && selectedParticipants.length > 2 && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="text-sm text-yellow-800">
