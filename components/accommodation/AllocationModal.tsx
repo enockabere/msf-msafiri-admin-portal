@@ -30,6 +30,8 @@ interface VendorAccommodation {
   vendor_name: string;
   current_occupants: number;
   capacity: number;
+  single_rooms: number;
+  double_rooms: number;
 }
 
 interface GuestHouse {
@@ -64,6 +66,7 @@ interface AllocationForm {
   accommodation_type: "guesthouse" | "vendor";
   room_id: string;
   vendor_accommodation_id: string;
+  room_type?: "single" | "double";
 }
 
 interface AllocationModalProps {
@@ -353,12 +356,17 @@ export default function AllocationModal({
                 <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
                   {participants.filter(p => !allocatedParticipants.includes(p.id)).map((participant) => {
                     const isSelected = selectedParticipants.includes(participant.id);
-                    const totalCapacity = form.accommodation_type === "guesthouse" 
-                      ? selectedRooms.reduce((sum, roomId) => {
-                          const room = availableRooms.find(r => r.id === roomId);
-                          return sum + (room ? room.capacity - room.current_occupants : 0);
-                        }, 0)
-                      : Infinity;
+                    let totalCapacity = Infinity;
+                    
+                    if (form.accommodation_type === "guesthouse") {
+                      totalCapacity = selectedRooms.reduce((sum, roomId) => {
+                        const room = availableRooms.find(r => r.id === roomId);
+                        return sum + (room ? room.capacity - room.current_occupants : 0);
+                      }, 0);
+                    } else if (form.accommodation_type === "vendor" && form.room_type === "double") {
+                      totalCapacity = 2; // Double rooms can only accommodate 2 people
+                    }
+                    
                     const canSelect = selectedParticipants.length < totalCapacity || isSelected;
                     const hasGender = participant.gender;
                     let isDisabledDueToGender = !hasGender;
@@ -478,32 +486,85 @@ export default function AllocationModal({
             </div>
           </div>
           {form.accommodation_type === "vendor" && (
-            <div className="space-y-2">
-              <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">Vendor</Label>
-              <Select 
-                value={form.vendor_accommodation_id} 
-                onValueChange={(value) => onFormChange({ ...form, vendor_accommodation_id: value })}
-              >
-                <SelectTrigger className="bg-white border border-gray-300">
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-gray-300 shadow-lg">
-                  {vendors.filter(vendor => vendor.current_occupants < vendor.capacity).map((vendor) => {
-                    const isAvailable = vendor.current_occupants < vendor.capacity;
-                    return (
-                      <SelectItem key={vendor.id} value={vendor.id.toString()} disabled={!isAvailable}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{vendor.vendor_name}</span>
-                          <Badge variant={isAvailable ? "default" : "secondary"}>
-                            {vendor.current_occupants}/{vendor.capacity}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">Vendor Hotel</Label>
+                  <Select 
+                    value={form.vendor_accommodation_id} 
+                    onValueChange={(value) => onFormChange({ ...form, vendor_accommodation_id: value, room_type: undefined })}
+                  >
+                    <SelectTrigger className="bg-white border border-gray-300">
+                      <SelectValue placeholder="Select vendor hotel" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
+                      {vendors.filter(vendor => (vendor.single_rooms > 0 || vendor.double_rooms > 0)).map((vendor) => {
+                        const hasAvailableRooms = vendor.single_rooms > 0 || vendor.double_rooms > 0;
+                        return (
+                          <SelectItem key={vendor.id} value={vendor.id.toString()} disabled={!hasAvailableRooms}>
+                            <div className="flex flex-col">
+                              <span>{vendor.vendor_name}</span>
+                              <div className="text-xs text-gray-500">
+                                Single: {vendor.single_rooms} | Double: {vendor.double_rooms}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="room_type" className="text-sm font-medium text-gray-700">Room Type</Label>
+                  <Select 
+                    value={form.room_type || ""} 
+                    onValueChange={(value: "single" | "double") => onFormChange({ ...form, room_type: value })}
+                    disabled={!form.vendor_accommodation_id}
+                  >
+                    <SelectTrigger className="bg-white border border-gray-300">
+                      <SelectValue placeholder={form.vendor_accommodation_id ? "Select room type" : "Select vendor first"} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-gray-300 shadow-lg">
+                      {form.vendor_accommodation_id && (() => {
+                        const selectedVendor = vendors.find(v => v.id.toString() === form.vendor_accommodation_id);
+                        return [
+                          selectedVendor?.single_rooms > 0 && (
+                            <SelectItem key="single" value="single">
+                              Single Room ({selectedVendor.single_rooms} available)
+                            </SelectItem>
+                          ),
+                          selectedVendor?.double_rooms > 0 && (
+                            <SelectItem key="double" value="double">
+                              Double Room ({selectedVendor.double_rooms} available)
+                            </SelectItem>
+                          )
+                        ].filter(Boolean);
+                      })()}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {form.room_type === "double" && selectedParticipants.length > 2 && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="text-sm text-yellow-800">
+                    ⚠️ Double rooms can accommodate maximum 2 participants. Please select only 2 participants or choose single rooms.
+                  </div>
+                </div>
+              )}
+              {form.room_type === "double" && selectedParticipants.length === 2 && (() => {
+                const selectedGenders = getSelectedParticipantGenders();
+                const uniqueGenders = [...new Set(selectedGenders)];
+                if (uniqueGenders.length > 1 || uniqueGenders.includes('other')) {
+                  return (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="text-sm text-red-800">
+                        ❌ Double room sharing requires same gender (male/female only). Selected participants have different genders or include non-binary gender.
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
+            </>
           )}
           </div>
           <div className="flex justify-end space-x-3 pt-4 border-t bg-white">
