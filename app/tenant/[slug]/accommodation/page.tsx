@@ -428,7 +428,14 @@ export default function AccommodationPage() {
           accommodationNeeds: participant.accommodation_needs
         }));
         
-        console.log('Participants with registration data:', participants);
+        console.log('🎯 Event ID:', eventId);
+        console.log('📊 Raw participant data from API:', participantData);
+        console.log('🔍 Processed participants with registration data:', participants);
+        
+        // Debug each participant's gender
+        participants.forEach(p => {
+          console.log(`👤 ${p.name} (${p.email}): gender=${p.gender}, accommodationNeeds=${p.accommodationNeeds}`);
+        });
         setParticipants(participants);
         // Also fetch allocated participants for this event
         await fetchAllocatedParticipants(eventId);
