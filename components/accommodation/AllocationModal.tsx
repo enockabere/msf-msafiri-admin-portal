@@ -347,6 +347,10 @@ export default function AllocationModal({
               <div className="text-center py-4 text-gray-500">
                 <p className="text-sm">{selectedGuesthouses.length === 0 ? 'Select guesthouses first' : 'Select rooms first to see capacity'}</p>
               </div>
+            ) : form.accommodation_type === "vendor" && (!form.vendor_accommodation_id || !form.room_type) ? (
+              <div className="text-center py-4 text-gray-500">
+                <p className="text-sm">{!form.vendor_accommodation_id ? 'Select vendor hotel first' : 'Select room type first'}</p>
+              </div>
             ) : participants.length === 0 ? (
               <div className="text-center py-4 text-gray-500">
                 <p className="text-sm">No participants found</p>
@@ -388,8 +392,18 @@ export default function AllocationModal({
                       }
                     }
                     
-                    // Check for gender conflicts with existing constraints
-                    if (hasGender && !isSelected && allConstrainingGenders.length > 0) {
+                    // For vendor accommodations, only check gender for double rooms
+                    if (form.accommodation_type === "vendor" && form.room_type === "double" && hasGender && !isSelected) {
+                      const selectedGenders = getSelectedParticipantGenders();
+                      const uniqueGenders = [...new Set(selectedGenders)];
+                      if (uniqueGenders.length > 0 && !uniqueGenders.includes(participant.gender!)) {
+                        isDisabledDueToGender = true;
+                        genderConflictMessage = `Double room requires same gender - only ${uniqueGenders.join('/')} allowed`;
+                      }
+                    }
+                    
+                    // Check for gender conflicts with existing constraints (guesthouse only)
+                    if (form.accommodation_type === "guesthouse" && hasGender && !isSelected && allConstrainingGenders.length > 0) {
                       if (participant.gender && !allConstrainingGenders.includes(participant.gender)) {
                         isDisabledDueToGender = true;
                         genderConflictMessage = `Cannot select ${participant.gender} - only ${allConstrainingGenders.join('/')} allowed`;
@@ -447,9 +461,14 @@ export default function AllocationModal({
                       (Max: {form.room_type === "single" ? "1 person per room" : "2 people per room"})
                     </span>
                   )}
-                  {allConstrainingGenders.length > 0 && (
+                  {form.accommodation_type === "guesthouse" && allConstrainingGenders.length > 0 && (
                     <div className="text-xs text-blue-600 mt-1 capitalize">
                       Only {allConstrainingGenders.join('/')} participants can be selected
+                    </div>
+                  )}
+                  {form.accommodation_type === "vendor" && form.room_type === "double" && selectedParticipants.length > 0 && (
+                    <div className="text-xs text-blue-600 mt-1 capitalize">
+                      Double room: same gender required ({getSelectedParticipantGenders()[0] || 'any'} gender selected)
                     </div>
                   )}
                   {allocatedParticipants.length > 0 && (
@@ -553,31 +572,11 @@ export default function AllocationModal({
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="text-sm text-blue-800">
                     <strong>Room Type:</strong> {form.room_type === "single" ? "Single Room" : "Double Room"}
-                    {form.room_type === "single" && " - Individual occupancy"}
+                    {form.room_type === "single" && " - Individual occupancy, any gender"}
                     {form.room_type === "double" && " - Maximum 2 participants, same gender required"}
                   </div>
                 </div>
               )}
-              {form.room_type === "double" && selectedParticipants.length > 2 && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-sm text-yellow-800">
-                    ⚠️ Double rooms can accommodate maximum 2 participants. Please select only 2 participants or choose single rooms.
-                  </div>
-                </div>
-              )}
-              {form.room_type === "double" && selectedParticipants.length === 2 && (() => {
-                const selectedGenders = getSelectedParticipantGenders();
-                const uniqueGenders = [...new Set(selectedGenders)];
-                if (uniqueGenders.length > 1 || uniqueGenders.includes('other')) {
-                  return (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <div className="text-sm text-red-800">
-                        ❌ Double room sharing requires same gender (male/female only). Selected participants have different genders or include non-binary gender.
-                      </div>
-                    </div>
-                  );
-                }
-              })()}
             </>
           )}
           </div>
