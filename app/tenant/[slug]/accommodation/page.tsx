@@ -416,16 +416,13 @@ export default function AccommodationPage() {
       );
       if (response.ok) {
         const participantData = await response.json();
-        // Fetch user profiles and registration data to get gender and accommodation needs
+        // Get detailed participant data with registration information
         const participantsWithDetails = await Promise.all(
           participantData.map(async (participant: Participant) => {
-            let gender = null;
-            let accommodationNeeds = null;
-            
             try {
-              // Get user profile for gender
-              const userResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/by-email/${participant.email}`,
+              // Get detailed participant data including registration info
+              const detailResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participant.id}/details`,
                 {
                   headers: { 
                     Authorization: `Bearer ${apiClient.getToken()}`,
@@ -433,42 +430,28 @@ export default function AccommodationPage() {
                   },
                 }
               );
-              if (userResponse.ok) {
-                const userData = await userResponse.json();
-                gender = userData.gender;
-              }
               
-              // Get registration data for accommodation needs
-              const registrationResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/registrations?email=${participant.email}`,
-                {
-                  headers: { 
-                    Authorization: `Bearer ${apiClient.getToken()}`,
-                    'X-Tenant-ID': tenantSlug
-                  },
-                }
-              );
-              if (registrationResponse.ok) {
-                const registrationData = await registrationResponse.json();
-                if (registrationData.length > 0) {
-                  accommodationNeeds = registrationData[0].accommodation_needs;
-                  // Use registration form gender if available (takes priority)
-                  if (registrationData[0].gender) {
-                    gender = registrationData[0].gender;
-                  }
-                }
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                return { 
+                  ...participant, 
+                  gender: detailData.gender || participant.gender || undefined,
+                  accommodationNeeds: detailData.accommodation_needs || undefined
+                };
               }
             } catch (error) {
-              console.error(`Error fetching details for ${participant.email}:`, error);
+              console.error(`Error fetching details for participant ${participant.id}:`, error);
             }
             
+            // Fallback: participant data should already include gender from event_participants table
             return { 
               ...participant, 
-              gender: gender || undefined,
-              accommodationNeeds: accommodationNeeds || undefined
+              gender: participant.gender || undefined,
+              accommodationNeeds: undefined
             };
           })
         );
+        console.log('Participants with details:', participantsWithDetails);
         setParticipants(participantsWithDetails);
         // Also fetch allocated participants for this event
         await fetchAllocatedParticipants(eventId);
