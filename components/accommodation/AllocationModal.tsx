@@ -53,6 +53,7 @@ interface Participant {
   role: string;
   event_id: number;
   gender?: string;
+  accommodationNeeds?: string;
 }
 
 interface AllocationForm {
@@ -404,6 +405,11 @@ export default function AllocationModal({
                             {participant.gender && (
                               <div className="text-xs text-gray-500 capitalize mt-1">
                                 Gender: {participant.gender}
+                              </div>
+                            )}
+                            {participant.accommodationNeeds && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                Accommodation needs: {participant.accommodationNeeds}
                               </div>
                             )}
                             {genderConflictMessage && (

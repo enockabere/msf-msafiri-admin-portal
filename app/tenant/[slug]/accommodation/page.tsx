@@ -109,6 +109,7 @@ interface Participant {
   role: string;
   event_id: number;
   gender?: string;
+  accommodationNeeds?: string;
 }
 
 interface AllocationForm {
@@ -415,10 +416,14 @@ export default function AccommodationPage() {
       );
       if (response.ok) {
         const participantData = await response.json();
-        // Fetch user profiles to get gender information
-        const participantsWithGender = await Promise.all(
+        // Fetch user profiles and registration data to get gender and accommodation needs
+        const participantsWithDetails = await Promise.all(
           participantData.map(async (participant: Participant) => {
+            let gender = null;
+            let accommodationNeeds = null;
+            
             try {
+              // Get user profile for gender
               const userResponse = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/by-email/${participant.email}`,
                 {
@@ -430,15 +435,41 @@ export default function AccommodationPage() {
               );
               if (userResponse.ok) {
                 const userData = await userResponse.json();
-                return { ...participant, gender: userData.gender };
+                gender = userData.gender;
+              }
+              
+              // Get registration data for accommodation needs
+              const registrationResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/registrations?email=${participant.email}`,
+                {
+                  headers: { 
+                    Authorization: `Bearer ${apiClient.getToken()}`,
+                    'X-Tenant-ID': tenantSlug
+                  },
+                }
+              );
+              if (registrationResponse.ok) {
+                const registrationData = await registrationResponse.json();
+                if (registrationData.length > 0) {
+                  accommodationNeeds = registrationData[0].accommodation_needs;
+                  // Use registration form gender if available (takes priority)
+                  if (registrationData[0].gender) {
+                    gender = registrationData[0].gender;
+                  }
+                }
               }
             } catch (error) {
-              console.error(`Error fetching user data for ${participant.email}:`, error);
+              console.error(`Error fetching details for ${participant.email}:`, error);
             }
-            return { ...participant, gender: null };
+            
+            return { 
+              ...participant, 
+              gender: gender || undefined,
+              accommodationNeeds: accommodationNeeds || undefined
+            };
           })
         );
-        setParticipants(participantsWithGender.map(p => ({ ...p, gender: p.gender || undefined })));
+        setParticipants(participantsWithDetails);
         // Also fetch allocated participants for this event
         await fetchAllocatedParticipants(eventId);
       }
