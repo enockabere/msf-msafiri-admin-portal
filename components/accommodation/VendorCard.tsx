@@ -45,65 +45,65 @@ export default function VendorCard({ vendor, onBook, onDelete, canEdit }: Vendor
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-2">
-            <Hotel className="w-5 h-5 text-purple-600" />
-            <CardTitle className="text-lg font-semibold text-gray-900">{vendor.vendor_name}</CardTitle>
+    <Card className="hover:shadow-lg transition-all duration-200 border-2 border-gray-100 hover:border-purple-200">
+      <CardHeader className="pb-3 bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
+              <Hotel className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-medium text-gray-900">{vendor.vendor_name}</CardTitle>
+              <div className="flex items-center text-sm text-gray-600 mt-1">
+                <MapPin className="w-3.5 h-3.5 mr-1" />
+                {vendor.location}
+              </div>
+            </div>
           </div>
           {getAvailabilityBadge()}
         </div>
-        <div className="flex items-center text-sm text-gray-600">
-          <MapPin className="w-4 h-4 mr-1" />
-          {vendor.location}
-        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Users className="w-4 h-4 text-gray-500" />
+      <CardContent className="space-y-4 pt-4">
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-purple-600" />
             <div>
-              <div className="text-sm font-medium">{vendor.capacity} Capacity</div>
+              <div className="text-sm font-medium text-gray-900">{vendor.capacity} Capacity</div>
               <div className="text-xs text-gray-500">{vendor.current_occupants} occupied</div>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs font-normal border-purple-200 text-purple-700">
             {vendor.accommodation_type}
           </Badge>
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Occupancy</span>
-            <span className={`text-sm font-semibold ${getOccupancyColor(occupancyPercentage)}`}>
+            <span className="text-sm font-normal text-gray-600">Occupancy</span>
+            <span className={`text-lg font-semibold ${getOccupancyColor(occupancyPercentage)}`}>
               {occupancyPercentage}%
             </span>
           </div>
-          <Progress value={occupancyPercentage} className="h-2" />
+          <Progress value={occupancyPercentage} className="h-2.5" />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>{vendor.current_occupants} occupied</span>
+            <span>{vendor.capacity - vendor.current_occupants} available</span>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          {/* Manual booking disabled - using automatic booking system */}
-          {/* <Button 
-            onClick={() => onBook(vendor)}
-            disabled={vendor.current_occupants >= vendor.capacity}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Book
-          </Button> */}
-          {canEdit && onDelete && (
-            <Button 
+        {canEdit && onDelete && (
+          <div className="pt-2 border-t border-gray-100">
+            <Button
               onClick={() => onDelete(vendor)}
               variant="outline"
               size="sm"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-normal"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Vendor
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

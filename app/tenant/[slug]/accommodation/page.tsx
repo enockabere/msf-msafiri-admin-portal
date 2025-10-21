@@ -153,6 +153,7 @@ export default function AccommodationPage() {
   const [selectedGuesthouses, setSelectedGuesthouses] = useState<number[]>([]);
   const [preSelectedGuesthouse, setPreSelectedGuesthouse] = useState<GuestHouse | null>(null);
   const [allocatedParticipants, setAllocatedParticipants] = useState<number[]>([]);
+  const [tabLoading, setTabLoading] = useState(false);
 
   const [events, setEvents] = useState<Event[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -897,52 +898,57 @@ export default function AccommodationPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Accommodation Management</h1>
-            <p className="text-sm text-gray-600">Manage properties, rooms, and visitor allocations</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-50 px-4 py-2 rounded-lg">
-              <div className="text-sm font-medium text-blue-900">{guesthouses.length}</div>
-              <div className="text-xs text-blue-600">Guesthouses</div>
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-2xl p-6 border-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Accommodation Management</h1>
+              <p className="text-sm text-gray-600">Manage properties, rooms, and visitor allocations</p>
             </div>
-            <div className="bg-green-50 px-4 py-2 rounded-lg">
-              <div className="text-sm font-medium text-green-900">{vendors.length}</div>
-              <div className="text-xs text-green-600">Vendor Hotels</div>
-            </div>
-            <div className="bg-purple-50 px-4 py-2 rounded-lg">
-              <div className="text-sm font-medium text-purple-900">{allocations.length}</div>
-              <div className="text-xs text-purple-600">Active Bookings</div>
+            <div className="flex items-center gap-3">
+              <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
+                <div className="text-xl font-semibold text-red-900">{guesthouses.length}</div>
+                <div className="text-xs font-normal text-red-600">Guesthouses</div>
+              </div>
+              <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow">
+                <div className="text-xl font-semibold text-orange-900">{vendors.length}</div>
+                <div className="text-xs font-normal text-orange-600">Vendor Hotels</div>
+              </div>
+              <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-purple-100 hover:shadow-md transition-shadow">
+                <div className="text-xl font-semibold text-purple-900">{allocations.length}</div>
+                <div className="text-xs font-normal text-purple-600">Active Bookings</div>
+              </div>
             </div>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => {
+          setTabLoading(true);
           const newSearchParams = new URLSearchParams(searchParams.toString());
           newSearchParams.set('tab', value);
           router.push(`?${newSearchParams.toString()}`, { scroll: false });
-        }} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-lg">
-            <TabsTrigger 
-              value="guesthouses" 
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+          setTimeout(() => setTabLoading(false), 300);
+        }} className="space-y-6">
+          <TabsList className="inline-flex h-auto items-center justify-center rounded-xl bg-transparent p-0 gap-2">
+            <TabsTrigger
+              value="guesthouses"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-200 hover:bg-gray-50"
             >
               <Building2 className="w-4 h-4" />
               <span className="hidden sm:inline">Guesthouses</span>
               <span className="sm:hidden">Houses</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="vendors" 
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            <TabsTrigger
+              value="vendors"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-200 hover:bg-gray-50"
             >
               <Hotel className="w-4 h-4" />
               <span className="hidden sm:inline">Vendor Hotels</span>
               <span className="sm:hidden">Hotels</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="allocations" 
-              className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            <TabsTrigger
+              value="allocations"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-200 hover:bg-gray-50"
             >
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Visitor Allocations</span>
@@ -951,20 +957,34 @@ export default function AccommodationPage() {
           </TabsList>
 
           <TabsContent value="guesthouses" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-base font-medium text-gray-900">Guesthouses</h2>
-                <p className="text-sm text-gray-500">Manage your accommodation properties</p>
+            {tabLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center space-y-4">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-200 border-t-red-600 mx-auto"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Building2 className="w-8 h-8 text-red-600 animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-600">Loading guesthouses...</p>
+                </div>
               </div>
-              <GuesthouseManagement 
-                canEdit={!!canEdit} 
-                onGuesthouseCreated={fetchDataCallback} 
-                apiClient={apiClient as { getToken: () => string }} 
-                tenantSlug={tenantSlug} 
-              />
-            </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900">Guesthouses</h2>
+                    <p className="text-sm text-gray-500">Manage your accommodation properties</p>
+                  </div>
+                  <GuesthouseManagement
+                    canEdit={!!canEdit}
+                    onGuesthouseCreated={fetchDataCallback}
+                    apiClient={apiClient as { getToken: () => string }}
+                    tenantSlug={tenantSlug}
+                  />
+                </div>
 
-            {loading ? (
+                {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center space-y-4">
                   <div className="relative">
@@ -1007,7 +1027,7 @@ export default function AccommodationPage() {
             )}
 
             {selectedGuesthouse && (
-              <RoomsView 
+              <RoomsView
                 selectedGuesthouse={selectedGuesthouse}
                 rooms={rooms as unknown as Parameters<typeof RoomsView>[0]['rooms']}
                 canEdit={canEdit}
@@ -1019,23 +1039,39 @@ export default function AccommodationPage() {
                 tenantSlug={tenantSlug}
               />
             )}
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="vendors" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-base font-medium text-gray-900">Vendor Hotels</h2>
-                <p className="text-sm text-gray-500">Manage external hotel partnerships</p>
+            {tabLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center space-y-4">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-orange-200 border-t-orange-600 mx-auto"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Hotel className="w-8 h-8 text-orange-600 animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-600">Loading vendor hotels...</p>
+                </div>
               </div>
-              <VendorManagement 
-                canEdit={!!canEdit} 
-                onVendorCreated={fetchDataCallback} 
-                apiClient={apiClient as { getToken: () => string }} 
-                tenantSlug={tenantSlug} 
-              />
-            </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900">Vendor Hotels</h2>
+                    <p className="text-sm text-gray-500">Manage external hotel partnerships</p>
+                  </div>
+                  <VendorManagement
+                    canEdit={!!canEdit}
+                    onVendorCreated={fetchDataCallback}
+                    apiClient={apiClient as { getToken: () => string }}
+                    tenantSlug={tenantSlug}
+                  />
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {vendors.length === 0 ? (
                 <div className="col-span-full text-center py-12">
                   <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
@@ -1056,10 +1092,33 @@ export default function AccommodationPage() {
                 ))
               )}
             </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="allocations" className="space-y-6">
-            <AllocationsList 
+            {tabLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center space-y-4">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-200 border-t-red-600 mx-auto"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Users className="w-8 h-8 text-red-600 animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-gray-600">Loading allocations...</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-lg font-medium text-gray-900">Visitor Allocations</h2>
+                    <p className="text-sm text-gray-500">View automatically booked accommodations</p>
+                  </div>
+
+                </div>
+                <AllocationsList 
               allocations={allocations as Allocation[]} 
               onDelete={(id: number) => {
                 const allocation = allocations.find(a => a.id === id);
@@ -1072,6 +1131,8 @@ export default function AccommodationPage() {
               onBulkCheckIn={handleBulkCheckIn}
               bulkCheckingIn={bulkCheckingIn}
             />
+              </>
+            )}
           </TabsContent>
         </Tabs>
 

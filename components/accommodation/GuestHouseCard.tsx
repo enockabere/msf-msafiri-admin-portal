@@ -44,66 +44,65 @@ export default function GuestHouseCard({ guesthouse, onBook, onViewRooms }: Gues
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-2">
-            <Building2 className="w-5 h-5 text-blue-600" />
-            <CardTitle className="text-lg font-semibold text-gray-900">{guesthouse.name}</CardTitle>
+    <Card className="hover:shadow-lg transition-all duration-200 border-2 border-gray-100 hover:border-blue-200">
+      <CardHeader className="pb-3 bg-gradient-to-br from-blue-50 to-cyan-50">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-md">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-medium text-gray-900">{guesthouse.name}</CardTitle>
+              <div className="flex items-center text-sm text-gray-600 mt-1">
+                <MapPin className="w-3.5 h-3.5 mr-1" />
+                {guesthouse.location}
+              </div>
+            </div>
           </div>
           {getAvailabilityBadge()}
         </div>
-        <div className="flex items-center text-sm text-gray-600">
-          <MapPin className="w-4 h-4 mr-1" />
-          {guesthouse.location}
-        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center space-x-2">
-            <Building2 className="w-4 h-4 text-gray-500" />
+      <CardContent className="space-y-4 pt-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+            <Building2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
             <div>
-              <div className="text-sm font-medium">{guesthouse.total_rooms} Rooms</div>
+              <div className="text-sm font-medium text-gray-900">{guesthouse.total_rooms} Rooms</div>
               <div className="text-xs text-gray-500">{guesthouse.available_rooms} available</div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Users className="w-4 h-4 text-gray-500" />
+          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+            <Users className="w-5 h-5 text-green-600 flex-shrink-0" />
             <div>
-              <div className="text-sm font-medium">{guesthouse.total_capacity} Capacity</div>
+              <div className="text-sm font-medium text-gray-900">{guesthouse.total_capacity} Capacity</div>
               <div className="text-xs text-gray-500">{guesthouse.current_occupants} occupied</div>
             </div>
           </div>
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Occupancy</span>
-            <span className={`text-sm font-semibold ${getOccupancyColor(occupancyPercentage)}`}>
+            <span className="text-sm font-normal text-gray-600">Occupancy</span>
+            <span className={`text-lg font-semibold ${getOccupancyColor(occupancyPercentage)}`}>
               {occupancyPercentage}%
             </span>
           </div>
-          <Progress value={occupancyPercentage} className="h-2" />
+          <Progress value={occupancyPercentage} className="h-2.5" />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>{guesthouse.current_occupants} occupied</span>
+            <span>{guesthouse.total_capacity - guesthouse.current_occupants} available</span>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button 
+        <div className="pt-2 border-t border-gray-100">
+          <Button
             onClick={() => onViewRooms && onViewRooms(guesthouse)}
             variant="outline"
-            className="flex-1"
+            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 font-normal"
           >
             <Building2 className="w-4 h-4 mr-2" />
             View Rooms
           </Button>
-          {/* Manual booking disabled - using automatic booking system */}
-          {/* <Button 
-            onClick={() => onBook(guesthouse)}
-            disabled={guesthouse.available_rooms === 0}
-            className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Book
-          </Button> */}
         </div>
       </CardContent>
     </Card>
