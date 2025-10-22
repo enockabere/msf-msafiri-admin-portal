@@ -439,8 +439,9 @@ export default function EventDetailsModal({
 
   if (!event) return null;
 
-  // Check if event has ended
+  // Check if event has ended or started
   const eventHasEnded = new Date() > new Date(event.end_date);
+  const eventHasStarted = new Date() >= new Date(event.start_date);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -478,7 +479,7 @@ export default function EventDetailsModal({
               >
                 {event.status}
               </Badge>
-              {canManageEvents && (
+              {canManageEvents && !eventHasStarted && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -594,7 +595,7 @@ export default function EventDetailsModal({
                       Detailed information about this event
                     </p>
                   </div>
-                  {event.status === "Draft" && !editMode && canManageEvents && (
+                  {event.status === "Draft" && !editMode && canManageEvents && !eventHasStarted && (
                     <Button
                       onClick={() => setEditMode(true)}
                       size="sm"
