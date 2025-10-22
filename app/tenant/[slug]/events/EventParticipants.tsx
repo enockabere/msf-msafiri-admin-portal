@@ -373,8 +373,8 @@ export default function EventParticipants({
         }
       };
 
-      // Show services for selected, confirmed, and attended participants
-      const allowedStatuses = ["selected", "confirmed", "attended"];
+      // Show services for selected, confirmed, attended, and registered participants
+      const allowedStatuses = ["selected", "confirmed", "attended", "registered"];
       if (allowedStatuses.includes(participant.status?.toLowerCase())) {
         // Only fetch if participant has an email
         if (participant.email) {
