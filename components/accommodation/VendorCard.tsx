@@ -36,10 +36,12 @@ interface VendorCardProps {
   onBook: (vendor: VendorAccommodation) => void;
   onDelete?: (vendor: VendorAccommodation) => void;
   onSetupEvent?: (vendor: VendorAccommodation) => void;
+  onEditSetup?: (setup: VendorEventSetup) => void;
+  onDeleteSetup?: (setup: VendorEventSetup) => void;
   canEdit?: boolean;
 }
 
-export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, canEdit }: VendorCardProps) {
+export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, onEditSetup, onDeleteSetup, canEdit }: VendorCardProps) {
   const occupancyPercentage = vendor.capacity > 0 
     ? Math.round((vendor.current_occupants / vendor.capacity) * 100) 
     : 0;
@@ -94,35 +96,74 @@ export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, can
           </Badge>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-normal text-gray-600">Occupancy</span>
-            <span className={`text-lg font-semibold ${getOccupancyColor(occupancyPercentage)}`}>
-              {occupancyPercentage}%
-            </span>
-          </div>
-          <Progress value={occupancyPercentage} className="h-2.5" />
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>{vendor.current_occupants} occupied</span>
-            <span>{vendor.capacity - vendor.current_occupants} available</span>
-          </div>
-        </div>
+        {/* Remove overall occupancy stats - now shown per setup */}
 
         {/* Event Setups */}
         {vendor.event_setups && vendor.event_setups.length > 0 && (
           <div className="space-y-2">
             <span className="text-sm font-medium text-gray-700">Event Setups:</span>
-            <div className="space-y-1 max-h-20 overflow-y-auto">
-              {vendor.event_setups.map((setup) => (
-                <div key={setup.id} className="bg-white p-2 rounded border text-xs">
-                  <div className="font-medium text-purple-700">
-                    {setup.event?.title || setup.event_name || 'Custom Event'}
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {vendor.event_setups.map((setup) => {
+                const setupOccupancy = setup.total_capacity > 0 ? Math.round((setup.current_occupants / setup.total_capacity) * 100) : 0;
+                const isOccupied = setup.current_occupants > 0;
+                
+                return (
+                  <div key={setup.id} className="bg-white p-2 rounded border text-xs">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="font-medium text-purple-700">
+                          {setup.event?.title || setup.event_name || 'Custom Event'}
+                        </div>
+                        <div className="text-gray-600">
+                          {setup.single_rooms}S + {setup.double_rooms}D = {setup.total_capacity} capacity
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className={`text-xs font-medium ${
+                            setupOccupancy >= 90 ? 'text-red-600' : 
+                            setupOccupancy >= 70 ? 'text-yellow-600' : 'text-green-600'
+                          }`}>
+                            {setupOccupancy}% occupied
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ({setup.current_occupants}/{setup.total_capacity})
+                          </div>
+                        </div>
+                      </div>
+                      {canEdit && (
+                        <div className="flex gap-1 ml-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditSetup?.(setup);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 p-1"
+                            title="Edit setup"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          {!isOccupied && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteSetup?.(setup);
+                              }}
+                              className="text-red-600 hover:text-red-800 p-1"
+                              title="Delete setup"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-gray-600">
-                    {setup.single_rooms}S + {setup.double_rooms}D = {setup.total_capacity} capacity
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

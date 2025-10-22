@@ -14,6 +14,7 @@ import GuesthouseManagement from "@/components/accommodation/GuesthouseManagemen
 import VendorManagement from "@/components/accommodation/VendorManagement";
 import RoomsView from "@/components/accommodation/RoomsView";
 import EventAccommodationSetupModal from "@/components/accommodation/EventAccommodationSetupModal";
+import EditEventSetupModal from "@/components/accommodation/EditEventSetupModal";
 import { Hotel, Building2, Users } from "lucide-react";
 
 interface GuestHouse {
@@ -165,6 +166,8 @@ export default function AccommodationPage() {
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
   const [eventSetupModalOpen, setEventSetupModalOpen] = useState(false);
   const [selectedVendorForSetup, setSelectedVendorForSetup] = useState<VendorAccommodation | null>(null);
+  const [editSetupModalOpen, setEditSetupModalOpen] = useState(false);
+  const [selectedSetupForEdit, setSelectedSetupForEdit] = useState<VendorEventSetup | null>(null);
   
 
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
@@ -524,6 +527,52 @@ export default function AccommodationPage() {
   const handleSetupEventAccommodation = (vendor: VendorAccommodation) => {
     setSelectedVendorForSetup(vendor);
     setEventSetupModalOpen(true);
+  };
+
+  const handleEditSetup = (setup: VendorEventSetup) => {
+    setSelectedSetupForEdit(setup);
+    setEditSetupModalOpen(true);
+  };
+
+  const handleDeleteSetup = async (setup: VendorEventSetup) => {
+    const { default: Swal } = await import("sweetalert2");
+
+    const result = await Swal.fire({
+      title: "Delete Event Setup?",
+      text: `This will permanently delete the setup for "${setup.event?.title || setup.event_name}". This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-event-setup/${setup.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchData();
+        toast({ title: "Success", description: "Event setup deleted successfully" });
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Delete setup error:", error);
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    }
   };
 
   const handleDeleteVendor = async (vendor: VendorAccommodation) => {
@@ -1137,6 +1186,8 @@ export default function AccommodationPage() {
                     onBook={handleBookVendor}
                     onDelete={canEdit ? handleDeleteVendor : undefined}
                     onSetupEvent={canEdit ? handleSetupEventAccommodation : undefined}
+                    onEditSetup={canEdit ? handleEditSetup : undefined}
+                    onDeleteSetup={canEdit ? handleDeleteSetup : undefined}
                     canEdit={canEdit}
                   />
                 ))
@@ -1246,6 +1297,20 @@ export default function AccommodationPage() {
             onSetupComplete={fetchDataCallback}
           />
         )}
+
+        <EditEventSetupModal
+          open={editSetupModalOpen}
+          onOpenChange={(open) => {
+            setEditSetupModalOpen(open);
+            if (!open) {
+              setSelectedSetupForEdit(null);
+            }
+          }}
+          setup={selectedSetupForEdit}
+          apiClient={apiClient as { getToken: () => string }}
+          tenantSlug={tenantSlug}
+          onEditComplete={fetchDataCallback}
+        />
       </div>
     </DashboardLayout>
   );
