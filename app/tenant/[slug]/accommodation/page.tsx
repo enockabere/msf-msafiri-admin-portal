@@ -16,6 +16,7 @@ import RoomsView from "@/components/accommodation/RoomsView";
 import EventAccommodationSetupModal from "@/components/accommodation/EventAccommodationSetupModal";
 import EditEventSetupModal from "@/components/accommodation/EditEventSetupModal";
 import EventAllocationsModal from "@/components/accommodation/EventAllocationsModal";
+import EditVendorModal from "@/components/accommodation/EditVendorModal";
 import { Hotel, Building2, Users } from "lucide-react";
 
 interface GuestHouse {
@@ -171,6 +172,8 @@ export default function AccommodationPage() {
   const [selectedSetupForEdit, setSelectedSetupForEdit] = useState<VendorEventSetup | null>(null);
   const [eventAllocationsModalOpen, setEventAllocationsModalOpen] = useState(false);
   const [selectedSetupForAllocations, setSelectedSetupForAllocations] = useState<VendorEventSetup | null>(null);
+  const [editVendorModalOpen, setEditVendorModalOpen] = useState(false);
+  const [selectedVendorForEdit, setSelectedVendorForEdit] = useState<VendorAccommodation | null>(null);
   
 
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
@@ -540,6 +543,11 @@ export default function AccommodationPage() {
   const handleViewAllocations = (setup: VendorEventSetup) => {
     setSelectedSetupForAllocations(setup);
     setEventAllocationsModalOpen(true);
+  };
+
+  const handleEditVendor = (vendor: VendorAccommodation) => {
+    setSelectedVendorForEdit(vendor);
+    setEditVendorModalOpen(true);
   };
 
   const handleDeleteSetup = async (setup: VendorEventSetup) => {
@@ -1193,6 +1201,7 @@ export default function AccommodationPage() {
                     vendor={vendor} 
                     onBook={handleBookVendor}
                     onDelete={canEdit ? handleDeleteVendor : undefined}
+                    onEdit={canEdit ? handleEditVendor : undefined}
                     onSetupEvent={canEdit ? handleSetupEventAccommodation : undefined}
                     onEditSetup={canEdit ? handleEditSetup : undefined}
                     onDeleteSetup={canEdit ? handleDeleteSetup : undefined}
@@ -1343,6 +1352,20 @@ export default function AccommodationPage() {
           deleting={deleting}
           checkingIn={checkingIn}
           bulkCheckingIn={bulkCheckingIn}
+        />
+
+        <EditVendorModal
+          open={editVendorModalOpen}
+          onOpenChange={(open) => {
+            setEditVendorModalOpen(open);
+            if (!open) {
+              setSelectedVendorForEdit(null);
+            }
+          }}
+          vendor={selectedVendorForEdit}
+          apiClient={apiClient as { getToken: () => string }}
+          tenantSlug={tenantSlug}
+          onEditComplete={fetchDataCallback}
         />
       </div>
     </DashboardLayout>

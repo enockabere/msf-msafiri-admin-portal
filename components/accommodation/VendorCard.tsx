@@ -36,6 +36,7 @@ interface VendorCardProps {
   vendor: VendorAccommodation;
   onBook: (vendor: VendorAccommodation) => void;
   onDelete?: (vendor: VendorAccommodation) => void;
+  onEdit?: (vendor: VendorAccommodation) => void;
   onSetupEvent?: (vendor: VendorAccommodation) => void;
   onEditSetup?: (setup: VendorEventSetup) => void;
   onDeleteSetup?: (setup: VendorEventSetup) => void;
@@ -43,7 +44,7 @@ interface VendorCardProps {
   canEdit?: boolean;
 }
 
-export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, onEditSetup, onDeleteSetup, onViewAllocations, canEdit }: VendorCardProps) {
+export default function VendorCard({ vendor, onBook, onDelete, onEdit, onSetupEvent, onEditSetup, onDeleteSetup, onViewAllocations, canEdit }: VendorCardProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const setupsPerPage = 3;
   
@@ -206,17 +207,32 @@ export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, onE
                 Setup Event Accommodation
               </Button>
             )}
-            {onDelete && (
-              <Button
-                onClick={() => onDelete(vendor)}
-                variant="outline"
-                size="sm"
-                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-normal"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Vendor
-              </Button>
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              {onEdit && (
+                <Button
+                  onClick={() => onEdit(vendor)}
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 font-normal"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  onClick={() => onDelete(vendor)}
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-normal"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
