@@ -1307,6 +1307,7 @@ export default function AccommodationPage() {
             }
           }}
           setup={selectedSetupForEdit}
+          events={events}
           apiClient={apiClient as { getToken: () => string }}
           tenantSlug={tenantSlug}
           onEditComplete={fetchDataCallback}

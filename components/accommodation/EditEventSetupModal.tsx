@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Save, X, Hotel } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Save, X, Hotel, Calendar } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
 interface VendorEventSetup {
@@ -29,10 +30,18 @@ interface EditEventSetupForm {
   event_name?: string;
 }
 
+interface Event {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+}
+
 interface EditEventSetupModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setup: VendorEventSetup | null;
+  events?: Event[];
   apiClient: { getToken: () => string };
   tenantSlug: string;
   onEditComplete: () => void;
@@ -42,6 +51,7 @@ export default function EditEventSetupModal({
   open,
   onOpenChange,
   setup,
+  events = [],
   apiClient,
   tenantSlug,
   onEditComplete,
@@ -52,9 +62,12 @@ export default function EditEventSetupModal({
     double_rooms: 0,
     event_name: '',
   });
+  const [selectedEventType, setSelectedEventType] = useState<string>('');
 
   useEffect(() => {
     if (setup) {
+      const eventType = setup.event_id ? setup.event_id.toString() : 'other';
+      setSelectedEventType(eventType);
       setForm({
         single_rooms: setup.single_rooms,
         double_rooms: setup.double_rooms,
@@ -62,6 +75,22 @@ export default function EditEventSetupModal({
       });
     }
   }, [setup]);
+
+  const availableEvents = events.filter(event => {
+    const now = new Date();
+    const startDate = new Date(event.start_date);
+    return startDate > now;
+  });
+
+  const handleEventChange = (eventId: string) => {
+    setSelectedEventType(eventId);
+    if (eventId === "other") {
+      setForm({ ...form, event_name: "" });
+    } else {
+      const selectedEvent = events.find(e => e.id.toString() === eventId);
+      setForm({ ...form, event_name: selectedEvent?.title || "" });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,18 +174,49 @@ export default function EditEventSetupModal({
           )}
 
           {!isOccupied && (
-            <div className="space-y-2">
-              <Label htmlFor="event_name" className="text-sm font-medium text-gray-700">
-                Event Name
-              </Label>
-              <Input
-                id="event_name"
-                type="text"
-                value={form.event_name || ""}
-                onChange={(e) => setForm({ ...form, event_name: e.target.value })}
-                placeholder="Enter event name"
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="event" className="text-sm font-medium text-gray-700">
+                  Select Event
+                </Label>
+                <Select value={selectedEventType} onValueChange={handleEventChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an event" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableEvents.map((event) => (
+                      <SelectItem key={event.id} value={event.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span>{event.title}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="other">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-500" />
+                        <span>Other (specify name)</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedEventType === "other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="event_name" className="text-sm font-medium text-gray-700">
+                    Event Name
+                  </Label>
+                  <Input
+                    id="event_name"
+                    type="text"
+                    value={form.event_name || ""}
+                    onChange={(e) => setForm({ ...form, event_name: e.target.value })}
+                    placeholder="Enter event name"
+                  />
+                </div>
+              )}
+            </>
           )}
 
           <div className="grid grid-cols-2 gap-3">

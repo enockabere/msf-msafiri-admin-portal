@@ -175,16 +175,7 @@ export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, onE
           </div>
         )}
 
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-600" />
-            <div>
-              <div className="text-sm font-medium text-gray-900">{vendor.capacity} Total Capacity</div>
-              <div className="text-xs text-gray-500">{vendor.accommodation_type}</div>
-            </div>
-          </div>
-          {getAvailabilityBadge()}
-        </div>
+
 
         {canEdit && (
           <div className="pt-2 border-t border-gray-100 space-y-2">
