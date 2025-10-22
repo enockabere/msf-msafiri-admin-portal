@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useAuthenticatedApi } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -89,6 +90,7 @@ export default function EventParticipants({
   onParticipantsChange,
   eventHasEnded = false,
 }: EventParticipantsProps) {
+  const { apiClient } = useAuthenticatedApi();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newParticipant, setNewParticipant] = useState({
@@ -143,12 +145,32 @@ export default function EventParticipants({
   }
 
   interface AccommodationData {
-    name?: string;
-    address?: string;
-    location?: string;
-    status?: string;
-    check_in_date?: string;
-    check_out_date?: string;
+    id: number;
+    guest_name: string;
+    guest_email: string;
+    check_in_date: string;
+    check_out_date: string;
+    accommodation_type: 'guesthouse' | 'vendor';
+    status: string;
+    event_id?: number;
+    room_type?: 'single' | 'double';
+    room?: {
+      id: number;
+      room_number: string;
+      capacity: number;
+      current_occupants: number;
+      guesthouse: {
+        id: number;
+        name: string;
+        location?: string;
+      };
+    };
+    vendor_accommodation?: {
+      id: number;
+      vendor_name: string;
+      location: string;
+      roommate_name?: string;
+    };
   }
 
   interface VoucherData {
@@ -177,12 +199,58 @@ export default function EventParticipants({
     useEffect(() => {
       const fetchParticipantServices = async () => {
         try {
-          const token = localStorage.getItem("token");
-          const headers = { Authorization: `Bearer ${token}` };
+          const token = apiClient.getToken();
+          const tenantSlug = window.location.pathname.split('/')[2];
+          const headers = {
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          };
 
-          // Skip transport and accommodation API calls for now - services not implemented
+          // Skip transport API calls for now - service not implemented
           setTransportData([]);
-          setAccommodationData([]);
+
+          // Fetch accommodation allocations for this participant by email
+          try {
+            // Fetch all allocations and filter client-side by guest_email and event_id
+            const accommodationResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations`,
+              { headers }
+            );
+            if (accommodationResponse.ok) {
+              const allAccommodations = await accommodationResponse.json();
+              console.log('All accommodations fetched:', allAccommodations.length);
+
+              // Filter by participant email and event ID
+              const filteredAccommodations = Array.isArray(allAccommodations)
+                ? allAccommodations.filter((acc: AccommodationData) => {
+                    const emailMatch = acc.guest_email?.toLowerCase() === participant.email?.toLowerCase();
+                    // Also check if the accommodation has an event_id field and matches
+                    const eventMatch = !acc.event_id || acc.event_id === eventId;
+
+                    console.log('Checking accommodation:', {
+                      guest_email: acc.guest_email,
+                      participant_email: participant.email,
+                      emailMatch,
+                      event_id: acc.event_id,
+                      eventId,
+                      eventMatch,
+                      include: emailMatch && eventMatch
+                    });
+
+                    return emailMatch && eventMatch;
+                  })
+                : [];
+
+              console.log('Filtered accommodations for', participant.email, ':', filteredAccommodations);
+              setAccommodationData(filteredAccommodations);
+            } else {
+              console.error('Failed to fetch accommodation:', accommodationResponse.status);
+              setAccommodationData([]);
+            }
+          } catch (error) {
+            console.error('Error fetching accommodation:', error);
+            setAccommodationData([]);
+          }
 
           // Fetch QR/voucher data with proper error handling
           try {
@@ -258,12 +326,20 @@ export default function EventParticipants({
         }
       };
 
-      if (participant.status === "selected") {
-        fetchParticipantServices();
+      // Show services for selected, confirmed, and attended participants
+      const allowedStatuses = ["selected", "confirmed", "attended"];
+      if (allowedStatuses.includes(participant.status?.toLowerCase())) {
+        // Only fetch if participant has an email
+        if (participant.email) {
+          fetchParticipantServices();
+        } else {
+          console.warn('Participant has no email, cannot fetch accommodation');
+          setLoading(false);
+        }
       } else {
         setLoading(false);
       }
-    }, [participant.id, participant.status, eventId]);
+    }, [participant.id, participant.email, participant.status, eventId, apiClient]);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
@@ -542,8 +618,8 @@ export default function EventParticipants({
               </div>
             </div>
 
-            {/* Event Services - Only show if participant is selected */}
-            {participant.status === "selected" && (
+            {/* Event Services - Show for selected, confirmed, and attended participants */}
+            {["selected", "confirmed", "attended"].includes(participant.status?.toLowerCase()) && (
               <div className="mt-8">
                 <h4 className="font-semibold text-gray-900 mb-6 text-xl border-b border-gray-300 pb-3">
                   Event Services
@@ -601,50 +677,151 @@ export default function EventParticipants({
                     </div>
 
                     {/* Accommodation */}
-                    <div className="bg-orange-50 p-6 rounded-lg border border-orange-200">
-                      <h5 className="font-semibold text-orange-900 mb-4">
+                    <div className="bg-gradient-to-br from-orange-50 to-pink-50 p-6 rounded-xl border-2 border-orange-200">
+                      <h5 className="font-semibold text-orange-900 mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
                         Accommodation
                       </h5>
                       {accommodationData && accommodationData.length > 0 ? (
-                        <div className="space-y-3">
-                          {accommodationData.map((accommodation, index) => (
-                            <div
-                              key={index}
-                              className="bg-white p-3 rounded border"
-                            >
-                              <p className="font-medium text-sm">
-                                {accommodation.name || "Accommodation"}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {accommodation.address ||
-                                  accommodation.location ||
-                                  "TBD"}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                Status: {accommodation.status || "Pending"}
-                              </p>
-                              {accommodation.check_in_date && (
-                                <p className="text-xs text-gray-600">
-                                  {new Date(
-                                    accommodation.check_in_date
-                                  ).toLocaleDateString()}{" "}
-                                  -
-                                  {accommodation.check_out_date
-                                    ? new Date(
-                                        accommodation.check_out_date
-                                      ).toLocaleDateString()
-                                    : "TBD"}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                        <div className="space-y-4">
+                          {accommodationData.map((accommodation, ) => {
+                            const isGuesthouse = accommodation.accommodation_type === 'guesthouse';
+                            const isShared = isGuesthouse
+                              ? (accommodation.room?.capacity || 0) > 1
+                              : accommodation.room_type === 'double';
+                            const accommodationName = isGuesthouse
+                              ? accommodation.room?.guesthouse.name
+                              : accommodation.vendor_accommodation?.vendor_name;
+                            const location = isGuesthouse
+                              ? accommodation.room?.guesthouse.location
+                              : accommodation.vendor_accommodation?.location;
+
+                            return (
+                              <div
+                                key={accommodation.id}
+                                className="bg-white p-5 rounded-xl border-2 border-orange-100 shadow-sm hover:shadow-md transition-shadow"
+                              >
+                                {/* Header */}
+                                <div className="flex items-start justify-between mb-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                        isGuesthouse
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : 'bg-purple-100 text-purple-700'
+                                      }`}>
+                                        {isGuesthouse ? 'Guesthouse' : 'Vendor Hotel'}
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                        accommodation.status === 'booked'
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : accommodation.status === 'checked_in'
+                                          ? 'bg-green-100 text-green-700'
+                                          : 'bg-gray-100 text-gray-700'
+                                      }`}>
+                                        {accommodation.status.replace('_', ' ').toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <h6 className="font-semibold text-gray-900 text-base">
+                                      {accommodationName}
+                                    </h6>
+                                    {location && (
+                                      <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        {location}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Room Details */}
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                  <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500 mb-1">Room</p>
+                                    <p className="font-medium text-sm text-gray-900">
+                                      {isGuesthouse
+                                        ? `Room ${accommodation.room?.room_number}`
+                                        : `${accommodation.room_type === 'single' ? 'Single' : 'Double'} Room`}
+                                    </p>
+                                  </div>
+                                  <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500 mb-1">Sharing</p>
+                                    <p className="font-medium text-sm text-gray-900">
+                                      {isShared ? (
+                                        <span className="text-orange-600">Shared</span>
+                                      ) : (
+                                        <span className="text-green-600">Private</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Roommate Info */}
+                                {isShared && accommodation.vendor_accommodation?.roommate_name && (
+                                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
+                                    <p className="text-xs text-blue-700 font-medium mb-1">Sharing with:</p>
+                                    <p className="font-semibold text-blue-900">
+                                      {accommodation.vendor_accommodation.roommate_name}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {isGuesthouse && isShared && accommodation.room && (
+                                  <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
+                                    <p className="text-xs text-blue-700 font-medium mb-1">Room Capacity:</p>
+                                    <p className="font-semibold text-blue-900">
+                                      {accommodation.room.current_occupants} / {accommodation.room.capacity} occupants
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Dates */}
+                                <div className="bg-gradient-to-r from-orange-50 to-pink-50 p-3 rounded-lg border border-orange-100">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-xs text-gray-600 mb-1">Check-in</p>
+                                      <p className="font-semibold text-sm text-gray-900">
+                                        {new Date(accommodation.check_in_date).toLocaleDateString('en-US', {
+                                          weekday: 'short',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                    <div className="text-right">
+                                      <p className="text-xs text-gray-600 mb-1">Check-out</p>
+                                      <p className="font-semibold text-sm text-gray-900">
+                                        {new Date(accommodation.check_out_date).toLocaleDateString('en-US', {
+                                          weekday: 'short',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-600">
-                          <p>No accommodation assigned</p>
+                        <div className="bg-white p-6 rounded-lg border-2 border-dashed border-orange-200 text-center">
+                          <svg className="w-12 h-12 text-orange-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                          </svg>
+                          <p className="text-sm font-medium text-gray-700">No accommodation assigned</p>
                           <p className="text-xs mt-1 text-gray-500">
-                            Accommodation will be arranged closer to the event
-                            date
+                            Accommodation will be arranged closer to the event date
                           </p>
                         </div>
                       )}
@@ -755,7 +932,7 @@ export default function EventParticipants({
 
       const response = await fetch(url.toString(), {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${apiClient.getToken()}`,
         },
       });
 
@@ -804,7 +981,7 @@ export default function EventParticipants({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${apiClient.getToken()}`,
           },
           body: JSON.stringify(requestData),
         }
@@ -857,7 +1034,7 @@ export default function EventParticipants({
         {
           method: "PUT",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status: newStatus }),
@@ -887,7 +1064,7 @@ export default function EventParticipants({
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
           },
         }
@@ -1027,7 +1204,7 @@ export default function EventParticipants({
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${apiClient.getToken()}`,
           },
         }
       );
@@ -1095,7 +1272,7 @@ export default function EventParticipants({
         {
           method: "PUT",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ role: newRole }),

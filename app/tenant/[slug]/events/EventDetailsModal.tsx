@@ -444,28 +444,52 @@ export default function EventDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-xl">
-        <DialogHeader className="px-3 sm:px-4 lg:px-6 py-4 border-b bg-gradient-to-r from-slate-50 via-red-50 to-rose-50 rounded-t-xl min-h-[80px] flex flex-col justify-center">
-          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 sm:p-2 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 shadow-sm">
-                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
+      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-2xl">
+        {/* Enhanced Header with Gradient Background */}
+        <DialogHeader className="px-4 sm:px-6 lg:px-8 py-6 border-b-2 border-gray-100 bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-t-2xl relative overflow-hidden">
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-200/30 to-pink-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-br from-orange-200/30 to-yellow-200/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg">
+                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <span className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
-                {event.title}
-              </span>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                  {event.title}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {event.location || "Location not specified"}
+                </p>
+              </div>
             </div>
-            <Badge
-              className={`w-fit text-xs px-2 py-1 font-medium rounded-full ${
-                event.status === "Published"
-                  ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                  : event.status === "Draft"
-                  ? "bg-amber-100 text-amber-700 border-amber-200"
-                  : "bg-gray-100 text-gray-700 border-gray-200"
-              }`}
-            >
-              {event.status}
-            </Badge>
+            <div className="flex items-center gap-2 sm:ml-auto">
+              <Badge
+                className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
+                  event.status === "Published"
+                    ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white"
+                    : event.status === "Draft"
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                    : "bg-gradient-to-r from-gray-500 to-slate-500 text-white"
+                }`}
+              >
+                {event.status}
+              </Badge>
+              {canManageEvents && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditMode(true)}
+                  className="text-gray-700 border-gray-300 hover:bg-white hover:border-red-300 hover:text-red-600"
+                >
+                  <Edit3 className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+            </div>
           </DialogTitle>
           <DialogDescription className="sr-only">
             Event details and management interface for {event.title}
@@ -484,61 +508,66 @@ export default function EventDetailsModal({
             }}
             className="h-full flex flex-col"
           >
-            <TabsList className="grid w-full grid-cols-5 sm:grid-cols-7 bg-white border-b border-gray-200 p-0 mx-3 sm:mx-4 lg:mx-6 mt-2 sm:mt-3 rounded-none h-12 sm:h-11 text-xs overflow-x-auto">
+            <TabsList className="inline-flex w-auto gap-2 bg-transparent border-b-0 p-0 mx-4 sm:mx-6 lg:mx-8 mt-4 h-auto overflow-x-auto">
               <TabsTrigger
                 value="overview"
-                className="text-xs font-medium px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
+                <Calendar className="h-4 w-4" />
                 Overview
               </TabsTrigger>
               <TabsTrigger
                 value="participants"
-                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
-                <Users className="h-3 w-3 mr-1" />
+                <Users className="h-4 w-4" />
                 <span className="hidden sm:inline">Participants</span>
                 <span className="sm:hidden">P</span>
-                <span className="ml-1">({participantsCount})</span>
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                  {participantsCount}
+                </span>
               </TabsTrigger>
 
               <TabsTrigger
                 value="attachments"
-                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
-                <Paperclip className="h-3 w-3 mr-1" />
+                <Paperclip className="h-4 w-4" />
                 <span className="hidden sm:inline">Files</span>
                 <span className="sm:hidden">F</span>
-                <span className="ml-1">({attachmentsCount})</span>
+                <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                  {attachmentsCount}
+                </span>
               </TabsTrigger>
               <TabsTrigger
                 value="allocations"
-                className="text-xs font-medium px-1 sm:px-2 py-2 hidden sm:flex data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50 hidden sm:inline-flex"
               >
-                <Settings className="h-3 w-3 mr-1" />
+                <Settings className="h-4 w-4" />
                 <span className="hidden lg:inline">Allocations</span>
                 <span className="lg:hidden">Alloc</span>
               </TabsTrigger>
               <TabsTrigger
                 value="agenda"
-                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
-                <Calendar className="h-3 w-3 mr-1" />
+                <Calendar className="h-4 w-4" />
                 <span className="hidden sm:inline">Agenda</span>
                 <span className="sm:hidden">A</span>
               </TabsTrigger>
               <TabsTrigger
                 value="food"
-                className="text-xs font-medium px-1 sm:px-2 py-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
-                <UtensilsCrossed className="h-3 w-3 mr-1" />
+                <UtensilsCrossed className="h-4 w-4" />
                 <span className="hidden sm:inline">Food</span>
                 <span className="sm:hidden">F</span>
               </TabsTrigger>
               <TabsTrigger
                 value="feedback"
-                className="text-xs font-medium px-2 sm:px-3 py-2 flex items-center data-[state=active]:bg-red-50 data-[state=active]:text-red-700 data-[state=active]:border-b-2 data-[state=active]:border-red-500 min-w-fit"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
               >
-                <Star className="h-3 w-3 mr-1" />
+                <Star className="h-4 w-4" />
                 <span className="whitespace-nowrap">Feedback</span>
               </TabsTrigger>
             </TabsList>
@@ -690,53 +719,49 @@ export default function EventDetailsModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-                    <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-lg border border-red-200 shadow-sm">
-                      <h3 className="font-semibold text-sm sm:text-base mb-3 text-red-800 flex items-center gap-2">
-                        <div className="p-1 rounded bg-red-100">
-                          <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="bg-white p-5 sm:p-6 rounded-xl border-2 border-red-100 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="font-semibold text-base sm:text-lg mb-4 text-red-800 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-sm">
+                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                         </div>
                         Event Details
                       </h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                          <span className="text-xs sm:text-sm font-medium text-gray-600">
-                            Type:
-                          </span>
-                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                            {event.event_type || "Not specified"}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-sm font-normal text-gray-600">Type:</span>
+                          <span className="text-sm text-gray-900 font-medium">{event.event_type || "Not specified"}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-sm font-normal text-gray-600">Start Date:</span>
+                          <span className="text-sm text-gray-900 font-medium">
+                            {new Date(event.start_date).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric'
+                            })}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                          <span className="text-xs sm:text-sm font-medium text-gray-600">
-                            Start Date:
-                          </span>
-                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                            {new Date(event.start_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                          <span className="text-xs sm:text-sm font-medium text-gray-600">
-                            End Date:
-                          </span>
-                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
-                            {new Date(event.end_date).toLocaleDateString()}
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-sm font-normal text-gray-600">End Date:</span>
+                          <span className="text-sm text-gray-900 font-medium">
+                            {new Date(event.end_date).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric'
+                            })}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center py-1.5">
-                          <span className="text-xs sm:text-sm font-medium text-gray-600">
-                            Duration:
-                          </span>
-                          <span className="text-xs sm:text-sm text-gray-900 font-medium">
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-sm font-normal text-gray-600">Duration:</span>
+                          <span className="text-sm text-red-600 font-semibold">
                             {Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-xl border border-red-200">
-                      <h3 className="font-bold text-lg mb-4 text-red-800 flex items-center gap-2">
-                        <Users className="h-5 w-5" />
+                    <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 p-5 sm:p-6 rounded-xl border-2 border-red-100 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="font-semibold text-base sm:text-lg mb-4 text-red-800 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-sm">
+                          <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                        </div>
                         Participants
                       </h3>
                       <div className="space-y-3">
