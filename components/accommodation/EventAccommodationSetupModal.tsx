@@ -56,6 +56,13 @@ export default function EventAccommodationSetupModal({
     double_rooms: 0,
   });
 
+  // Filter events to only show upcoming events (not started or ended)
+  const availableEvents = events.filter(event => {
+    const now = new Date();
+    const startDate = new Date(event.start_date);
+    return startDate > now; // Only future events
+  });
+
   const handleEventChange = (eventId: string) => {
     if (eventId === "other") {
       setForm({ ...form, event_id: "other", event_name: "" });
@@ -154,7 +161,7 @@ export default function EventAccommodationSetupModal({
                 <SelectValue placeholder="Choose an event" />
               </SelectTrigger>
               <SelectContent>
-                {events.map((event) => (
+                {availableEvents.map((event) => (
                   <SelectItem key={event.id} value={event.id.toString()}>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />

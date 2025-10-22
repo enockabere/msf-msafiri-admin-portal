@@ -13,6 +13,22 @@ interface VendorAccommodation {
   accommodation_type: string;
   capacity: number;
   current_occupants: number;
+  event_setups?: VendorEventSetup[];
+}
+
+interface VendorEventSetup {
+  id: number;
+  event_id?: number;
+  event_name?: string;
+  single_rooms: number;
+  double_rooms: number;
+  total_capacity: number;
+  current_occupants: number;
+  event?: {
+    title: string;
+    start_date: string;
+    end_date: string;
+  };
 }
 
 interface VendorCardProps {
@@ -91,6 +107,25 @@ export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, can
             <span>{vendor.capacity - vendor.current_occupants} available</span>
           </div>
         </div>
+
+        {/* Event Setups */}
+        {vendor.event_setups && vendor.event_setups.length > 0 && (
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-gray-700">Event Setups:</span>
+            <div className="space-y-1 max-h-20 overflow-y-auto">
+              {vendor.event_setups.map((setup) => (
+                <div key={setup.id} className="bg-white p-2 rounded border text-xs">
+                  <div className="font-medium text-purple-700">
+                    {setup.event?.title || setup.event_name || 'Custom Event'}
+                  </div>
+                  <div className="text-gray-600">
+                    {setup.single_rooms}S + {setup.double_rooms}D = {setup.total_capacity} capacity
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {canEdit && (
           <div className="pt-2 border-t border-gray-100 space-y-2">

@@ -39,6 +39,22 @@ interface VendorAccommodation {
   accommodation_type: string;
   capacity: number;
   current_occupants: number;
+  event_setups?: VendorEventSetup[];
+}
+
+interface VendorEventSetup {
+  id: number;
+  event_id?: number;
+  event_name?: string;
+  single_rooms: number;
+  double_rooms: number;
+  total_capacity: number;
+  current_occupants: number;
+  event?: {
+    title: string;
+    start_date: string;
+    end_date: string;
+  };
 }
 
 interface Room {
@@ -311,7 +327,32 @@ export default function AccommodationPage() {
 
       if (vendorResponse.ok) {
         const vendorData = await vendorResponse.json();
-        setVendors(vendorData);
+        
+        // Fetch event setups for each vendor
+        const vendorsWithSetups = await Promise.all(
+          vendorData.map(async (vendor: VendorAccommodation) => {
+            try {
+              const setupResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-event-setups/${vendor.id}`,
+                {
+                  headers: { 
+                    Authorization: `Bearer ${token}`,
+                    'X-Tenant-ID': tenantSlug
+                  },
+                }
+              );
+              if (setupResponse.ok) {
+                const setups = await setupResponse.json();
+                return { ...vendor, event_setups: setups };
+              }
+            } catch (error) {
+              console.error(`Error fetching setups for vendor ${vendor.id}:`, error);
+            }
+            return { ...vendor, event_setups: [] };
+          })
+        );
+        
+        setVendors(vendorsWithSetups);
       }
 
       if (allocationsResponse.ok) {
