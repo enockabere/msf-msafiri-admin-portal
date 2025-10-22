@@ -71,6 +71,8 @@ interface FormData {
   accommodationNeeds: string;
   dailyMeals: string[];
   certificateName: string;
+  badgeName: string;
+  motivationLetter: string;
   codeOfConductConfirm: string;
   travelRequirementsConfirm: string;
 }
@@ -113,9 +115,14 @@ export default function EventRegistrationFormPage() {
     accommodationNeeds: "",
     dailyMeals: [],
     certificateName: "",
+    badgeName: "",
+    motivationLetter: "",
     codeOfConductConfirm: "",
     travelRequirementsConfirm: "",
   });
+
+  const [emailError, setEmailError] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [hasDietaryRequirements, setHasDietaryRequirements] = useState(false);
 
@@ -220,6 +227,37 @@ export default function EventRegistrationFormPage() {
     value: string | string[]
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    // Clear email error when user changes email
+    if (field === 'personalEmail' || field === 'msfEmail') {
+      setEmailError("");
+    }
+  };
+
+  const checkEmailRegistration = async (personalEmail: string, msfEmail: string) => {
+    if (!personalEmail.trim() && !msfEmail.trim()) return;
+    
+    setCheckingEmail(true);
+    try {
+      const response = await apiClient.request('/check-email-registration', {
+        method: "POST",
+        body: JSON.stringify({
+          event_id: parseInt(eventId),
+          personal_email: personalEmail,
+          msf_email: msfEmail
+        }),
+      });
+      
+      if (response.already_registered) {
+        setEmailError(response.message);
+        return true;
+      }
+    } catch (error) {
+      console.error("Error checking email:", error);
+    } finally {
+      setCheckingEmail(false);
+    }
+    return false;
   };
 
   const handleMealChange = (meal: string, checked: boolean) => {
@@ -365,7 +403,20 @@ export default function EventRegistrationFormPage() {
     }
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
+    if (currentStep === 2) {
+      // Check email registration before proceeding from contact details
+      const emailExists = await checkEmailRegistration(formData.personalEmail, formData.msfEmail);
+      if (emailExists) {
+        toast({
+          title: "Email Already Registered",
+          description: "This email is already registered for this event. Please use a different email.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     if (isStepValid(currentStep)) {
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1074,9 +1125,18 @@ export default function EventRegistrationFormPage() {
                       onChange={(e) =>
                         handleInputChange("personalEmail", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className={`border-2 focus:border-red-500 ${emailError ? 'border-red-500' : ''}`}
                       placeholder="your.email@example.com"
                     />
+                    {emailError && (
+                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                    )}
+                    {checkingEmail && (
+                      <p className="text-blue-500 text-sm mt-1 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Checking email...
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-6">
@@ -1392,22 +1452,59 @@ export default function EventRegistrationFormPage() {
                     </p>
                   </div>
 
-                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-                    <h3 className="font-semibold text-purple-900 mb-2">
-                      Certificate Name
+                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500 space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-purple-900 mb-2">
+                        Certificate Name
+                      </h3>
+                      <p className="text-sm text-purple-800 mb-3">
+                        If a certificate is awarded, how would you like your name to appear?
+                      </p>
+                      <Input
+                        id="certificateName"
+                        value={formData.certificateName}
+                        onChange={(e) =>
+                          handleInputChange("certificateName", e.target.value)
+                        }
+                        className="border-2 focus:border-purple-500 bg-white"
+                        placeholder="e.g., Dr. Jane Elizabeth Smith"
+                      />
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-semibold text-purple-900 mb-2">
+                        Badge Name
+                      </h3>
+                      <p className="text-sm text-purple-800 mb-3">
+                        How would you like your name to appear on your event badge?
+                      </p>
+                      <Input
+                        id="badgeName"
+                        value={formData.badgeName}
+                        onChange={(e) =>
+                          handleInputChange("badgeName", e.target.value)
+                        }
+                        className="border-2 focus:border-purple-500 bg-white"
+                        placeholder="e.g., Jane Smith"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <h3 className="font-semibold text-blue-900 mb-2">
+                      Motivation Letter
                     </h3>
-                    <p className="text-sm text-purple-800 mb-3">
-                      If a certificate is awarded, how would you like your name
-                      to appear?
+                    <p className="text-sm text-blue-800 mb-3">
+                      Please explain your motivation for attending this event and how it aligns with your role and development goals.
                     </p>
-                    <Input
-                      id="certificateName"
-                      value={formData.certificateName}
+                    <textarea
+                      id="motivationLetter"
+                      value={formData.motivationLetter}
                       onChange={(e) =>
-                        handleInputChange("certificateName", e.target.value)
+                        handleInputChange("motivationLetter", e.target.value)
                       }
-                      className="border-2 focus:border-purple-500 bg-white"
-                      placeholder="e.g., Dr. Jane Elizabeth Smith"
+                      className="w-full p-3 border-2 border-blue-300 rounded-lg focus:border-blue-500 bg-white h-32 resize-none"
+                      placeholder="Please describe your motivation for attending this event..."
                     />
                   </div>
 
@@ -1511,10 +1608,20 @@ export default function EventRegistrationFormPage() {
                 {currentStep < steps.length ? (
                   <Button
                     onClick={nextStep}
-                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700"
+                    disabled={emailError !== "" || checkingEmail}
+                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400"
                   >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
+                    {checkingEmail ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </>
+                    )}
                   </Button>
                 ) : (
                   <Button
