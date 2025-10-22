@@ -17,8 +17,6 @@ interface VendorForm {
   latitude?: string;
   longitude?: string;
   accommodation_type: string;
-  single_rooms: number;
-  double_rooms: number;
   description: string;
 }
 
@@ -44,8 +42,6 @@ export default function VendorManagement({
     latitude: "",
     longitude: "",
     accommodation_type: "Hotel",
-    single_rooms: 0,
-    double_rooms: 0,
     description: "",
   });
 
@@ -99,8 +95,6 @@ export default function VendorManagement({
           latitude: "",
           longitude: "",
           accommodation_type: "Hotel",
-          single_rooms: 0,
-          double_rooms: 0,
           description: "",
         });
         toast({ title: "Success", description: "Vendor hotel created successfully" });
@@ -164,30 +158,7 @@ export default function VendorManagement({
               placeholder="Hotel, Lodge, etc."
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="single_rooms" className="text-sm font-medium text-gray-700">Single Rooms</Label>
-              <Input
-                id="single_rooms"
-                type="number"
-                min="0"
-                value={vendorForm.single_rooms || ""}
-                onChange={(e) => setVendorForm({ ...vendorForm, single_rooms: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="double_rooms" className="text-sm font-medium text-gray-700">Double Rooms</Label>
-              <Input
-                id="double_rooms"
-                type="number"
-                min="0"
-                value={vendorForm.double_rooms || ""}
-                onChange={(e) => setVendorForm({ ...vendorForm, double_rooms: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-              />
-            </div>
-          </div>
+
 
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
