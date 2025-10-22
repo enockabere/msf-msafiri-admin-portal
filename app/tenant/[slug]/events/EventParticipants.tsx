@@ -337,7 +337,9 @@ export default function EventParticipants({
           try {
             console.log('=== FETCHING LINE MANAGER RECOMMENDATION ===');
             console.log('Participant ID:', participant.id);
-            console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`);
+            console.log('Participant Email:', participant.email);
+            console.log('Event ID:', eventId);
+            console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`);
             
             const recommendationResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`,
@@ -346,18 +348,22 @@ export default function EventParticipants({
             
             console.log('Recommendation response status:', recommendationResponse.status);
             console.log('Recommendation response ok:', recommendationResponse.ok);
+            console.log('Recommendation response headers:', Object.fromEntries(recommendationResponse.headers.entries()));
             
             if (recommendationResponse.ok) {
               const recommendationData = await recommendationResponse.json();
-              console.log('Recommendation data received:', recommendationData);
+              console.log('RAW Recommendation response:', recommendationData);
+              console.log('Recommendation data type:', typeof recommendationData);
+              console.log('Recommendation data keys:', Object.keys(recommendationData || {}));
               setRecommendationData(recommendationData);
             } else {
               const errorText = await recommendationResponse.text();
-              console.log('Recommendation fetch failed:', errorText);
+              console.log('Recommendation fetch failed with status:', recommendationResponse.status);
+              console.log('Error response body:', errorText);
               setRecommendationData(null);
             }
           } catch (error) {
-            console.error('Recommendation fetch error:', error);
+            console.error('Recommendation fetch network error:', error);
             setRecommendationData(null);
           }
         } catch {
