@@ -26,6 +26,12 @@ import {
   Underline,
   List,
   ListOrdered,
+  CheckCircle2,
+  Clock,
+  Archive,
+  BarChart3,
+  Search,
+  Eye,
 } from "lucide-react";
 import { LocationSelect } from "@/components/ui/location-select";
 import { toast } from "@/components/ui/toast";
@@ -81,10 +87,11 @@ export default function SecurityBriefingsPage() {
   
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  
+  const [searchTerm, setSearchTerm] = useState("");
+
   const categories = [
     "Accommodation Security",
-    "Emergency Procedures", 
+    "Emergency Procedures",
     "Communication Protocol",
     "Transport Guidelines",
     "General Situation",
@@ -445,76 +452,203 @@ export default function SecurityBriefingsPage() {
     return <LoadingScreen message="Loading security briefings..." />;
   }
 
+  // Filter briefings based on search and filters
+  const filteredBriefings = briefings.filter((briefing) => {
+    const matchesSearch =
+      !searchTerm ||
+      briefing.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      briefing.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      briefing.category?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  // Calculate statistics
+  const publishedCount = briefings.filter((b) => b.status === "published").length;
+  const draftCount = briefings.filter((b) => b.status === "draft").length;
+  const archivedCount = briefings.filter((b) => b.status === "archived").length;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Security Briefings
               </h1>
-              <p className="text-gray-600">
-                Manage security briefings for events
+              <p className="text-gray-600 mt-1">
+                Manage and distribute security information across events
               </p>
             </div>
             {canCreateBriefings() && (
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+                className="gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-lg font-semibold shadow-lg transition-all duration-200 transform hover:scale-105 hover:shadow-xl"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-5 h-5" />
                 Create Briefing
               </Button>
             )}
           </div>
-          
-          {/* Filters */}
-          <div className="flex gap-4 items-center">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 mr-2">Category:</label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="all">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-700 mb-1">
+                      Total Briefings
+                    </p>
+                    <p className="text-3xl font-bold text-blue-900">
+                      {briefings.length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-200 rounded-xl">
+                    <Shield className="w-8 h-8 text-blue-700" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-700 mb-1">
+                      Published
+                    </p>
+                    <p className="text-3xl font-bold text-green-900">
+                      {publishedCount}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-200 rounded-xl">
+                    <CheckCircle2 className="w-8 h-8 text-green-700" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-amber-100 hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-amber-700 mb-1">
+                      Drafts
+                    </p>
+                    <p className="text-3xl font-bold text-amber-900">
+                      {draftCount}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-amber-200 rounded-xl">
+                    <Clock className="w-8 h-8 text-amber-700" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-gray-100 hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Archived
+                    </p>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {archivedCount}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-gray-200 rounded-xl">
+                    <Archive className="w-8 h-8 text-gray-700" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
+          {/* Filters */}
+          <Card className="border-0 shadow-md bg-white">
+            <CardContent className="p-4">
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search briefings..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 border-gray-300 focus:border-red-500 focus:ring-red-500"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-4 h-10 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="px-4 h-10 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {filteredBriefings.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-600">
+                    Showing{" "}
+                    <span className="font-semibold text-gray-900">
+                      {filteredBriefings.length}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-gray-900">
+                      {briefings.length}
+                    </span>{" "}
+                    briefings
+                    {searchTerm && (
+                      <span className="ml-2">
+                        (filtered by &quot;{searchTerm}&quot;)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {briefings.length === 0 ? (
+            {filteredBriefings.length === 0 ? (
               <div className="col-span-full">
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Shield className="w-12 h-12 text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      No security briefings found
+                <Card className="border-0 shadow-md">
+                  <CardContent className="flex flex-col items-center justify-center py-16">
+                    <div className="p-4 bg-gray-100 rounded-full mb-4">
+                      <Shield className="w-12 h-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {searchTerm
+                        ? "No matching briefings found"
+                        : "No security briefings found"}
                     </h3>
-                    <p className="text-gray-600 text-center mb-4">
-                      Get started by creating your first security briefing
+                    <p className="text-gray-600 text-center mb-6 max-w-md">
+                      {searchTerm
+                        ? `No briefings match your search "${searchTerm}". Try different keywords.`
+                        : "Get started by creating your first security briefing to share important information."}
                     </p>
-                    {canCreateBriefings() && (
+                    {canCreateBriefings() && !searchTerm && (
                       <Button
                         onClick={() => setShowCreateModal(true)}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Create Briefing
@@ -524,10 +658,10 @@ export default function SecurityBriefingsPage() {
                 </Card>
               </div>
             ) : (
-              briefings.map((briefing) => (
+              filteredBriefings.map((briefing) => (
                 <Card
                   key={briefing.id}
-                  className="shadow-md hover:shadow-lg transition-all duration-200 border-0 bg-gradient-to-br from-white to-red-50 cursor-pointer"
+                  className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-red-50 cursor-pointer group transform hover:-translate-y-1"
                   onClick={() => {
                     setSelectedBriefing(briefing);
                     setShowDetailsModal(true);
@@ -535,86 +669,116 @@ export default function SecurityBriefingsPage() {
                 >
                   <CardContent className="p-6">
                     <div className="flex flex-col h-full">
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-sm">
-                          <Shield className="w-6 h-6 text-red-700" />
+                      {/* Header with Icon and Title */}
+                      <div className="flex items-start gap-3 mb-4">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-md group-hover:shadow-lg transition-shadow">
+                          <Shield className="w-7 h-7 text-red-700" />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg text-gray-800 mb-1">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 leading-tight group-hover:text-red-700 transition-colors">
                             {briefing.title}
                           </h3>
-                          <p className="text-sm text-gray-600">
-                            {briefing.event_title}
-                          </p>
+                          {briefing.event_title && (
+                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                              <span className="text-red-600">•</span>
+                              {briefing.event_title}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex-1 space-y-3">
+                      {/* Status and Type Badges */}
+                      <div className="flex-1 space-y-4">
                         <div className="flex flex-wrap gap-2">
                           <Badge
-                            className={`px-2 py-1 text-xs font-medium ${
+                            className={`px-3 py-1 text-xs font-semibold shadow-sm ${
+                              briefing.status === "published"
+                                ? "bg-green-100 text-green-800 border border-green-300"
+                                : briefing.status === "draft"
+                                ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                : "bg-gray-100 text-gray-800 border border-gray-300"
+                            }`}
+                          >
+                            {briefing.status === "published" && (
+                              <CheckCircle2 className="w-3 h-3 mr-1 inline" />
+                            )}
+                            {briefing.status === "draft" && (
+                              <Clock className="w-3 h-3 mr-1 inline" />
+                            )}
+                            {briefing.status === "archived" && (
+                              <Archive className="w-3 h-3 mr-1 inline" />
+                            )}
+                            {briefing.status?.toUpperCase() || "DRAFT"}
+                          </Badge>
+                          <Badge
+                            className={`px-3 py-1 text-xs font-semibold ${
                               briefing.brief_type === "general"
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : "bg-blue-100 text-blue-800 border-blue-200"
+                                ? "bg-blue-100 text-blue-800 border border-blue-300"
+                                : "bg-purple-100 text-purple-800 border border-purple-300"
                             }`}
                           >
                             {briefing.brief_type === "general"
                               ? "General"
                               : "Event-Specific"}
                           </Badge>
-                          <Badge
-                            className={`px-2 py-1 text-xs font-medium ${
-                              briefing.content_type === "text"
-                                ? "bg-gray-100 text-gray-800 border-gray-200"
-                                : "bg-purple-100 text-purple-800 border-purple-200"
-                            }`}
-                          >
-                            {briefing.content_type === "text" ? (
-                              <>
-                                <FileText className="w-3 h-3 mr-1" />
-                                Text
-                              </>
-                            ) : (
-                              <>
-                                <Video className="w-3 h-3 mr-1" />
-                                Video
-                              </>
-                            )}
-                          </Badge>
-                          <Badge
-                            className={`px-2 py-1 text-xs font-medium ${
-                              briefing.status === "published"
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : briefing.status === "draft"
-                                ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                : "bg-gray-100 text-gray-800 border-gray-200"
-                            }`}
-                          >
-                            {briefing.status?.toUpperCase() || "DRAFT"}
-                          </Badge>
-                          {briefing.category && (
-                            <Badge className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 border-blue-200">
-                              {briefing.category}
-                            </Badge>
-                          )}
-                          {briefing.location && (
-                            <Badge className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 border-purple-200">
-                              📍 {briefing.location}
-                            </Badge>
-                          )}
                         </div>
 
-                        <div className="text-sm text-gray-700 line-clamp-3">
-                          {briefing.content}
+                        {/* Category and Location */}
+                        {(briefing.category || briefing.location) && (
+                          <div className="flex flex-wrap gap-2">
+                            {briefing.category && (
+                              <Badge className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                {briefing.category}
+                              </Badge>
+                            )}
+                            {briefing.location && (
+                              <Badge className="px-3 py-1 text-xs font-medium bg-pink-100 text-pink-800 border border-pink-300">
+                                📍 {briefing.location}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Content Preview */}
+                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            {briefing.content_type === "text" ? (
+                              <FileText className="w-4 h-4 text-gray-600" />
+                            ) : (
+                              <Video className="w-4 h-4 text-purple-600" />
+                            )}
+                            <span className="text-xs font-medium text-gray-600 uppercase">
+                              {briefing.content_type === "text"
+                                ? "Text Content"
+                                : "Video/Document"}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-700 line-clamp-2">
+                            {briefing.content}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-red-100">
-                        <div className="text-xs text-gray-500">
-                          Created{" "}
+                      {/* Footer with Actions */}
+                      <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
                           {new Date(briefing.created_at).toLocaleDateString()}
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedBriefing(briefing);
+                              setShowDetailsModal(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
                           {briefing.status === "draft" && (
                             <Button
                               onClick={(e) => {
@@ -623,8 +787,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-green-600 border-green-200 hover:bg-green-50"
+                              className="text-green-700 border-green-300 hover:bg-green-50 transition-all"
                             >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
                               Publish
                             </Button>
                           )}
@@ -636,8 +801,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-gray-600 border-gray-200 hover:bg-gray-50"
+                              className="text-gray-700 border-gray-300 hover:bg-gray-100 transition-all"
                             >
+                              <Archive className="w-4 h-4 mr-1" />
                               Archive
                             </Button>
                           )}
@@ -649,7 +815,7 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="text-red-700 border-red-300 hover:bg-red-50 transition-all"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -666,52 +832,84 @@ export default function SecurityBriefingsPage() {
 
         {/* Create Briefing Modal */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] bg-white border shadow-lg overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Security Briefing</DialogTitle>
+          <DialogContent className="sm:max-w-[650px] max-h-[90vh] bg-white border-0 shadow-2xl rounded-xl overflow-y-auto">
+            <DialogHeader className="pb-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-gradient-to-br from-red-100 to-red-200">
+                  <Shield className="w-6 h-6 text-red-700" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-bold text-gray-900">
+                    Create Security Briefing
+                  </DialogTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Share important security information with your team
+                  </p>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Title
+            <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2 py-4">
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Title <span className="text-red-600">*</span>
                 </label>
                 <Input
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
-                  placeholder="Enter briefing title"
+                  placeholder="e.g., Emergency evacuation procedures"
+                  className="h-11 border-gray-300 focus:border-red-500 focus:ring-red-500"
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Briefing Type
-                </label>
-                <select
-                  value={formData.brief_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, brief_type: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="general">General</option>
-                  <option value="event_specific">Event-Specific</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Briefing Type <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={formData.brief_type}
+                    onChange={(e) =>
+                      setFormData({ ...formData, brief_type: e.target.value })
+                    }
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                  >
+                    <option value="general">General</option>
+                    <option value="event_specific">Event-Specific</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value })
+                    }
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
               </div>
 
               {formData.brief_type === "event_specific" && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    Event
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Event <span className="text-red-600">*</span>
                   </label>
                   <select
                     value={formData.event_id}
                     onChange={(e) =>
                       setFormData({ ...formData, event_id: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
                   >
                     <option value="">Select an event</option>
                     {events.map((event) => (
@@ -723,8 +921,8 @@ export default function SecurityBriefingsPage() {
                 </div>
               )}
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-gray-700">
                   Content Type
                 </label>
                 <select
@@ -738,7 +936,7 @@ export default function SecurityBriefingsPage() {
                     });
                     setIsRichText(newContentType === "rich_text");
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
                 >
                   <option value="text">Plain Text</option>
                   <option value="rich_text">Rich Text</option>
@@ -747,96 +945,92 @@ export default function SecurityBriefingsPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                  <option value="archived">Archived</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Category
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) =>
+                      setFormData({ ...formData, category: e.target.value })
+                    }
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Location
+                  </label>
+                  <LocationSelect
+                    value={formData.location}
+                    country={tenantData?.country}
+                    onChange={(value, placeDetails) => {
+                      setFormData({
+                        ...formData,
+                        location: value,
+                        latitude:
+                          placeDetails?.geometry?.location?.lat()?.toString() ||
+                          "",
+                        longitude:
+                          placeDetails?.geometry?.location?.lng()?.toString() ||
+                          "",
+                      });
+                    }}
+                    placeholder="Search for location"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
                     Publish Start Date
                   </label>
                   <input
                     type="datetime-local"
                     value={formData.publish_start_date}
                     onChange={(e) =>
-                      setFormData({ ...formData, publish_start_date: e.target.value })
+                      setFormData({
+                        ...formData,
+                        publish_start_date: e.target.value,
+                      })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                <div className="space-y-2.5">
+                  <label className="text-sm font-semibold text-gray-700">
                     Publish End Date
                   </label>
                   <input
                     type="datetime-local"
                     value={formData.publish_end_date}
                     onChange={(e) =>
-                      setFormData({ ...formData, publish_end_date: e.target.value })
+                      setFormData({
+                        ...formData,
+                        publish_end_date: e.target.value,
+                      })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Category
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Location
-                </label>
-                <LocationSelect
-                  value={formData.location}
-                  country={tenantData?.country}
-                  onChange={(value, placeDetails) => {
-                    setFormData({ 
-                      ...formData, 
-                      location: value,
-                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
-                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
-                    });
-                  }}
-                  placeholder="Search for location"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Content
+              <div className="space-y-2.5">
+                <label className="text-sm font-semibold text-gray-700">
+                  Content <span className="text-red-600">*</span>
                 </label>
                 {isRichText ? (
-                  <div className="border border-gray-300 rounded-md">
-                    <div className="flex items-center gap-2 p-2 border-b border-gray-200 bg-gray-50">
+                  <div className="border-2 border-gray-300 rounded-lg overflow-hidden focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500">
+                    <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
                       <button
                         type="button"
                         onClick={() => {
@@ -946,12 +1140,12 @@ export default function SecurityBriefingsPage() {
                         setFormData({ ...formData, content: e.target.value })
                       }
                       placeholder="Enter briefing content with markdown formatting"
-                      rows={4}
-                      className="w-full px-3 py-2 border-0 focus:outline-none focus:ring-0 resize-none"
+                      rows={6}
+                      className="w-full px-4 py-3 border-0 focus:outline-none focus:ring-0 resize-none text-sm"
                     />
-                    <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600">
-                      Use **bold**, *italic*, __underline__, - for bullets, 1.
-                      for numbers
+                    <div className="px-3 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600">
+                      <strong>Markdown:</strong> **bold**, *italic*, __underline__,
+                      - bullets, 1. numbers
                     </div>
                   </div>
                 ) : (
@@ -962,33 +1156,43 @@ export default function SecurityBriefingsPage() {
                     }
                     placeholder={
                       formData.content_type === "video"
-                        ? "Enter video URL"
+                        ? "Enter video URL (e.g., https://youtube.com/...)"
                         : formData.content_type === "document"
-                        ? "Enter document URL"
-                        : "Enter briefing content"
+                        ? "Enter document URL (e.g., https://...)"
+                        : "Enter briefing content..."
                     }
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    rows={6}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 text-sm"
                   />
                 )}
               </div>
             </div>
 
-            <DialogFooter className="gap-3">
+            <DialogFooter className="gap-3 pt-5 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
                 disabled={submitting}
-                className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="flex-1 h-11 px-6 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 hover:bg-gray-50 font-semibold transition-all"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateBriefing}
                 disabled={submitting}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm"
+                className="flex-1 h-11 px-6 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold shadow-md hover:shadow-lg transition-all"
               >
-                {submitting ? "Creating..." : "Create Briefing"}
+                {submitting ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4 mr-2" />
+                    Create Briefing
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -996,77 +1200,157 @@ export default function SecurityBriefingsPage() {
 
         {/* View Details Modal */}
         <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] bg-white border shadow-lg overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-red-600" />
-                {selectedBriefing?.title}
-              </DialogTitle>
+          <DialogContent className="sm:max-w-[750px] max-h-[90vh] bg-white border-0 shadow-2xl rounded-xl overflow-y-auto">
+            <DialogHeader className="pb-4 border-b border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="p-3 rounded-lg bg-gradient-to-br from-red-100 to-red-200 shadow-md">
+                  <Shield className="w-7 h-7 text-red-700" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
+                    {selectedBriefing?.title}
+                  </DialogTitle>
+                  {selectedBriefing?.event_title && (
+                    <p className="text-sm text-gray-600 flex items-center gap-1">
+                      <span className="text-red-600">•</span>
+                      Event: {selectedBriefing.event_title}
+                    </p>
+                  )}
+                </div>
+              </div>
             </DialogHeader>
 
             {selectedBriefing && (
-              <div className="space-y-4">
+              <div className="space-y-5 py-4">
+                {/* Badges Section */}
                 <div className="flex flex-wrap gap-2">
-                  <Badge className={`px-2 py-1 text-xs font-medium ${
-                    selectedBriefing.brief_type === "general"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : "bg-blue-100 text-blue-800 border-blue-200"
-                  }`}>
-                    {selectedBriefing.brief_type === "general" ? "General" : "Event-Specific"}
-                  </Badge>
-                  <Badge className={`px-2 py-1 text-xs font-medium ${
-                    selectedBriefing.status === "published"
-                      ? "bg-green-100 text-green-800 border-green-200"
-                      : selectedBriefing.status === "draft"
-                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                      : "bg-gray-100 text-gray-800 border-gray-200"
-                  }`}>
+                  <Badge
+                    className={`px-3 py-1.5 text-xs font-semibold shadow-sm ${
+                      selectedBriefing.status === "published"
+                        ? "bg-green-100 text-green-800 border border-green-300"
+                        : selectedBriefing.status === "draft"
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-gray-100 text-gray-800 border border-gray-300"
+                    }`}
+                  >
+                    {selectedBriefing.status === "published" && (
+                      <CheckCircle2 className="w-3 h-3 mr-1 inline" />
+                    )}
+                    {selectedBriefing.status === "draft" && (
+                      <Clock className="w-3 h-3 mr-1 inline" />
+                    )}
+                    {selectedBriefing.status === "archived" && (
+                      <Archive className="w-3 h-3 mr-1 inline" />
+                    )}
                     {selectedBriefing.status?.toUpperCase() || "DRAFT"}
                   </Badge>
+                  <Badge
+                    className={`px-3 py-1.5 text-xs font-semibold ${
+                      selectedBriefing.brief_type === "general"
+                        ? "bg-blue-100 text-blue-800 border border-blue-300"
+                        : "bg-purple-100 text-purple-800 border border-purple-300"
+                    }`}
+                  >
+                    {selectedBriefing.brief_type === "general"
+                      ? "General"
+                      : "Event-Specific"}
+                  </Badge>
                   {selectedBriefing.category && (
-                    <Badge className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 border-blue-200">
+                    <Badge className="px-3 py-1.5 text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-300">
                       {selectedBriefing.category}
                     </Badge>
                   )}
                   {selectedBriefing.location && (
-                    <Badge className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 border-purple-200">
+                    <Badge className="px-3 py-1.5 text-xs font-semibold bg-pink-100 text-pink-800 border border-pink-300">
                       📍 {selectedBriefing.location}
                     </Badge>
                   )}
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Content</h4>
-                  <div className="text-gray-700 whitespace-pre-wrap">
+                {/* Content Section */}
+                <div className="bg-gradient-to-br from-gray-50 to-white p-5 rounded-xl border-2 border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    {selectedBriefing.content_type === "text" ? (
+                      <FileText className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <Video className="w-5 h-5 text-purple-600" />
+                    )}
+                    <h4 className="font-bold text-gray-900 text-lg">Content</h4>
+                  </div>
+                  <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
                     {selectedBriefing.content}
                   </div>
                 </div>
 
-                {(selectedBriefing.publish_start_date || selectedBriefing.publish_end_date) && (
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Publication Schedule</h4>
-                    <div className="text-sm text-gray-600 space-y-1">
+                {/* Publication Schedule */}
+                {(selectedBriefing.publish_start_date ||
+                  selectedBriefing.publish_end_date) && (
+                  <div className="bg-gradient-to-br from-blue-50 to-white p-5 rounded-xl border-2 border-blue-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                      <h4 className="font-bold text-gray-900 text-lg">
+                        Publication Schedule
+                      </h4>
+                    </div>
+                    <div className="space-y-2">
                       {selectedBriefing.publish_start_date && (
-                        <div>Start: {new Date(selectedBriefing.publish_start_date).toLocaleString()}</div>
+                        <div className="flex items-start gap-2 text-sm">
+                          <span className="font-semibold text-gray-700 min-w-[60px]">
+                            Start:
+                          </span>
+                          <span className="text-gray-600">
+                            {new Date(
+                              selectedBriefing.publish_start_date
+                            ).toLocaleString()}
+                          </span>
+                        </div>
                       )}
                       {selectedBriefing.publish_end_date && (
-                        <div>End: {new Date(selectedBriefing.publish_end_date).toLocaleString()}</div>
+                        <div className="flex items-start gap-2 text-sm">
+                          <span className="font-semibold text-gray-700 min-w-[60px]">
+                            End:
+                          </span>
+                          <span className="text-gray-600">
+                            {new Date(
+                              selectedBriefing.publish_end_date
+                            ).toLocaleString()}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
                 )}
 
-                <div className="text-xs text-gray-500 border-t pt-3">
-                  Created by {selectedBriefing.created_by} on {new Date(selectedBriefing.created_at).toLocaleDateString()}
+                {/* Metadata */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                  <div className="text-xs text-gray-500 flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                      <span className="text-red-700 font-bold text-sm">
+                        {selectedBriefing.created_by?.charAt(0).toUpperCase() ||
+                          "?"}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-700">
+                        {selectedBriefing.created_by}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {new Date(
+                          selectedBriefing.created_at
+                        ).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
                 onClick={() => setShowDetailsModal(false)}
-                className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-8 h-11 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 hover:bg-gray-50 font-semibold transition-all"
               >
                 Close
               </Button>

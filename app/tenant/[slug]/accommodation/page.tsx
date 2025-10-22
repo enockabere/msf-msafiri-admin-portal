@@ -13,6 +13,7 @@ import AllocationsList from "@/components/accommodation/AllocationsList";
 import GuesthouseManagement from "@/components/accommodation/GuesthouseManagement";
 import VendorManagement from "@/components/accommodation/VendorManagement";
 import RoomsView from "@/components/accommodation/RoomsView";
+import EventAccommodationSetupModal from "@/components/accommodation/EventAccommodationSetupModal";
 import { Hotel, Building2, Users } from "lucide-react";
 
 interface GuestHouse {
@@ -146,6 +147,8 @@ export default function AccommodationPage() {
   const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
 
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [eventSetupModalOpen, setEventSetupModalOpen] = useState(false);
+  const [selectedVendorForSetup, setSelectedVendorForSetup] = useState<VendorAccommodation | null>(null);
   
 
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
@@ -475,6 +478,11 @@ export default function AccommodationPage() {
       room_type: undefined,
     });
     setAllocationModalOpen(true);
+  };
+
+  const handleSetupEventAccommodation = (vendor: VendorAccommodation) => {
+    setSelectedVendorForSetup(vendor);
+    setEventSetupModalOpen(true);
   };
 
   const handleDeleteVendor = async (vendor: VendorAccommodation) => {
@@ -1087,6 +1095,7 @@ export default function AccommodationPage() {
                     vendor={vendor} 
                     onBook={handleBookVendor}
                     onDelete={canEdit ? handleDeleteVendor : undefined}
+                    onSetupEvent={canEdit ? handleSetupEventAccommodation : undefined}
                     canEdit={canEdit}
                   />
                 ))
@@ -1179,6 +1188,23 @@ export default function AccommodationPage() {
           fetchRoomsForGuesthouses={fetchRoomsForGuesthouses}
           allocatedParticipants={allocatedParticipants}
         />
+
+        {selectedVendorForSetup && (
+          <EventAccommodationSetupModal
+            open={eventSetupModalOpen}
+            onOpenChange={(open) => {
+              setEventSetupModalOpen(open);
+              if (!open) {
+                setSelectedVendorForSetup(null);
+              }
+            }}
+            vendor={selectedVendorForSetup}
+            events={events}
+            apiClient={apiClient as { getToken: () => string }}
+            tenantSlug={tenantSlug}
+            onSetupComplete={fetchDataCallback}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

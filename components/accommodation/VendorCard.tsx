@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Hotel, Users, Calendar, MapPin, Trash2 } from "lucide-react";
+import { Hotel, Users, Calendar, MapPin, Trash2, Settings } from "lucide-react";
 
 interface VendorAccommodation {
   id: number;
@@ -19,10 +19,11 @@ interface VendorCardProps {
   vendor: VendorAccommodation;
   onBook: (vendor: VendorAccommodation) => void;
   onDelete?: (vendor: VendorAccommodation) => void;
+  onSetupEvent?: (vendor: VendorAccommodation) => void;
   canEdit?: boolean;
 }
 
-export default function VendorCard({ vendor, onBook, onDelete, canEdit }: VendorCardProps) {
+export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, canEdit }: VendorCardProps) {
   const occupancyPercentage = vendor.capacity > 0 
     ? Math.round((vendor.current_occupants / vendor.capacity) * 100) 
     : 0;
@@ -91,17 +92,30 @@ export default function VendorCard({ vendor, onBook, onDelete, canEdit }: Vendor
           </div>
         </div>
 
-        {canEdit && onDelete && (
-          <div className="pt-2 border-t border-gray-100">
-            <Button
-              onClick={() => onDelete(vendor)}
-              variant="outline"
-              size="sm"
-              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-normal"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete Vendor
-            </Button>
+        {canEdit && (
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            {onSetupEvent && (
+              <Button
+                onClick={() => onSetupEvent(vendor)}
+                variant="outline"
+                size="sm"
+                className="w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200 font-normal"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Setup Event Accommodation
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                onClick={() => onDelete(vendor)}
+                variant="outline"
+                size="sm"
+                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 font-normal"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Vendor
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
