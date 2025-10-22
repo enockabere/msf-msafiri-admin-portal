@@ -26,6 +26,7 @@ interface VendorEventSetup {
 interface EditEventSetupForm {
   single_rooms: number;
   double_rooms: number;
+  event_name?: string;
 }
 
 interface EditEventSetupModalProps {
@@ -49,6 +50,7 @@ export default function EditEventSetupModal({
   const [form, setForm] = useState<EditEventSetupForm>({
     single_rooms: 0,
     double_rooms: 0,
+    event_name: '',
   });
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export default function EditEventSetupModal({
       setForm({
         single_rooms: setup.single_rooms,
         double_rooms: setup.double_rooms,
+        event_name: setup.event?.title || setup.event_name || '',
       });
     }
   }, [setup]);
@@ -124,9 +127,11 @@ export default function EditEventSetupModal({
             <Hotel className="w-5 h-5 text-blue-600" />
             Edit Event Setup
           </DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            {setup.event?.title || setup.event_name || 'Custom Event'}
-          </p>
+          {isOccupied && (
+            <p className="text-sm text-gray-600 mt-1">
+              {setup.event?.title || setup.event_name || 'Custom Event'}
+            </p>
+          )}
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,6 +141,21 @@ export default function EditEventSetupModal({
                 <strong>Note:</strong> This setup has {setup.current_occupants} current occupants. 
                 You can only increase capacity or maintain current levels.
               </p>
+            </div>
+          )}
+
+          {!isOccupied && (
+            <div className="space-y-2">
+              <Label htmlFor="event_name" className="text-sm font-medium text-gray-700">
+                Event Name
+              </Label>
+              <Input
+                id="event_name"
+                type="text"
+                value={form.event_name || ""}
+                onChange={(e) => setForm({ ...form, event_name: e.target.value })}
+                placeholder="Enter event name"
+              />
             </div>
           )}
 
