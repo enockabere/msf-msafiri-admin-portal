@@ -335,17 +335,29 @@ export default function EventParticipants({
 
           // Fetch line manager recommendation
           try {
+            console.log('=== FETCHING LINE MANAGER RECOMMENDATION ===');
+            console.log('Participant ID:', participant.id);
+            console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`);
+            
             const recommendationResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`,
               { headers }
             );
+            
+            console.log('Recommendation response status:', recommendationResponse.status);
+            console.log('Recommendation response ok:', recommendationResponse.ok);
+            
             if (recommendationResponse.ok) {
               const recommendationData = await recommendationResponse.json();
+              console.log('Recommendation data received:', recommendationData);
               setRecommendationData(recommendationData);
             } else {
+              const errorText = await recommendationResponse.text();
+              console.log('Recommendation fetch failed:', errorText);
               setRecommendationData(null);
             }
-          } catch {
+          } catch (error) {
+            console.error('Recommendation fetch error:', error);
             setRecommendationData(null);
           }
         } catch {
@@ -695,9 +707,14 @@ export default function EventParticipants({
                           </div>
                         </div>
                       ) : (
-                        <span className="text-gray-500 text-sm">
-                          No recommendation available
-                        </span>
+                        <div className="space-y-2">
+                          <span className="text-gray-500 text-sm">
+                            No recommendation available
+                          </span>
+                          <div className="text-xs text-red-500 font-mono mt-2">
+                            DEBUG: recommendationData = {JSON.stringify(recommendationData)}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
