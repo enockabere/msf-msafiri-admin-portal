@@ -340,7 +340,7 @@ export default function EventParticipants({
             console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`);
             
             const recommendationResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`,
               { headers }
             );
             
