@@ -15,6 +15,7 @@ import VendorManagement from "@/components/accommodation/VendorManagement";
 import RoomsView from "@/components/accommodation/RoomsView";
 import EventAccommodationSetupModal from "@/components/accommodation/EventAccommodationSetupModal";
 import EditEventSetupModal from "@/components/accommodation/EditEventSetupModal";
+import EventAllocationsModal from "@/components/accommodation/EventAllocationsModal";
 import { Hotel, Building2, Users } from "lucide-react";
 
 interface GuestHouse {
@@ -168,6 +169,8 @@ export default function AccommodationPage() {
   const [selectedVendorForSetup, setSelectedVendorForSetup] = useState<VendorAccommodation | null>(null);
   const [editSetupModalOpen, setEditSetupModalOpen] = useState(false);
   const [selectedSetupForEdit, setSelectedSetupForEdit] = useState<VendorEventSetup | null>(null);
+  const [eventAllocationsModalOpen, setEventAllocationsModalOpen] = useState(false);
+  const [selectedSetupForAllocations, setSelectedSetupForAllocations] = useState<VendorEventSetup | null>(null);
   
 
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
@@ -532,6 +535,11 @@ export default function AccommodationPage() {
   const handleEditSetup = (setup: VendorEventSetup) => {
     setSelectedSetupForEdit(setup);
     setEditSetupModalOpen(true);
+  };
+
+  const handleViewAllocations = (setup: VendorEventSetup) => {
+    setSelectedSetupForAllocations(setup);
+    setEventAllocationsModalOpen(true);
   };
 
   const handleDeleteSetup = async (setup: VendorEventSetup) => {
@@ -1188,6 +1196,7 @@ export default function AccommodationPage() {
                     onSetupEvent={canEdit ? handleSetupEventAccommodation : undefined}
                     onEditSetup={canEdit ? handleEditSetup : undefined}
                     onDeleteSetup={canEdit ? handleDeleteSetup : undefined}
+                    onViewAllocations={handleViewAllocations}
                     canEdit={canEdit}
                   />
                 ))
@@ -1311,6 +1320,29 @@ export default function AccommodationPage() {
           apiClient={apiClient as { getToken: () => string }}
           tenantSlug={tenantSlug}
           onEditComplete={fetchDataCallback}
+        />
+
+        <EventAllocationsModal
+          open={eventAllocationsModalOpen}
+          onOpenChange={(open) => {
+            setEventAllocationsModalOpen(open);
+            if (!open) {
+              setSelectedSetupForAllocations(null);
+            }
+          }}
+          setup={selectedSetupForAllocations}
+          apiClient={apiClient as { getToken: () => string }}
+          tenantSlug={tenantSlug}
+          events={events}
+          onDeleteAllocation={(id) => {
+            const allocation = allocations.find(a => a.id === id);
+            if (allocation) handleDeleteAllocation(allocation);
+          }}
+          onCheckIn={handleCheckIn}
+          onBulkCheckIn={handleBulkCheckIn}
+          deleting={deleting}
+          checkingIn={checkingIn}
+          bulkCheckingIn={bulkCheckingIn}
         />
       </div>
     </DashboardLayout>
