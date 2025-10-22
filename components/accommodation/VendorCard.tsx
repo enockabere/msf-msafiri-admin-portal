@@ -157,7 +157,6 @@ export default function VendorCard({ vendor, onBook, onDelete, onSetupEvent, onE
                                 </svg>
                               </button>
                             )}
-                          )}
                         </div>
                       )}
                     </div>
