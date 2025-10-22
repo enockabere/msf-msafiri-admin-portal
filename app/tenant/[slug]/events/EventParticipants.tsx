@@ -54,6 +54,8 @@ interface Participant {
   line_manager_email?: string;
   phone_number?: string;
   certificate_name?: string;
+  badge_name?: string;
+  motivation_letter?: string;
   dietary_requirements?: string;
   accommodation_needs?: string;
   code_of_conduct_confirm?: string;
@@ -63,6 +65,8 @@ interface Participant {
   accommodation_type?: string;
   // Alternative field names from API
   certificateName?: string;
+  badgeName?: string;
+  motivationLetter?: string;
   dietaryRequirements?: string;
   accommodationNeeds?: string;
   codeOfConductConfirm?: string;
@@ -183,6 +187,14 @@ export default function EventParticipants({
     event_id?: number;
   }
 
+  interface LineManagerRecommendation {
+    id: number;
+    line_manager_email: string;
+    recommendation_text?: string;
+    submitted_at?: string;
+    created_at: string;
+  }
+
   function ParticipantDetailsModal({
     participant,
     onClose,
@@ -194,6 +206,7 @@ export default function EventParticipants({
       AccommodationData[]
     >([]);
     const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
+    const [recommendationData, setRecommendationData] = useState<LineManagerRecommendation | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -318,6 +331,22 @@ export default function EventParticipants({
             }
           } catch {
             setVoucherData(null);
+          }
+
+          // Fetch line manager recommendation
+          try {
+            const recommendationResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendations/participant/${participant.id}`,
+              { headers }
+            );
+            if (recommendationResponse.ok) {
+              const recommendationData = await recommendationResponse.json();
+              setRecommendationData(recommendationData);
+            } else {
+              setRecommendationData(null);
+            }
+          } catch {
+            setRecommendationData(null);
           }
         } catch {
           // Error handled silently
@@ -541,6 +570,17 @@ export default function EventParticipants({
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">
+                      Badge Name:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.badge_name ||
+                        participant.badgeName ||
+                        "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">
                       Travelling Internationally:
                     </span>
                     <br />
@@ -613,6 +653,53 @@ export default function EventParticipants({
                         participant.travelRequirementsConfirm ||
                         "-"}
                     </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Motivation Letter & Recommendation */}
+              <div className="bg-yellow-50 p-6 rounded-lg col-span-1 lg:col-span-4">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-yellow-200 pb-2">
+                  Additional Information
+                </h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2">
+                      Motivation Letter:
+                    </span>
+                    <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                      <span className="text-gray-900 text-sm whitespace-pre-wrap">
+                        {participant.motivation_letter ||
+                          participant.motivationLetter ||
+                          "No motivation letter provided"}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2">
+                      Line Manager Recommendation:
+                    </span>
+                    <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                      {recommendationData ? (
+                        <div className="space-y-2">
+                          <div className="text-xs text-gray-500">
+                            From: {recommendationData.line_manager_email}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Submitted: {recommendationData.submitted_at ? 
+                              new Date(recommendationData.submitted_at).toLocaleDateString() : 
+                              'Pending'}
+                          </div>
+                          <div className="text-gray-900 text-sm whitespace-pre-wrap">
+                            {recommendationData.recommendation_text || "Recommendation pending"}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 text-sm">
+                          No recommendation available
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1161,6 +1248,9 @@ export default function EventParticipants({
         "Career Manager",
         "Line Manager",
         "Phone",
+        "Certificate Name",
+        "Badge Name",
+        "Motivation Letter",
         "Status",
       ].join(","),
       ...filteredParticipants.map((p) =>
@@ -1182,6 +1272,9 @@ export default function EventParticipants({
           p.career_manager_email || "",
           p.line_manager_email || "",
           p.phone_number || "",
+          p.certificate_name || "",
+          p.badge_name || "",
+          (p.motivation_letter || "").replace(/\n/g, ' ').substring(0, 100) + (p.motivation_letter && p.motivation_letter.length > 100 ? '...' : ''),
           p.status,
         ].join(",")
       ),

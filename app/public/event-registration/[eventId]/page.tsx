@@ -240,6 +240,8 @@ export default function PublicEventRegistrationPage() {
         accommodationNeeds: "",
         dailyMeals: [],
         certificateName: "",
+        badgeName: "",
+        motivationLetter: "",
         codeOfConductConfirm: "",
         travelRequirementsConfirm: "",
       });
