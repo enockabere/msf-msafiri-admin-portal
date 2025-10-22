@@ -336,7 +336,7 @@ export default function EventParticipants({
           // Fetch line manager recommendation
           try {
             const recommendationResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendations/participant/${participant.id}`,
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}`,
               { headers }
             );
             if (recommendationResponse.ok) {
