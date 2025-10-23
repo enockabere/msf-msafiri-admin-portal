@@ -113,6 +113,7 @@ export default function TenantEventsPage() {
     start_date: "",
     end_date: "",
     vendor_accommodation_id: "",
+    accommodation_setup_id: "",
     location: "",
     country: "",
     latitude: "",
@@ -125,9 +126,8 @@ export default function TenantEventsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
-  const [vendorEventSetups, setVendorEventSetups] = useState<{id: number, event_name: string, vendor_name: string, vendor_id: number}[]>([]);
-  const [customTitle, setCustomTitle] = useState("");
-  const [showCustomTitle, setShowCustomTitle] = useState(false);
+  const [accommodationSetups, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const tenantSlug = params.slug as string;
 
@@ -142,44 +142,40 @@ export default function TenantEventsPage() {
     }
   }, [apiClient]);
 
-  const fetchVendorEventSetups = useCallback(async () => {
-    try {
-      const allSetups: {id: number, event_name: string, vendor_name: string}[] = [];
-      
-      for (const hotel of vendorHotels) {
-        try {
-          const setups = await apiClient.request<any[]>(
-            `/accommodation/vendor-event-setups/${hotel.id}`
-          );
-          
-          const availableSetups = setups.filter(setup => {
-            // Only include setups that are not linked to events that have started or ended
-            if (!setup.event_id) return true; // Custom events are always available
-            
-            const now = new Date();
-            if (setup.event?.start_date) {
-              const startDate = new Date(setup.event.start_date);
-              return now < startDate; // Only upcoming events
-            }
-            return true;
-          }).map(setup => ({
-            id: setup.id,
-            event_name: setup.event?.title || setup.event_name || 'Custom Event',
-            vendor_name: hotel.vendor_name,
-            vendor_id: hotel.id
-          }));
-          
-          allSetups.push(...availableSetups);
-        } catch (error) {
-          console.error(`Error fetching setups for hotel ${hotel.id}:`, error);
-        }
-      }
-      
-      setVendorEventSetups(allSetups);
-    } catch (error) {
-      console.error("Fetch vendor event setups error:", error);
+  const fetchAccommodationSetups = useCallback(async (vendorId: string) => {
+    if (!vendorId) {
+      setAccommodationSetups([]);
+      return;
     }
-  }, [apiClient, vendorHotels]);
+    
+    try {
+      const setups = await apiClient.request<any[]>(
+        `/accommodation/vendor-event-setups/${vendorId}`
+      );
+      
+      // Filter out setups for events that have already ended
+      const availableSetups = setups.filter(setup => {
+        if (!setup.event_id) return true; // Unlinked setups are available
+        
+        const now = new Date();
+        if (setup.event?.end_date) {
+          const endDate = new Date(setup.event.end_date);
+          return now <= endDate; // Include ongoing and upcoming events
+        }
+        return true;
+      }).map(setup => ({
+        id: setup.id,
+        event_name: setup.event_name || 'Custom Setup',
+        single_rooms: setup.single_rooms || 0,
+        double_rooms: setup.double_rooms || 0
+      }));
+      
+      setAccommodationSetups(availableSetups);
+    } catch (error) {
+      console.error(`Error fetching setups for vendor ${vendorId}:`, error);
+      setAccommodationSetups([]);
+    }
+  }, [apiClient]);
 
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date();
@@ -290,10 +286,10 @@ export default function TenantEventsPage() {
   }, [user?.email, authLoading, checkAccess]);
 
   useEffect(() => {
-    if (vendorHotels.length > 0) {
-      fetchVendorEventSetups();
+    if (selectedVendorId) {
+      fetchAccommodationSetups(selectedVendorId);
     }
-  }, [vendorHotels, fetchVendorEventSetups]);
+  }, [selectedVendorId, fetchAccommodationSetups]);
 
   const canManageEvents = () => {
     // Tenant admins can only view, not manage
@@ -347,11 +343,12 @@ export default function TenantEventsPage() {
       !formData.event_type.trim() ||
       !formData.start_date ||
       !formData.end_date ||
-      !formData.vendor_accommodation_id
+      !formData.vendor_accommodation_id ||
+      !formData.accommodation_setup_id
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, venue, start date, and end date are required",
+        description: "All fields including accommodation setup are required",
         variant: "destructive",
       });
       return;
@@ -418,8 +415,8 @@ export default function TenantEventsPage() {
       );
 
       setShowCreateModal(false);
-      setShowCustomTitle(false);
-      setCustomTitle("");
+      setSelectedVendorId("");
+      setAccommodationSetups([]);
       setFormData({
         title: "",
         description: "",
@@ -428,6 +425,7 @@ export default function TenantEventsPage() {
         start_date: "",
         end_date: "",
         vendor_accommodation_id: "",
+        accommodation_setup_id: "",
         location: "",
         country: "",
         latitude: "",
@@ -467,11 +465,12 @@ export default function TenantEventsPage() {
       !selectedEvent ||
       !formData.title.trim() ||
       !formData.event_type.trim() ||
-      !formData.vendor_accommodation_id
+      !formData.vendor_accommodation_id ||
+      !formData.accommodation_setup_id
     ) {
       toast({
         title: "Error",
-        description: "Title, event type, and venue are required",
+        description: "All fields including accommodation setup are required",
         variant: "destructive",
       });
       return;
@@ -647,6 +646,7 @@ export default function TenantEventsPage() {
       start_date: event.start_date,
       end_date: event.end_date,
       vendor_accommodation_id: (event as any).vendor_accommodation_id?.toString() || "",
+      accommodation_setup_id: (event as any).accommodation_setup_id?.toString() || "",
       location: event.location || "",
       country: event.country || "",
       latitude: event.latitude?.toString() || "",
@@ -668,8 +668,8 @@ export default function TenantEventsPage() {
     setShowCreateModal(false);
     setShowEditModal(false);
     setSelectedEvent(null);
-    setShowCustomTitle(false);
-    setCustomTitle("");
+    setSelectedVendorId("");
+    setAccommodationSetups([]);
     setFormData({
       title: "",
       description: "",
@@ -678,6 +678,7 @@ export default function TenantEventsPage() {
       start_date: "",
       end_date: "",
       vendor_accommodation_id: "",
+      accommodation_setup_id: "",
       location: "",
       country: "",
       latitude: "",
@@ -991,59 +992,14 @@ export default function TenantEventsPage() {
                   <Label htmlFor="title" className="mb-2 block">
                     Event Title *
                   </Label>
-                  <Select
+                  <Input
+                    id="title"
                     value={formData.title}
-                    onValueChange={(value) => {
-                      if (value === "other") {
-                        setFormData({ ...formData, title: "", vendor_accommodation_id: "" });
-                        setCustomTitle("");
-                        setShowCustomTitle(true);
-                      } else {
-                        const selectedSetup = vendorEventSetups.find(setup => setup.event_name === value);
-                        if (selectedSetup) {
-                          const selectedHotel = vendorHotels.find(h => h.id === selectedSetup.vendor_id);
-                          setFormData({ 
-                            ...formData, 
-                            title: value,
-                            vendor_accommodation_id: selectedSetup.vendor_id.toString(),
-                            location: selectedHotel?.location || "",
-                            latitude: selectedHotel?.latitude || "",
-                            longitude: selectedHotel?.longitude || ""
-                          });
-                        } else {
-                          setFormData({ ...formData, title: value });
-                        }
-                        setCustomTitle("");
-                        setShowCustomTitle(false);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event title or choose Other" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendorEventSetups.map((setup) => (
-                        <SelectItem key={setup.id} value={setup.event_name}>
-                          {setup.event_name} ({setup.vendor_name})
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="other">
-                        Other (specify custom name)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {showCustomTitle && (
-                    <div className="mt-2">
-                      <Input
-                        value={customTitle}
-                        onChange={(e) => {
-                          setCustomTitle(e.target.value);
-                          setFormData({ ...formData, title: e.target.value });
-                        }}
-                        placeholder="Enter custom event title"
-                      />
-                    </div>
-                  )}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    placeholder="Enter event title"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="event_type" className="mb-2 block">
@@ -1086,34 +1042,61 @@ export default function TenantEventsPage() {
                 />
               </div>
               
-              <div>
-                <Label htmlFor="vendor_accommodation_id" className="mb-2 block">
-                  Venue (Hotel) *
-                </Label>
-                <Select
-                  value={formData.vendor_accommodation_id}
-                  onValueChange={(value) => {
-                    const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                    setFormData({ 
-                      ...formData, 
-                      vendor_accommodation_id: value,
-                      location: selectedHotel?.location || "",
-                      latitude: selectedHotel?.latitude || "",
-                      longitude: selectedHotel?.longitude || ""
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select venue hotel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendorHotels.map((hotel) => (
-                      <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                        {hotel.vendor_name} - {hotel.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="vendor_accommodation_id" className="mb-2 block">
+                    Venue (Hotel) *
+                  </Label>
+                  <Select
+                    value={formData.vendor_accommodation_id}
+                    onValueChange={(value) => {
+                      const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                      setSelectedVendorId(value);
+                      setFormData({ 
+                        ...formData, 
+                        vendor_accommodation_id: value,
+                        accommodation_setup_id: "", // Reset setup selection
+                        location: selectedHotel?.location || "",
+                        latitude: selectedHotel?.latitude || "",
+                        longitude: selectedHotel?.longitude || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select venue hotel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorHotels.map((hotel) => (
+                        <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                          {hotel.vendor_name} - {hotel.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="accommodation_setup_id" className="mb-2 block">
+                    Accommodation Setup *
+                  </Label>
+                  <Select
+                    value={formData.accommodation_setup_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, accommodation_setup_id: value })
+                    }
+                    disabled={!selectedVendorId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedVendorId ? "Select accommodation setup" : "Select venue first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accommodationSetups.map((setup) => (
+                        <SelectItem key={setup.id} value={setup.id.toString()}>
+                          {setup.event_name} ({setup.single_rooms} single, {setup.double_rooms} double)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
               <div className="grid grid-cols-4 gap-4">
@@ -1173,14 +1156,20 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              {formData.vendor_accommodation_id && (
+              {formData.vendor_accommodation_id && formData.accommodation_setup_id && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <Label className="mb-2 block text-sm font-medium text-gray-700">
-                    Selected Venue Details
+                    Selected Configuration
                   </Label>
-                  <div className="text-sm text-gray-600">
-                    <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                    <p><strong>Location:</strong> {formData.location}</p>
+                  <div className="text-sm text-gray-600 grid grid-cols-2 gap-4">
+                    <div>
+                      <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                      <p><strong>Location:</strong> {formData.location}</p>
+                    </div>
+                    <div>
+                      <p><strong>Setup:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.event_name}</p>
+                      <p><strong>Capacity:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.single_rooms} single, {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.double_rooms} double rooms</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1351,34 +1340,61 @@ export default function TenantEventsPage() {
                 />
               </div>
               
-              <div>
-                <Label htmlFor="edit_vendor_accommodation_id" className="mb-2 block">
-                  Venue (Hotel) *
-                </Label>
-                <Select
-                  value={formData.vendor_accommodation_id}
-                  onValueChange={(value) => {
-                    const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                    setFormData({ 
-                      ...formData, 
-                      vendor_accommodation_id: value,
-                      location: selectedHotel?.location || "",
-                      latitude: selectedHotel?.latitude || "",
-                      longitude: selectedHotel?.longitude || ""
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select venue hotel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendorHotels.map((hotel) => (
-                      <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                        {hotel.vendor_name} - {hotel.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit_vendor_accommodation_id" className="mb-2 block">
+                    Venue (Hotel) *
+                  </Label>
+                  <Select
+                    value={formData.vendor_accommodation_id}
+                    onValueChange={(value) => {
+                      const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                      setSelectedVendorId(value);
+                      setFormData({ 
+                        ...formData, 
+                        vendor_accommodation_id: value,
+                        accommodation_setup_id: "", // Reset setup selection
+                        location: selectedHotel?.location || "",
+                        latitude: selectedHotel?.latitude || "",
+                        longitude: selectedHotel?.longitude || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select venue hotel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorHotels.map((hotel) => (
+                        <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                          {hotel.vendor_name} - {hotel.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit_accommodation_setup_id" className="mb-2 block">
+                    Accommodation Setup *
+                  </Label>
+                  <Select
+                    value={formData.accommodation_setup_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, accommodation_setup_id: value })
+                    }
+                    disabled={!selectedVendorId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={selectedVendorId ? "Select accommodation setup" : "Select venue first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accommodationSetups.map((setup) => (
+                        <SelectItem key={setup.id} value={setup.id.toString()}>
+                          {setup.event_name} ({setup.single_rooms} single, {setup.double_rooms} double)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
               <div className="grid grid-cols-4 gap-4">
@@ -1438,14 +1454,20 @@ export default function TenantEventsPage() {
                 </div>
               </div>
 
-              {formData.vendor_accommodation_id && (
+              {formData.vendor_accommodation_id && formData.accommodation_setup_id && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <Label className="mb-2 block text-sm font-medium text-gray-700">
-                    Selected Venue Details
+                    Selected Configuration
                   </Label>
-                  <div className="text-sm text-gray-600">
-                    <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                    <p><strong>Location:</strong> {formData.location}</p>
+                  <div className="text-sm text-gray-600 grid grid-cols-2 gap-4">
+                    <div>
+                      <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                      <p><strong>Location:</strong> {formData.location}</p>
+                    </div>
+                    <div>
+                      <p><strong>Setup:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.event_name}</p>
+                      <p><strong>Capacity:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.single_rooms} single, {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.double_rooms} double rooms</p>
+                    </div>
                   </div>
                 </div>
               )}

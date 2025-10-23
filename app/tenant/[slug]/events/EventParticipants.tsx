@@ -124,6 +124,8 @@ export default function EventParticipants({
       console.log("Email:", viewingParticipant.email);
       console.log("Status:", viewingParticipant.status);
       console.log("Role:", viewingParticipant.role);
+      console.log("Decline reason:", viewingParticipant.decline_reason);
+      console.log("Declined at:", viewingParticipant.declined_at);
       console.log("Full participant object:", viewingParticipant);
     }
   }, [viewingParticipant]);
@@ -716,14 +718,9 @@ export default function EventParticipants({
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <span className="text-gray-500 text-sm">
-                            No recommendation available
-                          </span>
-                          <div className="text-xs text-red-500 font-mono mt-2">
-                            DEBUG: recommendationData = {JSON.stringify(recommendationData)}
-                          </div>
-                        </div>
+                        <span className="text-gray-500 text-sm">
+                          No recommendation available
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1870,6 +1867,11 @@ export default function EventParticipants({
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                       <span className="text-xs text-orange-700 font-medium">Pending</span>
+                    </div>
+                  ) : participant.status === 'declined' ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                      <span className="text-xs text-red-700 font-medium">No</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
