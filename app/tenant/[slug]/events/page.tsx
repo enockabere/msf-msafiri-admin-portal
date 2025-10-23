@@ -125,6 +125,9 @@ export default function TenantEventsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
+  const [vendorEventSetups, setVendorEventSetups] = useState<{id: number, event_name: string, vendor_name: string, vendor_id: number}[]>([]);
+  const [customTitle, setCustomTitle] = useState("");
+  const [showCustomTitle, setShowCustomTitle] = useState(false);
 
   const tenantSlug = params.slug as string;
 
@@ -138,6 +141,45 @@ export default function TenantEventsPage() {
       console.error("Fetch vendor hotels error:", error);
     }
   }, [apiClient]);
+
+  const fetchVendorEventSetups = useCallback(async () => {
+    try {
+      const allSetups: {id: number, event_name: string, vendor_name: string}[] = [];
+      
+      for (const hotel of vendorHotels) {
+        try {
+          const setups = await apiClient.request<any[]>(
+            `/accommodation/vendor-event-setups/${hotel.id}`
+          );
+          
+          const availableSetups = setups.filter(setup => {
+            // Only include setups that are not linked to events that have started or ended
+            if (!setup.event_id) return true; // Custom events are always available
+            
+            const now = new Date();
+            if (setup.event?.start_date) {
+              const startDate = new Date(setup.event.start_date);
+              return now < startDate; // Only upcoming events
+            }
+            return true;
+          }).map(setup => ({
+            id: setup.id,
+            event_name: setup.event?.title || setup.event_name || 'Custom Event',
+            vendor_name: hotel.vendor_name,
+            vendor_id: hotel.id
+          }));
+          
+          allSetups.push(...availableSetups);
+        } catch (error) {
+          console.error(`Error fetching setups for hotel ${hotel.id}:`, error);
+        }
+      }
+      
+      setVendorEventSetups(allSetups);
+    } catch (error) {
+      console.error("Fetch vendor event setups error:", error);
+    }
+  }, [apiClient, vendorHotels]);
 
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date();
@@ -246,6 +288,12 @@ export default function TenantEventsPage() {
       checkAccess();
     }
   }, [user?.email, authLoading, checkAccess]);
+
+  useEffect(() => {
+    if (vendorHotels.length > 0) {
+      fetchVendorEventSetups();
+    }
+  }, [vendorHotels, fetchVendorEventSetups]);
 
   const canManageEvents = () => {
     // Tenant admins can only view, not manage
@@ -370,6 +418,8 @@ export default function TenantEventsPage() {
       );
 
       setShowCreateModal(false);
+      setShowCustomTitle(false);
+      setCustomTitle("");
       setFormData({
         title: "",
         description: "",
@@ -618,6 +668,8 @@ export default function TenantEventsPage() {
     setShowCreateModal(false);
     setShowEditModal(false);
     setSelectedEvent(null);
+    setShowCustomTitle(false);
+    setCustomTitle("");
     setFormData({
       title: "",
       description: "",
@@ -939,14 +991,59 @@ export default function TenantEventsPage() {
                   <Label htmlFor="title" className="mb-2 block">
                     Event Title *
                   </Label>
-                  <Input
-                    id="title"
+                  <Select
                     value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    placeholder="Enter event title"
-                  />
+                    onValueChange={(value) => {
+                      if (value === "other") {
+                        setFormData({ ...formData, title: "", vendor_accommodation_id: "" });
+                        setCustomTitle("");
+                        setShowCustomTitle(true);
+                      } else {
+                        const selectedSetup = vendorEventSetups.find(setup => setup.event_name === value);
+                        if (selectedSetup) {
+                          const selectedHotel = vendorHotels.find(h => h.id === selectedSetup.vendor_id);
+                          setFormData({ 
+                            ...formData, 
+                            title: value,
+                            vendor_accommodation_id: selectedSetup.vendor_id.toString(),
+                            location: selectedHotel?.location || "",
+                            latitude: selectedHotel?.latitude || "",
+                            longitude: selectedHotel?.longitude || ""
+                          });
+                        } else {
+                          setFormData({ ...formData, title: value });
+                        }
+                        setCustomTitle("");
+                        setShowCustomTitle(false);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event title or choose Other" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendorEventSetups.map((setup) => (
+                        <SelectItem key={setup.id} value={setup.event_name}>
+                          {setup.event_name} ({setup.vendor_name})
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="other">
+                        Other (specify custom name)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {showCustomTitle && (
+                    <div className="mt-2">
+                      <Input
+                        value={customTitle}
+                        onChange={(e) => {
+                          setCustomTitle(e.target.value);
+                          setFormData({ ...formData, title: e.target.value });
+                        }}
+                        placeholder="Enter custom event title"
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="event_type" className="mb-2 block">

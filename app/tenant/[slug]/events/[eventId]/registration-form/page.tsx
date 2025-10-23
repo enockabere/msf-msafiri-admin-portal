@@ -188,7 +188,7 @@ export default function EventRegistrationFormPage() {
       setEmailSubject(`Registration: ${eventData.title}`);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
       setEmailBody(
-        `Please register for ${eventData.title} using this link: ${baseUrl}/public/event-registration/${eventId}`
+        `Please register for ${eventData.title} using this link: <a href="${baseUrl}/public/event-registration/${eventId}" target="_blank">${baseUrl}/public/event-registration/${eventId}</a>`
       );
     } catch (error) {
       console.error("Error fetching event:", error);
@@ -762,7 +762,7 @@ export default function EventRegistrationFormPage() {
                       id="emailBody"
                       value={emailBody}
                       onChange={(e) => setEmailBody(e.target.value)}
-                      placeholder={`Please register for ${event?.title} using this link: ${publicUrl}`}
+                      placeholder={`Please register for ${event?.title} using this link: <a href="${publicUrl}" target="_blank">${publicUrl}</a>`}
                       className="w-full p-2 border border-gray-300 rounded-md h-20 resize-none mt-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>

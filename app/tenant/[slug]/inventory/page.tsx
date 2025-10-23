@@ -38,7 +38,6 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  BarChart3,
 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
@@ -291,7 +290,6 @@ export default function InventoryPage() {
   const goodConditionItems = items.filter(
     (item) => item.condition === "good"
   ).length;
-  const totalCategories = new Set(items.map((item) => item.category)).size;
 
   return (
     <DashboardLayout>
@@ -492,8 +490,15 @@ export default function InventoryPage() {
             {filteredItems.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <div className="text-sm text-gray-600">
-                  Showing <span className="font-semibold text-gray-900">{filteredItems.length}</span> of{" "}
-                  <span className="font-semibold text-gray-900">{items.length}</span> items
+                  Showing{" "}
+                  <span className="font-semibold text-gray-900">
+                    {filteredItems.length}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-semibold text-gray-900">
+                    {items.length}
+                  </span>{" "}
+                  items
                   {searchTerm && (
                     <span className="ml-2">
                       (filtered by &quot;{searchTerm}&quot;)
