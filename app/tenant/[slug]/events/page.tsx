@@ -98,7 +98,7 @@ export default function TenantEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailsEvent, setDetailsEvent] = useState<Event | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'ended'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'ongoing' | 'ended'>('upcoming');
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 8;
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
@@ -824,12 +824,12 @@ export default function TenantEventsPage() {
 
           <div className="flex flex-wrap gap-2 mb-6">
             <button
-              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-              className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
+              onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
+              className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
             >
-              <Calendar className="w-4 h-4" />
+              <Clock className="w-4 h-4" />
               <span className="text-sm font-medium">
-                All: {events.length}
+                Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
               </span>
             </button>
             <button
@@ -842,21 +842,21 @@ export default function TenantEventsPage() {
               </span>
             </button>
             <button
-              onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
-              className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
-            >
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
-              </span>
-            </button>
-            <button
               onClick={() => { setStatusFilter('ended'); setCurrentPage(1); }}
               className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
             >
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm font-medium">
                 Ended: {events.filter(e => e.event_status === 'ended').length}
+              </span>
+            </button>
+            <button
+              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
+              className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
+            >
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                All: {events.length}
               </span>
             </button>
           </div>

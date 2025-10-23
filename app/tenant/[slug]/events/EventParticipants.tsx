@@ -77,6 +77,9 @@ interface Participant {
   // Document upload fields
   passport_document?: string;
   ticket_document?: string;
+  // Decline fields
+  decline_reason?: string;
+  declined_at?: string;
 }
 
 interface EventParticipantsProps {
@@ -680,7 +683,7 @@ export default function EventParticipants({
                 <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-yellow-200 pb-2">
                   Additional Information
                 </h4>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div>
                     <span className="font-medium text-gray-700 block mb-2">
                       Motivation Letter:
@@ -724,6 +727,25 @@ export default function EventParticipants({
                       )}
                     </div>
                   </div>
+                  {participant.status === 'declined' && (
+                    <div>
+                      <span className="font-medium text-gray-700 block mb-2">
+                        Decline Information:
+                      </span>
+                      <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                        <div className="space-y-2">
+                          <div className="text-xs text-gray-500">
+                            Declined: {participant.declined_at ? 
+                              new Date(participant.declined_at).toLocaleDateString() : 
+                              'Unknown date'}
+                          </div>
+                          <div className="text-gray-900 text-sm whitespace-pre-wrap">
+                            {participant.decline_reason || "No reason provided"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1227,6 +1249,8 @@ export default function EventParticipants({
         return "bg-green-100 text-green-800 border-green-200";
       case "invited":
         return "bg-purple-100 text-purple-800 border-purple-200";
+      case "declined":
+        return "bg-orange-100 text-orange-800 border-orange-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -1551,6 +1575,12 @@ export default function EventParticipants({
               >
                 Attended
               </SelectItem>
+              <SelectItem
+                value="declined"
+                className="hover:bg-red-50 focus:bg-red-50"
+              >
+                Declined
+              </SelectItem>
             </SelectContent>
           </Select>
           {selectedParticipants.length > 0 && (
@@ -1568,6 +1598,7 @@ export default function EventParticipants({
                   <SelectItem value="waiting">Waiting</SelectItem>
                   <SelectItem value="canceled">Canceled</SelectItem>
                   <SelectItem value="attended">Attended</SelectItem>
+                  <SelectItem value="declined">Declined</SelectItem>
                 </SelectContent>
               </Select>
               <Button
