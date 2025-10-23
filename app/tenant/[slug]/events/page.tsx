@@ -638,6 +638,11 @@ export default function TenantEventsPage() {
   const openEditModal = (event: Event) => {
     setSelectedEvent(event);
     const duration = calculateDuration(event.start_date, event.end_date);
+    const vendorId = (event as any).vendor_accommodation_id?.toString() || "";
+    
+    // Set selectedVendorId to enable accommodation setup dropdown
+    setSelectedVendorId(vendorId);
+    
     setFormData({
       title: event.title,
       description: event.description || "",
@@ -645,7 +650,7 @@ export default function TenantEventsPage() {
       status: event.status || "Draft",
       start_date: event.start_date,
       end_date: event.end_date,
-      vendor_accommodation_id: (event as any).vendor_accommodation_id?.toString() || "",
+      vendor_accommodation_id: vendorId,
       accommodation_setup_id: (event as any).accommodation_setup_id?.toString() || "",
       location: event.location || "",
       country: event.country || "",
