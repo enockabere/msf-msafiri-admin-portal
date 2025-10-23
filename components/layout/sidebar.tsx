@@ -21,11 +21,11 @@ import {
   User,
   Clock,
   ChevronDown,
+  ChevronRight,
   X,
   PanelLeftOpen,
   PanelLeftClose,
   Package,
-
   Hotel,
   Car,
 } from "lucide-react";
@@ -122,15 +122,30 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
   // Operations - Show to all users for now
   const operationsItems = [
     {
+      icon: Settings,
+      label: "Setups",
+      href: "/setups",
+      badge: null,
+      isNested: true,
+      children: [
+        {
+          icon: Hotel,
+          label: "Vendor Hotels",
+          href: "/setups?tab=vendor-hotels",
+          badge: null,
+        },
+        {
+          icon: Package,
+          label: "Stationary & Equipment",
+          href: "/inventory",
+          badge: null,
+        },
+      ],
+    },
+    {
       icon: Calendar,
       label: "Event Management",
       href: "/events",
-      badge: null,
-    },
-    {
-      icon: Package,
-      label: "Stationary & Equipment",
-      href: "/inventory",
       badge: null,
     },
     {
@@ -149,12 +164,6 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       icon: Car,
       label: "Transport Management",
       href: "/transport",
-      badge: null,
-    },
-    {
-      icon: Settings,
-      label: "Setups",
-      href: "/setups",
       badge: null,
     },
   ];
@@ -205,6 +214,8 @@ export default function Sidebar({
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  
   const { user, isSuperAdmin, isAdmin, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const router = useRouter();
@@ -269,10 +280,23 @@ export default function Sidebar({
     }
   };
 
-  const handleNavItemClick = () => {
+  const handleNavItemClick = (isNested: boolean = false) => {
+    // Collapse all nested menus when clicking a non-nested menu item
+    if (!isNested) {
+      setExpandedMenus([]);
+    }
+
     if (isMobile && onMobileClose) {
       onMobileClose();
     }
+  };
+
+  const toggleNestedMenu = (label: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(label) 
+        ? prev.filter(item => item !== label)
+        : [...prev, label]
+    );
   };
 
   // Get user initials
@@ -345,13 +369,19 @@ export default function Sidebar({
                 item.href === '/events' ? `/tenant/${tenantSlug}/events` :
                 item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
                 item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
-
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
-                item.href
+                item.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${item.href}` :
+                item.href,
+          children: item.children ? item.children.map(child => ({
+            ...child,
+            href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
+                  child.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${child.href}` :
+                  child.href
+          })) : undefined
         }))
       }));
     }
@@ -359,6 +389,44 @@ export default function Sidebar({
   };
   
   const navigationItems = getNavigationItemsWithTenantContext(userRoles, isTenantPath, tenantSlug, isAdmin, isTenantAdmin, isSuperAdmin);
+
+  // Auto-expand nested menus when a child is active
+  useEffect(() => {
+    if (!pathname) return;
+
+    const menusToExpand: string[] = [];
+    const navItems = getNavigationItemsWithTenantContext(userRoles, isTenantPath, tenantSlug, isAdmin, isTenantAdmin, isSuperAdmin);
+
+    navItems.forEach(section => {
+      section.items.forEach(item => {
+        if (item.isNested && item.children) {
+          const hasActiveChild = item.children.some(child => {
+            if (child.href.includes('?tab=')) {
+              const [basePath, query] = child.href.split('?');
+              return pathname === basePath && window.location.search.includes(query);
+            }
+            return pathname === child.href;
+          });
+
+          if (hasActiveChild) {
+            menusToExpand.push(item.label);
+          }
+        }
+      });
+    });
+
+    // Only update if there are menus to expand
+    if (menusToExpand.length > 0) {
+      setExpandedMenus(prev => {
+        const newMenus = [...new Set([...prev, ...menusToExpand])];
+        // Only update state if the array actually changed
+        if (JSON.stringify(prev.sort()) !== JSON.stringify(newMenus.sort())) {
+          return newMenus;
+        }
+        return prev;
+      });
+    }
+  }, [pathname, userRoles, isTenantPath, tenantSlug, isAdmin, isTenantAdmin, isSuperAdmin]);
 
   return (
     <>
@@ -570,78 +638,221 @@ export default function Sidebar({
             <div key={idx} className="mb-6">
               {(!collapsed || isMobile) && (
                 <div className="px-4 lg:px-6 mb-3">
-                  <p className="text-xs uppercase tracking-wider text-red-300 font-medium">
-                    {section.title}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-[2px] w-6 bg-gradient-to-r from-white/60 to-transparent rounded-full"></div>
+                    <p className="text-[10px] uppercase tracking-wider text-white/90 font-semibold drop-shadow-lg">
+                      {section.title}
+                    </p>
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-1 px-2 lg:px-3">
+              <div className="space-y-2 px-2 lg:px-3">
                 {section.items.map((item, index) => {
-                  const isActive = pathname === item.href;
+                  const hasActiveChild = item.children && item.children.some(child => {
+                    if (child.href.includes('?tab=')) {
+                      // For tab-based URLs, check if pathname + search params match
+                      const [basePath, query] = child.href.split('?');
+                      return pathname === basePath && window.location.search.includes(query);
+                    }
+                    return pathname === child.href;
+                  });
+                  const isActive = pathname === item.href || hasActiveChild;
                   const badgeCount = getBadgeCount(item.badge, item.href);
-
-                  const navButton = (
-                    <button
-                      onClick={handleNavItemClick}
-                      className={cn(
-                        "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
-                        "hover:bg-white/10 hover:backdrop-blur-sm",
-                        isActive
-                          ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                          : "text-red-100 hover:text-white"
-                      )}
-                    >
-                      {/* Active indicator */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
-                      )}
-
-                      <item.icon
-                        className={cn(
-                          "h-5 w-5 flex-shrink-0 transition-colors",
-                          isActive
-                            ? "text-white"
-                            : "text-red-200 group-hover:text-white"
-                        )}
-                      />
-
-                      {(!collapsed || isMobile) && (
-                        <>
-                          <span className="ml-3 font-medium text-xs">
-                            {item.label}
-                          </span>
-                          {badgeCount !== null && badgeCount > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="ml-auto bg-gradient-to-r from-yellow-400 to-orange-500 text-red-900 text-xs font-semibold px-2 py-1 shadow-sm"
-                            >
-                              {badgeCount > 99 ? "99+" : badgeCount}
-                            </Badge>
-                          )}
-                        </>
-                      )}
-
-                      {/* Collapsed state badge indicator */}
-                      {collapsed &&
-                        !isMobile &&
-                        badgeCount !== null &&
-                        badgeCount > 0 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-red-900">
-                            {badgeCount > 9 ? "9+" : badgeCount}
-                          </div>
-                        )}
-                    </button>
-                  );
+                  const isExpanded = expandedMenus.includes(item.label);
 
                   return (
-                    <Link key={index} href={item.href}>
-                      {collapsed && !isMobile ? (
-                        <Tooltip content={item.label}>{navButton}</Tooltip>
+                    <div key={index}>
+                      {/* Main menu item */}
+                      {item.isNested ? (
+                        <div>
+                          <button
+                            onClick={() => {
+                              if (!collapsed || isMobile) {
+                                toggleNestedMenu(item.label);
+                              }
+                            }}
+                            className={cn(
+                              "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
+                              "hover:scale-[1.02] active:scale-[0.98]",
+                              isActive
+                                ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
+                                : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
+                            )}
+                          >
+                            {isActive && (
+                              <>
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
+                              </>
+                            )}
+
+                            <div className={cn(
+                              "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
+                              isActive
+                                ? "bg-white/20 shadow-lg ring-2 ring-white/40"
+                                : "bg-white/5 group-hover:bg-white/15"
+                            )}>
+                              <item.icon
+                                className={cn(
+                                  "h-4 w-4 flex-shrink-0 transition-all duration-300",
+                                  isActive
+                                    ? "text-white drop-shadow-lg"
+                                    : "text-red-200 group-hover:text-white group-hover:scale-110"
+                                )}
+                              />
+                            </div>
+
+                            {(!collapsed || isMobile) && (
+                              <>
+                                <span className={cn(
+                                  "ml-3 font-medium text-xs flex-1 transition-all duration-300",
+                                  isActive ? "text-white" : ""
+                                )}>
+                                  {item.label}
+                                </span>
+                                <ChevronRight
+                                  className={cn(
+                                    "h-4 w-4 transition-all duration-300",
+                                    isExpanded && "rotate-90",
+                                    isActive ? "text-white" : "text-red-300"
+                                  )}
+                                />
+                              </>
+                            )}
+                          </button>
+
+                          {/* Nested items */}
+                          {(!collapsed || isMobile) && isExpanded && item.children && (
+                            <div className="ml-6 mt-1.5 space-y-1 border-l-2 border-white/20 pl-3">
+                              {item.children.map((child, childIndex) => {
+                                let childIsActive = false;
+                                if (child.href.includes('?tab=')) {
+                                  const [basePath, query] = child.href.split('?');
+                                  childIsActive = pathname === basePath && window.location.search.includes(query);
+                                } else {
+                                  childIsActive = pathname === child.href;
+                                }
+
+                                return (
+                                  <Link key={childIndex} href={child.href}>
+                                    <button
+                                      onClick={() => {
+                                        // Ensure parent menu stays expanded when clicking child
+                                        if (!expandedMenus.includes(item.label)) {
+                                          setExpandedMenus(prev => [...prev, item.label]);
+                                        }
+                                        handleNavItemClick(true);
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center px-2 py-1.5 text-left transition-all duration-300 rounded-lg group relative overflow-hidden",
+                                        "hover:scale-[1.02] active:scale-[0.98]",
+                                        childIsActive
+                                          ? "bg-gradient-to-r from-white/25 to-white/15 text-white shadow-xl backdrop-blur-md border-2 border-white/40"
+                                          : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent hover:border-white/20"
+                                      )}
+                                    >
+                                      {childIsActive && (
+                                        <>
+                                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
+                                          <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-60 animate-pulse" />
+                                        </>
+                                      )}
+
+                                      <div className={cn(
+                                        "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300",
+                                        childIsActive
+                                          ? "bg-white/30 shadow-lg ring-2 ring-white/50"
+                                          : "bg-white/5 group-hover:bg-white/15"
+                                      )}>
+                                        <child.icon
+                                          className={cn(
+                                            "h-3.5 w-3.5 flex-shrink-0 transition-all duration-300",
+                                            childIsActive
+                                              ? "text-white drop-shadow-lg scale-110"
+                                              : "text-red-200 group-hover:text-white group-hover:scale-110"
+                                          )}
+                                        />
+                                      </div>
+                                      <span className={cn(
+                                        "ml-2 font-medium text-[11px] transition-all duration-300",
+                                        childIsActive ? "text-white" : ""
+                                      )}>
+                                        {child.label}
+                                      </span>
+                                    </button>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        navButton
+                        <Link href={item.href}>
+                          <button
+                            onClick={() => handleNavItemClick(false)}
+                            className={cn(
+                              "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
+                              "hover:scale-[1.02] active:scale-[0.98]",
+                              isActive
+                                ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
+                                : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
+                            )}
+                          >
+                            {isActive && (
+                              <>
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
+                              </>
+                            )}
+
+                            <div className={cn(
+                              "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
+                              isActive
+                                ? "bg-white/20 shadow-lg ring-2 ring-white/40"
+                                : "bg-white/5 group-hover:bg-white/15"
+                            )}>
+                              <item.icon
+                                className={cn(
+                                  "h-4 w-4 flex-shrink-0 transition-all duration-300",
+                                  isActive
+                                    ? "text-white drop-shadow-lg"
+                                    : "text-red-200 group-hover:text-white group-hover:scale-110"
+                                )}
+                              />
+                            </div>
+
+                            {(!collapsed || isMobile) && (
+                              <>
+                                <span className={cn(
+                                  "ml-3 font-medium text-xs flex-1 transition-all duration-300",
+                                  isActive ? "text-white" : ""
+                                )}>
+                                  {item.label}
+                                </span>
+                                {badgeCount !== null && badgeCount > 0 && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="ml-auto bg-gradient-to-r from-white to-white/90 text-red-900 text-[10px] font-bold px-2 py-0.5 shadow-lg ring-2 ring-white/50 animate-pulse"
+                                  >
+                                    {badgeCount > 99 ? "99+" : badgeCount}
+                                  </Badge>
+                                )}
+                              </>
+                            )}
+
+                            {collapsed &&
+                              !isMobile &&
+                              badgeCount !== null &&
+                              badgeCount > 0 && (
+                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-white to-white/90 rounded-full flex items-center justify-center text-xs font-bold text-red-900 shadow-lg ring-2 ring-white/30 animate-pulse">
+                                  {badgeCount > 9 ? "9+" : badgeCount}
+                                </div>
+                              )}
+                          </button>
+                        </Link>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
               </div>
@@ -653,66 +864,92 @@ export default function Sidebar({
             <div className="mb-6">
               {(!collapsed || isMobile) && (
                 <div className="px-4 lg:px-6 mb-3">
-                  <p className="text-xs uppercase tracking-wider text-red-300 font-semibold">
-                    System
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <div className="h-[2px] w-6 bg-gradient-to-r from-white/60 to-transparent rounded-full"></div>
+                    <p className="text-[10px] uppercase tracking-wider text-white/90 font-semibold drop-shadow-lg">
+                      System
+                    </p>
+                  </div>
                 </div>
               )}
 
-              <div className="space-y-1 px-2 lg:px-3">
+              <div className="space-y-2 px-2 lg:px-3">
                 <Link href="/admin/system">
                   {collapsed && !isMobile ? (
                     <Tooltip content="System Settings">
                       <button
-                        onClick={handleNavItemClick}
+                        onClick={() => handleNavItemClick(false)}
                         className={cn(
-                          "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
-                          "hover:bg-white/10 hover:backdrop-blur-sm",
+                          "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
+                          "hover:scale-[1.02] active:scale-[0.98]",
                           pathname === "/admin/system"
-                            ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                            : "text-red-100 hover:text-white"
+                            ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
+                            : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
                         )}
                       >
                         {pathname === "/admin/system" && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
+                          <>
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
+                          </>
                         )}
 
-                        <Settings
-                          className={cn(
-                            "h-5 w-5 flex-shrink-0 transition-colors",
-                            pathname === "/admin/system"
-                              ? "text-white"
-                              : "text-red-200 group-hover:text-white"
-                          )}
-                        />
+                        <div className={cn(
+                          "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
+                          pathname === "/admin/system"
+                            ? "bg-white/20 shadow-lg ring-2 ring-white/40"
+                            : "bg-white/5 group-hover:bg-white/15"
+                        )}>
+                          <Settings
+                            className={cn(
+                              "h-4 w-4 flex-shrink-0 transition-all duration-300",
+                              pathname === "/admin/system"
+                                ? "text-white drop-shadow-lg"
+                                : "text-red-200 group-hover:text-white group-hover:scale-110"
+                            )}
+                          />
+                        </div>
                       </button>
                     </Tooltip>
                   ) : (
                     <button
-                      onClick={handleNavItemClick}
+                      onClick={() => handleNavItemClick(false)}
                       className={cn(
-                        "w-full flex items-center px-3 lg:px-4 py-3 text-left transition-all duration-200 rounded-lg group relative",
-                        "hover:bg-white/10 hover:backdrop-blur-sm",
+                        "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
+                        "hover:scale-[1.02] active:scale-[0.98]",
                         pathname === "/admin/system"
-                          ? "bg-white/15 text-white shadow-lg backdrop-blur-sm border border-white/20"
-                          : "text-red-100 hover:text-white"
+                          ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
+                          : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
                       )}
                     >
                       {pathname === "/admin/system" && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-yellow-400 to-orange-500 rounded-r-full" />
+                        <>
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
+                        </>
                       )}
 
-                      <Settings
-                        className={cn(
-                          "h-5 w-5 flex-shrink-0 transition-colors",
-                          pathname === "/admin/system"
-                            ? "text-white"
-                            : "text-red-200 group-hover:text-white"
-                        )}
-                      />
+                      <div className={cn(
+                        "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
+                        pathname === "/admin/system"
+                          ? "bg-white/20 shadow-lg ring-2 ring-white/40"
+                          : "bg-white/5 group-hover:bg-white/15"
+                      )}>
+                        <Settings
+                          className={cn(
+                            "h-4 w-4 flex-shrink-0 transition-all duration-300",
+                            pathname === "/admin/system"
+                              ? "text-white drop-shadow-lg"
+                              : "text-red-200 group-hover:text-white group-hover:scale-110"
+                          )}
+                        />
+                      </div>
 
                       {(!collapsed || isMobile) && (
-                        <span className="ml-3 font-medium text-xs">
+                        <span className={cn(
+                          "ml-3 font-medium text-xs transition-all duration-300",
+                          pathname === "/admin/system" ? "text-white" : ""
+                        )}>
                           System Settings
                         </span>
                       )}
