@@ -836,7 +836,7 @@ export default function EventDetailsModal({
                             visitors
                           </span>
                         </div>
-                        <div className="flex justify-between items-center py-2">
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
                           <span className="font-medium text-gray-700">
                             Attended:
                           </span>
@@ -849,6 +849,19 @@ export default function EventDetailsModal({
                               ).length
                             }{" "}
                             visitors
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="font-medium text-gray-700">
+                            Declined:
+                          </span>
+                          <span className="text-orange-700 font-semibold">
+                            {
+                              participants.filter(
+                                (p) => p.status === "declined"
+                              ).length
+                            }{" "}
+                            participants
                           </span>
                         </div>
                       </div>
