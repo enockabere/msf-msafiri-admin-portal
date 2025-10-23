@@ -368,7 +368,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card
           className="border-l-4 border-l-purple-500 hover:shadow-md transition-all cursor-pointer"
           onClick={() => {
@@ -435,27 +435,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           </CardContent>
         </Card>
 
-        <Card
-          className="border-l-4 border-l-orange-500 hover:shadow-md transition-all cursor-pointer"
-          onClick={() => {
-            setFilters({ ...filters, occupancy: 'guesthouse' });
-            setTimeout(() => {
-              document.querySelector('.overflow-x-auto')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-          }}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-normal text-gray-500 uppercase tracking-wider">Guesthouses</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.guesthouse}</p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Building className="w-6 h-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <Card
           className="border-l-4 border-l-teal-500 hover:shadow-md transition-all cursor-pointer"
@@ -858,9 +838,6 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">
                         {accommodationInfo.room}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {accommodationInfo.occupancy}
                       </div>
                     </td>
 

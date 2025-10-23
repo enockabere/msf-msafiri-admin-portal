@@ -114,6 +114,7 @@ export default function VendorCard({ vendor, onBook, onDelete, onEdit, onSetupEv
             </div>
             <div className="space-y-1">
               {paginatedSetups.map((setup) => {
+                // Calculate actual occupancy from allocations
                 const setupOccupancy = setup.total_capacity > 0 ? Math.round((setup.current_occupants / setup.total_capacity) * 100) : 0;
                 const isOccupied = setup.current_occupants > 0;
                 

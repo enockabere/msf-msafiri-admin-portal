@@ -140,18 +140,28 @@ export default function EventAccommodationSetupModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border border-gray-200 shadow-lg max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Hotel className="w-5 h-5 text-purple-600" />
-            Event Accommodation Setup
+      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-2xl">
+        <DialogHeader className="px-4 sm:px-6 lg:px-8 py-6 border-b-2 border-gray-100 bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-t-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-200/30 to-pink-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-br from-orange-200/30 to-yellow-200/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+          
+          <DialogTitle className="flex items-center gap-3 relative z-10">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+              <Hotel className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                Event Accommodation Setup
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Configure room capacity for {vendor.vendor_name}
+              </p>
+            </div>
           </DialogTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            Configure room capacity for {vendor.vendor_name}
-          </p>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
           <div className="space-y-2">
             <Label htmlFor="event" className="text-sm font-medium text-gray-700">
               Select Event
@@ -233,17 +243,18 @@ export default function EventAccommodationSetupModal({
             </p>
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting} className="bg-purple-600 hover:bg-purple-700 text-white">
-              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              {submitting ? "Setting up..." : "Setup"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end space-x-3 pt-6">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submitting} className="bg-purple-600 hover:bg-purple-700 text-white">
+                {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                {submitting ? "Setting up..." : "Setup"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

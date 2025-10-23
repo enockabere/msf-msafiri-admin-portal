@@ -98,6 +98,7 @@ export default function EventAllocationsModal({
   const fetchEventAllocations = async () => {
     if (!setup || !setup.event_id) return;
 
+    console.log(`🏨 DEBUG: Fetching allocations for event ${setup.event_id}`);
     setLoading(true);
     try {
       const response = await fetch(
@@ -112,7 +113,10 @@ export default function EventAllocationsModal({
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`🏨 DEBUG: Received ${data.length} allocations:`, data);
         setAllocations(data);
+      } else {
+        console.error(`🏨 DEBUG: Failed to fetch allocations:`, response.status, response.statusText);
       }
     } catch (error) {
       console.error("Error fetching event allocations:", error);
@@ -133,21 +137,27 @@ export default function EventAllocationsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-purple-600" />
-            Event Allocations: {eventTitle}
+      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden flex flex-col bg-white border-0 shadow-2xl p-0 rounded-2xl">
+        <DialogHeader className="px-4 sm:px-6 lg:px-8 py-6 border-b-2 border-gray-100 bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-t-2xl relative overflow-hidden">
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-200/30 to-pink-200/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-br from-orange-200/30 to-yellow-200/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+          <DialogTitle className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 shadow-lg">
+                <Hotel className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                  Event Allocations - {eventTitle}
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {setup.single_rooms} Single + {setup.double_rooms} Double = {setup.total_capacity} capacity • {setup.current_occupants} occupied
+                </p>
+              </div>
+            </div>
           </DialogTitle>
-          <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
-            <div className="flex items-center gap-1">
-              <Hotel className="w-4 h-4" />
-              <span>{setup.single_rooms}S + {setup.double_rooms}D = {setup.total_capacity} capacity</span>
-            </div>
-            <div className="text-purple-600 font-medium">
-              {setup.current_occupants}/{setup.total_capacity} occupied
-            </div>
-          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden">
@@ -159,9 +169,13 @@ export default function EventAllocationsModal({
               </div>
             </div>
           ) : (
-            <div className="h-full overflow-auto">
+            <div className="h-full overflow-auto p-4 sm:p-6">
               <AllocationsList
-                allocations={allocations}
+                allocations={allocations.filter(allocation => 
+                  allocation.status !== 'cancelled' && 
+                  allocation.status !== 'declined' &&
+                  allocation.event_id === setup.event_id
+                )}
                 onDelete={onDeleteAllocation}
                 deleting={deleting}
                 onCheckIn={onCheckIn}
@@ -174,9 +188,13 @@ export default function EventAllocationsModal({
           )}
         </div>
 
-        <div className="flex-shrink-0 flex justify-end pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            <X className="w-4 h-4 mr-2" />
+        <div className="flex-shrink-0 flex justify-end pt-3 border-t bg-white px-3 sm:px-4 lg:px-6 pb-3 rounded-b-2xl">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            size="sm"
+            className="px-4 py-2 bg-white border-gray-300 hover:bg-gray-50 text-xs"
+          >
             Close
           </Button>
         </div>

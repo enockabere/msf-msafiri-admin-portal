@@ -7,33 +7,16 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toast";
 import AllocationModal from "@/components/accommodation/AllocationModal";
-import GuestHouseCard from "@/components/accommodation/GuestHouseCard";
 import VendorCard from "@/components/accommodation/VendorCard";
 import AllocationsList from "@/components/accommodation/AllocationsList";
-import GuesthouseManagement from "@/components/accommodation/GuesthouseManagement";
 import VendorManagement from "@/components/accommodation/VendorManagement";
-import RoomsView from "@/components/accommodation/RoomsView";
 import EventAccommodationSetupModal from "@/components/accommodation/EventAccommodationSetupModal";
 import EditEventSetupModal from "@/components/accommodation/EditEventSetupModal";
 import EventAllocationsModal from "@/components/accommodation/EventAllocationsModal";
 import EditVendorModal from "@/components/accommodation/EditVendorModal";
-import { Hotel, Building2, Users } from "lucide-react";
+import { Hotel, Users } from "lucide-react";
 
-interface GuestHouse {
-  id: number;
-  name: string;
-  location?: string;
-  description?: string;
-  contact_person?: string;
-  contact_phone?: string;
-  contact_email?: string;
-  total_rooms: number;
-  occupied_rooms?: number;
-  total_capacity?: number;
-  current_occupants?: number;
-  available_rooms?: number;
-  is_active?: boolean;
-}
+
 
 interface VendorAccommodation {
   id: number;
@@ -60,24 +43,7 @@ interface VendorEventSetup {
   };
 }
 
-interface Room {
-  id: number;
-  guesthouse_id: number;
-  room_number: string;
-  capacity: number;
-  room_type: string;
-  current_occupants: number;
-  is_active?: boolean;
-  is_occupied?: boolean;
-  occupantInfo?: {
-    occupant_genders: string[];
-    can_accept_gender: {
-      male: boolean;
-      female: boolean;
-      other: boolean;
-    };
-  } | null;
-}
+
 
 interface Allocation {
   id: number;
@@ -90,15 +56,7 @@ interface Allocation {
   accommodation_type: string;
   status: string;
   room_type?: string; // single, double - for vendor accommodations
-  room?: {
-    id: number;
-    room_number: string;
-    capacity: number;
-    current_occupants: number;
-    guesthouse: {
-      name: string;
-    };
-  };
+
   vendor_accommodation?: {
     id: number;
     vendor_name: string;
@@ -138,8 +96,7 @@ interface AllocationForm {
   participant_ids: string[];
   check_in_date: string;
   check_out_date: string;
-  accommodation_type: "guesthouse" | "vendor";
-  room_id: string;
+  accommodation_type: "vendor";
   vendor_accommodation_id: string;
   room_type?: "single" | "double";
 }
@@ -151,13 +108,12 @@ export default function AccommodationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tenantSlug = params.slug as string;
-  const activeTab = searchParams.get('tab') || 'guesthouses';
+  const activeTab = searchParams.get('tab') || 'vendors';
 
-  const [guesthouses, setGuesthouses] = useState<GuestHouse[]>([]);
+
   const [vendors, setVendors] = useState<VendorAccommodation[]>([]);
   const [allocations, setAllocations] = useState<Allocation[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedGuesthouse, setSelectedGuesthouse] = useState<GuestHouse | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
@@ -176,10 +132,7 @@ export default function AccommodationPage() {
   const [selectedVendorForEdit, setSelectedVendorForEdit] = useState<VendorAccommodation | null>(null);
   
 
-  const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
-  const [availableRoomsForGuesthouse, setAvailableRoomsForGuesthouse] = useState<Room[]>([]);
-  const [selectedGuesthouses, setSelectedGuesthouses] = useState<number[]>([]);
-  const [preSelectedGuesthouse, setPreSelectedGuesthouse] = useState<GuestHouse | null>(null);
+
   const [allocatedParticipants, setAllocatedParticipants] = useState<number[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
 
@@ -190,67 +143,13 @@ export default function AccommodationPage() {
     participant_ids: [],
     check_in_date: "",
     check_out_date: "",
-    accommodation_type: "guesthouse",
-    room_id: "",
+    accommodation_type: "vendor",
     vendor_accommodation_id: "",
     room_type: undefined,
   });
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
 
-  const fetchRoomsForGuesthouses = async (guesthouseIds: number[]) => {
-    if (guesthouseIds.length === 0) {
-      setAvailableRoomsForGuesthouse([]);
-      return;
-    }
-    
-    try {
-      const roomPromises = guesthouseIds.map(id => 
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${id}/rooms`,
-          {
-            headers: { 
-              Authorization: `Bearer ${apiClient.getToken()}`,
-              'X-Tenant-ID': tenantSlug
-            },
-          }
-        ).then(res => res.ok ? res.json() : [])
-      );
-      
-      const roomArrays = await Promise.all(roomPromises);
-      const allRooms = roomArrays.flat();
-      
-      // Get room occupant details for gender validation
-      const roomsWithOccupants = await Promise.all(
-        allRooms.map(async (room) => {
-          if (room.current_occupants > 0) {
-            try {
-              const occupantResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms/${room.id}/occupants`,
-                {
-                  headers: { 
-                    Authorization: `Bearer ${apiClient.getToken()}`,
-                    'X-Tenant-ID': tenantSlug
-                  },
-                }
-              );
-              if (occupantResponse.ok) {
-                const occupantData = await occupantResponse.json();
-                return { ...room, occupantInfo: occupantData };
-              }
-            } catch (error) {
-              console.error(`Error fetching occupants for room ${room.id}:`, error);
-            }
-          }
-          return { ...room, occupantInfo: null };
-        })
-      );
-      
-      const availableRooms = roomsWithOccupants.filter((room) => room.current_occupants < room.capacity);
-      setAvailableRoomsForGuesthouse(availableRooms);
-    } catch (error) {
-      console.error("Error fetching rooms for guesthouses:", error);
-    }
-  };
+
 
   const fetchAllocatedParticipants = async (eventId: string) => {
     if (!eventId) {
@@ -298,15 +197,13 @@ export default function AccommodationPage() {
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
 
+    console.log('🏨 DEBUG: ===== FETCHDATA CALLED =====');
+    console.log('🏨 DEBUG: User:', user.email, 'Tenant:', tenantSlug);
+
     try {
       const token = apiClient.getToken();
-      const [ghResponse, vendorResponse, allocationsResponse, eventsResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'X-Tenant-ID': tenantSlug
-          },
-        }),
+      console.log('🏨 DEBUG: Making API calls...');
+      const [vendorResponse, allocationsResponse, eventsResponse] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations`, {
           headers: { 
             Authorization: `Bearer ${token}`,
@@ -327,20 +224,17 @@ export default function AccommodationPage() {
         }),
       ]);
 
-      let ghData: GuestHouse[] = [];
-      
-      if (ghResponse.ok) {
-        ghData = await ghResponse.json();
-        setGuesthouses(ghData);
-      }
+
 
       if (vendorResponse.ok) {
         const vendorData = await vendorResponse.json();
+        console.log('🏨 DEBUG: Vendor data received:', vendorData.length, 'vendors');
         
         // Fetch event setups for each vendor
         const vendorsWithSetups = await Promise.all(
           vendorData.map(async (vendor: VendorAccommodation) => {
             try {
+              console.log(`🏨 DEBUG: Fetching setups for vendor ${vendor.id} (${vendor.vendor_name})`);
               const setupResponse = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-event-setups/${vendor.id}`,
                 {
@@ -352,23 +246,30 @@ export default function AccommodationPage() {
               );
               if (setupResponse.ok) {
                 const setups = await setupResponse.json();
+                console.log(`🏨 DEBUG: Setups for vendor ${vendor.id}:`, setups.length, 'setups');
                 return { ...vendor, event_setups: setups };
+              } else {
+                console.error(`🏨 DEBUG: Failed to fetch setups for vendor ${vendor.id}:`, setupResponse.status);
               }
             } catch (error) {
-              console.error(`Error fetching setups for vendor ${vendor.id}:`, error);
+              console.error(`🏨 DEBUG: Error fetching setups for vendor ${vendor.id}:`, error);
             }
             return { ...vendor, event_setups: [] };
           })
         );
         
+        console.log('🏨 DEBUG: Final vendors with setups:', vendorsWithSetups);
         setVendors(vendorsWithSetups);
+      } else {
+        console.error('🏨 DEBUG: Failed to fetch vendors:', vendorResponse.status);
       }
 
       if (allocationsResponse.ok) {
         const allocationsData = await allocationsResponse.json();
-        console.log('🏨 Fetched allocations:', allocationsData);
-        console.log('🏨 Number of allocations:', allocationsData.length);
-        setAllocations(allocationsData);
+        // Filter out cancelled bookings from display
+        const activeAllocations = allocationsData.filter((allocation: Allocation) => allocation.status !== 'cancelled');
+        console.log('🏨 Fetched allocations:', allocationsData.length, 'total,', activeAllocations.length, 'active');
+        setAllocations(activeAllocations);
       } else {
         console.error('❌ Failed to fetch allocations:', allocationsResponse.status, allocationsResponse.statusText);
       }
@@ -378,39 +279,7 @@ export default function AccommodationPage() {
         setEvents(eventsData);
       }
 
-      // Fetch all rooms for each guesthouse to calculate real stats
-      if (ghData.length > 0) {
-        const allRoomsPromises = ghData.map((gh) => 
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${gh.id}/rooms`, {
-            headers: { 
-              Authorization: `Bearer ${token}`,
-              'X-Tenant-ID': tenantSlug
-            },
-          }).then(res => res.ok ? res.json() : [])
-        );
-        
-        const allRoomsArrays = await Promise.all(allRoomsPromises);
-        const allRoomsFlat = allRoomsArrays.flat();
-        
-        // Update guesthouses with real stats
-        const updatedGuesthouses = ghData.map(gh => {
-          const guesthouseRooms = allRoomsFlat.filter((room) => room.guesthouse_id === gh.id);
-          const totalRooms = guesthouseRooms.length;
-          const totalCapacity = guesthouseRooms.reduce((sum, room) => sum + room.capacity, 0);
-          const currentOccupants = guesthouseRooms.reduce((sum, room) => sum + room.current_occupants, 0);
-          const availableRooms = guesthouseRooms.filter((room) => room.current_occupants < room.capacity).length;
-          
-          return {
-            ...gh,
-            total_rooms: totalRooms,
-            total_capacity: totalCapacity,
-            current_occupants: currentOccupants,
-            available_rooms: availableRooms
-          };
-        });
-        
-        setGuesthouses(updatedGuesthouses);
-      }
+
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -430,45 +299,7 @@ export default function AccommodationPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleBookGuesthouse = async (guesthouse: GuestHouse) => {
-    setPreSelectedGuesthouse(guesthouse);
-    setSelectedGuesthouses([guesthouse.id]);
-    setAllocationForm({
-      ...allocationForm,
-      accommodation_type: "guesthouse",
-      room_id: "",
-      vendor_accommodation_id: "",
-      room_type: undefined,
-    });
-    setSelectedRooms([]);
-    await fetchRoomsForGuesthouses([guesthouse.id]);
-    setAllocationModalOpen(true);
-  };
 
-  const handleViewRooms = async (guesthouse: GuestHouse) => {
-    setSelectedGuesthouse(guesthouse);
-    await fetchRooms(guesthouse.id);
-  };
-
-  const fetchRooms = async (guesthouseId: number) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/guesthouses/${guesthouseId}/rooms`,
-        {
-          headers: { 
-            Authorization: `Bearer ${apiClient.getToken()}`,
-            'X-Tenant-ID': tenantSlug
-          },
-        }
-      );
-      if (response.ok) {
-        const roomData = await response.json();
-        setRooms(roomData);
-      }
-    } catch (error) {
-      console.error("Error fetching rooms:", error);
-    }
-  };
 
   const fetchParticipants = async (eventId: string) => {
     if (!eventId) {
@@ -524,7 +355,6 @@ export default function AccommodationPage() {
       ...allocationForm,
       accommodation_type: "vendor",
       vendor_accommodation_id: vendor.id.toString(),
-      room_id: "",
       room_type: undefined,
     });
     setAllocationModalOpen(true);
@@ -632,27 +462,7 @@ export default function AccommodationPage() {
     }
   };
 
-  const toggleRoomSelection = (roomId: number) => {
-    setSelectedRooms(prev => 
-      prev.includes(roomId) 
-        ? prev.filter(id => id !== roomId)
-        : [...prev, roomId]
-    );
-  };
 
-  const toggleGuesthouseSelection = (guesthouseId: number) => {
-    const newSelection = selectedGuesthouses.includes(guesthouseId)
-      ? selectedGuesthouses.filter(id => id !== guesthouseId)
-      : [...selectedGuesthouses, guesthouseId];
-    
-    setSelectedGuesthouses(newSelection);
-    
-    // Clear selected rooms when guesthouse selection changes
-    setSelectedRooms([]);
-    
-    // Fetch rooms for selected guesthouses
-    fetchRoomsForGuesthouses(newSelection);
-  };
 
   const handleAllocationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -673,27 +483,7 @@ export default function AccommodationPage() {
       return;
     }
     
-    if (allocationForm.accommodation_type === "guesthouse") {
-      if (selectedGuesthouses.length === 0) {
-        toast({ title: "Error", description: "Please select at least one guesthouse", variant: "destructive" });
-        return;
-      }
-      
-      if (selectedRooms.length === 0) {
-        toast({ title: "Error", description: "Please select at least one room", variant: "destructive" });
-        return;
-      }
-      
-      const totalCapacity = selectedRooms.reduce((sum, roomId) => {
-        const room = availableRoomsForGuesthouse.find(r => r.id === roomId);
-        return sum + (room ? room.capacity - room.current_occupants : 0);
-      }, 0);
-      
-      if (selectedParticipants.length > totalCapacity) {
-        toast({ title: "Error", description: `Selected rooms can only accommodate ${totalCapacity} people`, variant: "destructive" });
-        return;
-      }
-    }
+
     
     if (selectedParticipants.length === 0) {
       toast({ title: "Error", description: "Please select at least one participant", variant: "destructive" });
@@ -701,39 +491,37 @@ export default function AccommodationPage() {
     }
     
     // Validate vendor accommodation requirements
-    if (allocationForm.accommodation_type === "vendor") {
-      if (!allocationForm.vendor_accommodation_id) {
-        toast({ title: "Error", description: "Please select a vendor hotel", variant: "destructive" });
+    if (!allocationForm.vendor_accommodation_id) {
+      toast({ title: "Error", description: "Please select a vendor hotel", variant: "destructive" });
+      return;
+    }
+    
+    if (!allocationForm.room_type) {
+      toast({ title: "Error", description: "Please select a room type", variant: "destructive" });
+      return;
+    }
+    
+    // Validate double room capacity and gender compatibility
+    if (allocationForm.room_type === "double") {
+      if (selectedParticipants.length > 2) {
+        toast({ title: "Error", description: "Double rooms can accommodate maximum 2 participants", variant: "destructive" });
         return;
       }
       
-      if (!allocationForm.room_type) {
-        toast({ title: "Error", description: "Please select a room type", variant: "destructive" });
-        return;
-      }
-      
-      // Validate double room capacity and gender compatibility
-      if (allocationForm.room_type === "double") {
-        if (selectedParticipants.length > 2) {
-          toast({ title: "Error", description: "Double rooms can accommodate maximum 2 participants", variant: "destructive" });
-          return;
-        }
+      if (selectedParticipants.length === 2) {
+        const selectedGenders = selectedParticipants.map(participantId => {
+          const participant = participants.find(p => p.id === participantId);
+          return participant?.gender;
+        }).filter(Boolean);
         
-        if (selectedParticipants.length === 2) {
-          const selectedGenders = selectedParticipants.map(participantId => {
-            const participant = participants.find(p => p.id === participantId);
-            return participant?.gender;
-          }).filter(Boolean);
-          
-          const uniqueGenders = [...new Set(selectedGenders)];
-          if (uniqueGenders.length > 1 || uniqueGenders.includes('other')) {
-            toast({ 
-              title: "Error", 
-              description: "Double room sharing requires same gender (male/female only). Selected participants have different genders or include non-binary gender.", 
-              variant: "destructive" 
-            });
-            return;
-          }
+        const uniqueGenders = [...new Set(selectedGenders)];
+        if (uniqueGenders.length > 1 || uniqueGenders.includes('other')) {
+          toast({ 
+            title: "Error", 
+            description: "Double room sharing requires same gender (male/female only). Selected participants have different genders or include non-binary gender.", 
+            variant: "destructive" 
+          });
+          return;
         }
       }
     }
@@ -757,133 +545,40 @@ export default function AccommodationPage() {
       return;
     }
     
-    // Validate gender compatibility for guesthouse allocations
-    if (allocationForm.accommodation_type === "guesthouse") {
-      const selectedParticipantGenders = selectedParticipants.map(participantId => {
-        const participant = participants.find(p => p.id === participantId);
-        return participant?.gender;
-      }).filter(Boolean);
-      
-      const uniqueGenders = [...new Set(selectedParticipantGenders)];
-      
-      // Check if trying to mix genders
-      if (uniqueGenders.length > 1) {
-        toast({ 
-          title: "Error", 
-          description: "Cannot allocate participants of different genders to the same rooms. Please select participants of the same gender.", 
-          variant: "destructive" 
-        });
-        return;
-      }
-      
-      // Check if "other" gender users are selected with multi-capacity rooms
-      if (uniqueGenders.includes('other')) {
-        const multiCapacityRooms = selectedRooms.filter(roomId => {
-          const room = availableRoomsForGuesthouse.find(r => r.id === roomId);
-          return room && room.capacity > 1;
-        });
-        
-        if (multiCapacityRooms.length > 0 && selectedParticipants.length > 1) {
-          toast({ 
-            title: "Error", 
-            description: "Participants with 'Other' gender cannot share rooms. Please select single occupancy rooms or use vendor hotels.", 
-            variant: "destructive" 
-          });
-          return;
-        }
-      }
-    }
+
     
 
     
     setSubmitting(true);
     try {
-      if (allocationForm.accommodation_type === "guesthouse") {
-        // Distribute participants across selected rooms
-        const remainingParticipants = [...selectedParticipants];
-        const allocations = [];
-        
-        for (const roomId of selectedRooms) {
-          if (remainingParticipants.length === 0) break;
-          
-          const room = availableRoomsForGuesthouse.find(r => r.id === roomId);
-          if (!room) continue;
-          
-          const availableSpaces = room.capacity - room.current_occupants;
-          const participantsForThisRoom = remainingParticipants.splice(0, availableSpaces);
-          
-          if (participantsForThisRoom.length > 0) {
-            for (const participantId of participantsForThisRoom) {
-              const participant = participants.find(p => p.id === participantId);
-              if (participant) {
-                allocations.push({
-                  accommodation_type: "guesthouse",
-                  room_id: roomId,
-                  vendor_accommodation_id: null,
-                  guest_name: participant.full_name || participant.name || `Participant ${participantId}`,
-                  guest_email: participant.email,
-                  guest_phone: participant.phone || "",
-                  check_in_date: allocationForm.check_in_date,
-                  check_out_date: allocationForm.check_out_date,
-                  number_of_guests: 1,
-                  participant_id: participantId,
-                  event_id: parseInt(allocationForm.event_id)
-                });
-              }
-            }
-          }
+      // Handle vendor allocations - send all participants in one request
+      const payload = {
+        accommodation_type: "vendor",
+        vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
+        room_type: allocationForm.room_type,
+        participant_ids: selectedParticipants,
+        check_in_date: allocationForm.check_in_date,
+        check_out_date: allocationForm.check_out_date,
+        number_of_guests: selectedParticipants.length,
+        event_id: parseInt(allocationForm.event_id)
+      };
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            "Content-Type": "application/json",
+            'X-Tenant-ID': tenantSlug
+          },
+          body: JSON.stringify(payload),
         }
-        
-        for (const allocation of allocations) {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/room-allocations`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${apiClient.getToken()}`,
-                "Content-Type": "application/json",
-                'X-Tenant-ID': tenantSlug
-              },
-              body: JSON.stringify(allocation),
-            }
-          );
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-            throw new Error(errorData.detail || JSON.stringify(errorData));
-          }
-        }
-      } else {
-        // Handle vendor allocations - send all participants in one request
-        const payload = {
-          accommodation_type: "vendor",
-          room_id: null,
-          vendor_accommodation_id: parseInt(allocationForm.vendor_accommodation_id),
-          room_type: allocationForm.room_type,
-          participant_ids: selectedParticipants,
-          check_in_date: allocationForm.check_in_date,
-          check_out_date: allocationForm.check_out_date,
-          number_of_guests: selectedParticipants.length,
-          event_id: parseInt(allocationForm.event_id)
-        };
-        
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-allocations`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiClient.getToken()}`,
-              "Content-Type": "application/json",
-              'X-Tenant-ID': tenantSlug
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(errorData.detail);
-        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        throw new Error(errorData.detail);
       }
 
       // Refresh data and update allocated participants list
@@ -899,14 +594,11 @@ export default function AccommodationPage() {
         participant_ids: [],
         check_in_date: "",
         check_out_date: "",
-        accommodation_type: "guesthouse",
-        room_id: "",
+        accommodation_type: "vendor",
         vendor_accommodation_id: "",
         room_type: undefined,
       });
       setSelectedParticipants([]);
-      setSelectedGuesthouses([]);
-      setSelectedRooms([]);
       toast({ title: "Success", description: "Visitor(s) allocated successfully" });
     } catch (error) {
       toast({ title: "Error", description: error instanceof Error ? error.message : "Network error occurred", variant: "destructive" });
@@ -1020,10 +712,7 @@ export default function AccommodationPage() {
               <p className="text-sm text-gray-600">Manage properties, rooms, and visitor allocations</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-red-100 hover:shadow-md transition-shadow">
-                <div className="text-xl font-semibold text-red-900">{guesthouses.length}</div>
-                <div className="text-xs font-normal text-red-600">Guesthouses</div>
-              </div>
+
               <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow">
                 <div className="text-xl font-semibold text-orange-900">{vendors.length}</div>
                 <div className="text-xs font-normal text-orange-600">Vendor Hotels</div>
@@ -1044,14 +733,7 @@ export default function AccommodationPage() {
           setTimeout(() => setTabLoading(false), 300);
         }} className="space-y-6">
           <TabsList className="inline-flex h-auto items-center justify-center rounded-xl bg-transparent p-0 gap-2">
-            <TabsTrigger
-              value="guesthouses"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-200 hover:bg-gray-50"
-            >
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Guesthouses</span>
-              <span className="sm:hidden">Houses</span>
-            </TabsTrigger>
+
             <TabsTrigger
               value="vendors"
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg px-6 py-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border-2 data-[state=inactive]:border-gray-200 hover:bg-gray-50"
@@ -1070,92 +752,7 @@ export default function AccommodationPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="guesthouses" className="space-y-6">
-            {tabLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center space-y-4">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-200 border-t-red-600 mx-auto"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Building2 className="w-8 h-8 text-red-600 animate-pulse" />
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium text-gray-600">Loading guesthouses...</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-lg font-medium text-gray-900">Guesthouses</h2>
-                    <p className="text-sm text-gray-500">Manage your accommodation properties</p>
-                  </div>
-                  <GuesthouseManagement
-                    canEdit={!!canEdit}
-                    onGuesthouseCreated={fetchDataCallback}
-                    apiClient={apiClient as { getToken: () => string }}
-                    tenantSlug={tenantSlug}
-                  />
-                </div>
 
-                {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center space-y-4">
-                  <div className="relative">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-200 border-t-red-600 mx-auto"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-4 h-4 bg-red-600 rounded-full animate-pulse"></div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-base font-medium text-gray-900">Loading accommodation data...</p>
-                    <div className="flex justify-center space-x-1">
-                      <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                      <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {guesthouses.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
-                    <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                      <Hotel className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <h3 className="text-base font-medium text-gray-900 mb-2">No guesthouses yet</h3>
-                    <p className="text-gray-500 mb-4">Get started by adding your first accommodation property</p>
-                  </div>
-                ) : (
-                  guesthouses.map((guesthouse) => (
-                    <GuestHouseCard 
-                      key={guesthouse.id} 
-                      guesthouse={guesthouse as unknown as Parameters<typeof GuestHouseCard>[0]['guesthouse']} 
-                      onBook={handleBookGuesthouse}
-                      onViewRooms={handleViewRooms}
-                    />
-                  ))
-                )}
-              </div>
-            )}
-
-            {selectedGuesthouse && (
-              <RoomsView
-                selectedGuesthouse={selectedGuesthouse}
-                rooms={rooms as unknown as Parameters<typeof RoomsView>[0]['rooms']}
-                canEdit={canEdit}
-                onRoomCreated={() => {
-                  fetchRooms(selectedGuesthouse.id);
-                  fetchData();
-                }}
-                apiClient={apiClient as { getToken: () => string }}
-                tenantSlug={tenantSlug}
-              />
-            )}
-              </>
-            )}
-          </TabsContent>
 
           <TabsContent value="vendors" className="space-y-6">
             {tabLoading ? (
@@ -1259,29 +856,18 @@ export default function AccommodationPage() {
           open={allocationModalOpen}
           onOpenChange={(open) => {
             setAllocationModalOpen(open);
-            if (!open) {
-              setPreSelectedGuesthouse(null);
-            }
+
           }}
           form={allocationForm}
           onFormChange={setAllocationForm}
           onSubmit={handleAllocationSubmit}
           submitting={submitting}
-          availableRooms={availableRoomsForGuesthouse}
-          selectedRooms={selectedRooms}
-          onRoomToggle={toggleRoomSelection}
           vendors={vendors}
-          guesthouses={guesthouses}
-          preSelectedGuesthouse={preSelectedGuesthouse}
           events={events}
           participants={participants}
           onEventChange={async (eventId) => {
             setAllocationForm({ ...allocationForm, event_id: eventId, participant_ids: [] });
             setSelectedParticipants([]);
-            if (!preSelectedGuesthouse) {
-              setSelectedGuesthouses([]);
-            }
-            setSelectedRooms([]);
             await fetchParticipants(eventId);
             await fetchAllocatedParticipants(eventId);
           }}
@@ -1293,9 +879,6 @@ export default function AccommodationPage() {
                 : [...prev, participantId]
             );
           }}
-          selectedGuesthouses={selectedGuesthouses}
-          onGuesthouseToggle={toggleGuesthouseSelection}
-          fetchRoomsForGuesthouses={fetchRoomsForGuesthouses}
           allocatedParticipants={allocatedParticipants}
         />
 
