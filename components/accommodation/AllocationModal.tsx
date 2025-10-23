@@ -91,13 +91,13 @@ export default function AllocationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border border-gray-200 shadow-lg overflow-hidden flex flex-col" style={{ width: '85vw', height: '80vh', maxWidth: 'none', maxHeight: 'none' }}>
+      <DialogContent className="bg-white border border-gray-200 shadow-lg max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-gray-900">Allocate Visitor</DialogTitle>
+          <DialogTitle className="text-lg font-semibold text-gray-900">Event Accommodation Setup</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="flex flex-col h-full overflow-hidden">
-          <div className="flex-1 overflow-y-auto space-y-6 pr-4 p-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto space-y-4 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="event_id" className="text-sm font-medium text-gray-700">Event</Label>
               <Select 
@@ -127,7 +127,7 @@ export default function AllocationModal({
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">Vendor Hotel</Label>
               <Select 
@@ -210,7 +210,7 @@ export default function AllocationModal({
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
                   {participants.filter(p => !allocatedParticipants.includes(p.id)).map((participant) => {
                     const isSelected = selectedParticipants.includes(participant.id);
                     let totalCapacity = Infinity;
@@ -296,7 +296,7 @@ export default function AllocationModal({
               </>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="check_in_date" className="text-sm font-medium text-gray-700">Check-in Date</Label>
               <Input
@@ -321,7 +321,7 @@ export default function AllocationModal({
             </div>
           </div>
           </div>
-          <div className="flex justify-end space-x-3 pt-4 border-t bg-white">
+          <div className="flex justify-end space-x-3 pt-3 border-t bg-white px-6 pb-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               <X className="w-4 h-4 mr-2" />
               Cancel

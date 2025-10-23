@@ -139,10 +139,9 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       href: "/security-briefings",
       badge: null,
     },
-
     {
       icon: Hotel,
-      label: "Accommodation",
+      label: "Visitor Allocations",
       href: "/accommodation",
       badge: null,
     },
@@ -150,6 +149,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       icon: Car,
       label: "Transport Management",
       href: "/transport",
+      badge: null,
+    },
+    {
+      icon: Settings,
+      label: "Setups",
+      href: "/setups",
       badge: null,
     },
   ];
@@ -345,6 +350,7 @@ export default function Sidebar({
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
+                item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
                 item.href
         }))
       }));

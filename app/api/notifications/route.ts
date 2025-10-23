@@ -13,14 +13,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
     
+    // Get tenant from URL path
+    const url = new URL(request.url);
+    const pathSegments = url.pathname.split('/');
+    const tenantIndex = pathSegments.indexOf('tenant');
+    const tenantSlug = tenantIndex !== -1 && tenantIndex + 1 < pathSegments.length ? pathSegments[tenantIndex + 1] : null;
+    
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const query = unreadOnly ? '?unread_only=true' : '';
     
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${session.user.accessToken}`,
+      'Content-Type': 'application/json',
+    };
+    
+    if (tenantSlug) {
+      headers['X-Tenant-ID'] = tenantSlug;
+    }
+    
     const response = await fetch(`${apiUrl}/api/v1/notifications/${query}`, {
-      headers: {
-        'Authorization': `Bearer ${session.user.accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {
