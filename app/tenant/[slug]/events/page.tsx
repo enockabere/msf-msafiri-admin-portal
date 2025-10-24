@@ -35,6 +35,8 @@ import {
   List,
   Search,
   Download,
+  Save,
+  X,
 } from "lucide-react";
 import EventDetailsModal from "./EventDetailsModal";
 import { EventCard } from "./components/EventCard";
@@ -113,7 +115,9 @@ export default function TenantEventsPage() {
     start_date: "",
     end_date: "",
     vendor_accommodation_id: "",
-    accommodation_setup_id: "",
+    expected_participants: "",
+    single_rooms: "",
+    double_rooms: "",
     location: "",
     country: "",
     latitude: "",
@@ -344,11 +348,13 @@ export default function TenantEventsPage() {
       !formData.start_date ||
       !formData.end_date ||
       !formData.vendor_accommodation_id ||
-      !formData.accommodation_setup_id
+      !formData.expected_participants ||
+      !formData.single_rooms ||
+      !formData.double_rooms
     ) {
       toast({
         title: "Error",
-        description: "All fields including accommodation setup are required",
+        description: "All fields including accommodation details are required",
         variant: "destructive",
       });
       return;
@@ -425,7 +431,9 @@ export default function TenantEventsPage() {
         start_date: "",
         end_date: "",
         vendor_accommodation_id: "",
-        accommodation_setup_id: "",
+        expected_participants: "",
+        single_rooms: "",
+        double_rooms: "",
         location: "",
         country: "",
         latitude: "",
@@ -466,11 +474,13 @@ export default function TenantEventsPage() {
       !formData.title.trim() ||
       !formData.event_type.trim() ||
       !formData.vendor_accommodation_id ||
-      !formData.accommodation_setup_id
+      !formData.expected_participants ||
+      !formData.single_rooms ||
+      !formData.double_rooms
     ) {
       toast({
         title: "Error",
-        description: "All fields including accommodation setup are required",
+        description: "All fields including accommodation details are required",
         variant: "destructive",
       });
       return;
@@ -640,18 +650,19 @@ export default function TenantEventsPage() {
     const duration = calculateDuration(event.start_date, event.end_date);
     const vendorId = (event as any).vendor_accommodation_id?.toString() || "";
     
-    // Set selectedVendorId to enable accommodation setup dropdown
     setSelectedVendorId(vendorId);
     
     setFormData({
-      title: event.title,
+      title: event.title || "",
       description: event.description || "",
       event_type: event.event_type || "",
       status: event.status || "Draft",
-      start_date: event.start_date,
-      end_date: event.end_date,
+      start_date: event.start_date || "",
+      end_date: event.end_date || "",
       vendor_accommodation_id: vendorId,
-      accommodation_setup_id: (event as any).accommodation_setup_id?.toString() || "",
+      expected_participants: (event as any).expected_participants?.toString() || "",
+      single_rooms: (event as any).single_rooms?.toString() || "",
+      double_rooms: (event as any).double_rooms?.toString() || "",
       location: event.location || "",
       country: event.country || "",
       latitude: event.latitude?.toString() || "",
@@ -792,8 +803,8 @@ export default function TenantEventsPage() {
         <div className="w-full space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Events Management</h1>
-              <p className="text-gray-600">
+              <h1 className="text-sm font-medium text-gray-900 mb-1">Events Management</h1>
+              <p className="text-xs text-gray-600">
                 Manage events for your organization
               </p>
             </div>
@@ -803,7 +814,7 @@ export default function TenantEventsPage() {
                   variant={viewMode === 'card' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('card')}
-                  className={viewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                  className={viewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm text-xs' : 'h-8 px-3 hover:bg-gray-200 text-xs'}
                 >
                   <Grid3X3 className="w-4 h-4" />
                 </Button>
@@ -811,7 +822,7 @@ export default function TenantEventsPage() {
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'h-8 px-3 bg-white shadow-sm' : 'h-8 px-3 hover:bg-gray-200'}
+                  className={viewMode === 'list' ? 'h-8 px-3 bg-white shadow-sm text-xs' : 'h-8 px-3 hover:bg-gray-200 text-xs'}
                 >
                   <List className="w-4 h-4" />
                 </Button>
@@ -819,7 +830,7 @@ export default function TenantEventsPage() {
               {canManageEvents() && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium"
+                  className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-xs font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Create Event
@@ -834,7 +845,7 @@ export default function TenantEventsPage() {
               className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
             >
               <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
               </span>
             </button>
@@ -843,7 +854,7 @@ export default function TenantEventsPage() {
               className={statusFilter === 'ongoing' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-100 text-green-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-50 text-green-700 hover:bg-green-100'}
             >
               <Play className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 Ongoing: {events.filter(e => e.event_status === 'ongoing').length}
               </span>
             </button>
@@ -852,7 +863,7 @@ export default function TenantEventsPage() {
               className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
             >
               <CheckCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 Ended: {events.filter(e => e.event_status === 'ended').length}
               </span>
             </button>
@@ -861,7 +872,7 @@ export default function TenantEventsPage() {
               className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
             >
               <Calendar className="w-4 h-4" />
-              <span className="text-sm font-medium">
+              <span className="text-xs font-medium">
                 All: {events.length}
               </span>
             </button>
@@ -875,14 +886,14 @@ export default function TenantEventsPage() {
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-9 text-sm border-gray-200"
+                  className="pl-10 h-9 text-xs border-gray-200"
                 />
               </div>
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => exportEventsToCSV(filteredEvents)} 
-                className="gap-2"
+                className="gap-2 text-xs"
               >
                 <Download className="w-4 h-4" />
                 Export CSV
@@ -968,10 +979,10 @@ export default function TenantEventsPage() {
           ) : (
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-xs font-medium text-gray-900 mb-2">
                 No {statusFilter === 'all' ? '' : statusFilter} events found
               </h3>
-              <p className="text-gray-600">
+              <p className="text-xs text-gray-600">
                 {statusFilter === 'all' 
                   ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
                   : "No " + statusFilter + " events at the moment"
@@ -984,598 +995,720 @@ export default function TenantEventsPage() {
         </div>
 
         <Dialog open={showCreateModal} onOpenChange={closeModals}>
-          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-y-auto bg-white border shadow-lg">
-            <DialogHeader>
-              <DialogTitle>Create New Event</DialogTitle>
-              <DialogDescription>
-                Fill in the details below to create a new event for your organization.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="title" className="mb-2 block">
-                    Event Title *
-                  </Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    placeholder="Enter event title"
-                  />
+          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col rounded-2xl">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <Label htmlFor="event_type" className="mb-2 block">
-                    Event Type *
-                  </Label>
-                  <Select
-                    value={formData.event_type}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, event_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Conference">Conference</SelectItem>
-                      <SelectItem value="Workshop">Workshop</SelectItem>
-                      <SelectItem value="Training">Training</SelectItem>
-                      <SelectItem value="Meeting">Meeting</SelectItem>
-                      <SelectItem value="Seminar">Seminar</SelectItem>
-                      <SelectItem value="Webinar">Webinar</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="description" className="mb-2 block">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Enter event description"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="vendor_accommodation_id" className="mb-2 block">
-                    Venue (Hotel) *
-                  </Label>
-                  <Select
-                    value={formData.vendor_accommodation_id}
-                    onValueChange={(value) => {
-                      const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                      setSelectedVendorId(value);
-                      setFormData({ 
-                        ...formData, 
-                        vendor_accommodation_id: value,
-                        accommodation_setup_id: "", // Reset setup selection
-                        location: selectedHotel?.location || "",
-                        latitude: selectedHotel?.latitude || "",
-                        longitude: selectedHotel?.longitude || ""
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select venue hotel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendorHotels.map((hotel) => (
-                        <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                          {hotel.vendor_name} - {hotel.location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="accommodation_setup_id" className="mb-2 block">
-                    Accommodation Setup *
-                  </Label>
-                  <Select
-                    value={formData.accommodation_setup_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, accommodation_setup_id: value })
-                    }
-                    disabled={!selectedVendorId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={selectedVendorId ? "Select accommodation setup" : "Select venue first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accommodationSetups.map((setup) => (
-                        <SelectItem key={setup.id} value={setup.id.toString()}>
-                          {setup.event_name} ({setup.single_rooms} single, {setup.double_rooms} double)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor="start_date" className="mb-2 block">
-                    Start Date *
-                  </Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) =>
-                      handleDateChange("start_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="end_date" className="mb-2 block">
-                    End Date *
-                  </Label>
-                  <Input
-                    id="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    min={formData.start_date || new Date().toISOString().split('T')[0]}
-                    onChange={(e) =>
-                      handleDateChange("end_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="registration_deadline" className="mb-2 block">
-                    Registration Deadline
-                  </Label>
-                  <Input
-                    id="registration_deadline"
-                    type="date"
-                    value={formData.registration_deadline}
-                    max={formData.start_date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, registration_deadline: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="duration_days" className="mb-2 block">
-                    Duration (Days)
-                  </Label>
-                  <Input
-                    id="duration_days"
-                    value={formData.duration_days}
-                    readOnly
-                    className="bg-gray-50"
-                    placeholder="Auto-calculated"
-                  />
-                </div>
-              </div>
-
-              {formData.vendor_accommodation_id && formData.accommodation_setup_id && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <Label className="mb-2 block text-sm font-medium text-gray-700">
-                    Selected Configuration
-                  </Label>
-                  <div className="text-sm text-gray-600 grid grid-cols-2 gap-4">
-                    <div>
-                      <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                      <p><strong>Location:</strong> {formData.location}</p>
-                    </div>
-                    <div>
-                      <p><strong>Setup:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.event_name}</p>
-                      <p><strong>Capacity:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.single_rooms} single, {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.double_rooms} double rooms</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <Label htmlFor="banner_image" className="mb-2 block">
-                  Banner Image URL
-                </Label>
-                <Input
-                  id="banner_image"
-                  value={formData.banner_image}
-                  onChange={(e) =>
-                    setFormData({ ...formData, banner_image: e.target.value })
-                  }
-                  placeholder="https://example.com/banner.jpg"
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="perdiem_rate" className="mb-2 block">
-                    Per Diem Rate
-                  </Label>
-                  <Input
-                    id="perdiem_rate"
-                    type="number"
-                    value={formData.perdiem_rate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, perdiem_rate: e.target.value })
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="perdiem_currency" className="mb-2 block">
-                    Currency
-                  </Label>
-                  <Select
-                    value={formData.perdiem_currency}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, perdiem_currency: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="CHF">CHF</SelectItem>
-                      <SelectItem value="CAD">CAD</SelectItem>
-                      <SelectItem value="AUD">AUD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status" className="mb-2 block">
-                    Status
-                  </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Published">Published</SelectItem>
-                      <SelectItem value="Ongoing">Ongoing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <DialogTitle className="text-lg font-bold text-white">Create New Event</DialogTitle>
+                  <p className="text-red-100 text-xs mt-1">Set up a new event for your organization</p>
                 </div>
               </div>
             </div>
-            <DialogFooter className="gap-3">
+            <div className="flex-1 overflow-y-auto modal-scrollbar">
+              <div className="p-8 pb-0">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Event Title - Takes 2 columns */}
+                    <div className="md:col-span-2">
+                      <Label htmlFor="title" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Event Title
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Enter event title"
+                        className="h-11 text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all"
+                      />
+                    </div>
+
+                    {/* Event Type - 1 column */}
+                    <div>
+                      <Label htmlFor="event_type" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Event Type
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={formData.event_type}
+                        onValueChange={(value) => setFormData({ ...formData, event_type: value })}
+                      >
+                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Conference">Conference</SelectItem>
+                          <SelectItem value="Workshop">Workshop</SelectItem>
+                          <SelectItem value="Training">Training</SelectItem>
+                          <SelectItem value="Meeting">Meeting</SelectItem>
+                          <SelectItem value="Seminar">Seminar</SelectItem>
+                          <SelectItem value="Webinar">Webinar</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Description - Full width */}
+                  <div>
+                    <Label htmlFor="description" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Describe the event, its purpose, and what participants can expect..."
+                      className="min-h-[80px] text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Venue and Accommodation Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <Label htmlFor="vendor_accommodation_id" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Venue (Hotel)
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={formData.vendor_accommodation_id}
+                        onValueChange={(value) => {
+                          const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                          setSelectedVendorId(value);
+                          setFormData({ 
+                            ...formData, 
+                            vendor_accommodation_id: value,
+                            location: selectedHotel?.location || "",
+                            latitude: selectedHotel?.latitude || "",
+                            longitude: selectedHotel?.longitude || ""
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                          <SelectValue placeholder="Select venue hotel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vendorHotels.map((hotel) => (
+                            <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                              {hotel.vendor_name} - {hotel.location}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="expected_participants" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Expected Participants
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="expected_participants"
+                        type="number"
+                        value={formData.expected_participants}
+                        onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
+                        placeholder="Enter expected number of participants"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Room Configuration */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="single_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Single Rooms
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="single_rooms"
+                        type="number"
+                        value={formData.single_rooms}
+                        onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
+                        placeholder="Number of single rooms needed"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="double_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Double Rooms
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="double_rooms"
+                        type="number"
+                        value={formData.double_rooms}
+                        onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
+                        placeholder="Number of double rooms needed"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                  <div>
+                    <Label htmlFor="start_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Start Date
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={formData.start_date}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) =>
+                        handleDateChange("start_date", e.target.value)
+                      }
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      End Date
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="end_date"
+                      type="date"
+                      value={formData.end_date}
+                      min={formData.start_date || new Date().toISOString().split('T')[0]}
+                      onChange={(e) =>
+                        handleDateChange("end_date", e.target.value)
+                      }
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="registration_deadline" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Registration Deadline
+                    </Label>
+                    <Input
+                      id="registration_deadline"
+                      type="date"
+                      value={formData.registration_deadline}
+                      max={formData.start_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, registration_deadline: e.target.value })
+                      }
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="duration_days" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Duration (Days)
+                    </Label>
+                    <Input
+                      id="duration_days"
+                      value={formData.duration_days}
+                      readOnly
+                      className="h-11 bg-gray-50 border-gray-300 rounded-lg"
+                      placeholder="Auto-calculated"
+                    />
+                  </div>
+                </div>
+
+                {formData.vendor_accommodation_id && (
+                  <div className="bg-gray-50 p-4 rounded-lg mt-6">
+                    <Label className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Selected Configuration
+                    </Label>
+                    <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                        <p><strong>Location:</strong> {formData.location}</p>
+                      </div>
+                      <div>
+                        <p><strong>Expected Participants:</strong> {formData.expected_participants || 'Not set'}</p>
+                        <p><strong>Room Allocation:</strong> {formData.single_rooms || 0} single, {formData.double_rooms || 0} double rooms</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6">
+                  <Label htmlFor="banner_image" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    Banner Image URL
+                  </Label>
+                  <Input
+                    id="banner_image"
+                    value={formData.banner_image}
+                    onChange={(e) =>
+                      setFormData({ ...formData, banner_image: e.target.value })
+                    }
+                    placeholder="https://example.com/banner.jpg"
+                    className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                  <div>
+                    <Label htmlFor="perdiem_rate" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Per Diem Rate
+                    </Label>
+                    <Input
+                      id="perdiem_rate"
+                      type="number"
+                      value={formData.perdiem_rate}
+                      onChange={(e) =>
+                        setFormData({ ...formData, perdiem_rate: e.target.value })
+                      }
+                      placeholder="0.00"
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="perdiem_currency" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Currency
+                    </Label>
+                    <Select
+                      value={formData.perdiem_currency}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, perdiem_currency: value })
+                      }
+                    >
+                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                        <SelectItem value="CHF">CHF</SelectItem>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="AUD">AUD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Status
+                    </Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, status: value })
+                      }
+                    >
+                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Published">Published</SelectItem>
+                        <SelectItem value="Ongoing">Ongoing</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons - Sticky at bottom */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
               <Button
+                type="button"
                 variant="outline"
                 onClick={closeModals}
-                className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                disabled={submitting}
+                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateEvent}
                 disabled={submitting}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm"
+                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating...
+                    Creating Event...
                   </>
                 ) : (
-                  "Create Event"
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Create Event
+                  </>
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
         <Dialog open={showEditModal} onOpenChange={closeModals}>
-          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-y-auto bg-white border shadow-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Event</DialogTitle>
-              <DialogDescription>
-                Update the event details below to modify the existing event.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="edit_title" className="mb-2 block">
-                    Event Title *
-                  </Label>
-                  <Input
-                    id="edit_title"
-                    value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
-                    placeholder="Enter event title"
-                  />
+          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col rounded-2xl">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <Label htmlFor="edit_event_type" className="mb-2 block">
-                    Event Type *
-                  </Label>
-                  <Select
-                    value={formData.event_type}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, event_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Conference">Conference</SelectItem>
-                      <SelectItem value="Workshop">Workshop</SelectItem>
-                      <SelectItem value="Training">Training</SelectItem>
-                      <SelectItem value="Meeting">Meeting</SelectItem>
-                      <SelectItem value="Seminar">Seminar</SelectItem>
-                      <SelectItem value="Webinar">Webinar</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="edit_description" className="mb-2 block">
-                  Description
-                </Label>
-                <Textarea
-                  id="edit_description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Enter event description"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit_vendor_accommodation_id" className="mb-2 block">
-                    Venue (Hotel) *
-                  </Label>
-                  <Select
-                    value={formData.vendor_accommodation_id}
-                    onValueChange={(value) => {
-                      const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                      setSelectedVendorId(value);
-                      setFormData({ 
-                        ...formData, 
-                        vendor_accommodation_id: value,
-                        accommodation_setup_id: "", // Reset setup selection
-                        location: selectedHotel?.location || "",
-                        latitude: selectedHotel?.latitude || "",
-                        longitude: selectedHotel?.longitude || ""
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select venue hotel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendorHotels.map((hotel) => (
-                        <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                          {hotel.vendor_name} - {hotel.location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="edit_accommodation_setup_id" className="mb-2 block">
-                    Accommodation Setup *
-                  </Label>
-                  <Select
-                    value={formData.accommodation_setup_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, accommodation_setup_id: value })
-                    }
-                    disabled={!selectedVendorId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={selectedVendorId ? "Select accommodation setup" : "Select venue first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accommodationSetups.map((setup) => (
-                        <SelectItem key={setup.id} value={setup.id.toString()}>
-                          {setup.event_name} ({setup.single_rooms} single, {setup.double_rooms} double)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor="edit_start_date" className="mb-2 block">
-                    Start Date *
-                  </Label>
-                  <Input
-                    id="edit_start_date"
-                    type="date"
-                    value={formData.start_date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) =>
-                      handleDateChange("start_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_end_date" className="mb-2 block">
-                    End Date *
-                  </Label>
-                  <Input
-                    id="edit_end_date"
-                    type="date"
-                    value={formData.end_date}
-                    min={formData.start_date || new Date().toISOString().split('T')[0]}
-                    onChange={(e) =>
-                      handleDateChange("end_date", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_registration_deadline" className="mb-2 block">
-                    Registration Deadline
-                  </Label>
-                  <Input
-                    id="edit_registration_deadline"
-                    type="date"
-                    value={formData.registration_deadline}
-                    max={formData.start_date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, registration_deadline: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_duration_days" className="mb-2 block">
-                    Duration (Days)
-                  </Label>
-                  <Input
-                    id="edit_duration_days"
-                    value={formData.duration_days}
-                    readOnly
-                    className="bg-gray-50"
-                    placeholder="Auto-calculated"
-                  />
-                </div>
-              </div>
-
-              {formData.vendor_accommodation_id && formData.accommodation_setup_id && (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <Label className="mb-2 block text-sm font-medium text-gray-700">
-                    Selected Configuration
-                  </Label>
-                  <div className="text-sm text-gray-600 grid grid-cols-2 gap-4">
-                    <div>
-                      <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                      <p><strong>Location:</strong> {formData.location}</p>
-                    </div>
-                    <div>
-                      <p><strong>Setup:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.event_name}</p>
-                      <p><strong>Capacity:</strong> {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.single_rooms} single, {accommodationSetups.find(s => s.id.toString() === formData.accommodation_setup_id)?.double_rooms} double rooms</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <Label htmlFor="edit_banner_image" className="mb-2 block">
-                  Banner Image URL
-                </Label>
-                <Input
-                  id="edit_banner_image"
-                  value={formData.banner_image}
-                  onChange={(e) =>
-                    setFormData({ ...formData, banner_image: e.target.value })
-                  }
-                  placeholder="https://example.com/banner.jpg"
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="edit_perdiem_rate" className="mb-2 block">
-                    Per Diem Rate
-                  </Label>
-                  <Input
-                    id="edit_perdiem_rate"
-                    type="number"
-                    value={formData.perdiem_rate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, perdiem_rate: e.target.value })
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit_perdiem_currency" className="mb-2 block">
-                    Currency
-                  </Label>
-                  <Select
-                    value={formData.perdiem_currency}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, perdiem_currency: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="CHF">CHF</SelectItem>
-                      <SelectItem value="CAD">CAD</SelectItem>
-                      <SelectItem value="AUD">AUD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="edit_status" className="mb-2 block">
-                    Status
-                  </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Published">Published</SelectItem>
-                      <SelectItem value="Ongoing">Ongoing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <DialogTitle className="text-lg font-bold text-white">Edit Event</DialogTitle>
+                  <p className="text-red-100 text-xs mt-1">Update the event details below</p>
                 </div>
               </div>
             </div>
-            <DialogFooter className="gap-3">
+            <div className="flex-1 overflow-y-auto modal-scrollbar">
+              <div className="p-8 pb-0">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Event Title - Takes 2 columns */}
+                    <div className="md:col-span-2">
+                      <Label htmlFor="edit_title" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Event Title
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="edit_title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Enter event title"
+                        className="h-11 text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all"
+                      />
+                    </div>
+
+                    {/* Event Type - 1 column */}
+                    <div>
+                      <Label htmlFor="edit_event_type" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Event Type
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={formData.event_type}
+                        onValueChange={(value) => setFormData({ ...formData, event_type: value })}
+                      >
+                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Conference">Conference</SelectItem>
+                          <SelectItem value="Workshop">Workshop</SelectItem>
+                          <SelectItem value="Training">Training</SelectItem>
+                          <SelectItem value="Meeting">Meeting</SelectItem>
+                          <SelectItem value="Seminar">Seminar</SelectItem>
+                          <SelectItem value="Webinar">Webinar</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Description - Full width */}
+                  <div>
+                    <Label htmlFor="edit_description" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Description
+                    </Label>
+                    <Textarea
+                      id="edit_description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Describe the event, its purpose, and what participants can expect..."
+                      className="min-h-[80px] text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Venue and Accommodation Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <Label htmlFor="edit_vendor_accommodation_id" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Venue (Hotel)
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Select
+                        value={formData.vendor_accommodation_id}
+                        onValueChange={(value) => {
+                          const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
+                          setSelectedVendorId(value);
+                          setFormData({ 
+                            ...formData, 
+                            vendor_accommodation_id: value,
+                            location: selectedHotel?.location || "",
+                            latitude: selectedHotel?.latitude || "",
+                            longitude: selectedHotel?.longitude || ""
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                          <SelectValue placeholder="Select venue hotel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vendorHotels.map((hotel) => (
+                            <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                              {hotel.vendor_name} - {hotel.location}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_expected_participants" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Expected Participants
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="edit_expected_participants"
+                        type="number"
+                        value={formData.expected_participants}
+                        onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
+                        placeholder="Enter expected number of participants"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Room Configuration */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="edit_single_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Single Rooms
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="edit_single_rooms"
+                        type="number"
+                        value={formData.single_rooms}
+                        onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
+                        placeholder="Number of single rooms needed"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit_double_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                        Double Rooms
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="edit_double_rooms"
+                        type="number"
+                        value={formData.double_rooms}
+                        onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
+                        placeholder="Number of double rooms needed"
+                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                  <div>
+                    <Label htmlFor="edit_start_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Start Date
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="edit_start_date"
+                      type="date"
+                      value={formData.start_date}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => handleDateChange("start_date", e.target.value)}
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_end_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      End Date
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="edit_end_date"
+                      type="date"
+                      value={formData.end_date}
+                      min={formData.start_date || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => handleDateChange("end_date", e.target.value)}
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_registration_deadline" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Registration Deadline
+                    </Label>
+                    <Input
+                      id="edit_registration_deadline"
+                      type="date"
+                      value={formData.registration_deadline}
+                      max={formData.start_date}
+                      onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_duration_days" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Duration (Days)
+                    </Label>
+                    <Input
+                      id="edit_duration_days"
+                      value={formData.duration_days}
+                      readOnly
+                      className="h-11 bg-gray-50 border-gray-300 rounded-lg"
+                      placeholder="Auto-calculated"
+                    />
+                  </div>
+                </div>
+
+                {formData.vendor_accommodation_id && (
+                  <div className="bg-gray-50 p-4 rounded-lg mt-6">
+                    <Label className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Selected Configuration
+                    </Label>
+                    <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
+                        <p><strong>Location:</strong> {formData.location}</p>
+                      </div>
+                      <div>
+                        <p><strong>Expected Participants:</strong> {formData.expected_participants || 'Not set'}</p>
+                        <p><strong>Room Allocation:</strong> {formData.single_rooms || 0} single, {formData.double_rooms || 0} double rooms</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="mt-6">
+                  <Label htmlFor="edit_banner_image" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    Banner Image URL
+                  </Label>
+                  <Input
+                    id="edit_banner_image"
+                    value={formData.banner_image}
+                    onChange={(e) => setFormData({ ...formData, banner_image: e.target.value })}
+                    placeholder="https://example.com/banner.jpg"
+                    className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                  <div>
+                    <Label htmlFor="edit_perdiem_rate" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Per Diem Rate
+                    </Label>
+                    <Input
+                      id="edit_perdiem_rate"
+                      type="number"
+                      value={formData.perdiem_rate}
+                      onChange={(e) => setFormData({ ...formData, perdiem_rate: e.target.value })}
+                      placeholder="0.00"
+                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_perdiem_currency" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Currency
+                    </Label>
+                    <Select
+                      value={formData.perdiem_currency}
+                      onValueChange={(value) => setFormData({ ...formData, perdiem_currency: value })}
+                    >
+                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                        <SelectItem value="CHF">CHF</SelectItem>
+                        <SelectItem value="CAD">CAD</SelectItem>
+                        <SelectItem value="AUD">AUD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit_status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                      Status
+                    </Label>
+                    <Select
+                      value={formData.status}
+                      onValueChange={(value) => setFormData({ ...formData, status: value })}
+                    >
+                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Published">Published</SelectItem>
+                        <SelectItem value="Ongoing">Ongoing</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons - Sticky at bottom */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
               <Button
+                type="button"
                 variant="outline"
                 onClick={closeModals}
-                className="px-6 py-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                disabled={submitting}
+                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
                 onClick={handleEditEvent}
                 disabled={submitting}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm"
+                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Updating...
+                    Updating Event...
                   </>
                 ) : (
-                  "Update Event"
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Update Event
+                  </>
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 

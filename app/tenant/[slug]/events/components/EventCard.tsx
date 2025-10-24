@@ -106,10 +106,10 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
               {getStatusIcon(event.event_status || '')}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-base sm:text-lg text-gray-800 mb-1 line-clamp-2 break-words">
+              <h3 className="font-bold text-xs text-gray-800 mb-1 line-clamp-2 break-words">
                 {event.title}
               </h3>
-              <p className="text-xs sm:text-sm text-gray-600 truncate">
+              <p className="text-xs text-gray-600 truncate">
                 {event.event_type}
               </p>
               {getStatusText() && (
@@ -213,14 +213,14 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
           )}
 
           <div className="flex-1 space-y-2 sm:space-y-3">
-            <div className="text-sm sm:text-base text-gray-600">
+            <div className="text-xs text-gray-600">
               <span className="font-medium">Location:</span>
               <span className="text-gray-800 font-semibold ml-1 break-words">
                 {event.location || "TBD"}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1">
                 <Users className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-600">Registered:</span>
@@ -234,7 +234,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
             </div>
 
             {event.event_status === 'ongoing' && (
-              <div className="flex items-center gap-1 text-sm">
+              <div className="flex items-center gap-1 text-xs">
                 <CheckCircle className="w-4 h-4 text-blue-500" />
                 <span className="text-gray-600">Checked In:</span>
                 <span className="font-semibold text-blue-700">{event.checked_in_count || 0}</span>

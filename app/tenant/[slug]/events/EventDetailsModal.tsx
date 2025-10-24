@@ -53,6 +53,9 @@ interface Event {
   perdiem_rate?: number;
   perdiem_currency?: string;
   registration_deadline?: string;
+  expected_participants?: number;
+  single_rooms?: number;
+  double_rooms?: number;
 }
 
 interface Participant {
@@ -121,6 +124,19 @@ export default function EventDetailsModal({
   const [editedEvent, setEditedEvent] = useState<Partial<Event>>({});
   const [saving, setSaving] = useState(false);
   const [, setAgenda] = useState<AgendaItem[]>([]);
+  const [accommodationStats, setAccommodationStats] = useState<{
+    bookedRooms: number;
+    checkedInVisitors: number;
+    totalBookings: number;
+  }>({ bookedRooms: 0, checkedInVisitors: 0, totalBookings: 0 });
+  
+  const [roomStats, setRoomStats] = useState<{
+    single_rooms: { occupied: number; total: number; guests: number };
+    double_rooms: { occupied: number; total: number; guests: number };
+    expected_participants: number;
+    total_capacity: number;
+    total_occupied_guests: number;
+  } | null>(null);
 
   const handleParticipantsChange = useCallback((count: number) => {
     setParticipantsCount(count);
@@ -179,6 +195,54 @@ export default function EventDetailsModal({
       }
     } catch {
       setAttachmentsCount(0);
+    }
+  }, [event, accessToken]);
+
+  const fetchAccommodationStats = useCallback(async () => {
+    if (!event || !accessToken) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/accommodation-stats`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAccommodationStats({
+          bookedRooms: data.booked_rooms || 0,
+          checkedInVisitors: data.checked_in_visitors || 0,
+          totalBookings: data.total_bookings || 0,
+        });
+      }
+    } catch {
+      setAccommodationStats({ bookedRooms: 0, checkedInVisitors: 0, totalBookings: 0 });
+    }
+  }, [event, accessToken]);
+
+  const fetchRoomStats = useCallback(async () => {
+    if (!event || !accessToken) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.id}/room-stats`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setRoomStats(data);
+      }
+    } catch {
+      setRoomStats(null);
     }
   }, [event, accessToken]);
 
@@ -290,6 +354,8 @@ export default function EventDetailsModal({
           fetchParticipants(),
           fetchAgenda(),
           fetchAttachments(),
+          fetchAccommodationStats(),
+          fetchRoomStats(),
         ]);
         setEditedEvent(event);
       };
@@ -304,6 +370,8 @@ export default function EventDetailsModal({
     fetchParticipants,
     fetchAgenda,
     fetchAttachments,
+    fetchAccommodationStats,
+    fetchRoomStats,
   ]);
 
   const saveEventChanges = async () => {
@@ -458,11 +526,11 @@ export default function EventDetailsModal({
                 <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                <h2 className="text-lg font-bold text-gray-900 leading-tight">
                   {event.title}
                 </h2>
-                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5" />
+                <p className="text-xs text-gray-600 mt-1 flex items-center gap-2">
+                  <MapPin className="h-3 w-3" />
                   {event.location || "Location not specified"}
                 </p>
               </div>
@@ -588,10 +656,10 @@ export default function EventDetailsModal({
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
                   <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
                       Event Overview
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600">
+                    <p className="text-xs text-gray-600">
                       Detailed information about this event
                     </p>
                   </div>
@@ -720,38 +788,38 @@ export default function EventDetailsModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                     <div className="bg-white p-5 sm:p-6 rounded-xl border-2 border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                      <h3 className="font-semibold text-base sm:text-lg mb-4 text-red-800 flex items-center gap-2">
+                      <h3 className="font-semibold text-sm mb-4 text-red-800 flex items-center gap-2">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-sm">
-                          <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                          <Calendar className="h-4 w-4 text-white" />
                         </div>
                         Event Details
                       </h3>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-sm font-normal text-gray-600">Type:</span>
-                          <span className="text-sm text-gray-900 font-medium">{event.event_type || "Not specified"}</span>
+                          <span className="text-xs font-normal text-gray-600">Type:</span>
+                          <span className="text-xs text-gray-900 font-medium">{event.event_type || "Not specified"}</span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-sm font-normal text-gray-600">Start Date:</span>
-                          <span className="text-sm text-gray-900 font-medium">
+                          <span className="text-xs font-normal text-gray-600">Start Date:</span>
+                          <span className="text-xs text-gray-900 font-medium">
                             {new Date(event.start_date).toLocaleDateString('en-US', {
                               month: 'short', day: 'numeric', year: 'numeric'
                             })}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-sm font-normal text-gray-600">End Date:</span>
-                          <span className="text-sm text-gray-900 font-medium">
+                          <span className="text-xs font-normal text-gray-600">End Date:</span>
+                          <span className="text-xs text-gray-900 font-medium">
                             {new Date(event.end_date).toLocaleDateString('en-US', {
                               month: 'short', day: 'numeric', year: 'numeric'
                             })}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2">
-                          <span className="text-sm font-normal text-gray-600">Duration:</span>
-                          <span className="text-sm text-red-600 font-semibold">
+                          <span className="text-xs font-normal text-gray-600">Duration:</span>
+                          <span className="text-xs text-red-600 font-semibold">
                             {Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
                           </span>
                         </div>
@@ -759,26 +827,26 @@ export default function EventDetailsModal({
                     </div>
 
                     <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 p-5 sm:p-6 rounded-xl border-2 border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                      <h3 className="font-semibold text-base sm:text-lg mb-4 text-red-800 flex items-center gap-2">
+                      <h3 className="font-semibold text-sm mb-4 text-red-800 flex items-center gap-2">
                         <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 shadow-sm">
-                          <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                          <Users className="h-4 w-4 text-white" />
                         </div>
                         Participants
                       </h3>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Registered:
                           </span>
-                          <span className="text-gray-900 font-semibold">
+                          <span className="text-xs text-gray-900 font-semibold">
                             {participants.length} participants
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Selected:
                           </span>
-                          <span className="text-green-700 font-semibold">
+                          <span className="text-xs text-green-700 font-semibold">
                             {
                               participants.filter(
                                 (p) =>
@@ -790,10 +858,10 @@ export default function EventDetailsModal({
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Facilitators:
                           </span>
-                          <span className="text-purple-700 font-semibold">
+                          <span className="text-xs text-purple-700 font-semibold">
                             {(() => {
                               console.log('All participants:', participants);
                               console.log('Participant roles:', participants.map(p => ({ id: p.id, role: p.role, participant_role: p.participant_role, name: p.participant_name })));
@@ -807,10 +875,10 @@ export default function EventDetailsModal({
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Organizers:
                           </span>
-                          <span className="text-blue-700 font-semibold">
+                          <span className="text-xs text-blue-700 font-semibold">
                             {(() => {
                               const organizers = participants.filter(
                                 (p) => (p.participant_role || p.role) === "organizer"
@@ -822,10 +890,10 @@ export default function EventDetailsModal({
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Waiting:
                           </span>
-                          <span className="text-yellow-700 font-semibold">
+                          <span className="text-xs text-yellow-700 font-semibold">
                             {
                               participants.filter(
                                 (p) =>
@@ -837,10 +905,10 @@ export default function EventDetailsModal({
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-red-200">
-                          <span className="font-medium text-gray-700">
+                          <span className="text-xs font-medium text-gray-700">
                             Attended:
                           </span>
-                          <span className="text-red-700 font-semibold">
+                          <span className="text-xs text-red-700 font-semibold">
                             {
                               participants.filter(
                                 (p) =>
@@ -851,11 +919,11 @@ export default function EventDetailsModal({
                             visitors
                           </span>
                         </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-medium text-gray-700">
+                        <div className="flex justify-between items-center py-2 border-b border-red-200">
+                          <span className="text-xs font-medium text-gray-700">
                             Declined:
                           </span>
-                          <span className="text-orange-700 font-semibold">
+                          <span className="text-xs text-orange-700 font-semibold">
                             {
                               participants.filter(
                                 (p) => p.status === "declined"
@@ -864,31 +932,94 @@ export default function EventDetailsModal({
                             participants
                           </span>
                         </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-xs font-medium text-gray-700">
+                            Accommodation:
+                          </span>
+                          <span className="text-xs text-indigo-700 font-semibold">
+                            {accommodationStats.checkedInVisitors}/{accommodationStats.totalBookings} checked in
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 sm:p-6 rounded-xl border-2 border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                      <h3 className="font-semibold text-sm mb-4 text-blue-800 flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 shadow-sm">
+                          <Users className="h-4 w-4 text-white" />
+                        </div>
+                        Accommodation
+                      </h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Expected:</span>
+                          <span className="text-xs text-gray-900 font-medium">{event.expected_participants || 0} participants</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Single Rooms:</span>
+                          <span className="text-xs text-blue-600 font-semibold">
+                            {roomStats ? `${roomStats.single_rooms.occupied}/${roomStats.single_rooms.total}` : `0/${event.single_rooms || 0}`} rooms
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Double Rooms:</span>
+                          <span className="text-xs text-blue-600 font-semibold">
+                            {roomStats ? `${roomStats.double_rooms.occupied}/${roomStats.double_rooms.total}` : `0/${event.double_rooms || 0}`} rooms
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Total Capacity:</span>
+                          <span className="text-xs text-indigo-600 font-semibold">
+                            {(event.single_rooms || 0) + (event.double_rooms || 0) * 2} people
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Booked Rooms:</span>
+                          <span className="text-xs text-purple-600 font-semibold">{accommodationStats.bookedRooms} rooms</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Checked In:</span>
+                          <span className="text-xs text-green-600 font-semibold">{accommodationStats.checkedInVisitors} visitors</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-xs font-normal text-gray-600">Occupancy:</span>
+                          <span className={`text-xs font-semibold ${
+                            accommodationStats.bookedRooms > ((event.single_rooms || 0) + (event.double_rooms || 0))
+                              ? 'text-red-600'
+                              : accommodationStats.bookedRooms === ((event.single_rooms || 0) + (event.double_rooms || 0))
+                              ? 'text-orange-600'
+                              : 'text-green-600'
+                          }`}>
+                            {accommodationStats.bookedRooms}/{(event.single_rooms || 0) + (event.double_rooms || 0)}
+                            {' '}({Math.round((accommodationStats.bookedRooms / Math.max(1, (event.single_rooms || 0) + (event.double_rooms || 0))) * 100)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
-                      <h3 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
+                      <h3 className="font-bold text-sm mb-4 text-gray-800 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
                         Location & Venue
                       </h3>
                       <div className="space-y-4">
                         <div>
-                          <span className="font-medium text-gray-700 block mb-2">
+                          <span className="text-xs font-medium text-gray-700 block mb-2">
                             Venue:
                           </span>
                           <div className="bg-white p-3 rounded-lg border">
-                            <span className="text-gray-900 font-semibold">
+                            <span className="text-xs text-gray-900 font-semibold">
                               {event.location || "Not specified"}
                             </span>
                           </div>
                         </div>
                         {event.address && (
                           <div>
-                            <span className="font-medium text-gray-700 block mb-2">
+                            <span className="text-xs font-medium text-gray-700 block mb-2">
                               Address:
                             </span>
                             <div className="bg-white p-3 rounded-lg border">
-                              <span className="text-gray-700">
+                              <span className="text-xs text-gray-700">
                                 {event.address}
                               </span>
                             </div>
@@ -910,7 +1041,7 @@ export default function EventDetailsModal({
                           
                           return (
                             <div>
-                              <span className="font-medium text-gray-700 block mb-2">
+                              <span className="text-xs font-medium text-gray-700 block mb-2">
                                 Map:
                               </span>
                               <GoogleMap
@@ -929,7 +1060,7 @@ export default function EventDetailsModal({
 
                 {!editMode && event.description && (
                   <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800">
+                    <h3 className="font-bold text-sm mb-4 text-gray-800">
                       Description
                     </h3>
                     <div className="prose prose-sm max-w-none">
@@ -942,7 +1073,7 @@ export default function EventDetailsModal({
 
                 {!editMode && event.banner_image && event.banner_image.trim() && (
                   <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800">
+                    <h3 className="font-bold text-sm mb-4 text-gray-800">
                       Event Banner
                     </h3>
                     <LazyImage
