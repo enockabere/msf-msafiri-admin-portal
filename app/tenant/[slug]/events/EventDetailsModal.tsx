@@ -987,23 +987,23 @@ export default function EventDetailsModal({
                           <span className="text-xs font-normal text-gray-600">Occupancy:</span>
                           <span className={`text-xs font-semibold ${
                             roomStats ? (
-                              (roomStats.single_rooms.occupied + roomStats.double_rooms.occupied) > (roomStats.single_rooms.total + roomStats.double_rooms.total)
+                              roomStats.total_occupied_guests > roomStats.total_capacity
                                 ? 'text-red-600'
-                                : (roomStats.single_rooms.occupied + roomStats.double_rooms.occupied) === (roomStats.single_rooms.total + roomStats.double_rooms.total)
+                                : roomStats.total_occupied_guests === roomStats.total_capacity
                                 ? 'text-orange-600'
                                 : 'text-green-600'
                             ) : (
-                              accommodationStats.bookedRooms > ((event.single_rooms || 0) + (event.double_rooms || 0))
+                              accommodationStats.totalBookings > ((event.single_rooms || 0) + ((event.double_rooms || 0) * 2))
                                 ? 'text-red-600'
-                                : accommodationStats.bookedRooms === ((event.single_rooms || 0) + (event.double_rooms || 0))
+                                : accommodationStats.totalBookings === ((event.single_rooms || 0) + ((event.double_rooms || 0) * 2))
                                 ? 'text-orange-600'
                                 : 'text-green-600'
                             )
                           }`}>
                             {roomStats ? (
-                              `${roomStats.single_rooms.occupied + roomStats.double_rooms.occupied}/${roomStats.single_rooms.total + roomStats.double_rooms.total} (${Math.round(((roomStats.single_rooms.occupied + roomStats.double_rooms.occupied) / Math.max(1, roomStats.single_rooms.total + roomStats.double_rooms.total)) * 100)}%)`
+                              `${roomStats.total_occupied_guests}/${roomStats.total_capacity} (${Math.round((roomStats.total_occupied_guests / Math.max(1, roomStats.total_capacity)) * 100)}%)`
                             ) : (
-                              `${accommodationStats.bookedRooms}/${(event.single_rooms || 0) + (event.double_rooms || 0)} (${Math.round((accommodationStats.bookedRooms / Math.max(1, (event.single_rooms || 0) + (event.double_rooms || 0))) * 100)}%)`
+                              `${accommodationStats.totalBookings}/${(event.single_rooms || 0) + ((event.double_rooms || 0) * 2)} (${Math.round((accommodationStats.totalBookings / Math.max(1, (event.single_rooms || 0) + ((event.double_rooms || 0) * 2))) * 100)}%)`
                             )}
                           </span>
                         </div>
