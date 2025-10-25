@@ -147,6 +147,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           href: "/travel-requirements",
           badge: null,
         },
+        {
+          icon: Car,
+          label: "Transport Setup",
+          href: "/transport-setup",
+          badge: null,
+        },
       ],
     },
     {
@@ -382,12 +388,14 @@ export default function Sidebar({
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
                 item.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
+                item.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                 item.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${item.href}` :
                 item.href,
           children: item.children ? item.children.map(child => ({
             ...child,
             href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
                   child.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
+                  child.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                   child.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${child.href}` :
                   child.href
           })) : undefined
