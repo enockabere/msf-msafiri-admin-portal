@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Car, Save, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
@@ -26,10 +27,23 @@ interface TransportSetupProps {
   tenantSlug: string;
 }
 
+const TRANSPORT_PROVIDERS = [
+  {
+    value: "absolute_cabs",
+    label: "Absolute Cabs",
+    defaultConfig: {
+      api_base_url: "https://api.absolutecabs.co.ke",
+      token_url: "https://api.absolutecabs.co.ke/oauth/token"
+    }
+  }
+  // Add more providers here in the future
+];
+
 export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSecrets, setShowSecrets] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("absolute_cabs");
   const [config, setConfig] = useState<TransportProvider>({
     provider_name: "absolute_cabs",
     is_enabled: false,
@@ -54,9 +68,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
       try {
         const response = await apiClient.request<TransportProvider>(
-          `/transport-providers/tenant/${tenantId}/provider/absolute_cabs`
+          `/transport-providers/tenant/${tenantId}/provider/${selectedProvider}`
         );
         setConfig(response);
+        setSelectedProvider(response.provider_name);
       } catch (error: any) {
         if (error.status !== 404) {
           throw error;
@@ -82,19 +97,21 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
       const tenantId = tenantResponse.id;
 
+      const configToSave = { ...config, provider_name: selectedProvider };
+      
       if (config.id) {
         // Update existing
         await apiClient.request(
-          `/transport-providers/tenant/${tenantId}/provider/absolute_cabs`,
+          `/transport-providers/tenant/${tenantId}/provider/${selectedProvider}`,
           {
             method: "PUT",
             body: JSON.stringify({
-              is_enabled: config.is_enabled,
-              client_id: config.client_id,
-              client_secret: config.client_secret,
-              hmac_secret: config.hmac_secret,
-              api_base_url: config.api_base_url,
-              token_url: config.token_url
+              is_enabled: configToSave.is_enabled,
+              client_id: configToSave.client_id,
+              client_secret: configToSave.client_secret,
+              hmac_secret: configToSave.hmac_secret,
+              api_base_url: configToSave.api_base_url,
+              token_url: configToSave.token_url
             })
           }
         );
@@ -104,7 +121,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
           `/transport-providers/tenant/${tenantId}`,
           {
             method: "POST",
-            body: JSON.stringify(config)
+            body: JSON.stringify(configToSave)
           }
         );
         setConfig(response);
@@ -146,24 +163,55 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
             Transport Provider Setup
           </CardTitle>
           <CardDescription>
-            Configure transport providers for booking services. Currently supporting Absolute Cabs.
+            Configure transport providers for booking services. Select a provider and enter your credentials.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="enabled"
-              checked={config.is_enabled}
-              onCheckedChange={(checked) => setConfig(prev => ({ ...prev, is_enabled: checked }))}
-            />
-            <Label htmlFor="enabled">Enable Absolute Cabs Integration</Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="provider">Transport Provider</Label>
+              <Select value={selectedProvider} onValueChange={(value) => {
+                setSelectedProvider(value);
+                const provider = TRANSPORT_PROVIDERS.find(p => p.value === value);
+                if (provider) {
+                  setConfig(prev => ({
+                    ...prev,
+                    provider_name: value,
+                    api_base_url: provider.defaultConfig.api_base_url,
+                    token_url: provider.defaultConfig.token_url
+                  }));
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select transport provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSPORT_PROVIDERS.map((provider) => (
+                    <SelectItem key={provider.value} value={provider.value}>
+                      {provider.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="enabled"
+                checked={config.is_enabled}
+                onCheckedChange={(checked) => setConfig(prev => ({ ...prev, is_enabled: checked }))}
+              />
+              <Label htmlFor="enabled">
+                Enable {TRANSPORT_PROVIDERS.find(p => p.value === selectedProvider)?.label} Integration
+              </Label>
+            </div>
           </div>
 
           {config.is_enabled && (
             <div className="space-y-4 border-t pt-4">
               <Alert>
                 <AlertDescription>
-                  Configure your Absolute Cabs API credentials. These will be securely stored and used for transport bookings.
+                  Configure your {TRANSPORT_PROVIDERS.find(p => p.value === selectedProvider)?.label} API credentials. These will be securely stored and used for transport bookings.
                 </AlertDescription>
               </Alert>
 
