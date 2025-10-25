@@ -60,25 +60,31 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
   }, [tenantSlug]);
 
   const fetchConfig = async () => {
+    console.log("DEBUG: Starting fetchConfig for tenant:", tenantSlug);
     try {
       setLoading(true);
       
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
       const tenantId = tenantResponse.id;
+      console.log("DEBUG: Tenant ID:", tenantId, "Provider:", selectedProvider);
 
       try {
         const response = await apiClient.request<TransportProvider>(
           `/transport-providers/tenant/${tenantId}/provider/${selectedProvider}`
         );
+        console.log("DEBUG: Config found:", response);
         setConfig(response);
         setSelectedProvider(response.provider_name);
       } catch (error: any) {
+        console.log("DEBUG: Inner catch - Error:", error.status, error.message);
         if (error.status !== 404) {
           throw error;
         }
+        console.log("DEBUG: 404 handled silently in inner catch");
         // 404 is expected when no config exists yet - silently continue with defaults
       }
     } catch (error: any) {
+      console.log("DEBUG: Outer catch - Error:", error.status, error.message);
       // Only show error if it's not a 404 (404 is expected when no config exists)
       if (error.status !== 404) {
         console.error("Error fetching config:", error);
@@ -87,8 +93,11 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
           description: "Failed to load transport configuration",
           variant: "destructive"
         });
+      } else {
+        console.log("DEBUG: 404 handled silently in outer catch");
       }
     } finally {
+      console.log("DEBUG: fetchConfig completed");
       setLoading(false);
     }
   };
@@ -134,7 +143,8 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         title: "Success",
         description: "Transport configuration saved successfully"
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.log("DEBUG: Save error:", error.status, error.message);
       console.error("Error saving config:", error);
       toast({
         title: "Error",
