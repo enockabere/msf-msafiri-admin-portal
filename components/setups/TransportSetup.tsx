@@ -58,11 +58,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         );
         setConfig(response);
       } catch (error: any) {
-        if (error.status === 404) {
-          // Provider not configured yet, keep defaults
-        } else {
+        if (error.status !== 404) {
           throw error;
         }
+        // 404 is expected when no config exists yet - silently continue with defaults
       }
     } catch (error) {
       console.error("Error fetching config:", error);
