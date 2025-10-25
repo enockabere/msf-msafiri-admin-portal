@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, AlertCircle, CheckCircle2, Plane, FileText, CreditCard, MapPin } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 interface TravelRequirement {
   id?: number;
@@ -31,7 +31,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { apiClient } = useAuthenticatedApi();
-  const { toast } = useToast();
+
 
   useEffect(() => {
     fetchData();
