@@ -1635,11 +1635,6 @@ export default function EventRegistrationFormPage() {
                           country
                         </p>
                         <p>• HRCOs book travel for country program staff</p>
-                        <p>
-                          • Send travel details to
-                          amsterdam.developmentofficer@amsterdam.msf.org for
-                          visa documents
-                        </p>
                       </div>
                       <div className="space-y-3">
                         <Label className="text-sm font-medium flex items-center gap-1">
