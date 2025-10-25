@@ -28,6 +28,7 @@ import {
   Package,
   Hotel,
   Car,
+  Plane,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
@@ -138,6 +139,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           icon: Package,
           label: "Stationary & Equipment",
           href: "/inventory",
+          badge: null,
+        },
+        {
+          icon: Plane,
+          label: "Travel Requirements",
+          href: "/setups?tab=travel-requirements",
           badge: null,
         },
       ],

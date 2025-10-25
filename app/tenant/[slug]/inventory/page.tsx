@@ -27,17 +27,10 @@ import {
   Edit,
   Trash2,
   Package,
-  Wrench,
   ChevronLeft,
   ChevronRight,
-  Grid3X3,
-  List,
   Search,
   Download,
-  ArrowUpDown,
-  TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 
@@ -67,8 +60,8 @@ export default function InventoryPage() {
   const itemsPerPage = 12;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof InventoryItem>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, ] = useState<keyof InventoryItem>("name");
+  const [sortDirection, ] = useState<"asc" | "desc">("asc");
 
   const fetchItems = useCallback(async () => {
     try {
@@ -273,23 +266,8 @@ export default function InventoryPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleSort = (field: keyof InventoryItem) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
   const filteredItems = getFilteredAndSortedItems();
 
-  // Calculate statistics
-  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockItems = items.filter((item) => item.quantity < 10).length;
-  const goodConditionItems = items.filter(
-    (item) => item.condition === "good"
-  ).length;
 
   return (
     <DashboardLayout>
