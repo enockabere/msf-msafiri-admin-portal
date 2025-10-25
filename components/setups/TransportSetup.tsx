@@ -109,24 +109,33 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
       const configToSave = { ...config, provider_name: selectedProvider };
       
+      // Prepare update data - only include secrets if they're not masked
+      const updateData: any = {
+        is_enabled: configToSave.is_enabled,
+        client_id: configToSave.client_id,
+        api_base_url: configToSave.api_base_url,
+        token_url: configToSave.token_url
+      };
+      
+      // Only include secrets if they're not masked (dots)
+      if (configToSave.client_secret && !configToSave.client_secret.includes('•')) {
+        updateData.client_secret = configToSave.client_secret;
+      }
+      if (configToSave.hmac_secret && !configToSave.hmac_secret.includes('•')) {
+        updateData.hmac_secret = configToSave.hmac_secret;
+      }
+      
       if (config.id) {
         // Update existing
         await apiClient.request(
           `/transport-providers/tenant/${tenantId}/provider/${selectedProvider}`,
           {
             method: "PUT",
-            body: JSON.stringify({
-              is_enabled: configToSave.is_enabled,
-              client_id: configToSave.client_id,
-              client_secret: configToSave.client_secret,
-              hmac_secret: configToSave.hmac_secret,
-              api_base_url: configToSave.api_base_url,
-              token_url: configToSave.token_url
-            })
+            body: JSON.stringify(updateData)
           }
         );
       } else {
-        // Create new
+        // Create new - include all fields
         const response = await apiClient.request<TransportProvider>(
           `/transport-providers/tenant/${tenantId}`,
           {
@@ -141,6 +150,9 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         title: "Success",
         description: "Transport configuration saved successfully"
       });
+      
+      // Refresh to get updated masked secrets
+      await fetchConfig();
     } catch (error: any) {
       console.error("Error saving config:", error);
       toast({
@@ -256,6 +268,9 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                       {showSecrets ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
+                  {config.client_secret && config.client_secret.includes('•') && (
+                    <p className="text-xs text-muted-foreground">Secret is configured. Enter new value to update.</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -267,6 +282,9 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                     onChange={(e) => setConfig(prev => ({ ...prev, hmac_secret: e.target.value }))}
                     placeholder="Enter HMAC secret"
                   />
+                  {config.hmac_secret && config.hmac_secret.includes('•') && (
+                    <p className="text-xs text-muted-foreground">Secret is configured. Enter new value to update.</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
