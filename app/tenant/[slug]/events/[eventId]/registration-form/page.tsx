@@ -127,6 +127,8 @@ export default function EventRegistrationFormPage() {
   const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [hasDietaryRequirements, setHasDietaryRequirements] = useState(false);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
 
   const tenantSlug = params.slug as string;
   const eventId = params.eventId as string;
@@ -184,6 +186,20 @@ export default function EventRegistrationFormPage() {
     },
   ];
 
+  const fetchCountries = useCallback(async () => {
+    try {
+      setLoadingCountries(true);
+      const response = await apiClient.request<{countries: string[]}>('/countries');
+      setCountries(response.countries || []);
+    } catch (error) {
+      console.error("Error fetching countries:", error);
+      // Fallback to basic countries if API fails
+      setCountries(["Kenya", "Uganda", "Tanzania", "Ethiopia", "South Sudan", "Somalia", "Other"]);
+    } finally {
+      setLoadingCountries(false);
+    }
+  }, [apiClient]);
+
   const fetchEvent = useCallback(async () => {
     try {
       const eventData = await apiClient.request<Event>(`/events/${eventId}?tenant=${tenantSlug}`);
@@ -207,6 +223,7 @@ export default function EventRegistrationFormPage() {
 
   useEffect(() => {
     fetchEvent();
+    fetchCountries();
     
     // Clear form data on page unload for privacy
     const handleBeforeUnload = () => {
@@ -223,7 +240,7 @@ export default function EventRegistrationFormPage() {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [fetchEvent]);
+  }, [fetchEvent, fetchCountries]);
 
   const handleInputChange = (
     field: keyof FormData,
@@ -1318,12 +1335,25 @@ export default function EventRegistrationFormPage() {
                       <Label className="text-sm font-medium flex items-center gap-1">
                         Which country are you travelling from? <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        value={formData.travellingFromCountry}
-                        onChange={(e) => handleInputChange("travellingFromCountry", e.target.value)}
-                        className="border-2 focus:border-blue-500 bg-white"
-                        placeholder="e.g., Kenya, Uganda, Tanzania"
-                      />
+                      {loadingCountries ? (
+                        <div className="flex items-center gap-2 p-3 bg-white border-2 rounded-lg">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm text-gray-600">Loading countries...</span>
+                        </div>
+                      ) : (
+                        <select
+                          value={formData.travellingFromCountry}
+                          onChange={(e) => handleInputChange("travellingFromCountry", e.target.value)}
+                          className="w-full p-3 border-2 focus:border-blue-500 bg-white rounded-lg text-sm"
+                        >
+                          <option value="">Select a country</option>
+                          {countries.map((country) => (
+                            <option key={country} value={country}>
+                              {country}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
 
