@@ -144,7 +144,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
         {
           icon: Plane,
           label: "Travel Requirements",
-          href: "/setups?tab=travel-requirements",
+          href: "/travel-requirements",
           badge: null,
         },
       ],
@@ -251,7 +251,7 @@ export default function Sidebar({
           setUserRoles(uniqueRoles);
 
           // Check if user is tenant admin for current tenant
-          const currentTenantSlug = window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1];
+          const currentTenantSlug = typeof window !== 'undefined' ? window.location.pathname.match(/\/tenant\/([^/]+)/)?.[1] : null;
           if (currentTenantSlug && user.email) {
             try {
               // Try to get the specific tenant by slug instead of all tenants
@@ -381,11 +381,13 @@ export default function Sidebar({
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
+                item.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                 item.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${item.href}` :
                 item.href,
           children: item.children ? item.children.map(child => ({
             ...child,
             href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
+                  child.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                   child.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${child.href}` :
                   child.href
           })) : undefined
@@ -410,7 +412,7 @@ export default function Sidebar({
           const hasActiveChild = item.children.some(child => {
             if (child.href.includes('?tab=')) {
               const [basePath, query] = child.href.split('?');
-              return pathname === basePath && window.location.search.includes(query);
+              return pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
             }
             return pathname === child.href;
           });
@@ -660,7 +662,7 @@ export default function Sidebar({
                     if (child.href.includes('?tab=')) {
                       // For tab-based URLs, check if pathname + search params match
                       const [basePath, query] = child.href.split('?');
-                      return pathname === basePath && window.location.search.includes(query);
+                      return pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
                     }
                     return pathname === child.href;
                   });
@@ -736,7 +738,7 @@ export default function Sidebar({
                                 let childIsActive = false;
                                 if (child.href.includes('?tab=')) {
                                   const [basePath, query] = child.href.split('?');
-                                  childIsActive = pathname === basePath && window.location.search.includes(query);
+                                  childIsActive = pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
                                 } else {
                                   childIsActive = pathname === child.href;
                                 }
