@@ -58,6 +58,7 @@ interface FormData {
   lineManagerEmail: string;
   phoneNumber: string;
   travellingInternationally: string;
+  travellingFromCountry: string;
   accommodationType: string;
   dietaryRequirements: string;
   accommodationNeeds: string;
@@ -97,6 +98,7 @@ export default function PublicEventRegistrationPage() {
     lineManagerEmail: "",
     phoneNumber: "",
     travellingInternationally: "",
+    travellingFromCountry: "",
     accommodationType: "",
     dietaryRequirements: "",
     accommodationNeeds: "",
@@ -148,6 +150,7 @@ export default function PublicEventRegistrationPage() {
       title: "Travel & Accommodation",
       fields: [
         "travellingInternationally",
+        "travellingFromCountry",
         "accommodationType",
         "dietaryRequirements",
         "accommodationNeeds",
@@ -235,6 +238,7 @@ export default function PublicEventRegistrationPage() {
         lineManagerEmail: "",
         phoneNumber: "",
         travellingInternationally: "",
+        travellingFromCountry: "",
         accommodationType: "",
         dietaryRequirements: "",
         accommodationNeeds: "",
@@ -1162,7 +1166,7 @@ export default function PublicEventRegistrationPage() {
 
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-1">
-                    Will you be travelling internationally for this training?{" "}
+                    Will you be travelling internationally for this event?{" "}
                     <span className="text-red-500">*</span>
                   </Label>
                   <RadioGroup
@@ -1176,14 +1180,16 @@ export default function PublicEventRegistrationPage() {
                       <div
                         key={option}
                         className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        onClick={() => handleInputChange("travellingInternationally", option)}
                       >
                         <RadioGroupItem
                           value={option}
                           id={`travel-${option}`}
+                          className="pointer-events-none"
                         />
                         <Label
                           htmlFor={`travel-${option}`}
-                          className="cursor-pointer flex-1"
+                          className="cursor-pointer flex-1 pointer-events-none"
                         >
                           {option}
                         </Label>
@@ -1191,6 +1197,52 @@ export default function PublicEventRegistrationPage() {
                     ))}
                   </RadioGroup>
                 </div>
+
+                {formData.travellingInternationally === "Yes" && (
+                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 space-y-3">
+                    <Label className="text-sm font-medium flex items-center gap-1">
+                      Which country are you travelling from? <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={
+                        countries.find(
+                          (country) => country === formData.travellingFromCountry
+                        )
+                          ? {
+                              value: formData.travellingFromCountry,
+                              label: formData.travellingFromCountry,
+                            }
+                          : null
+                      }
+                      onChange={(option) =>
+                        handleInputChange("travellingFromCountry", option?.value || "")
+                      }
+                      options={countries.map((country) => ({
+                        value: country,
+                        label: country,
+                      }))}
+                      placeholder="Select country..."
+                      isClearable
+                      isSearchable
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          border: "2px solid #3b82f6",
+                          borderRadius: "0.5rem",
+                          padding: "0.25rem",
+                          backgroundColor: "white",
+                          "&:hover": { borderColor: "#3b82f6" },
+                          "&:focus-within": {
+                            borderColor: "#3b82f6",
+                            boxShadow: "none",
+                          },
+                        }),
+                      }}
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <Label className="text-sm font-medium flex items-center gap-1">
@@ -1458,11 +1510,7 @@ export default function PublicEventRegistrationPage() {
                         country
                       </p>
                       <p>• HRCOs book travel for country program staff</p>
-                      <p>
-                        • Send travel details to
-                        amsterdam.developmentofficer@amsterdam.msf.org for visa
-                        documents
-                      </p>
+
                     </div>
                     <div className="space-y-3">
                       <Label className="text-sm font-medium flex items-center gap-1">
