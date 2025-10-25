@@ -473,10 +473,10 @@ export default function SecurityBriefingsPage() {
         <div className="w-full space-y-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Security Briefings
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 mt-1">
                 Manage and distribute security information across events
               </p>
             </div>
@@ -492,74 +492,74 @@ export default function SecurityBriefingsPage() {
           </div>
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-shadow duration-200">
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-700 mb-1">
+                    <p className="text-xs sm:text-sm font-medium text-blue-700 mb-1">
                       Total Briefings
                     </p>
-                    <p className="text-3xl font-bold text-blue-900">
+                    <p className="text-lg sm:text-2xl font-bold text-blue-900">
                       {briefings.length}
                     </p>
                   </div>
-                  <div className="p-3 bg-blue-200 rounded-xl">
-                    <Shield className="w-8 h-8 text-blue-700" />
+                  <div className="p-2 sm:p-3 bg-blue-200 rounded-xl">
+                    <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-blue-700" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100 hover:shadow-lg transition-shadow duration-200">
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-700 mb-1">
+                    <p className="text-xs sm:text-sm font-medium text-green-700 mb-1">
                       Published
                     </p>
-                    <p className="text-3xl font-bold text-green-900">
+                    <p className="text-lg sm:text-2xl font-bold text-green-900">
                       {publishedCount}
                     </p>
                   </div>
-                  <div className="p-3 bg-green-200 rounded-xl">
-                    <CheckCircle2 className="w-8 h-8 text-green-700" />
+                  <div className="p-2 sm:p-3 bg-green-200 rounded-xl">
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-700" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-amber-100 hover:shadow-lg transition-shadow duration-200">
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-amber-700 mb-1">
+                    <p className="text-xs sm:text-sm font-medium text-amber-700 mb-1">
                       Drafts
                     </p>
-                    <p className="text-3xl font-bold text-amber-900">
+                    <p className="text-lg sm:text-2xl font-bold text-amber-900">
                       {draftCount}
                     </p>
                   </div>
-                  <div className="p-3 bg-amber-200 rounded-xl">
-                    <Clock className="w-8 h-8 text-amber-700" />
+                  <div className="p-2 sm:p-3 bg-amber-200 rounded-xl">
+                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-700" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-gray-100 hover:shadow-lg transition-shadow duration-200">
-              <CardContent className="p-6">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Archived
                     </p>
-                    <p className="text-3xl font-bold text-gray-900">
+                    <p className="text-lg sm:text-2xl font-bold text-gray-900">
                       {archivedCount}
                     </p>
                   </div>
-                  <div className="p-3 bg-gray-200 rounded-xl">
-                    <Archive className="w-8 h-8 text-gray-700" />
+                  <div className="p-2 sm:p-3 bg-gray-200 rounded-xl">
+                    <Archive className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
                   </div>
                 </div>
               </CardContent>
@@ -568,22 +568,22 @@ export default function SecurityBriefingsPage() {
 
           {/* Filters */}
           <Card className="border-0 shadow-md bg-white">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search briefings..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-10 border-gray-300 focus:border-red-500 focus:ring-red-500"
+                    className="pl-10 h-9 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500"
                   />
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 h-10 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                    className="px-3 h-9 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
                   >
                     <option value="all">All Status</option>
                     <option value="draft">Draft</option>
@@ -593,7 +593,7 @@ export default function SecurityBriefingsPage() {
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="px-4 h-10 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                    className="px-3 h-9 border border-gray-300 rounded-lg text-xs sm:text-sm font-medium focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
                   >
                     <option value="all">All Categories</option>
                     {categories.map((cat) => (
@@ -606,7 +606,7 @@ export default function SecurityBriefingsPage() {
               </div>
               {filteredBriefings.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-600">
                     Showing{" "}
                     <span className="font-semibold text-gray-900">
                       {filteredBriefings.length}
@@ -627,7 +627,7 @@ export default function SecurityBriefingsPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {filteredBriefings.length === 0 ? (
               <div className="col-span-full">
                 <Card className="border-0 shadow-md">
@@ -667,19 +667,19 @@ export default function SecurityBriefingsPage() {
                     setShowDetailsModal(true);
                   }}
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 sm:p-5">
                     <div className="flex flex-col h-full">
                       {/* Header with Icon and Title */}
-                      <div className="flex items-start gap-3 mb-4">
-                        <div className="p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-md group-hover:shadow-lg transition-shadow">
-                          <Shield className="w-7 h-7 text-red-700" />
+                      <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-md group-hover:shadow-lg transition-shadow">
+                          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-red-700" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2 leading-tight group-hover:text-red-700 transition-colors">
+                          <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-tight group-hover:text-red-700 transition-colors">
                             {briefing.title}
                           </h3>
                           {briefing.event_title && (
-                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1">
                               <span className="text-red-600">•</span>
                               {briefing.event_title}
                             </p>
@@ -688,10 +688,10 @@ export default function SecurityBriefingsPage() {
                       </div>
 
                       {/* Status and Type Badges */}
-                      <div className="flex-1 space-y-4">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           <Badge
-                            className={`px-3 py-1 text-xs font-semibold shadow-sm ${
+                            className={`px-2 py-0.5 text-xs font-semibold shadow-sm ${
                               briefing.status === "published"
                                 ? "bg-green-100 text-green-800 border border-green-300"
                                 : briefing.status === "draft"
@@ -700,18 +700,18 @@ export default function SecurityBriefingsPage() {
                             }`}
                           >
                             {briefing.status === "published" && (
-                              <CheckCircle2 className="w-3 h-3 mr-1 inline" />
+                              <CheckCircle2 className="w-2.5 h-2.5 mr-1 inline" />
                             )}
                             {briefing.status === "draft" && (
-                              <Clock className="w-3 h-3 mr-1 inline" />
+                              <Clock className="w-2.5 h-2.5 mr-1 inline" />
                             )}
                             {briefing.status === "archived" && (
-                              <Archive className="w-3 h-3 mr-1 inline" />
+                              <Archive className="w-2.5 h-2.5 mr-1 inline" />
                             )}
                             {briefing.status?.toUpperCase() || "DRAFT"}
                           </Badge>
                           <Badge
-                            className={`px-3 py-1 text-xs font-semibold ${
+                            className={`px-2 py-0.5 text-xs font-semibold ${
                               briefing.brief_type === "general"
                                 ? "bg-blue-100 text-blue-800 border border-blue-300"
                                 : "bg-purple-100 text-purple-800 border border-purple-300"
@@ -725,14 +725,14 @@ export default function SecurityBriefingsPage() {
 
                         {/* Category and Location */}
                         {(briefing.category || briefing.location) && (
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             {briefing.category && (
-                              <Badge className="px-3 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                              <Badge className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
                                 {briefing.category}
                               </Badge>
                             )}
                             {briefing.location && (
-                              <Badge className="px-3 py-1 text-xs font-medium bg-pink-100 text-pink-800 border border-pink-300">
+                              <Badge className="px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-800 border border-pink-300">
                                 📍 {briefing.location}
                               </Badge>
                             )}
@@ -740,12 +740,12 @@ export default function SecurityBriefingsPage() {
                         )}
 
                         {/* Content Preview */}
-                        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3 border border-gray-200">
                           <div className="flex items-center gap-2 mb-2">
                             {briefing.content_type === "text" ? (
-                              <FileText className="w-4 h-4 text-gray-600" />
+                              <FileText className="w-3.5 h-3.5 text-gray-600" />
                             ) : (
-                              <Video className="w-4 h-4 text-purple-600" />
+                              <Video className="w-3.5 h-3.5 text-purple-600" />
                             )}
                             <span className="text-xs font-medium text-gray-600 uppercase">
                               {briefing.content_type === "text"
@@ -753,19 +753,19 @@ export default function SecurityBriefingsPage() {
                                 : "Video/Document"}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-700 line-clamp-2">
+                          <div className="text-xs sm:text-sm text-gray-700 line-clamp-2">
                             {briefing.content}
                           </div>
                         </div>
                       </div>
 
                       {/* Footer with Actions */}
-                      <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
                         <div className="text-xs text-gray-500 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {new Date(briefing.created_at).toLocaleDateString()}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5 sm:gap-2">
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -774,10 +774,10 @@ export default function SecurityBriefingsPage() {
                             }}
                             variant="outline"
                             size="sm"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all px-2 py-1 text-xs"
                           >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
+                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">View</span>
                           </Button>
                           {briefing.status === "draft" && (
                             <Button
@@ -787,10 +787,10 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-green-700 border-green-300 hover:bg-green-50 transition-all"
+                              className="text-green-700 border-green-300 hover:bg-green-50 transition-all px-2 py-1 text-xs"
                             >
-                              <CheckCircle2 className="w-4 h-4 mr-1" />
-                              Publish
+                              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Publish</span>
                             </Button>
                           )}
                           {briefing.status === "published" && (
@@ -801,10 +801,10 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-gray-700 border-gray-300 hover:bg-gray-100 transition-all"
+                              className="text-gray-700 border-gray-300 hover:bg-gray-100 transition-all px-2 py-1 text-xs"
                             >
-                              <Archive className="w-4 h-4 mr-1" />
-                              Archive
+                              <Archive className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Archive</span>
                             </Button>
                           )}
                           {briefing.status === "draft" && (
@@ -815,9 +815,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-red-700 border-red-300 hover:bg-red-50 transition-all"
+                              className="text-red-700 border-red-300 hover:bg-red-50 transition-all px-2 py-1"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           )}
                         </div>
