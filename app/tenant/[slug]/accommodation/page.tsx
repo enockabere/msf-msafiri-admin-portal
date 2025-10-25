@@ -221,7 +221,7 @@ export default function AccommodationPage() {
         <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-2xl p-6 border-2 border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Visitor Allocations</h1>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Visitor Accommodations</h1>
               <p className="text-sm text-gray-600">View automatically booked accommodations</p>
             </div>
             <div className="flex items-center gap-3">

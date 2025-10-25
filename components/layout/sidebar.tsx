@@ -162,14 +162,8 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       badge: null,
     },
     {
-      icon: Shield,
-      label: "Security Briefings",
-      href: "/security-briefings",
-      badge: null,
-    },
-    {
       icon: Hotel,
-      label: "Visitor Allocations",
+      label: "Visitor Accommodations",
       href: "/accommodation",
       badge: null,
     },
@@ -177,6 +171,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       icon: Car,
       label: "Transport Management",
       href: "/transport",
+      badge: null,
+    },
+    {
+      icon: Shield,
+      label: "Security Briefings",
+      href: "/security-briefings",
       badge: null,
     },
   ];
