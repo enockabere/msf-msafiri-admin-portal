@@ -862,15 +862,9 @@ export default function EventDetailsModal({
                             Facilitators:
                           </span>
                           <span className="text-xs text-purple-700 font-semibold">
-                            {(() => {
-                              console.log('All participants:', participants);
-                              console.log('Participant roles:', participants.map(p => ({ id: p.id, role: p.role, participant_role: p.participant_role, name: p.participant_name })));
-                              const facilitators = participants.filter(
-                                (p) => (p.participant_role || p.role) === "facilitator"
-                              );
-                              console.log('Filtered facilitators:', facilitators);
-                              return facilitators.length;
-                            })()}{" "}
+                            {participants.filter(
+                              (p) => (p.participant_role || p.role) === "facilitator"
+                            ).length}{" "}
                             facilitators
                           </span>
                         </div>
@@ -879,13 +873,9 @@ export default function EventDetailsModal({
                             Organizers:
                           </span>
                           <span className="text-xs text-blue-700 font-semibold">
-                            {(() => {
-                              const organizers = participants.filter(
-                                (p) => (p.participant_role || p.role) === "organizer"
-                              );
-                              console.log('Filtered organizers:', organizers);
-                              return organizers.length;
-                            })()}{" "}
+                            {participants.filter(
+                              (p) => (p.participant_role || p.role) === "organizer"
+                            ).length}{" "}
                             organizers
                           </span>
                         </div>

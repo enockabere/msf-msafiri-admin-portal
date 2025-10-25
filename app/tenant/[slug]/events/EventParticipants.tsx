@@ -114,21 +114,9 @@ export default function EventParticipants({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [viewingParticipant, setViewingParticipant] =
     useState<Participant | null>(null);
+  const [viewingParticipantIndex, setViewingParticipantIndex] = useState(0);
 
-  // Log when viewing participant changes
-  useEffect(() => {
-    if (viewingParticipant) {
-      console.log("=== VIEWING PARTICIPANT DETAILS ===");
-      console.log("Participant ID:", viewingParticipant.id);
-      console.log("Name:", viewingParticipant.full_name);
-      console.log("Email:", viewingParticipant.email);
-      console.log("Status:", viewingParticipant.status);
-      console.log("Role:", viewingParticipant.role);
-      console.log("Decline reason:", viewingParticipant.decline_reason);
-      console.log("Declined at:", viewingParticipant.declined_at);
-      console.log("Full participant object:", viewingParticipant);
-    }
-  }, [viewingParticipant]);
+
   const [selectedParticipants, setSelectedParticipants] = useState<number[]>(
     []
   );
@@ -144,6 +132,14 @@ export default function EventParticipants({
     onClose: () => void;
     eventId: number;
     getStatusColor: (status: string) => string;
+    onStatusChange: (participantId: number, newStatus: string) => Promise<void>;
+    onRoleChange: (participantId: number, newRole: string) => Promise<void>;
+    onNext: () => void;
+    onPrevious: () => void;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    currentIndex: number;
+    totalCount: number;
   }
 
   interface TransportBooking {
@@ -205,6 +201,14 @@ export default function EventParticipants({
     onClose,
     eventId,
     getStatusColor,
+    onStatusChange,
+    onRoleChange,
+    onNext,
+    onPrevious,
+    hasNext,
+    hasPrevious,
+    currentIndex,
+    totalCount,
   }: ParticipantDetailsModalProps) {
     const [transportData, setTransportData] = useState<TransportBooking[]>([]);
     const [accommodationData, setAccommodationData] = useState<
@@ -224,6 +228,22 @@ export default function EventParticipants({
             'X-Tenant-ID': tenantSlug
           };
 
+          // First, get the current event details to get the event title
+          let currentEventTitle = null;
+          try {
+            const eventResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}`,
+              { headers }
+            );
+            if (eventResponse.ok) {
+              const eventData = await eventResponse.json();
+              currentEventTitle = eventData.title;
+              console.log('Current event title:', currentEventTitle);
+            }
+          } catch (error) {
+            console.log('Could not fetch event details:', error);
+          }
+
           // Skip transport API calls for now - service not implemented
           setTransportData([]);
 
@@ -236,37 +256,53 @@ export default function EventParticipants({
             );
             if (accommodationResponse.ok) {
               const allAccommodations = await accommodationResponse.json();
-              console.log('All accommodations fetched:', allAccommodations.length);
+              console.log('All accommodations from API:', allAccommodations);
+              console.log('Filtering for participant:', participant.email, 'event:', eventId);
 
-              // Filter by participant email and event ID
+              // Filter by participant email and event title
               const filteredAccommodations = Array.isArray(allAccommodations)
                 ? allAccommodations.filter((acc: AccommodationData) => {
                     const emailMatch = acc.guest_email?.toLowerCase() === participant.email?.toLowerCase();
-                    // Also check if the accommodation has an event_id field and matches
-                    const eventMatch = !acc.event_id || acc.event_id === eventId;
+                    
+                    // Check event title match
+                    const eventTitleFromObject = acc.event?.title;
+                    
+                    console.log('Full accommodation object:', acc);
+                    console.log('Event filtering:', {
+                      'accommodation event title': eventTitleFromObject,
+                      'current event title': currentEventTitle,
+                      'event match': currentEventTitle ? eventTitleFromObject === currentEventTitle : true
+                    });
+                    
+                    // Match by event title if we have the current event title
+                    // Be more lenient - if we can't get event title or no event info, show all
+                    const eventMatch = !currentEventTitle || !eventTitleFromObject ? 
+                      true : // Show all if missing event info
+                      eventTitleFromObject === currentEventTitle;
+
+                    // Exclude cancelled accommodations
+                    const statusMatch = acc.status?.toLowerCase() !== 'cancelled';
 
                     console.log('Checking accommodation:', {
                       guest_email: acc.guest_email,
-                      participant_email: participant.email,
+                      'event.title': eventTitleFromObject,
+                      status: acc.status,
                       emailMatch,
-                      event_id: acc.event_id,
-                      eventId,
                       eventMatch,
-                      include: emailMatch && eventMatch
+                      statusMatch,
+                      willInclude: emailMatch && eventMatch && statusMatch
                     });
 
-                    return emailMatch && eventMatch;
+                    return emailMatch && eventMatch && statusMatch;
                   })
                 : [];
 
-              console.log('Filtered accommodations for', participant.email, ':', filteredAccommodations);
+              console.log('Filtered accommodations for participant:', filteredAccommodations);
               setAccommodationData(filteredAccommodations);
             } else {
-              console.error('Failed to fetch accommodation:', accommodationResponse.status);
               setAccommodationData([]);
             }
           } catch (error) {
-            console.error('Error fetching accommodation:', error);
             setAccommodationData([]);
           }
 
@@ -278,20 +314,12 @@ export default function EventParticipants({
             );
             if (qrResponse.ok) {
               const qrData = await qrResponse.json();
-              console.log("QR Response from API:", qrData);
-              console.log("QR Token:", qrData.qr_token);
-              console.log("QR Data URL length:", qrData.qr_data_url?.length);
+
 
               // Try to decode what's in the QR code by creating a temporary image
               if (qrData.qr_data_url) {
                 const img = new Image();
                 img.onload = () => {
-                  console.log(
-                    "QR Code image loaded, dimensions:",
-                    img.width,
-                    "x",
-                    img.height
-                  );
                   // The QR code content is embedded in the image, we can't easily decode it here
                   // But we can test by scanning it or checking API logs
                 };
@@ -340,35 +368,23 @@ export default function EventParticipants({
 
           // Fetch line manager recommendation
           try {
-            console.log('=== FETCHING LINE MANAGER RECOMMENDATION ===');
-            console.log('Participant ID:', participant.id);
-            console.log('Participant Email:', participant.email);
-            console.log('Event ID:', eventId);
-            console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`);
+
             
             const recommendationResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`,
               { headers }
             );
             
-            console.log('Recommendation response status:', recommendationResponse.status);
-            console.log('Recommendation response ok:', recommendationResponse.ok);
-            console.log('Recommendation response headers:', Object.fromEntries(recommendationResponse.headers.entries()));
+
             
             if (recommendationResponse.ok) {
               const recommendationData = await recommendationResponse.json();
-              console.log('RAW Recommendation response:', recommendationData);
-              console.log('Recommendation data type:', typeof recommendationData);
-              console.log('Recommendation data keys:', Object.keys(recommendationData || {}));
+
               setRecommendationData(recommendationData);
             } else {
-              const errorText = await recommendationResponse.text();
-              console.log('Recommendation fetch failed with status:', recommendationResponse.status);
-              console.log('Error response body:', errorText);
               setRecommendationData(null);
             }
           } catch (error) {
-            console.error('Recommendation fetch network error:', error);
             setRecommendationData(null);
           }
         } catch {
@@ -385,7 +401,6 @@ export default function EventParticipants({
         if (participant.email) {
           fetchParticipantServices();
         } else {
-          console.warn('Participant has no email, cannot fetch accommodation');
           setLoading(false);
         }
       } else {
@@ -398,22 +413,87 @@ export default function EventParticipants({
         <div className="bg-white w-full h-full overflow-y-auto">
           <div className="p-6">
             <div className="flex justify-between items-center mb-8">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {participant.full_name}
-                </h3>
-                <p className="text-gray-600 mt-1">{participant.email}</p>
-                <Badge className={`mt-2 ${getStatusColor(participant.status)}`}>
-                  {participant.status.replace("_", " ").toUpperCase()}
-                </Badge>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {participant.full_name}
+                  </h3>
+                  <p className="text-gray-600 mt-1">{participant.email}</p>
+                  <Badge className={`mt-2 ${getStatusColor(participant.status)}`}>
+                    {participant.status.replace("_", " ").toUpperCase()}
+                  </Badge>
+                </div>
+                
+                {/* Navigation Controls */}
+                <div className="flex items-center gap-2 ml-8">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onPrevious}
+                    disabled={!hasPrevious}
+                    className="h-8 px-3"
+                  >
+                    ← Previous
+                  </Button>
+                  <span className="text-sm text-gray-500 px-2">
+                    {currentIndex + 1} of {totalCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onNext}
+                    disabled={!hasNext}
+                    className="h-8 px-3"
+                  >
+                    Next →
+                  </Button>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 text-xl px-3 py-2"
-              >
-                ×
-              </Button>
+              
+              <div className="flex items-center gap-3">
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={participant.status}
+                    onValueChange={(value) => onStatusChange(participant.id, value)}
+                  >
+                    <SelectTrigger className="w-32 h-8 bg-white">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="selected">Selected</SelectItem>
+                      <SelectItem value="not_selected">Not Selected</SelectItem>
+                      <SelectItem value="waiting">Waiting</SelectItem>
+                      <SelectItem value="canceled">Canceled</SelectItem>
+                      <SelectItem value="attended">Attended</SelectItem>
+                      <SelectItem value="declined">Declined</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={participant.participant_role || participant.role || "visitor"}
+                    onValueChange={(value) => onRoleChange(participant.id, value)}
+                  >
+                    <SelectTrigger className="w-32 h-8 bg-white">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="visitor">Visitor</SelectItem>
+                      <SelectItem value="facilitator">Facilitator</SelectItem>
+                      <SelectItem value="organizer">Organizer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700 text-xl px-3 py-2"
+                >
+                  ×
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -994,12 +1074,7 @@ export default function EventParticipants({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="underline"
-                                    onClick={() =>
-                                      console.log(
-                                        "Frontend QR URL clicked:",
-                                        `${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`
-                                      )
-                                    }
+
                                   >
                                     {process.env.NEXT_PUBLIC_BASE_URL}
                                     /public/qr/{voucherData.qr_token}
@@ -1078,7 +1153,7 @@ export default function EventParticipants({
         const countForCallback = roleFilter ? filteredData.length : data.length; // Count all participants when no role filter
         onParticipantsChange?.(countForCallback);
 
-        // Show first 2 participants raw data
+
       }
     } catch {
       // Error handled silently
@@ -1141,7 +1216,6 @@ export default function EventParticipants({
         });
       }
     } catch (error) {
-      console.error("❌ Frontend: Network error adding participant:", error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Network Error!",
@@ -1181,7 +1255,6 @@ export default function EventParticipants({
         });
       }
     } catch (error) {
-      console.error("Failed to update participant status:", error);
     }
   };
 
@@ -1216,7 +1289,6 @@ export default function EventParticipants({
         });
       }
     } catch (error) {
-      console.error("Failed to resend invitation:", error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -1363,7 +1435,6 @@ export default function EventParticipants({
         });
       }
     } catch (error) {
-      console.error("Failed to delete participant:", error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -1418,10 +1489,22 @@ export default function EventParticipants({
 
       if (response.ok) {
         fetchParticipants();
+        
+        // If viewing this participant in modal, refresh their data after a short delay
+        // to allow backend accommodation reallocation to complete
+        if (viewingParticipant && viewingParticipant.id === participantId) {
+          setTimeout(() => {
+            const updatedParticipant = participants.find(p => p.id === participantId);
+            if (updatedParticipant) {
+              setViewingParticipant({...updatedParticipant, participant_role: newRole, role: newRole});
+            }
+          }, 2000); // 2 second delay to allow backend processing
+        }
+        
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Success!",
-          description: `Participant role updated to ${newRole}.`,
+          description: `Participant role updated to ${newRole}. Accommodation will be reallocated automatically.`,
         });
       } else {
         const { toast } = await import("@/hooks/use-toast");
@@ -1432,7 +1515,6 @@ export default function EventParticipants({
         });
       }
     } catch (error) {
-      console.error("Failed to update participant role:", error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -1499,6 +1581,30 @@ export default function EventParticipants({
       setProcessingBulkRole(false);
     }
   };
+
+  const handleNextParticipant = () => {
+    const nextIndex = viewingParticipantIndex + 1;
+    if (nextIndex < filteredParticipants.length) {
+      setViewingParticipantIndex(nextIndex);
+      setViewingParticipant(filteredParticipants[nextIndex]);
+    }
+  };
+
+  const handlePreviousParticipant = () => {
+    const prevIndex = viewingParticipantIndex - 1;
+    if (prevIndex >= 0) {
+      setViewingParticipantIndex(prevIndex);
+      setViewingParticipant(filteredParticipants[prevIndex]);
+    }
+  };
+
+  const handleViewParticipant = (participant: Participant) => {
+    const index = filteredParticipants.findIndex(p => p.id === participant.id);
+    setViewingParticipantIndex(index);
+    setViewingParticipant(participant);
+  };
+
+
 
   return (
     <div className="space-y-4">
@@ -1790,7 +1896,15 @@ export default function EventParticipants({
                 </td>
                 <td
                   className="px-3 py-4 whitespace-nowrap cursor-pointer"
-                  onClick={() => setViewingParticipant(participant)}
+                  onClick={() => {
+                    console.log('Selected participant accommodation data:', {
+                      participant_email: participant.email,
+                      accommodation_type: participant.accommodation_type || participant.accommodationType,
+                      accommodation_needs: participant.accommodation_needs || participant.accommodationNeeds,
+                      travelling_internationally: participant.travelling_internationally || participant.travellingInternationally
+                    });
+                    handleViewParticipant(participant);
+                  }}
                 >
                   <div className="flex items-center">
                     <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
@@ -2016,6 +2130,14 @@ export default function EventParticipants({
           onClose={() => setViewingParticipant(null)}
           eventId={eventId}
           getStatusColor={getStatusColor}
+          onStatusChange={handleStatusChange}
+          onRoleChange={handleRoleChange}
+          onNext={handleNextParticipant}
+          onPrevious={handlePreviousParticipant}
+          hasNext={viewingParticipantIndex < filteredParticipants.length - 1}
+          hasPrevious={viewingParticipantIndex > 0}
+          currentIndex={viewingParticipantIndex}
+          totalCount={filteredParticipants.length}
         />
       )}
     </div>

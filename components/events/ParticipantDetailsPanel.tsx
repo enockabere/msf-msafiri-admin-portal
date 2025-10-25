@@ -553,6 +553,12 @@ export default function ParticipantDetailsPanel({
                           <span className="font-medium">{(participantDetails as Record<string, unknown>).gender as string}</span>
                         </div>
                       )}
+                      {(participantDetails as Record<string, unknown>).travelling_from_country && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-600">Travelling From:</span>
+                          <span className="font-medium">{(participantDetails as Record<string, unknown>).travelling_from_country as string}</span>
+                        </div>
+                      )}
                       {(participantDetails as Record<string, unknown>).requires_eta && (
                         <div className="flex items-center gap-1">
                           <span className="text-gray-600">ETA Required:</span>
