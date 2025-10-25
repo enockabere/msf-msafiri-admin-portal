@@ -115,7 +115,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
       toast({
         title: "Success",
-        description: `Travel requirements updated for ${country}`,
+        description: `Travel requirements updated for ${country}`
       });
 
     } catch (error) {
@@ -123,7 +123,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       toast({
         title: "Error",
         description: "Failed to update travel requirements",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setSaving(null);
