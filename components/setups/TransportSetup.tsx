@@ -70,7 +70,14 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         const response = await apiClient.request<TransportProvider>(
           `/transport-providers/tenant/${tenantId}/provider/${selectedProvider}`
         );
-        setConfig(response);
+        setConfig({
+          ...response,
+          client_id: response.client_id || "",
+          client_secret: response.client_secret || "",
+          hmac_secret: response.hmac_secret || "",
+          api_base_url: response.api_base_url || "https://api.absolutecabs.co.ke",
+          token_url: response.token_url || "https://api.absolutecabs.co.ke/oauth/token"
+        });
         setSelectedProvider(response.provider_name);
       } catch (error: any) {
         if (error.message && !error.message.includes("not found")) {
@@ -223,7 +230,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                   <Label htmlFor="client_id">Client ID</Label>
                   <Input
                     id="client_id"
-                    value={config.client_id}
+                    value={config.client_id || ""}
                     onChange={(e) => setConfig(prev => ({ ...prev, client_id: e.target.value }))}
                     placeholder="Enter client ID"
                   />
@@ -235,7 +242,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                     <Input
                       id="client_secret"
                       type={showSecrets ? "text" : "password"}
-                      value={config.client_secret}
+                      value={config.client_secret || ""}
                       onChange={(e) => setConfig(prev => ({ ...prev, client_secret: e.target.value }))}
                       placeholder="Enter client secret"
                     />
@@ -256,7 +263,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                   <Input
                     id="hmac_secret"
                     type={showSecrets ? "text" : "password"}
-                    value={config.hmac_secret}
+                    value={config.hmac_secret || ""}
                     onChange={(e) => setConfig(prev => ({ ...prev, hmac_secret: e.target.value }))}
                     placeholder="Enter HMAC secret"
                   />
@@ -266,7 +273,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                   <Label htmlFor="api_base_url">API Base URL</Label>
                   <Input
                     id="api_base_url"
-                    value={config.api_base_url}
+                    value={config.api_base_url || ""}
                     onChange={(e) => setConfig(prev => ({ ...prev, api_base_url: e.target.value }))}
                     placeholder="https://api.absolutecabs.co.ke"
                   />
@@ -276,7 +283,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                   <Label htmlFor="token_url">Token URL</Label>
                   <Input
                     id="token_url"
-                    value={config.token_url}
+                    value={config.token_url || ""}
                     onChange={(e) => setConfig(prev => ({ ...prev, token_url: e.target.value }))}
                     placeholder="https://api.absolutecabs.co.ke/oauth/token"
                   />
