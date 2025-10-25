@@ -78,13 +78,16 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         }
         // 404 is expected when no config exists yet - silently continue with defaults
       }
-    } catch (error) {
-      console.error("Error fetching config:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load transport configuration",
-        variant: "destructive"
-      });
+    } catch (error: any) {
+      // Only show error if it's not a 404 (404 is expected when no config exists)
+      if (error.status !== 404) {
+        console.error("Error fetching config:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load transport configuration",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }
