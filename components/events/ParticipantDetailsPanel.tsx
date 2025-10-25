@@ -238,7 +238,7 @@ export default function ParticipantDetailsPanel({
       try {
 
         const accommodationData = await apiClient.request(
-          `/accommodation/participant/${participantId}/accommodation`,
+          `/accommodation/participant/${participantId}/accommodation?event_id=${eventId}`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
@@ -252,7 +252,7 @@ export default function ParticipantDetailsPanel({
       try {
 
         const transportData = await apiClient.request(
-          `/transport/bookings/?participant_id=${participantId}`,
+          `/transport/bookings/?participant_id=${participantId}&event_id=${eventId}`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
