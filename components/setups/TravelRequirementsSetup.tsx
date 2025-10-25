@@ -85,7 +85,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
         flight_ticket_required: true
       };
 
-      const updatedReq = { ...currentReq, [field]: value };
+      let updatedReq = { ...currentReq, [field]: value };
 
       if (currentReq.id) {
         // Update existing requirement
