@@ -239,16 +239,20 @@ export default function ParticipantDetailsPanel({
         const accommodationUrl = `/accommodation/participant/${participantId}/accommodation?event_id=${eventId}`;
         console.log(`DEBUG ACCOMMODATION: Fetching from URL: ${accommodationUrl}`);
         console.log(`DEBUG ACCOMMODATION: Participant ID: ${participantId}, Event ID: ${eventId}, Tenant: ${tenantSlug}`);
+        console.log(`DEBUG ACCOMMODATION: Full API base URL will be: ${apiClient.getBaseUrl()}${accommodationUrl}`);
 
         const accommodationData = await apiClient.request(
           accommodationUrl,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
 
-        console.log(`DEBUG ACCOMMODATION: Received ${accommodationData.length} accommodations:`, accommodationData);
+        console.log(`DEBUG ACCOMMODATION: SUCCESS - Received ${accommodationData.length} accommodations:`, accommodationData);
         setAccommodationDetails(accommodationData as AccommodationDetails[]);
-      } catch (error) {
-        console.error('Failed to fetch accommodation details:', error);
+      } catch (error: any) {
+        console.error('DEBUG ACCOMMODATION: ERROR occurred:', error);
+        console.error('DEBUG ACCOMMODATION: Error message:', error.message);
+        console.error('DEBUG ACCOMMODATION: Error status:', error.status);
+        console.error('DEBUG ACCOMMODATION: Full error object:', error);
         setAccommodationDetails([]);
       }
 
