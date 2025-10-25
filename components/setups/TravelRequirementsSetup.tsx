@@ -89,13 +89,14 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
       if (currentReq.id) {
         // Update existing requirement
-        await apiClient.request(
+        const response = await apiClient.request<TravelRequirement>(
           `/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(country)}`,
           {
             method: "PUT",
             body: JSON.stringify({ [field]: value })
           }
         );
+        updatedReq = response;
       } else {
         // Create new requirement
         const response = await apiClient.request<TravelRequirement>(
@@ -105,7 +106,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
             body: JSON.stringify(updatedReq)
           }
         );
-        updatedReq.id = response.id;
+        updatedReq = response;
       }
 
       setRequirements(prev => ({
