@@ -134,16 +134,12 @@ export default function GuestHouseBookingModal({
     if (guest) {
       setFormData(prev => ({
         ...prev,
-        guest_name: guest.name,
-        guest_email: guest.email,
-        guest_phone: guest.phone
+        guest_name: guest.name
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        guest_name: "",
-        guest_email: "",
-        guest_phone: ""
+        guest_name: ""
       }));
     }
   };
@@ -183,8 +179,8 @@ export default function GuestHouseBookingModal({
           },
           body: JSON.stringify({
             guest_name: formData.guest_name,
-            guest_email: formData.guest_email,
-            guest_phone: formData.guest_phone,
+            guest_email: selectedGuest?.email || "",
+            guest_phone: selectedGuest?.phone || "",
             event_id: formData.event_id && formData.event_id !== "none" ? parseInt(formData.event_id) : null,
             room_id: parseInt(formData.room_id),
             check_in_date: format(formData.check_in_date, "yyyy-MM-dd"),
@@ -243,65 +239,36 @@ export default function GuestHouseBookingModal({
 
         <div className="flex-1 overflow-y-auto modal-scrollbar p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-900">
-                Select Guest
-                <span className="text-red-500 ml-1">*</span>
-              </Label>
-              <ReactSelect
-                value={selectedGuest ? { value: selectedGuest, label: selectedGuest.display_text } : null}
-                onChange={(option) => handleGuestSelect(option?.value || null)}
-                options={confirmedGuests.map(guest => ({
-                  value: guest,
-                  label: guest.display_text
-                }))}
-                placeholder="Search and select a confirmed guest..."
-                isSearchable
-                isClearable
-                className="text-sm"
-                classNamePrefix="react-select"
-                styles={{
-                  control: (base) => ({
-                    ...base,
-                    minHeight: '40px',
-                    border: '2px solid #d1d5db',
-                    '&:hover': { borderColor: '#ef4444' },
-                    '&:focus-within': { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef4444' }
-                  })
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="guest_email" className="text-sm font-semibold text-gray-900">
-                Guest Email
-              </Label>
-              <Input
-                id="guest_email"
-                type="email"
-                value={formData.guest_email}
-                onChange={(e) => setFormData(prev => ({ ...prev, guest_email: e.target.value }))}
-                placeholder="Auto-filled from selected guest"
-                className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm bg-gray-50"
-                readOnly={!!selectedGuest}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-gray-900">
+              Select Guest
+              <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <ReactSelect
+              value={selectedGuest ? { value: selectedGuest, label: selectedGuest.display_text } : null}
+              onChange={(option) => handleGuestSelect(option?.value || null)}
+              options={confirmedGuests.map(guest => ({
+                value: guest,
+                label: guest.display_text
+              }))}
+              placeholder="Search and select a confirmed guest..."
+              isSearchable
+              isClearable
+              className="text-sm"
+              classNamePrefix="react-select"
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minHeight: '40px',
+                  border: '2px solid #d1d5db',
+                  '&:hover': { borderColor: '#ef4444' },
+                  '&:focus-within': { borderColor: '#ef4444', boxShadow: '0 0 0 1px #ef4444' }
+                })
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="guest_phone" className="text-sm font-semibold text-gray-900">
-                Guest Phone
-              </Label>
-              <Input
-                id="guest_phone"
-                value={formData.guest_phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, guest_phone: e.target.value }))}
-                placeholder="Auto-filled from selected guest"
-                className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm bg-gray-50"
-                readOnly={!!selectedGuest}
-              />
-            </div>
             <div className="space-y-2">
               <Label htmlFor="event_id" className="text-sm font-semibold text-gray-900">
                 Event (Optional)
