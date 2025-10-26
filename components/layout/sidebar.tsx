@@ -135,12 +135,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           href: "/setups?tab=vendor-hotels",
           badge: null,
         },
-        {
-          icon: Home,
-          label: "Guest House Setup",
-          href: "/guest-house-setup",
-          badge: null,
-        },
+
         {
           icon: Package,
           label: "Stationary & Equipment",
@@ -393,7 +388,7 @@ export default function Sidebar({
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
-                item.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
+
                 item.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                 item.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                 item.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${item.href}` :
@@ -401,7 +396,6 @@ export default function Sidebar({
           children: item.children ? item.children.map(child => ({
             ...child,
             href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
-                  child.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
                   child.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                   child.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                   child.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${child.href}` :
