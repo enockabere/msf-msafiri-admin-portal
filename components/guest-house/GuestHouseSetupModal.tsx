@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { LocationSelect } from "@/components/ui/location-select";
 import { toast } from "@/components/ui/toast";
 import { MapPin, Clock, X, Save, Loader2, Home } from "lucide-react";
 
@@ -63,6 +64,7 @@ export default function GuestHouseSetupModal({
   tenantSlug
 }: GuestHouseSetupModalProps) {
   const [loading, setLoading] = useState(false);
+  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     location: "",
@@ -114,6 +116,30 @@ export default function GuestHouseSetupModal({
       });
     }
   }, [editingGuestHouse, open]);
+
+  useEffect(() => {
+    const fetchTenantData = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.ok) {
+          const tenant = await response.json();
+          setTenantData({ country: tenant.country });
+        }
+      } catch (error) {
+        console.error('Failed to fetch tenant data:', error);
+      }
+    };
+
+    fetchTenantData();
+  }, [apiClient, tenantSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,14 +233,12 @@ export default function GuestHouseSetupModal({
           <div className="p-6 pb-0 space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center">
-                <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+              <h4 className="font-semibold text-gray-900">
                 Basic Information
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="name" className="text-sm font-semibold text-gray-900">
                     Guest House Name
                     <span className="text-red-500 ml-1">*</span>
                   </Label>
@@ -228,25 +252,29 @@ export default function GuestHouseSetupModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="location" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="location" className="text-sm font-semibold text-gray-900">
                     Location/Area
                     <span className="text-red-500 ml-1">*</span>
                   </Label>
-                  <Input
-                    id="location"
+                  <LocationSelect
                     value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="e.g., Westlands, Nairobi"
-                    required
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    country={tenantData?.country}
+                    onChange={(value, placeDetails) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        location: value,
+                        latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                        longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                      }));
+                    }}
+                    placeholder="Search and select guest house location"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Start typing to search for the location</p>
                 </div>
               </div>
 
               <div className="md:col-span-2">
-                <Label htmlFor="address" className="text-sm font-semibold text-gray-900 flex items-center">
-                  <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                <Label htmlFor="address" className="text-sm font-semibold text-gray-900">
                   Full Address
                   <span className="text-red-500 ml-1">*</span>
                 </Label>
@@ -263,8 +291,7 @@ export default function GuestHouseSetupModal({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2">
                 <div>
-                  <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
                     Latitude
                   </Label>
                   <Input
@@ -278,8 +305,7 @@ export default function GuestHouseSetupModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="longitude" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="longitude" className="text-sm font-semibold text-gray-900">
                     Longitude
                   </Label>
                   <Input
@@ -306,8 +332,7 @@ export default function GuestHouseSetupModal({
               </div>
 
               <div className="md:col-span-2">
-                <Label htmlFor="description" className="text-sm font-semibold text-gray-900 flex items-center">
-                  <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                <Label htmlFor="description" className="text-sm font-semibold text-gray-900">
                   Description
                 </Label>
                 <Textarea
@@ -323,14 +348,12 @@ export default function GuestHouseSetupModal({
 
             {/* Contact Information */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center">
-                <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+              <h4 className="font-semibold text-gray-900">
                 Contact Information
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="contact_person" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="contact_person" className="text-sm font-semibold text-gray-900">
                     Contact Person
                   </Label>
                   <Input
@@ -342,8 +365,7 @@ export default function GuestHouseSetupModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="phone" className="text-sm font-semibold text-gray-900">
                     Phone Number
                   </Label>
                   <Input
@@ -355,8 +377,7 @@ export default function GuestHouseSetupModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="email" className="text-sm font-semibold text-gray-900">
                     Email
                   </Label>
                   <Input
@@ -374,14 +395,12 @@ export default function GuestHouseSetupModal({
             {/* Check-in/Check-out Times */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                 <Clock className="w-4 h-4" />
                 Check-in/Check-out Times
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="check_in_time" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="check_in_time" className="text-sm font-semibold text-gray-900">
                     Check-in Time
                   </Label>
                   <Input
@@ -393,8 +412,7 @@ export default function GuestHouseSetupModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="check_out_time" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                  <Label htmlFor="check_out_time" className="text-sm font-semibold text-gray-900">
                     Check-out Time
                   </Label>
                   <Input
@@ -410,8 +428,7 @@ export default function GuestHouseSetupModal({
 
             {/* Facilities */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center">
-                <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+              <h4 className="font-semibold text-gray-900">
                 Facilities & Amenities
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -433,8 +450,7 @@ export default function GuestHouseSetupModal({
 
             {/* House Rules */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center">
-                <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+              <h4 className="font-semibold text-gray-900">
                 House Rules
               </h4>
               <Textarea
