@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import AllocationsList from "@/components/accommodation/AllocationsList";
-import { Users } from "lucide-react";
+import GuestHouseBookingModal from "@/components/accommodation/GuestHouseBookingModal";
+import { Users, Plus, RefreshCw } from "lucide-react";
 
 
 
@@ -59,6 +61,8 @@ export default function AccommodationPage() {
   const [checkingIn, setCheckingIn] = useState<number | null>(null);
   const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
 
 
@@ -215,20 +219,76 @@ export default function AccommodationPage() {
     }
   };
 
+  const handleRefreshAccommodations = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/refresh-all`,
+        {
+          method: "POST",
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({ 
+          title: "Success", 
+          description: `Accommodations refreshed successfully. ${result.rebooked_count || 0} visitors rebooked.` 
+        });
+        fetchData();
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-2xl p-6 border-2 border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Visitor Accommodations</h1>
-              <p className="text-sm text-gray-600">View automatically booked accommodations</p>
+              <h1 className="text-lg font-semibold text-gray-900 mb-2">Visitor Accommodations</h1>
+              <p className="text-xs text-gray-600">View automatically booked accommodations</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="bg-white px-5 py-3 rounded-xl shadow-sm border border-purple-100 hover:shadow-md transition-shadow">
-                <div className="text-xl font-semibold text-purple-900">{allocations.length}</div>
-                <div className="text-xs font-normal text-purple-600">Active Bookings</div>
+                <div className="text-lg font-semibold text-purple-900">{allocations.length}</div>
+                <div className="text-[10px] font-normal text-purple-600">Active Bookings</div>
               </div>
+              <Button
+                onClick={() => setShowBookingModal(true)}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Book Guest House
+              </Button>
+              <Button
+                onClick={handleRefreshAccommodations}
+                disabled={refreshing}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+              >
+                {refreshing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh Accommodations
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
@@ -242,7 +302,7 @@ export default function AccommodationPage() {
                   <Users className="w-8 h-8 text-red-600 animate-pulse" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-600">Loading allocations...</p>
+              <p className="text-xs font-medium text-gray-600">Loading allocations...</p>
             </div>
           </div>
         ) : (
@@ -258,6 +318,18 @@ export default function AccommodationPage() {
             events={events}
             onBulkCheckIn={handleBulkCheckIn}
             bulkCheckingIn={bulkCheckingIn}
+          />
+        )}
+
+        {/* Guest House Booking Modal */}
+        {showBookingModal && (
+          <GuestHouseBookingModal
+            open={showBookingModal}
+            onOpenChange={setShowBookingModal}
+            onSuccess={fetchDataCallback}
+            apiClient={apiClient}
+            tenantSlug={tenantSlug}
+            events={events}
           />
         )}
       </div>

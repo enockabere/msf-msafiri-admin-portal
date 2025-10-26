@@ -357,8 +357,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
             <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
               <User className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No visitor allocations found</h3>
-            <p className="text-sm text-gray-500">Allocations will appear here once visitors are assigned to accommodations</p>
+            <h3 className="text-base font-semibold text-gray-900 mb-2">No visitor allocations found</h3>
+            <p className="text-xs text-gray-500">Allocations will appear here once visitors are assigned to accommodations</p>
           </div>
         </CardContent>
       </Card>
@@ -381,8 +381,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-normal text-gray-500 uppercase tracking-wider">Total Allocations</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.total}</p>
+                <p className="text-[10px] font-normal text-gray-500 uppercase tracking-wider">Total Allocations</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{stats.total}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600" />
@@ -403,8 +403,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-normal text-gray-500 uppercase tracking-wider">Booked</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.booked}</p>
+                <p className="text-[10px] font-normal text-gray-500 uppercase tracking-wider">Booked</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{stats.booked}</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <User className="w-6 h-6 text-blue-600" />
@@ -425,8 +425,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-normal text-gray-500 uppercase tracking-wider">Checked In</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.checkedIn}</p>
+                <p className="text-[10px] font-normal text-gray-500 uppercase tracking-wider">Checked In</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{stats.checkedIn}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <UserCheck className="w-6 h-6 text-green-600" />
@@ -449,8 +449,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-normal text-gray-500 uppercase tracking-wider">Vendor Hotels</p>
-                <p className="text-2xl font-semibold text-gray-900 mt-1">{stats.vendor}</p>
+                <p className="text-[10px] font-normal text-gray-500 uppercase tracking-wider">Vendor Hotels</p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">{stats.vendor}</p>
               </div>
               <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                 <Hotel className="w-6 h-6 text-teal-600" />
@@ -592,7 +592,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
             {showFilters && (
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t border-gray-200">
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-2 block">Accommodation Type</label>
+                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Accommodation Type</label>
                   <Select value={filters.occupancy} onValueChange={(value) => setFilters({...filters, occupancy: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -605,7 +605,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-2 block">Room</label>
+                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Room</label>
                   <Select value={filters.room} onValueChange={(value) => setFilters({...filters, room: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -620,7 +620,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-2 block">Event</label>
+                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Event</label>
                   <Select value={filters.event} onValueChange={(value) => setFilters({...filters, event: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -636,7 +636,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-2 block">Gender</label>
+                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Gender</label>
                   <Select value={filters.gender} onValueChange={(value) => setFilters({...filters, gender: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -650,7 +650,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-2 block">Status</label>
+                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Status</label>
                   <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -671,7 +671,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
       </Card>
 
       {/* Results Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="flex items-center justify-between text-xs text-gray-600">
         <div>
           Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(endIndex, sortedAllocations.length)}</span> of <span className="font-semibold text-gray-900">{sortedAllocations.length}</span> results
           {searchQuery || activeFiltersCount > 0 ? (
@@ -679,7 +679,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Rows per page:</span>
+          <span className="text-[10px] text-gray-500">Rows per page:</span>
           <Select value={itemsPerPage.toString()} onValueChange={(value) => {
             setItemsPerPage(parseInt(value));
             setCurrentPage(1);
@@ -704,7 +704,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
             <tr>
-              <th className="px-6 py-4 text-left">
+              <th className="px-6 py-3 text-left">
                 <input
                   type="checkbox"
                   checked={selectedRows.length === paginatedAllocations.length && paginatedAllocations.length > 0}
@@ -799,7 +799,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   <tr key={allocation.id} className={`hover:bg-gray-50 transition-all ${
                     selectedRows.includes(allocation.id) ? 'bg-blue-50 hover:bg-blue-100' : ''
                   }`}>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <input
                         type="checkbox"
                         checked={selectedRows.includes(allocation.id)}
@@ -807,73 +807,73 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                         className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                       />
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <User className="w-5 h-5 text-blue-700" />
+                    <td className="px-6 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <User className="w-3 h-3 text-blue-700" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-gray-900">
+                          <div className="text-xs font-semibold text-gray-900">
                             {allocation.guest_name}
                           </div>
-                          <div className="text-xs text-gray-500 mt-0.5">
+                          <div className="text-[10px] text-gray-500 mt-0.5">
                             {allocation.participant?.role || 'Guest'}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-emerald-200 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Icon className="w-5 h-5 text-green-700" />
+                    <td className="px-6 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-gradient-to-br from-green-100 to-emerald-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-3 h-3 text-green-700" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-gray-900">{accommodationInfo.type}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{accommodationInfo.name}</div>
+                          <div className="text-xs font-semibold text-gray-900">{accommodationInfo.type}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{accommodationInfo.name}</div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td className="px-6 py-2">
+                      <div className="text-xs font-medium text-gray-900">
                         {accommodationInfo.room}
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <Badge variant={accommodationInfo.shared.startsWith("Yes") ? "default" : "outline"} className="text-xs font-medium">
+                    <td className="px-6 py-2">
+                      <Badge variant={accommodationInfo.shared.startsWith("Yes") ? "default" : "outline"} className="text-[10px] font-medium px-1 py-0.5">
                         {accommodationInfo.shared}
                       </Badge>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td className="px-6 py-2">
+                      <div className="text-xs font-medium text-gray-900">
                         {allocation.event?.title || '-'}
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td className="px-6 py-2">
+                      <div className="text-xs font-medium text-gray-900">
                         {allocation.check_in_date && allocation.check_out_date ?
-                          <><span className="text-lg font-bold text-red-600">{calculateDays(allocation.check_in_date, allocation.check_out_date)}</span> <span className="text-gray-500">days</span></> : '-'
+                          <><span className="text-sm font-bold text-red-600">{calculateDays(allocation.check_in_date, allocation.check_out_date)}</span> <span className="text-gray-500">days</span></> : '-'
                         }
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 capitalize">
+                    <td className="px-6 py-2">
+                      <div className="text-xs font-medium text-gray-900 capitalize">
                         {allocation.participant?.gender || '-'}
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <Badge className={`${getStatusBadge(allocation.status)} font-medium`}>
+                    <td className="px-6 py-2">
+                      <Badge className={`${getStatusBadge(allocation.status)} font-medium text-[10px] px-1 py-0.5`}>
                         {allocation.status.replace('_', ' ')}
                       </Badge>
                     </td>
 
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {allocation.status === 'booked' && onCheckIn && (
                           <Button
@@ -958,7 +958,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-xs text-gray-600">
             Page <span className="font-semibold text-gray-900">{currentPage}</span> of <span className="font-semibold text-gray-900">{totalPages}</span>
           </div>
           <div className="flex items-center gap-2">

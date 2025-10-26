@@ -238,8 +238,8 @@ export default function RoomManagementModal({
               <Bed className="w-6 h-6 text-white" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-white">Room Management</DialogTitle>
-              <p className="text-red-100 text-sm mt-1">
+              <DialogTitle className="text-lg font-bold text-white">Room Management</DialogTitle>
+              <p className="text-red-100 text-xs mt-1">
                 Manage rooms and configurations for {guestHouse.name}
               </p>
             </div>
@@ -251,18 +251,18 @@ export default function RoomManagementModal({
             {/* Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-blue-200 text-center">
-                <div className="text-3xl font-bold text-blue-900">{rooms.filter(r => r.is_active).length}</div>
-                <div className="text-xs sm:text-sm text-blue-600 font-medium mt-1">Active Rooms</div>
+                <div className="text-2xl font-bold text-blue-900">{rooms.filter(r => r.is_active).length}</div>
+                <div className="text-xs text-blue-600 font-medium mt-1">Active Rooms</div>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border-2 border-green-200 text-center">
-                <div className="text-3xl font-bold text-green-900">{getTotalCapacity()}</div>
-                <div className="text-xs sm:text-sm text-green-600 font-medium mt-1">Total Capacity</div>
+                <div className="text-2xl font-bold text-green-900">{getTotalCapacity()}</div>
+                <div className="text-xs text-green-600 font-medium mt-1">Total Capacity</div>
               </div>
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-xl border-2 border-amber-200 text-center">
-                <div className="text-3xl font-bold text-amber-900">
+                <div className="text-2xl font-bold text-amber-900">
                   {rooms.length > 0 ? (getTotalCapacity() / rooms.filter(r => r.is_active).length).toFixed(1) : 0}
                 </div>
-                <div className="text-xs sm:text-sm text-amber-600 font-medium mt-1">Avg. per Room</div>
+                <div className="text-xs text-amber-600 font-medium mt-1">Avg. per Room</div>
               </div>
             </div>
 
@@ -286,7 +286,7 @@ export default function RoomManagementModal({
             {showAddForm && (
               <div className="bg-gradient-to-br from-red-50 to-orange-50 p-6 rounded-xl border-2 border-red-200 shadow-lg">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <h4 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                     <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-red-700 rounded-lg flex items-center justify-center">
                       <Bed className="w-4 h-4 text-white" />
                     </div>
@@ -296,8 +296,7 @@ export default function RoomManagementModal({
                 <form onSubmit={handleSubmitRoom} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="room_number" className="text-sm font-semibold text-gray-900 flex items-center">
-                        <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      <Label htmlFor="room_number" className="text-sm font-semibold text-gray-900">
                         Room Number
                         <span className="text-red-500 ml-1">*</span>
                       </Label>
@@ -311,8 +310,7 @@ export default function RoomManagementModal({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="room_name" className="text-sm font-semibold text-gray-900 flex items-center">
-                        <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      <Label htmlFor="room_name" className="text-sm font-semibold text-gray-900">
                         Room Name
                       </Label>
                       <Input
@@ -324,8 +322,7 @@ export default function RoomManagementModal({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="capacity" className="text-sm font-semibold text-gray-900 flex items-center">
-                        <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      <Label htmlFor="capacity" className="text-sm font-semibold text-gray-900">
                         Capacity
                         <span className="text-red-500 ml-1">*</span>
                       </Label>
@@ -344,8 +341,7 @@ export default function RoomManagementModal({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="room_type" className="text-sm font-semibold text-gray-900 flex items-center">
-                        <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      <Label htmlFor="room_type" className="text-sm font-semibold text-gray-900">
                         Room Type
                       </Label>
                       <Select
@@ -365,8 +361,7 @@ export default function RoomManagementModal({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description" className="text-sm font-semibold text-gray-900 flex items-center">
-                        <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      <Label htmlFor="description" className="text-sm font-semibold text-gray-900">
                         Description
                       </Label>
                       <Input
@@ -380,8 +375,7 @@ export default function RoomManagementModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-gray-900 flex items-center">
-                      <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                    <Label className="text-sm font-semibold text-gray-900">
                       Room Facilities
                     </Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white rounded-lg border border-gray-200">
@@ -434,8 +428,8 @@ export default function RoomManagementModal({
                   <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Bed className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rooms Added</h3>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">No Rooms Added</h3>
+                  <p className="text-xs text-gray-600 mb-4">
                     Start by adding rooms to this guest house
                   </p>
                   <Button
@@ -459,12 +453,12 @@ export default function RoomManagementModal({
                               <Bed className="w-5 h-5 text-red-600" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="font-semibold text-gray-900 text-base">
+                              <h4 className="font-semibold text-gray-900 text-sm">
                                 Room {room.room_number}
                                 {room.room_name && <span className="text-gray-500 font-normal"> - {room.room_name}</span>}
                               </h4>
                               <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <span className="flex items-center gap-1 text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                <span className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
                                   <Users className="w-3.5 h-3.5" />
                                   {room.capacity} {room.capacity === 1 ? 'person' : 'people'}
                                 </span>
@@ -493,7 +487,7 @@ export default function RoomManagementModal({
                           )}
 
                           {room.description && (
-                            <p className="text-sm text-gray-600 mt-3 ml-14">{room.description}</p>
+                            <p className="text-xs text-gray-600 mt-3 ml-14">{room.description}</p>
                           )}
                         </div>
 
