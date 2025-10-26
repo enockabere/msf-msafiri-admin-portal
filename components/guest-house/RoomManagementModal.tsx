@@ -249,32 +249,31 @@ export default function RoomManagementModal({
         <div className="p-6 space-y-6">
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg text-center">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 text-center">
               <div className="text-2xl font-bold text-blue-900">{rooms.filter(r => r.is_active).length}</div>
-              <div className="text-sm text-blue-600">Active Rooms</div>
+              <div className="text-sm text-blue-600 font-medium">Active Rooms</div>
             </div>
-            <div className="bg-green-50 p-4 rounded-lg text-center">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200 text-center">
               <div className="text-2xl font-bold text-green-900">{getTotalCapacity()}</div>
-              <div className="text-sm text-green-600">Total Capacity</div>
+              <div className="text-sm text-green-600 font-medium">Total Capacity</div>
             </div>
-            <div className="bg-purple-50 p-4 rounded-lg text-center">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 text-center">
               <div className="text-2xl font-bold text-purple-900">
                 {rooms.length > 0 ? (getTotalCapacity() / rooms.filter(r => r.is_active).length).toFixed(1) : 0}
               </div>
-              <div className="text-sm text-purple-600">Avg. per Room</div>
+              <div className="text-sm text-purple-600 font-medium">Avg. per Room</div>
             </div>
           </div>
 
           {/* Add Room Button */}
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">Rooms</h3>
+            <h3 className="text-xl font-semibold text-gray-800">Room Management</h3>
             <Button
               onClick={() => {
                 resetForm();
                 setShowAddForm(true);
               }}
-              size="sm"
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Room
@@ -283,13 +282,24 @@ export default function RoomManagementModal({
 
           {/* Add/Edit Room Form */}
           {showAddForm && (
-            <Card className="border-2 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-base">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200 shadow-lg">
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <Bed className="w-4 h-4 text-white" />
+                  </div>
                   {editingRoom ? "Edit Room" : "Add New Room"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h4>
+                <Button
+                  onClick={resetForm}
+                  variant="outline"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <div>
                 <form onSubmit={handleSubmitRoom} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -373,8 +383,12 @@ export default function RoomManagementModal({
                     </div>
                   </div>
 
-                  <div className="flex gap-2 pt-4">
-                    <Button type="submit" disabled={loading}>
+                  <div className="flex gap-3 pt-6">
+                    <Button 
+                      type="submit" 
+                      disabled={loading}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6"
+                    >
                       {loading ? "Saving..." : editingRoom ? "Update Room" : "Add Room"}
                     </Button>
                     <Button type="button" variant="outline" onClick={resetForm}>
@@ -382,26 +396,35 @@ export default function RoomManagementModal({
                     </Button>
                   </div>
                 </form>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Rooms List */}
           <div className="space-y-3">
             {rooms.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <Bed className="w-12 h-12 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Rooms Added</h3>
-                  <p className="text-sm text-gray-600 text-center">
-                    Start by adding rooms to this guest house
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-12 rounded-xl border-2 border-dashed border-gray-300 text-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Bed className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Rooms Added</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Start by adding rooms to this guest house
+                </p>
+                <Button
+                  onClick={() => {
+                    resetForm();
+                    setShowAddForm(true);
+                  }}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Room
+                </Button>
+              </div>
             ) : (
               rooms.map((room) => (
-                <Card key={room.id} className={`${!room.is_active ? 'opacity-50' : ''}`}>
-                  <CardContent className="p-4">
+                <div key={room.id} className={`bg-white p-6 rounded-xl border shadow-sm hover:shadow-md transition-shadow ${!room.is_active ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -452,21 +475,21 @@ export default function RoomManagementModal({
                           onClick={() => handleEditRoom(room)}
                           size="sm"
                           variant="outline"
+                          className="hover:bg-blue-50 hover:border-blue-300"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           onClick={() => handleDeleteRoom(room.id)}
                           size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:text-red-700"
+                          className="bg-red-600 hover:bg-red-700 text-white border-0"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))
             )}
           </div>
