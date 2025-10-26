@@ -273,22 +273,6 @@ export default function GuestHouseSetupModal({
                 </div>
               </div>
 
-              <div className="md:col-span-2">
-                <Label htmlFor="address" className="text-sm font-semibold text-gray-900">
-                  Full Address
-                  <span className="text-red-500 ml-1">*</span>
-                </Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Enter the complete address including street, building, and landmarks"
-                  required
-                  rows={2}
-                  className="text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none"
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2">
                 <div>
                   <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
@@ -299,9 +283,9 @@ export default function GuestHouseSetupModal({
                     type="number"
                     step="any"
                     value={formData.latitude}
-                    onChange={(e) => setFormData(prev => ({ ...prev, latitude: e.target.value }))}
-                    placeholder="-1.2921"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    readOnly
+                    placeholder="Auto-filled from location"
+                    className="pl-4 pr-4 py-3 text-sm border-gray-300 bg-gray-50 rounded-lg transition-all cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -313,9 +297,9 @@ export default function GuestHouseSetupModal({
                     type="number"
                     step="any"
                     value={formData.longitude}
-                    onChange={(e) => setFormData(prev => ({ ...prev, longitude: e.target.value }))}
-                    placeholder="36.8219"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    readOnly
+                    placeholder="Auto-filled from location"
+                    className="pl-4 pr-4 py-3 text-sm border-gray-300 bg-gray-50 rounded-lg transition-all cursor-not-allowed"
                   />
                 </div>
                 <div className="flex items-end">
@@ -346,85 +330,7 @@ export default function GuestHouseSetupModal({
               </div>
             </div>
 
-            {/* Contact Information */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">
-                Contact Information
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="contact_person" className="text-sm font-semibold text-gray-900">
-                    Contact Person
-                  </Label>
-                  <Input
-                    id="contact_person"
-                    value={formData.contact_person}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e.target.value }))}
-                    placeholder="Manager/Caretaker name"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone" className="text-sm font-semibold text-gray-900">
-                    Phone Number
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+254 700 000 000"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email" className="text-sm font-semibold text-gray-900">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="contact@guesthouse.com"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* Check-in/Check-out Times */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Check-in/Check-out Times
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="check_in_time" className="text-sm font-semibold text-gray-900">
-                    Check-in Time
-                  </Label>
-                  <Input
-                    id="check_in_time"
-                    type="time"
-                    value={formData.check_in_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="check_out_time" className="text-sm font-semibold text-gray-900">
-                    Check-out Time
-                  </Label>
-                  <Input
-                    id="check_out_time"
-                    type="time"
-                    value={formData.check_out_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Facilities */}
             <div className="space-y-4">
