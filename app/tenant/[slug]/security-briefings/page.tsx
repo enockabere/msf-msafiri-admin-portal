@@ -32,6 +32,9 @@ import {
   BarChart3,
   Search,
   Eye,
+  Save,
+  X,
+  Loader2,
 } from "lucide-react";
 import { LocationSelect } from "@/components/ui/location-select";
 import { toast } from "@/components/ui/toast";
@@ -627,20 +630,20 @@ export default function SecurityBriefingsPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
             {filteredBriefings.length === 0 ? (
               <div className="col-span-full">
                 <Card className="border-0 shadow-md">
-                  <CardContent className="flex flex-col items-center justify-center py-16">
-                    <div className="p-4 bg-gray-100 rounded-full mb-4">
-                      <Shield className="w-12 h-12 text-gray-400" />
+                  <CardContent className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+                    <div className="p-3 sm:p-4 bg-gray-100 rounded-full mb-4">
+                      <Shield className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 text-center">
                       {searchTerm
                         ? "No matching briefings found"
                         : "No security briefings found"}
                     </h3>
-                    <p className="text-gray-600 text-center mb-6 max-w-md">
+                    <p className="text-sm sm:text-base text-gray-600 text-center mb-6 max-w-md px-4">
                       {searchTerm
                         ? `No briefings match your search "${searchTerm}". Try different keywords.`
                         : "Get started by creating your first security briefing to share important information."}
@@ -648,7 +651,7 @@ export default function SecurityBriefingsPage() {
                     {canCreateBriefings() && !searchTerm && (
                       <Button
                         onClick={() => setShowCreateModal(true)}
-                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg"
+                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-lg text-sm sm:text-base"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Create Briefing
@@ -661,37 +664,38 @@ export default function SecurityBriefingsPage() {
               filteredBriefings.map((briefing) => (
                 <Card
                   key={briefing.id}
-                  className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-red-50 cursor-pointer group transform hover:-translate-y-1"
+                  className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-red-50 cursor-pointer group hover:scale-[1.01] overflow-hidden"
                   onClick={() => {
                     setSelectedBriefing(briefing);
                     setShowDetailsModal(true);
                   }}
                 >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex flex-col h-full">
-                      {/* Header with Icon and Title */}
-                      <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                        <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-md group-hover:shadow-lg transition-shadow">
-                          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-red-700" />
+                  <CardContent className="p-4 sm:p-5 h-full">
+                    <div className="flex flex-col h-full justify-between">
+                      {/* Top Section */}
+                      <div className="space-y-3">
+                        {/* Header with Icon and Title */}
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <div className="flex-shrink-0 p-2 rounded-xl bg-gradient-to-br from-red-100 to-red-200 shadow-sm group-hover:shadow-md transition-shadow">
+                            <Shield className="w-5 h-5 text-red-700" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-tight group-hover:text-red-700 transition-colors">
+                              {briefing.title}
+                            </h3>
+                            {briefing.event_title && (
+                              <p className="text-xs text-gray-600 flex items-center gap-1">
+                                <span className="text-red-600 flex-shrink-0">•</span>
+                                <span className="truncate">{briefing.event_title}</span>
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 leading-tight group-hover:text-red-700 transition-colors">
-                            {briefing.title}
-                          </h3>
-                          {briefing.event_title && (
-                            <p className="text-xs sm:text-sm text-gray-600 flex items-center gap-1">
-                              <span className="text-red-600">•</span>
-                              {briefing.event_title}
-                            </p>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Status and Type Badges */}
-                      <div className="flex-1 space-y-3">
-                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        {/* Status and Type Badges */}
+                        <div className="flex flex-wrap gap-1.5">
                           <Badge
-                            className={`px-2 py-0.5 text-xs font-semibold shadow-sm ${
+                            className={`px-2 py-0.5 text-[10px] sm:text-xs font-semibold shadow-sm whitespace-nowrap ${
                               briefing.status === "published"
                                 ? "bg-green-100 text-green-800 border border-green-300"
                                 : briefing.status === "draft"
@@ -700,26 +704,24 @@ export default function SecurityBriefingsPage() {
                             }`}
                           >
                             {briefing.status === "published" && (
-                              <CheckCircle2 className="w-2.5 h-2.5 mr-1 inline" />
+                              <CheckCircle2 className="w-2.5 h-2.5 mr-0.5 inline" />
                             )}
                             {briefing.status === "draft" && (
-                              <Clock className="w-2.5 h-2.5 mr-1 inline" />
+                              <Clock className="w-2.5 h-2.5 mr-0.5 inline" />
                             )}
                             {briefing.status === "archived" && (
-                              <Archive className="w-2.5 h-2.5 mr-1 inline" />
+                              <Archive className="w-2.5 h-2.5 mr-0.5 inline" />
                             )}
                             {briefing.status?.toUpperCase() || "DRAFT"}
                           </Badge>
                           <Badge
-                            className={`px-2 py-0.5 text-xs font-semibold ${
+                            className={`px-2 py-0.5 text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
                               briefing.brief_type === "general"
                                 ? "bg-blue-100 text-blue-800 border border-blue-300"
                                 : "bg-purple-100 text-purple-800 border border-purple-300"
                             }`}
                           >
-                            {briefing.brief_type === "general"
-                              ? "General"
-                              : "Event-Specific"}
+                            {briefing.brief_type === "general" ? "General" : "Event"}
                           </Badge>
                         </div>
 
@@ -727,12 +729,12 @@ export default function SecurityBriefingsPage() {
                         {(briefing.category || briefing.location) && (
                           <div className="flex flex-wrap gap-1.5">
                             {briefing.category && (
-                              <Badge className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300">
+                              <Badge className="px-2 py-0.5 text-[10px] sm:text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-300 max-w-[150px] truncate">
                                 {briefing.category}
                               </Badge>
                             )}
                             {briefing.location && (
-                              <Badge className="px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-800 border border-pink-300">
+                              <Badge className="px-2 py-0.5 text-[10px] sm:text-xs font-medium bg-pink-100 text-pink-800 border border-pink-300 max-w-[150px] truncate">
                                 📍 {briefing.location}
                               </Badge>
                             )}
@@ -740,32 +742,30 @@ export default function SecurityBriefingsPage() {
                         )}
 
                         {/* Content Preview */}
-                        <div className="bg-gray-50 rounded-lg p-2.5 sm:p-3 border border-gray-200">
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                          <div className="flex items-center gap-1.5 mb-1.5">
                             {briefing.content_type === "text" ? (
-                              <FileText className="w-3.5 h-3.5 text-gray-600" />
+                              <FileText className="w-3 h-3 text-gray-600 flex-shrink-0" />
                             ) : (
-                              <Video className="w-3.5 h-3.5 text-purple-600" />
+                              <Video className="w-3 h-3 text-purple-600 flex-shrink-0" />
                             )}
-                            <span className="text-xs font-medium text-gray-600 uppercase">
-                              {briefing.content_type === "text"
-                                ? "Text Content"
-                                : "Video/Document"}
+                            <span className="text-[10px] sm:text-xs font-medium text-gray-600 uppercase">
+                              {briefing.content_type === "text" ? "Text" : "Media"}
                             </span>
                           </div>
-                          <div className="text-xs sm:text-sm text-gray-700 line-clamp-2">
+                          <div className="text-xs text-gray-700 line-clamp-3">
                             {briefing.content}
                           </div>
                         </div>
                       </div>
 
-                      {/* Footer with Actions */}
-                      <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
-                        <div className="text-xs text-gray-500 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {new Date(briefing.created_at).toLocaleDateString()}
+                      {/* Footer with Actions - Always at bottom */}
+                      <div className="space-y-2 pt-3 mt-3 border-t border-gray-200">
+                        <div className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span>{new Date(briefing.created_at).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex gap-1.5 sm:gap-2">
+                        <div className="flex gap-1.5">
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -774,10 +774,9 @@ export default function SecurityBriefingsPage() {
                             }}
                             variant="outline"
                             size="sm"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all px-2 py-1 text-xs"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-100 transition-all px-2 py-1 text-xs h-7 min-w-0"
                           >
-                            <Eye className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">View</span>
+                            <Eye className="w-3 h-3" />
                           </Button>
                           {briefing.status === "draft" && (
                             <Button
@@ -787,9 +786,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-green-700 border-green-300 hover:bg-green-50 transition-all px-2 py-1 text-xs"
+                              className="text-green-700 border-green-300 hover:bg-green-50 transition-all px-2 py-1 text-xs h-7 flex-1"
                             >
-                              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
                               <span className="hidden sm:inline">Publish</span>
                             </Button>
                           )}
@@ -801,9 +800,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-gray-700 border-gray-300 hover:bg-gray-100 transition-all px-2 py-1 text-xs"
+                              className="text-gray-700 border-gray-300 hover:bg-gray-100 transition-all px-2 py-1 text-xs h-7 flex-1"
                             >
-                              <Archive className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <Archive className="w-3 h-3 mr-1" />
                               <span className="hidden sm:inline">Archive</span>
                             </Button>
                           )}
@@ -815,9 +814,9 @@ export default function SecurityBriefingsPage() {
                               }}
                               variant="outline"
                               size="sm"
-                              className="text-red-700 border-red-300 hover:bg-red-50 transition-all px-2 py-1"
+                              className="text-red-700 border-red-300 hover:bg-red-50 transition-all px-2 py-1 h-7 min-w-0"
                             >
-                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
                           )}
                         </div>
@@ -832,130 +831,147 @@ export default function SecurityBriefingsPage() {
 
         {/* Create Briefing Modal */}
         <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="sm:max-w-[650px] max-h-[90vh] bg-white border-0 shadow-2xl rounded-xl overflow-y-auto">
-            <DialogHeader className="pb-4 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-lg bg-gradient-to-br from-red-100 to-red-200">
-                  <Shield className="w-6 h-6 text-red-700" />
+          <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <DialogTitle className="text-2xl font-bold text-gray-900">
-                    Create Security Briefing
-                  </DialogTitle>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Share important security information with your team
-                  </p>
+                  <DialogTitle className="text-xl font-bold text-white">Create Security Briefing</DialogTitle>
+                  <p className="text-red-100 text-sm mt-1">Share important security information with your team</p>
                 </div>
               </div>
-            </DialogHeader>
+            </div>
 
-            <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-2 py-4">
-              <div className="space-y-2.5">
-                <label className="text-sm font-semibold text-gray-700">
-                  Title <span className="text-red-600">*</span>
-                </label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  placeholder="e.g., Emergency evacuation procedures"
-                  className="h-11 border-gray-300 focus:border-red-500 focus:ring-red-500"
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto modal-scrollbar p-6 pb-0">
+              {/* Two-column grid layout for better space utilization */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Title - Full width */}
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="title" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                    Title
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    placeholder="e.g., Emergency evacuation procedures"
+                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Briefing Type <span className="text-red-600">*</span>
+                {/* Briefing Type */}
+                <div className="space-y-2">
+                  <label htmlFor="briefType" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                    Briefing Type
+                    <span className="text-red-500 ml-1">*</span>
                   </label>
                   <select
+                    id="briefType"
                     value={formData.brief_type}
                     onChange={(e) =>
                       setFormData({ ...formData, brief_type: e.target.value })
                     }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   >
                     <option value="general">General</option>
                     <option value="event_specific">Event-Specific</option>
                   </select>
                 </div>
 
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
+                {/* Status */}
+                <div className="space-y-2">
+                  <label htmlFor="status" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                     Status
                   </label>
                   <select
+                    id="status"
                     value={formData.status}
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.value })
                     }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   >
                     <option value="draft">Draft</option>
                     <option value="published">Published</option>
                     <option value="archived">Archived</option>
                   </select>
                 </div>
-              </div>
 
-              {formData.brief_type === "event_specific" && (
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Event <span className="text-red-600">*</span>
+                {/* Event - Only show if event_specific */}
+                {formData.brief_type === "event_specific" && (
+                  <div className="space-y-2 md:col-span-2">
+                    <label htmlFor="event" className="text-sm font-semibold text-gray-900 flex items-center">
+                      <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                      Event
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <select
+                      id="event"
+                      value={formData.event_id}
+                      onChange={(e) =>
+                        setFormData({ ...formData, event_id: e.target.value })
+                      }
+                      className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
+                    >
+                      <option value="">Select an event</option>
+                      {events.map((event) => (
+                        <option key={event.id} value={event.id}>
+                          {event.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Content Type */}
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="contentType" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                    Content Type
                   </label>
                   <select
-                    value={formData.event_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, event_id: e.target.value })
-                    }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                    id="contentType"
+                    value={formData.content_type}
+                    onChange={(e) => {
+                      const newContentType = e.target.value;
+                      setFormData({
+                        ...formData,
+                        content_type: newContentType,
+                        content: "",
+                      });
+                      setIsRichText(newContentType === "rich_text");
+                    }}
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   >
-                    <option value="">Select an event</option>
-                    {events.map((event) => (
-                      <option key={event.id} value={event.id}>
-                        {event.title}
-                      </option>
-                    ))}
+                    <option value="text">Plain Text</option>
+                    <option value="rich_text">Rich Text</option>
+                    <option value="video">Video URL</option>
+                    <option value="document">Document URL</option>
                   </select>
                 </div>
-              )}
 
-              <div className="space-y-2.5">
-                <label className="text-sm font-semibold text-gray-700">
-                  Content Type
-                </label>
-                <select
-                  value={formData.content_type}
-                  onChange={(e) => {
-                    const newContentType = e.target.value;
-                    setFormData({
-                      ...formData,
-                      content_type: newContentType,
-                      content: "",
-                    });
-                    setIsRichText(newContentType === "rich_text");
-                  }}
-                  className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
-                >
-                  <option value="text">Plain Text</option>
-                  <option value="rich_text">Rich Text</option>
-                  <option value="video">Video URL</option>
-                  <option value="document">Document URL</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
+                {/* Category */}
+                <div className="space-y-2">
+                  <label htmlFor="category" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                     Category
                   </label>
                   <select
+                    id="category"
                     value={formData.category}
                     onChange={(e) =>
                       setFormData({ ...formData, category: e.target.value })
                     }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white font-medium"
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
@@ -965,8 +981,11 @@ export default function SecurityBriefingsPage() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
+
+                {/* Location */}
+                <div className="space-y-2">
+                  <label htmlFor="location" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                     Location
                   </label>
                   <LocationSelect
@@ -986,15 +1005,17 @@ export default function SecurityBriefingsPage() {
                     }}
                     placeholder="Search for location"
                   />
+                  <p className="text-xs text-gray-500 mt-1 ml-1">Start typing to search for the location</p>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
+                {/* Publish Start Date */}
+                <div className="space-y-2">
+                  <label htmlFor="startDate" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                     Publish Start Date
                   </label>
                   <input
+                    id="startDate"
                     type="datetime-local"
                     value={formData.publish_start_date}
                     onChange={(e) =>
@@ -1003,14 +1024,18 @@ export default function SecurityBriefingsPage() {
                         publish_start_date: e.target.value,
                       })
                     }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   />
                 </div>
-                <div className="space-y-2.5">
-                  <label className="text-sm font-semibold text-gray-700">
+
+                {/* Publish End Date */}
+                <div className="space-y-2">
+                  <label htmlFor="endDate" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
                     Publish End Date
                   </label>
                   <input
+                    id="endDate"
                     type="datetime-local"
                     value={formData.publish_end_date}
                     onChange={(e) =>
@@ -1019,182 +1044,192 @@ export default function SecurityBriefingsPage() {
                         publish_end_date: e.target.value,
                       })
                     }
-                    className="w-full h-11 px-4 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 bg-white"
+                    className="w-full pl-4 pr-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all bg-white"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2.5">
-                <label className="text-sm font-semibold text-gray-700">
-                  Content <span className="text-red-600">*</span>
-                </label>
-                {isRichText ? (
-                  <div className="border-2 border-gray-300 rounded-lg overflow-hidden focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500">
-                    <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "rich-content"
-                          ) as HTMLTextAreaElement;
-                          const start = textarea.selectionStart;
-                          const end = textarea.selectionEnd;
-                          const selectedText = textarea.value.substring(
-                            start,
-                            end
-                          );
-                          const newText =
-                            textarea.value.substring(0, start) +
-                            `**${selectedText}**` +
-                            textarea.value.substring(end);
-                          setFormData({ ...formData, content: newText });
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <Bold className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "rich-content"
-                          ) as HTMLTextAreaElement;
-                          const start = textarea.selectionStart;
-                          const end = textarea.selectionEnd;
-                          const selectedText = textarea.value.substring(
-                            start,
-                            end
-                          );
-                          const newText =
-                            textarea.value.substring(0, start) +
-                            `*${selectedText}*` +
-                            textarea.value.substring(end);
-                          setFormData({ ...formData, content: newText });
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <Italic className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "rich-content"
-                          ) as HTMLTextAreaElement;
-                          const start = textarea.selectionStart;
-                          const end = textarea.selectionEnd;
-                          const selectedText = textarea.value.substring(
-                            start,
-                            end
-                          );
-                          const newText =
-                            textarea.value.substring(0, start) +
-                            `__${selectedText}__` +
-                            textarea.value.substring(end);
-                          setFormData({ ...formData, content: newText });
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <Underline className="w-4 h-4" />
-                      </button>
-                      <div className="w-px h-4 bg-gray-300 mx-1" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "rich-content"
-                          ) as HTMLTextAreaElement;
-                          const start = textarea.selectionStart;
-                          const newText =
-                            textarea.value.substring(0, start) +
-                            "\n- " +
-                            textarea.value.substring(start);
-                          setFormData({ ...formData, content: newText });
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <List className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const textarea = document.getElementById(
-                            "rich-content"
-                          ) as HTMLTextAreaElement;
-                          const start = textarea.selectionStart;
-                          const newText =
-                            textarea.value.substring(0, start) +
-                            "\n1. " +
-                            textarea.value.substring(start);
-                          setFormData({ ...formData, content: newText });
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <ListOrdered className="w-4 h-4" />
-                      </button>
+                {/* Content */}
+                <div className="space-y-2 md:col-span-2">
+                  <label htmlFor="content" className="text-sm font-semibold text-gray-900 flex items-center">
+                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
+                    Content
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                  {isRichText ? (
+                    <div className="border-2 border-gray-300 rounded-lg overflow-hidden focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500">
+                      <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "rich-content"
+                            ) as HTMLTextAreaElement;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const selectedText = textarea.value.substring(
+                              start,
+                              end
+                            );
+                            const newText =
+                              textarea.value.substring(0, start) +
+                              `**${selectedText}**` +
+                              textarea.value.substring(end);
+                            setFormData({ ...formData, content: newText });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <Bold className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "rich-content"
+                            ) as HTMLTextAreaElement;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const selectedText = textarea.value.substring(
+                              start,
+                              end
+                            );
+                            const newText =
+                              textarea.value.substring(0, start) +
+                              `*${selectedText}*` +
+                              textarea.value.substring(end);
+                            setFormData({ ...formData, content: newText });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <Italic className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "rich-content"
+                            ) as HTMLTextAreaElement;
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const selectedText = textarea.value.substring(
+                              start,
+                              end
+                            );
+                            const newText =
+                              textarea.value.substring(0, start) +
+                              `__${selectedText}__` +
+                              textarea.value.substring(end);
+                            setFormData({ ...formData, content: newText });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <Underline className="w-4 h-4" />
+                        </button>
+                        <div className="w-px h-4 bg-gray-300 mx-1" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "rich-content"
+                            ) as HTMLTextAreaElement;
+                            const start = textarea.selectionStart;
+                            const newText =
+                              textarea.value.substring(0, start) +
+                              "\n- " +
+                              textarea.value.substring(start);
+                            setFormData({ ...formData, content: newText });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <List className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const textarea = document.getElementById(
+                              "rich-content"
+                            ) as HTMLTextAreaElement;
+                            const start = textarea.selectionStart;
+                            const newText =
+                              textarea.value.substring(0, start) +
+                              "\n1. " +
+                              textarea.value.substring(start);
+                            setFormData({ ...formData, content: newText });
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded"
+                        >
+                          <ListOrdered className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <textarea
+                        id="rich-content"
+                        value={formData.content}
+                        onChange={(e) =>
+                          setFormData({ ...formData, content: e.target.value })
+                        }
+                        placeholder="Enter briefing content with markdown formatting"
+                        className="w-full px-4 py-3 border-0 focus:outline-none focus:ring-0 resize-none text-sm min-h-[120px]"
+                      />
+                      <div className="px-3 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600">
+                        <strong>Markdown:</strong> **bold**, *italic*, __underline__,
+                        - bullets, 1. numbers
+                      </div>
                     </div>
+                  ) : (
                     <textarea
-                      id="rich-content"
+                      id="content"
                       value={formData.content}
                       onChange={(e) =>
                         setFormData({ ...formData, content: e.target.value })
                       }
-                      placeholder="Enter briefing content with markdown formatting"
-                      rows={6}
-                      className="w-full px-4 py-3 border-0 focus:outline-none focus:ring-0 resize-none text-sm"
+                      placeholder={
+                        formData.content_type === "video"
+                          ? "Enter video URL (e.g., https://youtube.com/...)"
+                          : formData.content_type === "document"
+                          ? "Enter document URL (e.g., https://...)"
+                          : "Describe the security briefing information, procedures, and important details..."
+                      }
+                      className="w-full px-4 py-3 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[120px]"
                     />
-                    <div className="px-3 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600">
-                      <strong>Markdown:</strong> **bold**, *italic*, __underline__,
-                      - bullets, 1. numbers
-                    </div>
-                  </div>
-                ) : (
-                  <textarea
-                    value={formData.content}
-                    onChange={(e) =>
-                      setFormData({ ...formData, content: e.target.value })
-                    }
-                    placeholder={
-                      formData.content_type === "video"
-                        ? "Enter video URL (e.g., https://youtube.com/...)"
-                        : formData.content_type === "document"
-                        ? "Enter document URL (e.g., https://...)"
-                        : "Enter briefing content..."
-                    }
-                    rows={6}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500 text-sm"
-                  />
-                )}
+                  )}
+                  {!isRichText && (
+                    <p className="text-xs text-gray-500 mt-1 ml-1">
+                      {formData.content.length} / 2000 characters
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <DialogFooter className="gap-3 pt-5 border-t border-gray-200">
+            {/* Action Buttons - Sticky at bottom */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
                 disabled={submitting}
-                className="flex-1 h-11 px-6 border-gray-300 hover:border-gray-400 text-gray-700 hover:text-gray-900 hover:bg-gray-50 font-semibold transition-all"
+                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateBriefing}
                 disabled={submitting}
-                className="flex-1 h-11 px-6 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <>
-                    <Clock className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Creating...
                   </>
                 ) : (
                   <>
-                    <Shield className="w-4 h-4 mr-2" />
+                    <Save className="w-4 h-4 mr-2" />
                     Create Briefing
                   </>
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 

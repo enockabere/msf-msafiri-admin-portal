@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/toast";
 import { Car, Calendar, Users, Package } from "lucide-react";
 import TransportBookingsList from "@/components/transport/TransportBookingsList";
 import CreateBookingModal from "@/components/transport/CreateBookingModal";
-import VendorManagement from "@/components/transport/VendorManagement";
+import AutoBookingManagement from "@/components/transport/AutoBookingManagement";
 
 interface TransportBooking {
   id: number;
@@ -60,7 +60,7 @@ export default function TransportPage() {
   const activeTab = searchParams.get('tab') || 'bookings';
 
   const [bookings, setBookings] = useState<TransportBooking[]>([]);
-  const [vendors, setVendors] = useState<TransportVendor[]>([]);
+  const [vendors] = useState<TransportVendor[]>([]);
   const [, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<TransportBooking | null>(null);
@@ -70,23 +70,13 @@ export default function TransportPage() {
 
     try {
       const token = apiClient.getToken();
-      const [bookingsResponse, vendorsResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/bookings/?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/vendors/?tenant_context=${tenantSlug}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      const bookingsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/bookings/?tenant_context=${tenantSlug}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json();
         setBookings(bookingsData);
-      }
-
-      if (vendorsResponse.ok) {
-        const vendorsData = await vendorsResponse.json();
-        setVendors(vendorsData);
       }
     } catch (error) {
       console.error("Error fetching transport data:", error);
@@ -165,12 +155,12 @@ export default function TransportPage() {
               <span className="sm:hidden">Schedule</span>
             </TabsTrigger>
             <TabsTrigger 
-              value="vendors" 
+              value="auto-bookings" 
               className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
             >
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Vendors</span>
-              <span className="sm:hidden">Vendors</span>
+              <span className="hidden sm:inline">Auto Bookings</span>
+              <span className="sm:hidden">Auto</span>
             </TabsTrigger>
           </TabsList>
 
@@ -250,9 +240,8 @@ export default function TransportPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="vendors" className="space-y-6">
-            <VendorManagement 
-              vendors={vendors}
+          <TabsContent value="auto-bookings" className="space-y-6">
+            <AutoBookingManagement 
               canEdit={canEdit}
               onRefresh={fetchData}
               apiClient={apiClient as { getToken: () => string }}
