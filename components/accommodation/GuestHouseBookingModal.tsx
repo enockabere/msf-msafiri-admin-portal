@@ -353,7 +353,6 @@ export default function GuestHouseBookingModal({
                     mode="single"
                     selected={formData.check_in_date}
                     onSelect={(date) => setFormData(prev => ({ ...prev, check_in_date: date }))}
-                    disabled={(date) => date < new Date()}
                     initialFocus
                   />
                 </PopoverContent>
@@ -376,7 +375,7 @@ export default function GuestHouseBookingModal({
                     mode="single"
                     selected={formData.check_out_date}
                     onSelect={(date) => setFormData(prev => ({ ...prev, check_out_date: date }))}
-                    disabled={(date) => date <= (formData.check_in_date || new Date())}
+                    disabled={(date) => formData.check_in_date ? date <= formData.check_in_date : false}
                     initialFocus
                   />
                 </PopoverContent>
