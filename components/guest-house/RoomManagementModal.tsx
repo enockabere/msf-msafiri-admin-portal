@@ -230,18 +230,23 @@ export default function RoomManagementModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bed className="w-5 h-5" />
-            Room Management - {guestHouse.name}
-          </DialogTitle>
-          <DialogDescription>
-            Manage rooms and their configurations for this guest house
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        {/* Gradient Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <Bed className="w-5 h-5" />
+              </div>
+              Room Management
+            </DialogTitle>
+            <DialogDescription className="text-blue-100 mt-2">
+              Manage rooms and configurations for {guestHouse.name}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-6">
+        <div className="p-6 space-y-6">
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg text-center">
