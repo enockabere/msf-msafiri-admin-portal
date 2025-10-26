@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { Plus, Home, MapPin, Users, Settings, Bed, Hotel } from "lucide-react";
+import { Plus, Home, MapPin, Users, Settings, Bed, Hotel, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
 import GuestHouseSetupModal from "@/components/guest-house/GuestHouseSetupModal";
 import RoomManagementModal from "@/components/guest-house/RoomManagementModal";
 
@@ -125,7 +126,18 @@ export default function GuestHouseSetupPage() {
   };
 
   const handleDeleteGuestHouse = async (guestHouse: GuestHouse) => {
-    if (!confirm(`Are you sure you want to delete "${guestHouse.name}"? This action cannot be undone.`)) {
+    const result = await Swal.fire({
+      title: 'Delete Guest House?',
+      text: `Are you sure you want to delete "${guestHouse.name}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
 
@@ -141,14 +153,24 @@ export default function GuestHouseSetupPage() {
       );
 
       if (response.ok) {
-        toast({ title: "Success", description: "Guest house deleted successfully" });
+        await Swal.fire({
+          title: 'Deleted!',
+          text: 'Guest house has been deleted successfully.',
+          icon: 'success',
+          confirmButtonColor: '#059669'
+        });
         fetchGuestHouses();
       } else {
         throw new Error("Failed to delete guest house");
       }
     } catch (error) {
       console.error("Error deleting guest house:", error);
-      toast({ title: "Error", description: "Failed to delete guest house", variant: "destructive" });
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete guest house. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
     } finally {
       setDeletingId(null);
     }
@@ -306,17 +328,19 @@ export default function GuestHouseSetupPage() {
                       <Button
                         onClick={() => handleDeleteGuestHouse(guestHouse)}
                         size="sm"
-                        variant="destructive"
-                        className="w-full"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white border-0"
                         disabled={deletingId === guestHouse.id}
                       >
                         {deletingId === guestHouse.id ? (
                           <>
-                            <div className="w-4 h-4 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
                             Deleting...
                           </>
                         ) : (
-                          "Delete Guest House"
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Guest House
+                          </>
                         )}
                       </Button>
                     </div>
