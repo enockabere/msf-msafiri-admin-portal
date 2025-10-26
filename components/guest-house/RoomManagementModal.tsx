@@ -488,7 +488,6 @@ export default function RoomManagementModal({
                         </Button>
                       </div>
                     </div>
-                  </div>
                 </div>
               ))
             )}
