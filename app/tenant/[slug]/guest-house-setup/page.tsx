@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { Plus, Home, MapPin, Users, Settings, Bed, Hotel, Trash2 } from "lucide-react";
+import { Plus, Home, MapPin, Users, Settings, Bed, Hotel, Trash2, Power, PowerOff } from "lucide-react";
 import Swal from "sweetalert2";
 import GuestHouseSetupModal from "@/components/guest-house/GuestHouseSetupModal";
 import RoomManagementModal from "@/components/guest-house/RoomManagementModal";
@@ -59,6 +59,7 @@ export default function GuestHouseSetupPage() {
   const [editingGuestHouse, setEditingGuestHouse] = useState<GuestHouse | null>(null);
   const [selectedGuestHouse, setSelectedGuestHouse] = useState<GuestHouse | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   const fetchGuestHouses = async () => {
     if (authLoading || !user) {
@@ -176,6 +177,60 @@ export default function GuestHouseSetupPage() {
     }
   };
 
+  const handleToggleGuestHouse = async (guestHouse: GuestHouse) => {
+    const action = guestHouse.is_active ? 'deactivate' : 'activate';
+    const result = await Swal.fire({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Guest House?`,
+      text: `Are you sure you want to ${action} "${guestHouse.name}"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: guestHouse.is_active ? '#dc2626' : '#059669',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Yes, ${action} it!`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setTogglingId(guestHouse.id);
+      const token = apiClient.getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/${guestHouse.id}`,
+        {
+          method: 'PUT',
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ is_active: !guestHouse.is_active })
+        }
+      );
+
+      if (response.ok) {
+        await Swal.fire({
+          title: `${action.charAt(0).toUpperCase() + action.slice(1)}d!`,
+          text: `Guest house has been ${action}d successfully.`,
+          icon: 'success',
+          confirmButtonColor: '#059669'
+        });
+        fetchGuestHouses();
+      } else {
+        throw new Error(`Failed to ${action} guest house`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing guest house:`, error);
+      await Swal.fire({
+        title: 'Error!',
+        text: `Failed to ${action} guest house. Please try again.`,
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const getTotalCapacity = (rooms: GuestHouseRoom[]) => {
     return rooms.filter(r => r.is_active).reduce((total, room) => total + room.capacity, 0);
   };
@@ -213,7 +268,7 @@ export default function GuestHouseSetupPage() {
                 setEditingGuestHouse(null);
                 setSetupModalOpen(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Guest House
@@ -235,7 +290,7 @@ export default function GuestHouseSetupPage() {
                     setEditingGuestHouse(null);
                     setSetupModalOpen(true);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Guest House
@@ -244,105 +299,153 @@ export default function GuestHouseSetupPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {guestHouses.map((guestHouse) => (
-              <Card key={guestHouse.id} className="hover:shadow-md transition-shadow">
+              <Card key={guestHouse.id} className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-blue-50 group overflow-hidden">
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Home className="w-5 h-5 text-blue-600" />
-                        {guestHouse.name}
-                      </CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3" />
-                        {guestHouse.location}
-                      </CardDescription>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-red-100 to-red-200 shadow-sm flex-shrink-0">
+                          <Home className="w-4 h-4 sm:w-5 sm:h-5 text-red-700" />
+                        </div>
+                        <CardTitle className="text-base sm:text-lg group-hover:text-red-600 transition-colors break-words">
+                          {guestHouse.name}
+                        </CardTitle>
+                      </div>
+                      <Badge
+                        variant={guestHouse.is_active ? "default" : "secondary"}
+                        className={`flex-shrink-0 ${guestHouse.is_active ? "bg-green-100 text-green-800 border border-green-300" : ""}`}
+                      >
+                        {guestHouse.is_active ? "Active" : "Inactive"}
+                      </Badge>
                     </div>
-                    <Badge variant={guestHouse.is_active ? "default" : "secondary"}>
-                      {guestHouse.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    <CardDescription className="flex items-start gap-1 text-xs">
+                      <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                      <span className="break-words">{guestHouse.location}</span>
+                    </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm text-gray-600">
-                    <p className="line-clamp-2">{guestHouse.address}</p>
+                    <p className="line-clamp-2 break-words">{guestHouse.address}</p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 p-3 rounded-lg text-center">
-                      <div className="text-lg font-semibold text-blue-900">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-xl text-center border-2 border-blue-200">
+                      <div className="text-2xl font-bold text-blue-900">
                         {getActiveRoomsCount(guestHouse.rooms)}
                       </div>
-                      <div className="text-xs text-blue-600">Rooms</div>
+                      <div className="text-[10px] sm:text-xs text-blue-600 font-medium mt-0.5">Rooms</div>
                     </div>
-                    <div className="bg-green-50 p-3 rounded-lg text-center">
-                      <div className="text-lg font-semibold text-green-900">
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-xl text-center border-2 border-green-200">
+                      <div className="text-2xl font-bold text-green-900">
                         {getTotalCapacity(guestHouse.rooms)}
                       </div>
-                      <div className="text-xs text-green-600">Total Capacity</div>
+                      <div className="text-[10px] sm:text-xs text-green-600 font-medium mt-0.5">Capacity</div>
                     </div>
                   </div>
 
                   {guestHouse.contact_person && (
-                    <div className="text-sm">
-                      <span className="font-medium">Contact:</span> {guestHouse.contact_person}
-                      {guestHouse.phone && <span className="text-gray-500"> • {guestHouse.phone}</span>}
+                    <div className="text-xs sm:text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                      <span className="font-semibold text-gray-700">Contact:</span>{" "}
+                      <span className="text-gray-900">{guestHouse.contact_person}</span>
+                      {guestHouse.phone && (
+                        <span className="text-gray-500 block sm:inline sm:ml-1">• {guestHouse.phone}</span>
+                      )}
                     </div>
                   )}
 
                   {guestHouse.facilities && Object.keys(guestHouse.facilities).length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {Object.entries(guestHouse.facilities).map(([key, value]) => (
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(guestHouse.facilities).slice(0, 5).map(([key, value]) => (
                         value && (
-                          <Badge key={key} variant="outline" className="text-xs">
+                          <Badge key={key} variant="outline" className="text-[10px] sm:text-xs bg-white">
                             {key.replace('_', ' ')}
                           </Badge>
                         )
                       ))}
+                      {Object.entries(guestHouse.facilities).filter(([_, v]) => v).length > 5 && (
+                        <Badge variant="outline" className="text-[10px] sm:text-xs bg-white">
+                          +{Object.entries(guestHouse.facilities).filter(([_, v]) => v).length - 5} more
+                        </Badge>
+                      )}
                     </div>
                   )}
 
                   {canEdit && (
-                    <div className="space-y-2 pt-2">
-                      <div className="flex gap-2">
+                    <div className="space-y-2 pt-2 border-t border-gray-200">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           onClick={() => handleManageRooms(guestHouse)}
                           size="sm"
                           variant="outline"
-                          className="flex-1"
+                          className="border-2 hover:bg-blue-50 hover:border-blue-300 h-9"
                         >
-                          <Bed className="w-4 h-4 mr-1" />
-                          Rooms
+                          <Bed className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-xs sm:text-sm">Rooms</span>
                         </Button>
                         <Button
                           onClick={() => handleEditGuestHouse(guestHouse)}
                           size="sm"
                           variant="outline"
-                          className="flex-1"
+                          className="border-2 hover:bg-blue-50 hover:border-blue-300 h-9"
                         >
-                          <Settings className="w-4 h-4 mr-1" />
-                          Edit
+                          <Settings className="w-3.5 h-3.5 mr-1" />
+                          <span className="text-xs sm:text-sm">Edit</span>
                         </Button>
                       </div>
-                      <Button
-                        onClick={() => handleDeleteGuestHouse(guestHouse)}
-                        size="sm"
-                        className="w-full bg-red-600 hover:bg-red-700 text-white border-0"
-                        disabled={deletingId === guestHouse.id}
-                      >
-                        {deletingId === guestHouse.id ? (
-                          <>
-                            <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Guest House
-                          </>
-                        )}
-                      </Button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          onClick={() => handleToggleGuestHouse(guestHouse)}
+                          size="sm"
+                          className={`h-9 text-white border-0 text-xs sm:text-sm ${
+                            guestHouse.is_active 
+                              ? 'bg-orange-600 hover:bg-orange-700' 
+                              : 'bg-green-600 hover:bg-green-700'
+                          }`}
+                          disabled={togglingId === guestHouse.id}
+                        >
+                          {togglingId === guestHouse.id ? (
+                            <>
+                              <div className="w-3.5 h-3.5 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              {guestHouse.is_active ? 'Deactivating...' : 'Activating...'}
+                            </>
+                          ) : (
+                            <>
+                              {guestHouse.is_active ? (
+                                <>
+                                  <PowerOff className="w-3.5 h-3.5 mr-1" />
+                                  Deactivate
+                                </>
+                              ) : (
+                                <>
+                                  <Power className="w-3.5 h-3.5 mr-1" />
+                                  Activate
+                                </>
+                              )}
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteGuestHouse(guestHouse)}
+                          size="sm"
+                          className="h-9 bg-red-600 hover:bg-red-700 text-white border-0 text-xs sm:text-sm"
+                          disabled={deletingId === guestHouse.id}
+                        >
+                          {deletingId === guestHouse.id ? (
+                            <>
+                              <div className="w-3.5 h-3.5 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-3.5 h-3.5 mr-1" />
+                              Delete
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>

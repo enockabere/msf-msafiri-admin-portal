@@ -230,92 +230,108 @@ export default function GuestHouseSetupModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto modal-scrollbar">
-          <div className="p-6 pb-0 space-y-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">
-                Basic Information
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name" className="text-sm font-semibold text-gray-900">
-                    Guest House Name
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="e.g., MSF Guest House Westlands"
-                    required
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="location" className="text-sm font-semibold text-gray-900">
-                    Location/Area
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <LocationSelect
-                    value={formData.location}
-                    country={tenantData?.country}
-                    onChange={(value, placeDetails) => {
-                      setFormData(prev => ({
-                        ...prev,
-                        location: value,
-                        latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
-                        longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
-                      }));
-                    }}
-                    placeholder="Search and select guest house location"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Start typing to search for the location</p>
-                </div>
+          <div className="p-6 pb-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Guest House Name - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="name" className="text-sm font-semibold text-gray-900">
+                  Guest House Name
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., MSF Guest House Westlands"
+                  required
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:col-span-2">
-                <div>
-                  <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
-                    Latitude
-                  </Label>
-                  <Input
-                    id="latitude"
-                    type="number"
-                    step="any"
-                    value={formData.latitude}
-                    readOnly
-                    placeholder="Auto-filled from location"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 bg-gray-50 rounded-lg transition-all cursor-not-allowed"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="longitude" className="text-sm font-semibold text-gray-900">
-                    Longitude
-                  </Label>
-                  <Input
-                    id="longitude"
-                    type="number"
-                    step="any"
-                    value={formData.longitude}
-                    readOnly
-                    placeholder="Auto-filled from location"
-                    className="pl-4 pr-4 py-3 text-sm border-gray-300 bg-gray-50 rounded-lg transition-all cursor-not-allowed"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openGoogleMaps}
-                    className="w-full px-4 py-3 text-sm hover:bg-white transition-all"
-                  >
-                    <MapPin className="w-4 h-4 mr-2" />
-                    Find on Maps
-                  </Button>
-                </div>
+              {/* Location */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="location" className="text-sm font-semibold text-gray-900">
+                  Location/Area
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <LocationSelect
+                  value={formData.location}
+                  country={tenantData?.country}
+                  onChange={(value, placeDetails) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      location: value,
+                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                    }));
+                  }}
+                  placeholder="Search and select guest house location"
+                />
+                <p className="text-xs text-gray-500 mt-1 ml-1">Start typing to search for the location</p>
               </div>
 
-              <div className="md:col-span-2">
+              {/* Address - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="address" className="text-sm font-semibold text-gray-900">
+                  Full Address
+                  <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Complete street address"
+                  required
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
+              </div>
+
+              {/* Coordinates */}
+              <div className="space-y-2">
+                <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
+                  Latitude
+                </Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  value={formData.latitude}
+                  readOnly
+                  placeholder="Auto-filled"
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 bg-gray-50 rounded-lg cursor-not-allowed"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="longitude" className="text-sm font-semibold text-gray-900">
+                  Longitude
+                </Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  value={formData.longitude}
+                  readOnly
+                  placeholder="Auto-filled"
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 bg-gray-50 rounded-lg cursor-not-allowed"
+                />
+              </div>
+
+              {/* Map Button - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openGoogleMaps}
+                  className="w-full h-10 px-4 text-sm hover:bg-blue-50 hover:border-blue-300 transition-all"
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  View on Google Maps
+                </Button>
+              </div>
+
+              {/* Description - Full width */}
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="description" className="text-sm font-semibold text-gray-900">
                   Description
                 </Label>
@@ -323,50 +339,117 @@ export default function GuestHouseSetupModal({
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of the guest house"
-                  rows={2}
-                  className="text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none"
+                  placeholder="Brief description of the guest house and its surroundings"
+                  className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[5rem]"
                 />
               </div>
-            </div>
 
-
-
-            {/* Facilities */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">
-                Facilities & Amenities
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {commonFacilities.map((facility) => (
-                  <div key={facility.key} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={facility.key}
-                      checked={formData.facilities[facility.key] || false}
-                      onCheckedChange={(checked) => handleFacilityChange(facility.key, checked as boolean)}
-                      className="border-gray-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
-                    />
-                    <Label htmlFor={facility.key} className="text-sm font-medium text-gray-700">
-                      {facility.label}
-                    </Label>
-                  </div>
-                ))}
+              {/* Contact Person */}
+              <div className="space-y-2">
+                <Label htmlFor="contact_person" className="text-sm font-semibold text-gray-900">
+                  Contact Person
+                </Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e.target.value }))}
+                  placeholder="Manager or contact name"
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
               </div>
-            </div>
 
-            {/* House Rules */}
-            <div className="space-y-4">
-              <h4 className="font-semibold text-gray-900">
-                House Rules
-              </h4>
-              <Textarea
-                id="house_rules"
-                value={formData.house_rules}
-                onChange={(e) => setFormData(prev => ({ ...prev, house_rules: e.target.value }))}
-                placeholder="Enter house rules and policies (e.g., no smoking, quiet hours, etc.)"
-                rows={3}
-                className="text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none"
-              />
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-sm font-semibold text-gray-900">
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+254 700 000 000"
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
+              </div>
+
+              {/* Email - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="email" className="text-sm font-semibold text-gray-900">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="guesthouse@example.com"
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
+              </div>
+
+              {/* Check-in Time */}
+              <div className="space-y-2">
+                <Label htmlFor="check_in_time" className="text-sm font-semibold text-gray-900">
+                  Check-in Time
+                </Label>
+                <Input
+                  id="check_in_time"
+                  type="time"
+                  value={formData.check_in_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
+              </div>
+
+              {/* Check-out Time */}
+              <div className="space-y-2">
+                <Label htmlFor="check_out_time" className="text-sm font-semibold text-gray-900">
+                  Check-out Time
+                </Label>
+                <Input
+                  id="check_out_time"
+                  type="time"
+                  value={formData.check_out_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
+                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                />
+              </div>
+
+              {/* Facilities - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-sm font-semibold text-gray-900">
+                  Facilities & Amenities
+                </Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  {commonFacilities.map((facility) => (
+                    <div key={facility.key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={facility.key}
+                        checked={formData.facilities[facility.key] || false}
+                        onCheckedChange={(checked) => handleFacilityChange(facility.key, checked as boolean)}
+                        className="border-gray-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                      />
+                      <Label htmlFor={facility.key} className="text-sm font-medium text-gray-700 cursor-pointer">
+                        {facility.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* House Rules - Full width */}
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="house_rules" className="text-sm font-semibold text-gray-900">
+                  House Rules
+                </Label>
+                <Textarea
+                  id="house_rules"
+                  value={formData.house_rules}
+                  onChange={(e) => setFormData(prev => ({ ...prev, house_rules: e.target.value }))}
+                  placeholder="Enter house rules and policies (e.g., no smoking, quiet hours 10 PM - 7 AM, etc.)"
+                  className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[5rem]"
+                />
+              </div>
             </div>
           </div>
         </form>
