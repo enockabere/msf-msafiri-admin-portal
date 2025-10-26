@@ -320,7 +320,6 @@ export default function GuestHouseSetupModal({
                 />
               </div>
             </div>
-            </div>
 
             {/* Contact Information */}
             <div className="space-y-4">
