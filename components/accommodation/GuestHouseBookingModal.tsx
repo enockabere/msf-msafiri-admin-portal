@@ -185,7 +185,7 @@ export default function GuestHouseBookingModal({
             room_id: parseInt(formData.room_id),
             check_in_date: format(formData.check_in_date, "yyyy-MM-dd"),
             check_out_date: format(formData.check_out_date, "yyyy-MM-dd"),
-            number_of_guests: formData.number_of_guests,
+            number_of_guests: 1,
             accommodation_type: "guesthouse"
           }),
         }
@@ -335,7 +335,7 @@ export default function GuestHouseBookingModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900">
                 Check-in Date
@@ -381,22 +381,6 @@ export default function GuestHouseBookingModal({
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="number_of_guests" className="text-sm font-semibold text-gray-900">
-                Number of Guests
-                <span className="text-red-500 ml-1">*</span>
-              </Label>
-              <Input
-                id="number_of_guests"
-                type="number"
-                min="1"
-                max="10"
-                value={formData.number_of_guests}
-                onChange={(e) => setFormData(prev => ({ ...prev, number_of_guests: parseInt(e.target.value) || 1 }))}
-                required
-                className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm"
-              />
             </div>
           </div>
 
