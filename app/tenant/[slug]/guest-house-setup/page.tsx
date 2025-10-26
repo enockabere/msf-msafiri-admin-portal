@@ -59,25 +59,39 @@ export default function GuestHouseSetupPage() {
   const [selectedGuestHouse, setSelectedGuestHouse] = useState<GuestHouse | null>(null);
 
   const fetchGuestHouses = async () => {
-    if (authLoading || !user) return;
+    if (authLoading || !user) {
+      console.log("🔍 [DEBUG] Skipping fetch - authLoading:", authLoading, "user:", !!user);
+      return;
+    }
 
+    console.log("🔍 [DEBUG] Starting guest house fetch for tenant:", tenantSlug);
+    
     try {
       const token = apiClient.getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/?tenant_context=${tenantSlug}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/?tenant_context=${tenantSlug}`;
+      console.log("🔍 [DEBUG] Fetching from URL:", url);
+      console.log("🔍 [DEBUG] Using token:", token ? "Present" : "Missing");
+      
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("🔍 [DEBUG] Response status:", response.status);
+      console.log("🔍 [DEBUG] Response ok:", response.ok);
 
       if (response.ok) {
         const data = await response.json();
+        console.log("🔍 [DEBUG] Received data:", data);
+        console.log("🔍 [DEBUG] Data type:", typeof data);
+        console.log("🔍 [DEBUG] Data length:", Array.isArray(data) ? data.length : "Not array");
         setGuestHouses(data);
       } else {
-        throw new Error("Failed to fetch guest houses");
+        const errorText = await response.text();
+        console.error("🔍 [DEBUG] Response error:", response.status, errorText);
+        throw new Error(`Failed to fetch guest houses: ${response.status}`);
       }
     } catch (error) {
-      console.error("Error fetching guest houses:", error);
+      console.error("🔍 [DEBUG] Fetch error:", error);
       toast({ title: "Error", description: "Failed to load guest houses", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -85,8 +99,17 @@ export default function GuestHouseSetupPage() {
   };
 
   useEffect(() => {
+    console.log("🔍 [DEBUG] useEffect triggered - authLoading:", authLoading, "user:", !!user);
     fetchGuestHouses();
   }, [authLoading, user]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log("🔍 [DEBUG] Guest houses state updated:", guestHouses.length, "houses");
+    guestHouses.forEach((house, index) => {
+      console.log(`🔍 [DEBUG] House ${index + 1}:`, house.name, "- Active:", house.is_active);
+    });
+  }, [guestHouses]);
 
   const canEdit = Boolean(user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role));
 

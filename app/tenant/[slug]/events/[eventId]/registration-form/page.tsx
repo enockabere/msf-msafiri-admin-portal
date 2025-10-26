@@ -233,7 +233,7 @@ export default function EventRegistrationFormPage() {
         projectOfWork: "", personalEmail: "", msfEmail: "", hrcoEmail: "",
         careerManagerEmail: "", lineManagerEmail: "", phoneNumber: "",
         travellingInternationally: "", travellingFromCountry: "", accommodationType: "", dietaryRequirements: "",
-        accommodationNeeds: "", dailyMeals: [], certificateName: "",
+        accommodationNeeds: "", dailyMeals: [], certificateName: "", badgeName: "", motivationLetter: "",
         codeOfConductConfirm: "", travelRequirementsConfirm: ""
       });
     };
@@ -259,7 +259,7 @@ export default function EventRegistrationFormPage() {
     
     setCheckingEmail(true);
     try {
-      const response = await apiClient.request('/check-email-registration', {
+      const response = await apiClient.request<{already_registered: boolean; message: string}>('/check-email-registration', {
         method: "POST",
         body: JSON.stringify({
           event_id: parseInt(eventId),
