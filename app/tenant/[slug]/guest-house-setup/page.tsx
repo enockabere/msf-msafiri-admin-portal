@@ -63,44 +63,21 @@ export default function GuestHouseSetupPage() {
 
     try {
       const token = apiClient.getToken();
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/?tenant_context=${tenantSlug}`;
-      
-      console.log("[DEBUG] Fetching guest houses:");
-      console.log("[DEBUG] URL:", url);
-      console.log("[DEBUG] Token exists:", !!token);
-      console.log("[DEBUG] Tenant slug:", tenantSlug);
-      
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/?tenant_context=${tenantSlug}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      console.log("[DEBUG] Response status:", response.status);
-      console.log("[DEBUG] Response ok:", response.ok);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log("[DEBUG] Response data:", data);
         setGuestHouses(data);
       } else {
-        const errorText = await response.text();
-        console.log("[DEBUG] Error response:", errorText);
-        
-        // Handle 501 Not Implemented specifically
-        if (response.status === 501) {
-          console.log("[DEBUG] Guest house functionality is disabled");
-          setGuestHouses([]);
-          toast({ 
-            title: "Feature Unavailable", 
-            description: "Guest house management is temporarily disabled", 
-            variant: "destructive" 
-          });
-          return;
-        }
-        
-        throw new Error(`Failed to fetch guest houses: ${response.status} - ${errorText}`);
+        throw new Error("Failed to fetch guest houses");
       }
     } catch (error) {
-      console.error("[DEBUG] Error fetching guest houses:", error);
+      console.error("Error fetching guest houses:", error);
       toast({ title: "Error", description: "Failed to load guest houses", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -156,12 +133,14 @@ export default function GuestHouseSetupPage() {
           </div>
           {canEdit && (
             <Button
-              disabled
-              className="bg-gray-400 cursor-not-allowed"
-              title="Guest house functionality is temporarily disabled"
+              onClick={() => {
+                setEditingGuestHouse(null);
+                setSetupModalOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Guest House (Disabled)
+              Add Guest House
             </Button>
           )}
         </div>
@@ -170,17 +149,22 @@ export default function GuestHouseSetupPage() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Home className="w-12 h-12 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Guest House Management Unavailable</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Guest Houses</h3>
               <p className="text-sm text-gray-600 text-center max-w-md mb-4">
-                Guest house management functionality is temporarily disabled due to system maintenance. Please use the Visitor Accommodations section for accommodation management.
+                Get started by adding your first guest house. You can configure rooms and manage bookings once set up.
               </p>
-              <Button
-                onClick={() => window.location.href = '/tenant/' + tenantSlug + '/accommodation'}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Hotel className="w-4 h-4 mr-2" />
-                Go to Accommodations
-              </Button>
+              {canEdit && (
+                <Button
+                  onClick={() => {
+                    setEditingGuestHouse(null);
+                    setSetupModalOpen(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Guest House
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
