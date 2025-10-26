@@ -57,6 +57,7 @@ export default function GuestHouseSetupPage() {
   const [roomModalOpen, setRoomModalOpen] = useState(false);
   const [editingGuestHouse, setEditingGuestHouse] = useState<GuestHouse | null>(null);
   const [selectedGuestHouse, setSelectedGuestHouse] = useState<GuestHouse | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchGuestHouses = async () => {
     if (authLoading || !user) {
@@ -121,6 +122,36 @@ export default function GuestHouseSetupPage() {
   const handleManageRooms = (guestHouse: GuestHouse) => {
     setSelectedGuestHouse(guestHouse);
     setRoomModalOpen(true);
+  };
+
+  const handleDeleteGuestHouse = async (guestHouse: GuestHouse) => {
+    if (!confirm(`Are you sure you want to delete "${guestHouse.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(guestHouse.id);
+      const token = apiClient.getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/guest-houses/${guestHouse.id}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.ok) {
+        toast({ title: "Success", description: "Guest house deleted successfully" });
+        fetchGuestHouses();
+      } else {
+        throw new Error("Failed to delete guest house");
+      }
+    } catch (error) {
+      console.error("Error deleting guest house:", error);
+      toast({ title: "Error", description: "Failed to delete guest house", variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const getTotalCapacity = (rooms: GuestHouseRoom[]) => {
@@ -251,24 +282,42 @@ export default function GuestHouseSetupPage() {
                   )}
 
                   {canEdit && (
-                    <div className="flex gap-2 pt-2">
+                    <div className="space-y-2 pt-2">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleManageRooms(guestHouse)}
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Bed className="w-4 h-4 mr-1" />
+                          Rooms
+                        </Button>
+                        <Button
+                          onClick={() => handleEditGuestHouse(guestHouse)}
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          <Settings className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
                       <Button
-                        onClick={() => handleManageRooms(guestHouse)}
+                        onClick={() => handleDeleteGuestHouse(guestHouse)}
                         size="sm"
-                        variant="outline"
-                        className="flex-1"
+                        variant="destructive"
+                        className="w-full"
+                        disabled={deletingId === guestHouse.id}
                       >
-                        <Bed className="w-4 h-4 mr-1" />
-                        Rooms
-                      </Button>
-                      <Button
-                        onClick={() => handleEditGuestHouse(guestHouse)}
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        <Settings className="w-4 h-4 mr-1" />
-                        Edit
+                        {deletingId === guestHouse.id ? (
+                          <>
+                            <div className="w-4 h-4 mr-1 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            Deleting...
+                          </>
+                        ) : (
+                          "Delete Guest House"
+                        )}
                       </Button>
                     </div>
                   )}
