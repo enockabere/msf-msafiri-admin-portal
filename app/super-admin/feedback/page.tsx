@@ -228,9 +228,63 @@ export default function FeedbackPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-red-100 border-t-red-600"></div>
-          </div>
+          <>
+            {/* Skeleton Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="border-0 shadow-lg animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="h-3 bg-gray-200 rounded w-20 mb-3"></div>
+                        <div className="h-8 bg-gray-300 rounded w-12 mb-2"></div>
+                        <div className="h-2 bg-gray-200 rounded w-16"></div>
+                      </div>
+                      <div className="w-14 h-14 bg-gray-200 rounded-2xl"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Skeleton Filter */}
+            <Card className="border-0 shadow-md animate-pulse">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gray-200 rounded-xl"></div>
+                  <div className="h-10 bg-gray-200 rounded-lg w-48"></div>
+                  <div className="h-6 bg-gray-200 rounded w-32 ml-auto"></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skeleton Feedback Items */}
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border-0 shadow-md animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 bg-gray-200 rounded-xl w-32"></div>
+                        <div className="h-6 bg-gray-200 rounded-lg w-20"></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="h-4 bg-gray-200 rounded w-24 mb-1"></div>
+                        <div className="h-3 bg-gray-200 rounded w-16"></div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-100 rounded-xl p-5">
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-full"></div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         ) : (
           <>
             {/* Refreshing Overlay */}
