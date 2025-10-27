@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +30,10 @@ interface UsefulContact {
 }
 
 export default function UsefulContactsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const params = useParams();
+  const tenantSlug = params.slug as string;
 
   const [contacts, setContacts] = useState<UsefulContact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,25 +51,39 @@ export default function UsefulContactsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchContacts = useCallback(async () => {
+    // Don't fetch if still loading auth or no user
+    if (authLoading || !user) {
+      return;
+    }
+
+    const token = apiClient.getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "X-Tenant-ID": tenantSlug,
+      };
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/useful-contacts/`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiClient.getToken()}`,
-            "Content-Type": "application/json",
-          },
-        }
+        { headers }
       );
+
       if (response.ok) {
         const data = await response.json();
         setContacts(data);
       }
-    } catch {
+    } catch (error) {
+      // Handle error silently
     } finally {
       setLoading(false);
     }
-  }, [apiClient]);
+  }, [apiClient, tenantSlug, authLoading, user]);
 
   useEffect(() => {
     fetchContacts();
@@ -80,12 +97,13 @@ export default function UsefulContactsPage() {
       const url = editingContact
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/useful-contacts/${editingContact.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/useful-contacts/`;
-      
+
       const response = await fetch(url, {
         method: editingContact ? "PUT" : "POST",
         headers: {
           Authorization: `Bearer ${apiClient.getToken()}`,
           "Content-Type": "application/json",
+          "X-Tenant-ID": tenantSlug,
         },
         body: JSON.stringify(formData),
       });
@@ -122,7 +140,7 @@ export default function UsefulContactsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this contact?")) return;
-    
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/useful-contacts/${id}`,
@@ -130,6 +148,7 @@ export default function UsefulContactsPage() {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
+            "X-Tenant-ID": tenantSlug,
           },
         }
       );
