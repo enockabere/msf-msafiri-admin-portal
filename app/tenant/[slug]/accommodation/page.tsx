@@ -142,10 +142,6 @@ export default function AccommodationPage() {
 
       if (response.ok) {
         await fetchData();
-        // Refresh allocated participants for current event if modal is open
-        if (allocationForm.event_id) {
-          await fetchAllocatedParticipants(allocationForm.event_id);
-        }
         toast({ title: "Success", description: "Allocation deleted successfully" });
       } else {
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
