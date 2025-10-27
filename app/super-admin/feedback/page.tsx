@@ -151,7 +151,7 @@ export default function FeedbackPage() {
                         <p className="text-sm font-medium text-gray-600">Average Rating</p>
                         <div className="flex items-center gap-2">
                           <p className="text-2xl font-bold text-gray-900">
-                            {stats.average_rating?.toFixed(1) || "0.0"}
+                            {(typeof stats.average_rating === 'number' ? stats.average_rating.toFixed(1) : "0.0")}
                           </p>
                           <div className="flex">
                             {renderStars(Math.round(stats.average_rating || 0))}
