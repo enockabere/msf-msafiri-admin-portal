@@ -488,7 +488,14 @@ export default function Navbar() {
                     <span className="text-xs">Profile Settings</span>
                   </DropdownMenuItem>
 
-                  {isSuperAdmin && (
+                  {/* Debug: Show role info */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <DropdownMenuItem className="px-4 py-2 text-xs text-gray-400">
+                      Role: {user?.role} | Super: {isSuperAdmin ? 'Yes' : 'No'}
+                    </DropdownMenuItem>
+                  )}
+
+                  {(isSuperAdmin || user?.role === 'super_admin') && (
                     <>
                       <DropdownMenuItem
                         onClick={() => router.push("/admin/system")}
