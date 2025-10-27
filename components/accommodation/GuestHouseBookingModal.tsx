@@ -39,6 +39,7 @@ interface ConfirmedGuest {
   phone: string;
   event: string;
   display_text: string;
+  gender?: string;
 }
 
 interface GuestHouseBookingModalProps {
@@ -165,6 +166,44 @@ export default function GuestHouseBookingModal({
       return;
     }
 
+    // Validate room capacity and gender compatibility
+    const selectedRoom = availableRooms.find(r => r.id === parseInt(formData.room_id));
+    if (selectedRoom) {
+      const remaining = selectedRoom.capacity - (selectedRoom.current_occupants || 0);
+      if (remaining <= 0) {
+        toast({ title: "Error", description: "Selected room is full", variant: "destructive" });
+        return;
+      }
+      
+      // Check gender compatibility for shared rooms
+      if (selectedRoom.capacity > 1 && selectedRoom.current_occupants > 0) {
+        try {
+          const token = apiClient.getToken();
+          const roomOccupants = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/rooms/${selectedRoom.id}/occupants?tenant_context=${tenantSlug}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          
+          if (roomOccupants.ok) {
+            const occupantData = await roomOccupants.json();
+            const existingGenders = occupantData.occupant_genders || [];
+            const guestGender = selectedGuest?.gender;
+            
+            if (existingGenders.length > 0 && guestGender && !existingGenders.includes(guestGender)) {
+              toast({ 
+                title: "Error", 
+                description: "Cannot mix genders in shared rooms. Please select a different room.", 
+                variant: "destructive" 
+              });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("Error checking room occupants:", error);
+        }
+      }
+    }
+
     setLoading(true);
     try {
       const token = apiClient.getToken();
@@ -238,7 +277,8 @@ export default function GuestHouseBookingModal({
         </div>
 
         <div className="flex-1 overflow-y-auto modal-scrollbar p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Guest Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold text-gray-900">
               Select Guest
@@ -268,27 +308,7 @@ export default function GuestHouseBookingModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="event_id" className="text-sm font-semibold text-gray-900">
-                Event (Optional)
-              </Label>
-              <Select value={formData.event_id} onValueChange={(value) => setFormData(prev => ({ ...prev, event_id: value }))}>
-                <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm">
-                  <SelectValue placeholder="Select event (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No event</SelectItem>
-                  {availableEvents.map((event) => (
-                    <SelectItem key={event.id} value={event.id.toString()}>
-                      {event.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
+          {/* Guest House and Room */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="guest_house_id" className="text-sm font-semibold text-gray-900">
@@ -325,34 +345,43 @@ export default function GuestHouseBookingModal({
                   <SelectValue placeholder="Select room" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableRooms.map((room) => (
-                    <SelectItem key={room.id} value={room.id.toString()}>
-                      Room {room.room_number} (Capacity: {room.capacity})
-                    </SelectItem>
-                  ))}
+                  {availableRooms.map((room) => {
+                    const remaining = room.capacity - (room.current_occupants || 0);
+                    return (
+                      <SelectItem key={room.id} value={room.id.toString()}>
+                        Room {room.room_number} (Capacity: {room.capacity}, Available: {remaining})
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
+          {/* Check-in and Check-out Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-900">
                 Check-in Date
                 <span className="text-red-500 ml-1">*</span>
               </Label>
-              <Popover>
+              <Popover modal={true}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal h-10 border-2 border-gray-300 hover:border-red-500 text-sm">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.check_in_date ? format(formData.check_in_date, "PPP") : "Pick a date"}
+                    {formData.check_in_date ? format(formData.check_in_date, "PPP") : "Pick check-in date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.check_in_date}
                     onSelect={(date) => setFormData(prev => ({ ...prev, check_in_date: date }))}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -363,24 +392,53 @@ export default function GuestHouseBookingModal({
                 Check-out Date
                 <span className="text-red-500 ml-1">*</span>
               </Label>
-              <Popover>
+              <Popover modal={true}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal h-10 border-2 border-gray-300 hover:border-red-500 text-sm">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.check_out_date ? format(formData.check_out_date, "PPP") : "Pick a date"}
+                    {formData.check_out_date ? format(formData.check_out_date, "PPP") : "Pick check-out date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.check_out_date}
                     onSelect={(date) => setFormData(prev => ({ ...prev, check_out_date: date }))}
-                    disabled={(date) => formData.check_in_date ? date <= formData.check_in_date : false}
+                    disabled={(date) => {
+                      if (!formData.check_in_date) {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }
+                      const checkIn = new Date(formData.check_in_date);
+                      checkIn.setHours(0, 0, 0, 0);
+                      return date <= checkIn;
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+
+          {/* Event Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="event_id" className="text-sm font-semibold text-gray-900">
+              Event (Optional)
+            </Label>
+            <Select value={formData.event_id} onValueChange={(value) => setFormData(prev => ({ ...prev, event_id: value }))}>
+              <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 text-sm">
+                <SelectValue placeholder="Select event (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No event</SelectItem>
+                {availableEvents.map((event) => (
+                  <SelectItem key={event.id} value={event.id.toString()}>
+                    {event.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-200">
