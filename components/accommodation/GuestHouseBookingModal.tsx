@@ -42,6 +42,7 @@ interface ConfirmedGuest {
   event: string;
   display_text: string;
   gender?: string;
+  participant_id?: number;
 }
 
 interface GuestHouseBookingModalProps {
@@ -222,6 +223,7 @@ export default function GuestHouseBookingModal({
             guest_name: formData.guest_name,
             guest_email: selectedGuest?.email || "",
             guest_phone: selectedGuest?.phone || "",
+            participant_id: selectedGuest?.participant_id || null,
             event_id: formData.event_id && formData.event_id !== "none" ? parseInt(formData.event_id) : null,
             room_id: parseInt(formData.room_id),
             check_in_date: format(formData.check_in_date, "yyyy-MM-dd"),
