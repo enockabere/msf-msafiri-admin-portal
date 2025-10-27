@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { Plane, Car, MapPin, Clock, Users, RefreshCw, Calendar, Building, Hotel } from "lucide-react";
+import { Plane, Car, MapPin, Clock, Users, RefreshCw, Calendar, Building, Hotel, CheckCircle } from "lucide-react";
+import FlightDetailsModal from "@/components/transport/FlightDetailsModal";
 
 interface FlightTicket {
   id: string;
@@ -56,11 +57,38 @@ export default function TransportPage() {
   const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<TransportBooking | null>(null);
+  const [showFlightModal, setShowFlightModal] = useState(false);
 
-  const generateDummyFlightTickets = useCallback(() => {
+  const fetchInternationalVisitors = useCallback(async () => {
+    try {
+      const token = apiClient.getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/confirmed-guests?tenant_context=${tenantSlug}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter for international visitors only
+        const internationalGuests = data.guests?.filter((guest: any) => 
+          guest.travelling_from_country && guest.travelling_from_country !== 'Kenya'
+        ) || [];
+        
+        return internationalGuests;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching international visitors:', error);
+      return [];
+    }
+  }, [apiClient, tenantSlug]);
+
+  const generateFlightTickets = useCallback((visitors: any[]) => {
     const airlines = ['Kenya Airways', 'Ethiopian Airlines', 'Turkish Airlines', 'Emirates', 'Qatar Airways'];
-    const airports = {
-      'Kenya': { city: 'Nairobi', code: 'NBO' },
+    const airports: Record<string, { city: string; code: string }> = {
       'Uganda': { city: 'Kampala', code: 'EBB' },
       'Tanzania': { city: 'Dar es Salaam', code: 'DAR' },
       'Ethiopia': { city: 'Addis Ababa', code: 'ADD' },
@@ -68,127 +96,98 @@ export default function TransportPage() {
       'Somalia': { city: 'Mogadishu', code: 'MGQ' }
     };
     
-    const dummyTickets: FlightTicket[] = [
-      {
-        id: '1',
-        participant_name: 'John Doe',
-        participant_email: 'john.doe@msf.org',
-        event_title: 'MSF Regional Logistics Workshop',
-        departure_country: 'Uganda',
-        departure_city: 'Kampala',
-        departure_airport: 'EBB',
-        arrival_airport: 'NBO',
-        flight_number: 'KQ412',
-        airline: 'Kenya Airways',
-        departure_time: '2024-11-15T08:30:00',
-        arrival_time: '2024-11-15T10:45:00',
-        seat_number: '12A',
-        booking_reference: 'MSF001',
-        status: 'confirmed'
-      },
-      {
-        id: '2',
-        participant_name: 'Sarah Wilson',
-        participant_email: 'sarah.wilson@msf.org',
-        event_title: 'Emergency Response Training',
-        departure_country: 'Ethiopia',
-        departure_city: 'Addis Ababa',
-        departure_airport: 'ADD',
-        arrival_airport: 'NBO',
-        flight_number: 'ET305',
-        airline: 'Ethiopian Airlines',
-        departure_time: '2024-11-16T14:20:00',
-        arrival_time: '2024-11-16T16:35:00',
-        seat_number: '8C',
-        booking_reference: 'MSF002',
-        status: 'confirmed'
-      },
-      {
-        id: '3',
-        participant_name: 'Ahmed Hassan',
-        participant_email: 'ahmed.hassan@msf.org',
-        event_title: 'Medical Supply Chain Conference',
-        departure_country: 'Somalia',
-        departure_city: 'Mogadishu',
-        departure_airport: 'MGQ',
-        arrival_airport: 'NBO',
-        flight_number: 'TK672',
-        airline: 'Turkish Airlines',
-        departure_time: '2024-11-17T11:15:00',
-        arrival_time: '2024-11-17T13:30:00',
-        seat_number: '15F',
-        booking_reference: 'MSF003',
-        status: 'confirmed'
-      }
-    ];
-    
-    return dummyTickets;
-  }, []);
-
-  const generateTransportBookings = useCallback((tickets: FlightTicket[]) => {
-    const accommodations = [
-      { name: 'Tanga Heights Guest House', type: 'guesthouse' as const, address: 'Tanga Heights, Nairobi' },
-      { name: 'Sarova Stanley Hotel', type: 'vendor_hotel' as const, address: 'Kimathi Street, Nairobi' },
-      { name: 'MSF Guest House Westlands', type: 'guesthouse' as const, address: 'Westlands, Nairobi' }
-    ];
-    
-    const drivers = [
-      { name: 'Peter Kamau', phone: '+254712345678' },
-      { name: 'Mary Wanjiku', phone: '+254723456789' },
-      { name: 'David Ochieng', phone: '+254734567890' }
-    ];
-    
-    const vehicles = [
-      { type: 'Toyota Hiace', number: 'KCA 123A' },
-      { type: 'Nissan X-Trail', number: 'KCB 456B' },
-      { type: 'Toyota Prado', number: 'KCC 789C' }
-    ];
-    
-    return tickets.map((ticket, index) => {
-      const accommodation = accommodations[index % accommodations.length];
-      const driver = drivers[index % drivers.length];
-      const vehicle = vehicles[index % vehicles.length];
-      const arrivalTime = new Date(ticket.arrival_time);
-      const pickupTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000); // 1 hour after arrival
+    return visitors.map((visitor, index) => {
+      const country = visitor.travelling_from_country || 'Uganda';
+      const airport = airports[country] || airports['Uganda'];
+      const airline = airlines[index % airlines.length];
+      const flightNumber = `${airline.split(' ')[0].substring(0, 2).toUpperCase()}${(index + 1) * 100 + 12}`;
+      
+      // Generate arrival time (next few days)
+      const arrivalDate = new Date();
+      arrivalDate.setDate(arrivalDate.getDate() + (index % 7) + 1);
+      arrivalDate.setHours(8 + (index * 3) % 12, 30 + (index * 15) % 60);
+      
+      const departureDate = new Date(arrivalDate.getTime() - 2 * 60 * 60 * 1000); // 2 hours before
       
       return {
-        id: `TB${index + 1}`,
-        participant_name: ticket.participant_name,
-        participant_email: ticket.participant_email,
-        event_title: ticket.event_title,
-        pickup_location: 'Jomo Kenyatta International Airport (JKIA)',
-        destination: accommodation.name,
-        destination_type: accommodation.type,
-        pickup_time: pickupTime.toISOString(),
-        driver_name: driver.name,
-        driver_phone: driver.phone,
-        vehicle_type: vehicle.type,
-        vehicle_number: vehicle.number,
-        status: 'scheduled' as const,
-        flight_number: ticket.flight_number,
-        created_at: new Date().toISOString()
+        id: `FT${index + 1}`,
+        participant_name: visitor.name,
+        participant_email: visitor.email,
+        event_title: visitor.event,
+        departure_country: country,
+        departure_city: airport.city,
+        departure_airport: airport.code,
+        arrival_airport: 'NBO',
+        flight_number: flightNumber,
+        airline: airline,
+        departure_time: departureDate.toISOString(),
+        arrival_time: arrivalDate.toISOString(),
+        seat_number: `${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}`,
+        booking_reference: `MSF${String(index + 1).padStart(3, '0')}`,
+        status: 'confirmed' as const
       };
     });
   }, []);
+
+  const fetchTransportBookings = useCallback(async () => {
+    try {
+      const token = apiClient.getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/pending-bookings?tenant_context=${tenantSlug}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (response.ok) {
+        const bookings = await response.json();
+        return bookings.map((booking: any) => ({
+          id: booking.id.toString(),
+          participant_name: booking.participants[0]?.name || 'Unknown',
+          participant_email: booking.participants[0]?.email || '',
+          event_title: booking.participants[0]?.event || 'Unknown Event',
+          pickup_location: booking.pickup_locations[0] || 'JKIA Airport',
+          destination: booking.destination,
+          destination_type: booking.destination.toLowerCase().includes('guest') ? 'guesthouse' as const : 'vendor_hotel' as const,
+          pickup_time: booking.scheduled_time,
+          driver_name: 'Absolute Cabs Driver',
+          driver_phone: '+254700000000',
+          vehicle_type: 'SUV',
+          vehicle_number: 'Pending Assignment',
+          status: 'scheduled' as const,
+          flight_number: booking.flight_number || 'TBD',
+          created_at: booking.created_at
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching transport bookings:', error);
+      return [];
+    }
+  }, [apiClient, tenantSlug]);
 
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
 
     try {
       setLoading(true);
-      // Generate dummy data
-      const tickets = generateDummyFlightTickets();
-      const bookings = generateTransportBookings(tickets);
+      
+      // Fetch international visitors and generate flight tickets
+      const visitors = await fetchInternationalVisitors();
+      const tickets = generateFlightTickets(visitors);
+      
+      // Fetch real transport bookings from API
+      const bookings = await fetchTransportBookings();
       
       setFlightTickets(tickets);
       setTransportBookings(bookings);
     } catch (error) {
-      console.error("Error generating transport data:", error);
+      console.error("Error loading transport data:", error);
       toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user, generateDummyFlightTickets, generateTransportBookings]);
+  }, [authLoading, user, fetchInternationalVisitors, generateFlightTickets, fetchTransportBookings]);
 
   useEffect(() => {
     fetchData();
@@ -197,10 +196,29 @@ export default function TransportPage() {
   const handleGenerateBookings = async () => {
     setGenerating(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetchData();
-      toast({ title: "Success", description: "Transport bookings generated successfully" });
+      const token = apiClient.getToken();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/auto-create-bookings`,
+        {
+          method: 'POST',
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        await fetchData();
+        toast({ 
+          title: "Success", 
+          description: `${result.bookings?.length || 0} transport bookings created with Absolute Cabs integration` 
+        });
+      } else {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        toast({ title: "Error", description: error.detail, variant: "destructive" });
+      }
     } catch (error) {
       toast({ title: "Error", description: "Failed to generate bookings", variant: "destructive" });
     } finally {
@@ -270,7 +288,7 @@ export default function TransportPage() {
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Refresh Data
+                    Generate Bookings
                   </>
                 )}
               </Button>
@@ -431,9 +449,25 @@ export default function TransportPage() {
                         <span>Vehicle: {booking.vehicle_type} ({booking.vehicle_number})</span>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right space-y-2">
                       <div className="text-sm font-medium text-gray-900">{booking.destination_type === 'guesthouse' ? 'Guest House' : 'Hotel'}</div>
                       <div className="text-xs text-gray-500">{booking.driver_phone}</div>
+                      {booking.status === 'scheduled' && booking.flight_number === 'TBD' && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowFlightModal(true);
+                          }}
+                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs px-3 py-1"
+                        >
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Confirm Flight
+                        </Button>
+                      )}
+                      {booking.status === 'completed' && (
+                        <div className="text-xs text-green-600 font-medium">✓ Sent to Absolute Cabs</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -441,6 +475,19 @@ export default function TransportPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Flight Details Modal */}
+        <FlightDetailsModal
+          open={showFlightModal}
+          onOpenChange={setShowFlightModal}
+          booking={selectedBooking}
+          onSuccess={() => {
+            fetchData();
+            setSelectedBooking(null);
+          }}
+          apiClient={apiClient}
+          tenantSlug={tenantSlug}
+        />
       </div>
     </DashboardLayout>
   );
