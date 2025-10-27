@@ -31,7 +31,6 @@ import type { AuthUser } from "@/types/auth";
 import { getUserInitials } from "@/utils/userUtils";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useNotificationContext } from "@/context/NotificationContext";
 import { NotificationPriority } from "@/lib/api";
 import { AuthUtils } from "@/lib/auth";
 
@@ -60,13 +59,12 @@ export function SuperAdminNavbar({
   const { user: fullUserData } = useUserData();
   const {
     notifications,
+    stats,
     loading: notificationsLoading,
     markAsRead,
     markAllAsRead,
     refetch: refetchNotifications,
   } = useNotifications();
-  
-  const { stats } = useNotificationContext();
 
   const handleLogout = async () => {
     try {
