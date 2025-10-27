@@ -30,6 +30,8 @@ interface GuestHouse {
     room_number: string;
     capacity: number;
     is_active: boolean;
+    current_occupants?: number;
+    occupant_genders?: string[];
   }>;
 }
 
@@ -347,9 +349,12 @@ export default function GuestHouseBookingModal({
                 <SelectContent>
                   {availableRooms.map((room) => {
                     const remaining = room.capacity - (room.current_occupants || 0);
+                    const genderRestriction = room.occupant_genders && room.occupant_genders.length > 0 
+                      ? ` - ${room.occupant_genders[0]} only` 
+                      : '';
                     return (
                       <SelectItem key={room.id} value={room.id.toString()}>
-                        Room {room.room_number} (Capacity: {room.capacity}, Available: {remaining})
+                        Room {room.room_number} (Capacity: {room.capacity}, Available: {remaining}{genderRestriction})
                       </SelectItem>
                     );
                   })}
