@@ -284,6 +284,11 @@ export function SuperAdminNavbar({
       >
         <Bell className="w-4 h-4 mr-2" />
         App Feedback
+        {notifications.filter(n => n.notification_type === 'app_feedback' && !n.is_read).length > 0 && (
+          <Badge variant="destructive" className="ml-auto text-xs">
+            {notifications.filter(n => n.notification_type === 'app_feedback' && !n.is_read).length}
+          </Badge>
+        )}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem

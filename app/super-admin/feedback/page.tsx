@@ -6,7 +6,7 @@ import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, MessageSquare, TrendingUp, Users, Filter, ArrowLeft } from "lucide-react";
+import { Star, MessageSquare, TrendingUp, Users, Filter, ArrowLeft, RefreshCw } from "lucide-react";
 
 interface FeedbackItem {
   id: number;
@@ -43,6 +43,7 @@ export default function FeedbackPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
@@ -55,8 +56,12 @@ export default function FeedbackPage() {
     }
   }, [user, isSuperAdmin, router]);
 
-  const fetchFeedbackData = async () => {
+  const fetchFeedbackData = async (isRefresh = false) => {
     try {
+      if (isRefresh) {
+        setRefreshing(true);
+      }
+
       const token = apiClient.getToken();
       if (!token) return;
 
@@ -74,7 +79,7 @@ export default function FeedbackPage() {
       if (feedbackResponse.ok && statsResponse.ok) {
         const feedbackData = await feedbackResponse.json();
         const statsData = await statsResponse.json();
-        
+
         setFeedback(feedbackData);
         setStats(statsData);
       }
@@ -82,6 +87,7 @@ export default function FeedbackPage() {
       console.error("Error fetching feedback:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -123,26 +129,60 @@ export default function FeedbackPage() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl p-6 lg:p-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                <MessageSquare className="w-6 h-6 text-white" />
+        {/* Modern Header Section */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
+          {/* Decorative Background Elements */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+          </div>
+
+          <div className="relative p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              {/* Title Section */}
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                    <MessageSquare className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-white">App Feedback</h1>
+                    <p className="text-sm text-red-100 mt-1">Monitor user feedback and ratings to improve the mobile experience</p>
+                  </div>
+                </div>
+
+                {/* Quick Stats in Header */}
+                {stats && (
+                  <div className="flex items-center gap-6 mt-4">
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+                      <Users className="w-5 h-5 text-white" />
+                      <div>
+                        <div className="text-xl font-bold text-white">{stats.total_feedback}</div>
+                        <div className="text-xs text-red-100">Total Feedback</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+                      <Star className="w-5 h-5 text-yellow-300" />
+                      <div>
+                        <div className="text-xl font-bold text-white">
+                          {(typeof stats.average_rating === 'number' ? stats.average_rating.toFixed(1) : "0.0")}
+                        </div>
+                        <div className="text-xs text-red-100">Avg Rating</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">App Feedback</h1>
-                <p className="text-sm text-red-100 mt-0.5">User feedback and ratings for the mobile app</p>
-              </div>
+
+              {/* Action Button */}
+              <Button
+                onClick={() => router.push("/dashboard")}
+                className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
             </div>
-            <Button
-              onClick={() => router.push("/dashboard")}
-              variant="ghost"
-              className="text-white hover:bg-white/20 border border-white/30"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
           </div>
         </div>
 
@@ -152,129 +192,204 @@ export default function FeedbackPage() {
           </div>
         ) : (
           <>
-            {/* Stats Cards */}
+            {/* Refreshing Overlay */}
+            {refreshing && (
+              <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-100 border-t-red-600"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <MessageSquare className="w-8 h-8 text-red-600 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-semibold text-gray-900">Refreshing feedback...</p>
+                    <p className="text-sm text-gray-500 mt-1">Please wait</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Enhanced Stats Cards */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                  <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Feedback Card */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+                  <CardContent className="p-6 relative">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Feedback</p>
-                        <p className="text-2xl font-bold text-gray-900">{stats.total_feedback}</p>
+                        <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Total Feedback</p>
+                        <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_feedback}</p>
+                        <p className="text-xs text-gray-500 mt-1">All-time submissions</p>
                       </div>
-                      <Users className="w-8 h-8 text-blue-500" />
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Users className="w-7 h-7 text-blue-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
+                {/* Average Rating Card */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-yellow-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+                  <CardContent className="p-6 relative">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Average Rating</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Average Rating</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <p className="text-3xl font-bold text-gray-900">
                             {(typeof stats.average_rating === 'number' ? stats.average_rating.toFixed(1) : "0.0")}
                           </p>
-                          <div className="flex">
+                          <div className="flex gap-0.5">
                             {renderStars(Math.round(stats.average_rating || 0))}
                           </div>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">Out of 5 stars</p>
                       </div>
-                      <Star className="w-8 h-8 text-yellow-500" />
+                      <div className="w-14 h-14 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Star className="w-7 h-7 text-yellow-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
+                {/* 5-Star Ratings Card */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+                  <CardContent className="p-6 relative">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">5-Star Ratings</p>
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">5-Star Ratings</p>
+                        <p className="text-3xl font-bold text-green-600 mt-2">
                           {stats.rating_distribution["5"] || 0}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">Excellent reviews</p>
                       </div>
-                      <TrendingUp className="w-8 h-8 text-green-500" />
+                      <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <TrendingUp className="w-7 h-7 text-green-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-6">
+                {/* Bug Reports Card */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
+                  <CardContent className="p-6 relative">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Bug Reports</p>
-                        <p className="text-2xl font-bold text-red-600">
+                        <p className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Bug Reports</p>
+                        <p className="text-3xl font-bold text-red-600 mt-2">
                           {stats.category_distribution["bug_report"] || 0}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">Issues reported</p>
                       </div>
-                      <MessageSquare className="w-8 h-8 text-red-500" />
+                      <div className="w-14 h-14 bg-gradient-to-br from-red-100 to-red-200 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <MessageSquare className="w-7 h-7 text-red-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             )}
 
-            {/* Filter */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <Filter className="w-5 h-5 text-gray-500" />
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="all">All Categories</option>
-                    {Object.entries(categoryLabels).map(([key, label]) => (
-                      <option key={key} value={key}>{label}</option>
-                    ))}
-                  </select>
-                  <span className="text-sm text-gray-500">
-                    Showing {filteredFeedback.length} of {feedback.length} feedback items
-                  </span>
+            {/* Enhanced Filter Section */}
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-orange-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Filter className="w-5 h-5 text-red-600" />
+                    </div>
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className="flex-1 sm:flex-none border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-900 bg-white hover:border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all cursor-pointer"
+                    >
+                      <option value="all">All Categories</option>
+                      {Object.entries(categoryLabels).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-2 rounded-lg border border-gray-200">
+                    <MessageSquare className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-700">
+                      <span className="text-red-600 font-bold">{filteredFeedback.length}</span> of {feedback.length} items
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Feedback List */}
+            {/* Enhanced Feedback List */}
             <div className="space-y-4">
               {filteredFeedback.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">No feedback available</p>
+                <Card className="border-0 shadow-md">
+                  <CardContent className="p-12 text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <p className="text-lg font-semibold text-gray-900 mb-2">No feedback available</p>
+                    <p className="text-sm text-gray-500">No feedback found for the selected category</p>
                   </CardContent>
                 </Card>
               ) : (
-                filteredFeedback.map((item) => (
-                  <Card key={item.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex">
-                            {renderStars(item.rating)}
+                filteredFeedback.map((item) => {
+                  const ratingColor = item.rating >= 4 ? 'green' : item.rating >= 3 ? 'yellow' : 'red';
+                  const gradientBg = item.rating >= 4
+                    ? 'from-green-50 to-emerald-50'
+                    : item.rating >= 3
+                    ? 'from-yellow-50 to-amber-50'
+                    : 'from-red-50 to-rose-50';
+
+                  return (
+                    <Card key={item.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${gradientBg} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+                      <CardContent className="p-6 relative">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                          {/* Rating and Category Section */}
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+                            <div className={`flex items-center gap-2 bg-gradient-to-br from-${ratingColor}-100 to-${ratingColor}-200 px-4 py-2.5 rounded-xl border border-${ratingColor}-300 shadow-sm`}>
+                              <div className="flex gap-0.5">
+                                {renderStars(item.rating)}
+                              </div>
+                              <span className={`font-bold text-lg ${getRatingColor(item.rating)}`}>
+                                {item.rating}
+                              </span>
+                            </div>
+                            <span className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 text-sm font-semibold rounded-lg border border-gray-300 shadow-sm">
+                              {categoryLabels[item.category] || item.category}
+                            </span>
                           </div>
-                          <span className={`font-semibold ${getRatingColor(item.rating)}`}>
-                            {item.rating}/5
-                          </span>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                            {categoryLabels[item.category] || item.category}
-                          </span>
+
+                          {/* User Info Section */}
+                          <div className="flex items-center gap-3 lg:text-right">
+                            <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-orange-200 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <MessageSquare className="w-5 h-5 text-red-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">{item.user_name || item.user_email}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(item.updated_at || item.created_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right text-sm text-gray-500">
-                          <p>{item.user_name || item.user_email}</p>
-                          <p>{new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+
+                        {/* Feedback Text Section */}
+                        <div className="bg-white/80 backdrop-blur-sm rounded-xl p-5 border-2 border-gray-200 shadow-sm">
+                          <p className="text-gray-800 leading-relaxed text-sm">{item.feedback_text}</p>
                         </div>
-                      </div>
-                      
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-gray-700 leading-relaxed">{item.feedback_text}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
           </>
