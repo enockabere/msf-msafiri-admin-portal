@@ -151,82 +151,6 @@ export default function FeedbackPage() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-        {/* Modern Header Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
-          {/* Decorative Background Elements */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-          </div>
-
-          <div className="relative p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              {/* Title Section */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                    <MessageSquare className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-white">App Feedback</h1>
-                    <p className="text-sm text-red-100 mt-1">Monitor user feedback and ratings to improve the mobile experience</p>
-                  </div>
-                </div>
-
-                {/* Quick Stats in Header */}
-                {stats && (
-                  <div className="flex items-center gap-6 mt-4">
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
-                      <Users className="w-5 h-5 text-white" />
-                      <div>
-                        <div className="text-xl font-bold text-white">{stats.total_feedback}</div>
-                        <div className="text-xs text-red-100">Total Feedback</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
-                      <Star className="w-5 h-5 text-yellow-300" />
-                      <div>
-                        <div className="text-xl font-bold text-white">
-                          {(typeof stats.average_rating === 'number' ? stats.average_rating.toFixed(1) : "0.0")}
-                        </div>
-                        <div className="text-xs text-red-100">Avg Rating</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Button
-                  onClick={() => fetchFeedbackData(true)}
-                  disabled={refreshing}
-                  className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6"
-                >
-                  {refreshing ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => router.push("/dashboard")}
-                  className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {loading ? (
           <>
             {/* Skeleton Header */}
@@ -318,6 +242,82 @@ export default function FeedbackPage() {
           </>
         ) : (
           <>
+            {/* Modern Header Section */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
+              {/* Decorative Background Elements */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+              </div>
+
+              <div className="relative p-6 lg:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  {/* Title Section */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                        <MessageSquare className="w-8 h-8 text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-bold text-white">App Feedback</h1>
+                        <p className="text-sm text-red-100 mt-1">Monitor user feedback and ratings to improve the mobile experience</p>
+                      </div>
+                    </div>
+
+                    {/* Quick Stats in Header */}
+                    {stats && (
+                      <div className="flex items-center gap-6 mt-4">
+                        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+                          <Users className="w-5 h-5 text-white" />
+                          <div>
+                            <div className="text-xl font-bold text-white">{stats.total_feedback}</div>
+                            <div className="text-xs text-red-100">Total Feedback</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+                          <Star className="w-5 h-5 text-yellow-300" />
+                          <div>
+                            <div className="text-xl font-bold text-white">
+                              {(typeof stats.average_rating === 'number' ? stats.average_rating.toFixed(1) : "0.0")}
+                            </div>
+                            <div className="text-xs text-red-100">Avg Rating</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <Button
+                      onClick={() => fetchFeedbackData(true)}
+                      disabled={refreshing}
+                      className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6"
+                    >
+                      {refreshing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Refresh
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => router.push("/dashboard")}
+                      className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Dashboard
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Refreshing Overlay */}
             {refreshing && (
               <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200">
