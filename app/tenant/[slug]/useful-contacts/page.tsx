@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { User, Plus, Mail, Phone, Building, Pencil, Trash2, Save, X, Loader2 } from "lucide-react";
+import { User, Plus, Mail, Phone, Building, Pencil, Trash2, Save, X, Loader2, Clock } from "lucide-react";
 
 interface UsefulContact {
   id: number;
@@ -42,6 +42,8 @@ export default function UsefulContactsPage() {
     email: "",
     phone: "",
     department: "",
+    availability_schedule: "business_hours",
+    availability_details: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -151,7 +153,15 @@ export default function UsefulContactsPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", position: "", email: "", phone: "", department: "" });
+    setFormData({ 
+      name: "", 
+      position: "", 
+      email: "", 
+      phone: "", 
+      department: "",
+      availability_schedule: "business_hours",
+      availability_details: ""
+    });
     setEditingContact(null);
   };
 
@@ -163,6 +173,8 @@ export default function UsefulContactsPage() {
       email: contact.email,
       phone: contact.phone || "",
       department: contact.department || "",
+      availability_schedule: (contact as any).availability_schedule || "business_hours",
+      availability_details: (contact as any).availability_details || "",
     });
     setDialogOpen(true);
   };
@@ -241,6 +253,32 @@ export default function UsefulContactsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="availability" className="text-sm font-medium text-gray-700">Availability</Label>
+                    <select
+                      id="availability"
+                      value={formData.availability_schedule}
+                      onChange={(e) => setFormData({ ...formData, availability_schedule: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="24/7">24/7 - Always Available</option>
+                      <option value="business_hours">Business Hours (8 AM - 5 PM, Mon-Fri)</option>
+                      <option value="extended_hours">Extended Hours (8 AM - 8 PM, Mon-Sat)</option>
+                      <option value="custom">Custom Schedule</option>
+                    </select>
+                  </div>
+                  {formData.availability_schedule === "custom" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="availability_details" className="text-sm font-medium text-gray-700">Custom Schedule Details</Label>
+                      <textarea
+                        id="availability_details"
+                        value={formData.availability_details}
+                        onChange={(e) => setFormData({ ...formData, availability_details: e.target.value })}
+                        placeholder="e.g., Monday-Wednesday: 9 AM - 6 PM, Thursday-Friday: 10 AM - 4 PM"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[80px]"
+                      />
+                    </div>
+                  )}
                   <div className="flex justify-end space-x-3 pt-4">
                     <Button 
                       type="button" 
@@ -336,6 +374,16 @@ export default function UsefulContactsPage() {
                           <span className="text-xs text-gray-600">{contact.department}</span>
                         </div>
                       )}
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-600">
+                          {(contact as any).availability_schedule === "24/7" && "Available 24/7"}
+                          {(contact as any).availability_schedule === "business_hours" && "Mon-Fri, 8 AM - 5 PM"}
+                          {(contact as any).availability_schedule === "extended_hours" && "Mon-Sat, 8 AM - 8 PM"}
+                          {(contact as any).availability_schedule === "custom" && "Custom Schedule"}
+                          {!(contact as any).availability_schedule && "Business Hours"}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="pt-2 border-t">
