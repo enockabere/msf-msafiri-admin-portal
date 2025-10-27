@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star, MessageSquare, TrendingUp, Users, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Star, MessageSquare, TrendingUp, Users, Filter, ArrowLeft } from "lucide-react";
 
 interface FeedbackItem {
   id: number;
@@ -34,7 +36,8 @@ const categoryLabels: Record<string, string> = {
 };
 
 export default function FeedbackPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, isSuperAdmin } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
@@ -43,10 +46,14 @@ export default function FeedbackPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
+    if (!isSuperAdmin && user?.role !== "super_admin") {
+      router.push("/");
+      return;
+    }
     if (user?.role === "super_admin") {
       fetchFeedbackData();
     }
-  }, [user]);
+  }, [user, isSuperAdmin, router]);
 
   const fetchFeedbackData = async () => {
     try {
@@ -97,11 +104,17 @@ export default function FeedbackPage() {
     return "text-red-600";
   };
 
-  if (user?.role !== "super_admin") {
+  if (!isSuperAdmin && user?.role !== "super_admin") {
     return (
       <SuperAdminLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Access denied. Super admin privileges required.</p>
+          <div className="text-center space-y-4">
+            <p className="text-gray-500">Access denied. Super admin privileges required.</p>
+            <Button onClick={() => router.push("/")} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
+            </Button>
+          </div>
         </div>
       </SuperAdminLayout>
     );
@@ -112,14 +125,24 @@ export default function FeedbackPage() {
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl p-6 lg:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <MessageSquare className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">App Feedback</h1>
+                <p className="text-sm text-red-100 mt-0.5">User feedback and ratings for the mobile app</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">App Feedback</h1>
-              <p className="text-sm text-red-100 mt-0.5">User feedback and ratings for the mobile app</p>
-            </div>
+            <Button
+              onClick={() => router.push("/super-admin")}
+              variant="ghost"
+              className="text-white hover:bg-white/20 border border-white/30"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
           </div>
         </div>
 
