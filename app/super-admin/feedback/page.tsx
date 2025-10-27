@@ -229,6 +229,37 @@ export default function FeedbackPage() {
 
         {loading ? (
           <>
+            {/* Skeleton Header */}
+            <div className="bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl animate-pulse">
+              <div className="p-6 lg:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-16 h-16 bg-white/20 rounded-2xl"></div>
+                      <div>
+                        <div className="h-6 bg-white/30 rounded w-32 mb-2"></div>
+                        <div className="h-4 bg-white/20 rounded w-48"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6 mt-4">
+                      <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20">
+                        <div className="h-6 bg-white/20 rounded w-12 mb-1"></div>
+                        <div className="h-3 bg-white/20 rounded w-16"></div>
+                      </div>
+                      <div className="bg-white/10 px-4 py-2 rounded-lg border border-white/20">
+                        <div className="h-6 bg-white/20 rounded w-12 mb-1"></div>
+                        <div className="h-3 bg-white/20 rounded w-16"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="h-12 bg-white/10 rounded w-24"></div>
+                    <div className="h-12 bg-white rounded w-32"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Skeleton Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[1, 2, 3, 4].map((i) => (
@@ -260,7 +291,7 @@ export default function FeedbackPage() {
 
             {/* Skeleton Feedback Items */}
             <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <Card key={i} className="border-0 shadow-md animate-pulse">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
