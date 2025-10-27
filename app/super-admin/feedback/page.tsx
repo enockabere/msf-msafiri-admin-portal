@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import DashboardLayout from "@/components/layout/dashboard-layout";
+import SuperAdminLayout from "@/components/layout/SuperAdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, MessageSquare, TrendingUp, Users, Filter } from "lucide-react";
 
@@ -99,16 +99,16 @@ export default function FeedbackPage() {
 
   if (user?.role !== "super_admin") {
     return (
-      <DashboardLayout>
+      <SuperAdminLayout>
         <div className="flex items-center justify-center h-64">
           <p className="text-gray-500">Access denied. Super admin privileges required.</p>
         </div>
-      </DashboardLayout>
+      </SuperAdminLayout>
     );
   }
 
   return (
-    <DashboardLayout>
+    <SuperAdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl p-6 lg:p-8">
@@ -257,6 +257,6 @@ export default function FeedbackPage() {
           </>
         )}
       </div>
-    </DashboardLayout>
+    </SuperAdminLayout>
   );
 }
