@@ -489,13 +489,22 @@ export default function Navbar() {
                   </DropdownMenuItem>
 
                   {isSuperAdmin && (
-                    <DropdownMenuItem
-                      onClick={() => router.push("/admin/system")}
-                      className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
-                    >
-                      <Settings className="mr-3 h-4 w-4 text-gray-500" />
-                      <span className="text-xs">System Settings</span>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => router.push("/admin/system")}
+                        className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
+                      >
+                        <Settings className="mr-3 h-4 w-4 text-gray-500" />
+                        <span className="text-xs">System Settings</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => router.push("/super-admin/feedback")}
+                        className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
+                      >
+                        <Bell className="mr-3 h-4 w-4 text-gray-500" />
+                        <span className="text-xs">App Feedback</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </div>
 
