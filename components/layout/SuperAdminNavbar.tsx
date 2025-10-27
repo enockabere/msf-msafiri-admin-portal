@@ -280,6 +280,13 @@ export function SuperAdminNavbar({
           </Badge>
         )}
       </DropdownMenuItem>
+      <DropdownMenuItem
+        onClick={() => router.push("/super-admin/feedback")}
+        className="cursor-pointer hover:bg-gray-50 px-4 py-2"
+      >
+        <Bell className="w-4 h-4 mr-2" />
+        App Feedback
+      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={handleLogout}

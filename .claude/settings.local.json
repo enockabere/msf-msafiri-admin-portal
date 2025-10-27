@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Read(//d/development/msafiri-visitor-api/app/api/v1/endpoints/**)",
+      "Read(//d/development/msafiri-visitor-api/**)"
     ],
     "deny": [],
     "ask": []
