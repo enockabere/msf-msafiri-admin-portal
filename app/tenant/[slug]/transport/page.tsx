@@ -193,32 +193,138 @@ export default function TransportPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleGenerateBookings = async () => {
-    setGenerating(true);
+  const createAbsoluteCabsBooking = async (flightTicket: FlightTicket, destination: string) => {
     try {
       const token = apiClient.getToken();
+      
+      // Calculate pickup time (1 hour after flight arrival)
+      const arrivalTime = new Date(flightTicket.arrival_time);
+      const pickupTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000);
+      
+      const bookingData = {
+        pickup_address: "JKIA Airport",
+        pickup_latitude: -1.319167,
+        pickup_longitude: 36.927778,
+        dropoff_address: destination,
+        dropoff_latitude: -1.286389, // Nairobi center coordinates
+        dropoff_longitude: 36.817223,
+        pickup_time: pickupTime.toISOString().slice(0, 19), // Format: "2025-10-25T15:00:00"
+        passenger_name: flightTicket.participant_name,
+        passenger_phone: "254712345678", // Default phone
+        passenger_email: flightTicket.participant_email,
+        vehicle_type: "SUV",
+        flight_details: flightTicket.flight_number,
+        notes: `MSF visitor pickup for ${flightTicket.event_title}. Flight ${flightTicket.flight_number} from ${flightTicket.departure_city}.`
+      };
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/auto-create-bookings`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/create-absolute-booking`,
         {
           method: 'POST',
-          headers: { 
+          headers: {
             Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
             'X-Tenant-ID': tenantSlug
           },
+          body: JSON.stringify(bookingData)
         }
       );
       
       if (response.ok) {
         const result = await response.json();
-        await fetchData();
-        toast({ 
-          title: "Success", 
-          description: `${result.bookings?.length || 0} transport bookings created with Absolute Cabs integration` 
-        });
+        return {
+          success: true,
+          booking_reference: result.booking_reference,
+          passenger: flightTicket.participant_name
+        };
       } else {
-        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        toast({ title: "Error", description: error.detail, variant: "destructive" });
+        throw new Error('Failed to create booking');
       }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        passenger: flightTicket.participant_name
+      };
+    }
+  };
+
+  const handleGenerateBookings = async () => {
+    setGenerating(true);
+    try {
+      const accommodations = [
+        'Tanga Heights Guest House, Nairobi',
+        'Sarova Stanley Hotel, Kimathi Street',
+        'MSF Guest House Westlands, Nairobi',
+        'Hilton Nairobi, Mama Ngina Street',
+        'Serena Hotel, Kenyatta Avenue'
+      ];
+      
+      const results = [];
+      
+      // Create Absolute Cabs bookings for each flight ticket
+      for (let i = 0; i < flightTickets.length; i++) {
+        const ticket = flightTickets[i];
+        const destination = accommodations[i % accommodations.length];
+        
+        const result = await createAbsoluteCabsBooking(ticket, destination);
+        results.push(result);
+        
+        // Add delay between requests to avoid rate limiting
+        if (i < flightTickets.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+      
+      if (successCount > 0) {
+        toast({ 
+          title: "Bookings Created", 
+          description: `${successCount} transport bookings sent to Absolute Cabs${failureCount > 0 ? `, ${failureCount} failed` : ''}` 
+        });
+      }
+      
+      if (failureCount > 0) {
+        const failedPassengers = results.filter(r => !r.success).map(r => r.passenger).join(', ');
+        toast({ 
+          title: "Some Bookings Failed", 
+          description: `Failed to create bookings for: ${failedPassengers}`,
+          variant: "destructive"
+        });
+      }
+      
+      // Update transport bookings to show created bookings
+      const newBookings = results
+        .filter(r => r.success)
+        .map((result, index) => {
+          const ticket = flightTickets[index];
+          const destination = accommodations[index % accommodations.length];
+          const arrivalTime = new Date(ticket.arrival_time);
+          const pickupTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000);
+          
+          return {
+            id: `AB${index + 1}`,
+            participant_name: ticket.participant_name,
+            participant_email: ticket.participant_email,
+            event_title: ticket.event_title,
+            pickup_location: 'JKIA Airport',
+            destination: destination,
+            destination_type: destination.toLowerCase().includes('guest') ? 'guesthouse' as const : 'vendor_hotel' as const,
+            pickup_time: pickupTime.toISOString(),
+            driver_name: 'Absolute Cabs Driver',
+            driver_phone: '+254700000000',
+            vehicle_type: 'SUV',
+            vehicle_number: 'Assigned by Absolute Cabs',
+            status: 'completed' as const,
+            flight_number: ticket.flight_number,
+            created_at: new Date().toISOString()
+          };
+        });
+      
+      setTransportBookings(prev => [...prev, ...newBookings]);
+      
     } catch (error) {
       toast({ title: "Error", description: "Failed to generate bookings", variant: "destructive" });
     } finally {
@@ -452,7 +558,7 @@ export default function TransportPage() {
                     <div className="text-right space-y-2">
                       <div className="text-sm font-medium text-gray-900">{booking.destination_type === 'guesthouse' ? 'Guest House' : 'Hotel'}</div>
                       <div className="text-xs text-gray-500">{booking.driver_phone}</div>
-                      {booking.status === 'scheduled' && booking.flight_number === 'TBD' && (
+                      {booking.status === 'scheduled' && (
                         <Button
                           size="sm"
                           onClick={() => {
@@ -462,11 +568,11 @@ export default function TransportPage() {
                           className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs px-3 py-1"
                         >
                           <CheckCircle className="w-3 h-3 mr-1" />
-                          Confirm Flight
+                          Update Details
                         </Button>
                       )}
                       {booking.status === 'completed' && (
-                        <div className="text-xs text-green-600 font-medium">✓ Sent to Absolute Cabs</div>
+                        <div className="text-xs text-green-600 font-medium">✓ Booked with Absolute Cabs</div>
                       )}
                     </div>
                   </div>
