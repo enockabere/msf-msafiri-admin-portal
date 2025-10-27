@@ -166,6 +166,38 @@ export default function TransportPage() {
     }
   }, [apiClient, tenantSlug]);
 
+  const createTestData = async () => {
+    try {
+      setLoading(true);
+      const token = apiClient.getToken();
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/test-data/create-test-international-visitors?tenant_context=${tenantSlug}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      
+      if (response.ok) {
+        const result = await response.json();
+        toast({ 
+          title: "Test Data Created", 
+          description: `Created ${result.participants.length} international visitors for ${result.event}` 
+        });
+        
+        // Refresh data to show new visitors
+        await fetchData();
+      } else {
+        throw new Error('Failed to create test data');
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create test data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
 
@@ -382,8 +414,17 @@ export default function TransportPage() {
             </div>
             <div className="flex items-center gap-3">
               <Button
+                onClick={createTestData}
+                disabled={loading}
+                variant="outline"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Create Test Visitors
+              </Button>
+              <Button
                 onClick={handleGenerateBookings}
-                disabled={generating}
+                disabled={generating || flightTickets.length === 0}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
               >
                 {generating ? (
@@ -475,36 +516,55 @@ export default function TransportPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {flightTickets.map((ticket) => (
-                <div key={ticket.id} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-gray-900">{ticket.participant_name}</h3>
-                        <Badge variant={ticket.status === 'confirmed' ? 'default' : 'secondary'}>
-                          {ticket.status}
-                        </Badge>
+              {flightTickets.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <Plane className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No International Visitors Found</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    No confirmed participants with international travel information found.
+                  </p>
+                  <Button
+                    onClick={createTestData}
+                    disabled={loading}
+                    variant="outline"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Create Test International Visitors
+                  </Button>
+                </div>
+              ) : (
+                flightTickets.map((ticket) => (
+                  <div key={ticket.id} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-900">{ticket.participant_name}</h3>
+                          <Badge variant={ticket.status === 'confirmed' ? 'default' : 'secondary'}>
+                            {ticket.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{ticket.event_title}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {ticket.departure_city} ({ticket.departure_airport}) → NBO
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {new Date(ticket.arrival_time).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">{ticket.event_title}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {ticket.departure_city} ({ticket.departure_airport}) → NBO
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {new Date(ticket.arrival_time).toLocaleString()}
-                        </span>
+                      <div className="text-right">
+                        <div className="font-mono text-lg font-bold text-blue-600">{ticket.flight_number}</div>
+                        <div className="text-sm text-gray-500">{ticket.airline}</div>
+                        <div className="text-xs text-gray-400">Seat {ticket.seat_number}</div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono text-lg font-bold text-blue-600">{ticket.flight_number}</div>
-                      <div className="text-sm text-gray-500">{ticket.airline}</div>
-                      <div className="text-xs text-gray-400">Seat {ticket.seat_number}</div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -519,65 +579,85 @@ export default function TransportPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {transportBookings.map((booking) => (
-                <div key={booking.id} className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-gray-900">{booking.participant_name}</h3>
-                        <Badge 
-                          variant={booking.status === 'completed' ? 'default' : 
-                                 booking.status === 'in_progress' ? 'secondary' : 'outline'}
-                          className={booking.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        >
-                          {booking.status.replace('_', ' ')}
-                        </Badge>
-                        {booking.destination_type === 'guesthouse' ? (
-                          <Building className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <Hotel className="w-4 h-4 text-purple-500" />
+              {transportBookings.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Transport Bookings</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Generate flight tickets first, then create transport bookings.
+                  </p>
+                  {flightTickets.length > 0 && (
+                    <Button
+                      onClick={handleGenerateBookings}
+                      disabled={generating}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Generate Transport Bookings
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                transportBookings.map((booking) => (
+                  <div key={booking.id} className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-900">{booking.participant_name}</h3>
+                          <Badge 
+                            variant={booking.status === 'completed' ? 'default' : 
+                                   booking.status === 'in_progress' ? 'secondary' : 'outline'}
+                            className={booking.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' : ''}
+                          >
+                            {booking.status.replace('_', ' ')}
+                          </Badge>
+                          {booking.destination_type === 'guesthouse' ? (
+                            <Building className="w-4 h-4 text-blue-500" />
+                          ) : (
+                            <Hotel className="w-4 h-4 text-purple-500" />
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{booking.event_title}</p>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {booking.pickup_location} → {booking.destination}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {new Date(booking.pickup_time).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                          <span>Flight: {booking.flight_number}</span>
+                          <span>Driver: {booking.driver_name}</span>
+                          <span>Vehicle: {booking.vehicle_type} ({booking.vehicle_number})</span>
+                        </div>
+                      </div>
+                      <div className="text-right space-y-2">
+                        <div className="text-sm font-medium text-gray-900">{booking.destination_type === 'guesthouse' ? 'Guest House' : 'Hotel'}</div>
+                        <div className="text-xs text-gray-500">{booking.driver_phone}</div>
+                        {booking.status === 'scheduled' && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowFlightModal(true);
+                            }}
+                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs px-3 py-1"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Update Details
+                          </Button>
+                        )}
+                        {booking.status === 'completed' && (
+                          <div className="text-xs text-green-600 font-medium">✓ Booked with Absolute Cabs</div>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">{booking.event_title}</p>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {booking.pickup_location} → {booking.destination}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {new Date(booking.pickup_time).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                        <span>Flight: {booking.flight_number}</span>
-                        <span>Driver: {booking.driver_name}</span>
-                        <span>Vehicle: {booking.vehicle_type} ({booking.vehicle_number})</span>
-                      </div>
-                    </div>
-                    <div className="text-right space-y-2">
-                      <div className="text-sm font-medium text-gray-900">{booking.destination_type === 'guesthouse' ? 'Guest House' : 'Hotel'}</div>
-                      <div className="text-xs text-gray-500">{booking.driver_phone}</div>
-                      {booking.status === 'scheduled' && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowFlightModal(true);
-                          }}
-                          className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs px-3 py-1"
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Update Details
-                        </Button>
-                      )}
-                      {booking.status === 'completed' && (
-                        <div className="text-xs text-green-600 font-medium">✓ Booked with Absolute Cabs</div>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
