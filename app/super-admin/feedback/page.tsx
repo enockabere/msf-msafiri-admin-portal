@@ -110,7 +110,7 @@ export default function FeedbackPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center space-y-4">
             <p className="text-gray-500">Access denied. Super admin privileges required.</p>
-            <Button onClick={() => router.push("/")} variant="outline">
+            <Button onClick={() => router.push("/dashboard")} variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
             </Button>
@@ -136,7 +136,7 @@ export default function FeedbackPage() {
               </div>
             </div>
             <Button
-              onClick={() => router.push("/super-admin")}
+              onClick={() => router.push("/dashboard")}
               variant="ghost"
               className="text-white hover:bg-white/20 border border-white/30"
             >
