@@ -37,7 +37,7 @@ const categoryLabels: Record<string, string> = {
 
 export default function FeedbackPage() {
   const router = useRouter();
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
@@ -47,14 +47,20 @@ export default function FeedbackPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
-    if (!isSuperAdmin && user?.role !== "super_admin") {
-      router.push("/");
+    // Don't redirect while auth is loading
+    if (authLoading) return;
+    
+    // Only redirect if we're sure user is not super admin
+    if (user && !isSuperAdmin && user?.role !== "super_admin") {
+      router.push("/dashboard");
       return;
     }
-    if (user?.role === "super_admin") {
+    
+    // Fetch data if user is super admin
+    if (user && (isSuperAdmin || user?.role === "super_admin")) {
       fetchFeedbackData();
     }
-  }, [user, isSuperAdmin, router]);
+  }, [user, isSuperAdmin, authLoading, router]);
 
   const fetchFeedbackData = async (isRefresh = false) => {
     try {
@@ -110,7 +116,23 @@ export default function FeedbackPage() {
     return "text-red-600";
   };
 
-  if (!isSuperAdmin && user?.role !== "super_admin") {
+  // Show loading while auth is loading
+  if (authLoading) {
+    return (
+      <SuperAdminLayout>
+        <div className="flex items-center justify-center py-32">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-red-100 border-t-red-600 mx-auto"></div>
+            <p className="text-gray-600 font-medium">Loading...</p>
+            <p className="text-sm text-gray-500">Verifying permissions</p>
+          </div>
+        </div>
+      </SuperAdminLayout>
+    );
+  }
+
+  // Show access denied only if we're sure user is not super admin
+  if (user && !isSuperAdmin && user?.role !== "super_admin") {
     return (
       <SuperAdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -174,14 +196,33 @@ export default function FeedbackPage() {
                 )}
               </div>
 
-              {/* Action Button */}
-              <Button
-                onClick={() => router.push("/dashboard")}
-                className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <Button
+                  onClick={() => fetchFeedbackData(true)}
+                  disabled={refreshing}
+                  className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6"
+                >
+                  {refreshing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Refresh
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => router.push("/dashboard")}
+                  className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -194,8 +235,8 @@ export default function FeedbackPage() {
           <>
             {/* Refreshing Overlay */}
             {refreshing && (
-              <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-                <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4">
+              <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 animate-in zoom-in-95 duration-300">
                   <div className="relative">
                     <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-100 border-t-red-600"></div>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -212,7 +253,7 @@ export default function FeedbackPage() {
 
             {/* Enhanced Stats Cards */}
             {stats && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-300 ${refreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                 {/* Total Feedback Card */}
                 <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 opacity-0 group-hover:opacity-5 transition-opacity"></div>
@@ -295,7 +336,7 @@ export default function FeedbackPage() {
             )}
 
             {/* Enhanced Filter Section */}
-            <Card className="border-0 shadow-md">
+            <Card className={`border-0 shadow-md transition-opacity duration-300 ${refreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1">
@@ -324,7 +365,7 @@ export default function FeedbackPage() {
             </Card>
 
             {/* Enhanced Feedback List */}
-            <div className="space-y-4">
+            <div className={`space-y-4 transition-all duration-300 ${refreshing ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               {filteredFeedback.length === 0 ? (
                 <Card className="border-0 shadow-md">
                   <CardContent className="p-12 text-center">
@@ -345,7 +386,7 @@ export default function FeedbackPage() {
                     : 'from-red-50 to-rose-50';
 
                   return (
-                    <Card key={item.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <Card key={item.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group animate-in fade-in slide-in-from-bottom-4" style={{ animationDuration: '500ms' }}>
                       <div className={`absolute inset-0 bg-gradient-to-br ${gradientBg} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
                       <CardContent className="p-6 relative">
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">

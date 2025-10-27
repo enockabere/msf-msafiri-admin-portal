@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       headers['X-Tenant-ID'] = tenantSlug;
     }
     
-    const response = await fetch(`${apiUrl}/api/v1/notifications/${query}`, {
+    const response = await fetch(`${apiUrl}/api/v1/notifications${query}`, {
       headers,
     });
 
