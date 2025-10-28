@@ -307,7 +307,7 @@ export default function FeedbackPage() {
                       )}
                     </Button>
                     <Button
-                      onClick={() => router.push("/dashboard")}
+                      onClick={() => router.push("/super-admin")}
                       className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
                     >
                       <ArrowLeft className="w-4 h-4 mr-2" />
@@ -471,9 +471,9 @@ export default function FeedbackPage() {
                     : 'from-red-50 to-rose-50';
 
                   return (
-                    <Card key={item.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group animate-in fade-in slide-in-from-bottom-4" style={{ animationDuration: '500ms' }}>
-                      <div className={`absolute inset-0 bg-gradient-to-br ${gradientBg} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
-                      <CardContent className="p-6 relative">
+                    <Card key={item.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group relative animate-in fade-in slide-in-from-bottom-4" style={{ animationDuration: '500ms' }}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${gradientBg} opacity-0 group-hover:opacity-30 transition-opacity pointer-events-none`}></div>
+                      <CardContent className="p-6 relative z-10">
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
                           {/* Rating and Category Section */}
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
