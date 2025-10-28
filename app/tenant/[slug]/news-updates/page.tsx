@@ -12,7 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Trash2, Edit, Plus, Eye, Send, Newspaper, X, Save, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Trash2, Edit, Plus, Eye, Send, Newspaper, X, Save, Loader2, Search, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/layout/dashboard-layout';
@@ -68,6 +69,12 @@ export default function NewsUpdatesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsUpdate | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 10;
   const [formData, setFormData] = useState({
     title: '',
     summary: '',
@@ -84,7 +91,7 @@ export default function NewsUpdatesPage() {
 
   useEffect(() => {
     fetchNewsUpdates();
-  }, [authLoading, user]);
+  }, [authLoading, user, currentPage, searchQuery, activeTab]);
 
   const fetchNewsUpdates = async () => {
     if (authLoading || !user) {
@@ -93,7 +100,16 @@ export default function NewsUpdatesPage() {
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/`, {
+      const params = new URLSearchParams({
+        skip: ((currentPage - 1) * itemsPerPage).toString(),
+        limit: itemsPerPage.toString(),
+      });
+      
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -102,6 +118,8 @@ export default function NewsUpdatesPage() {
       if (response.ok) {
         const data = await response.json();
         setNewsUpdates(data.items || []);
+        setTotalItems(data.total || 0);
+        setTotalPages(data.pages || 1);
       }
     } catch (error) {
       console.error('Error fetching news updates:', error);
@@ -155,6 +173,7 @@ export default function NewsUpdatesPage() {
         toast.success(message);
         setIsDialogOpen(false);
         resetForm();
+        setCurrentPage(1);
         fetchNewsUpdates();
       } else {
         const error = await response.json();
@@ -187,6 +206,7 @@ export default function NewsUpdatesPage() {
 
       if (response.ok) {
         toast.success(isPublished ? 'News published successfully' : 'News unpublished successfully');
+        setCurrentPage(1);
         fetchNewsUpdates();
       } else {
         toast.error('Failed to update publication status');
@@ -218,6 +238,7 @@ export default function NewsUpdatesPage() {
 
       if (response.ok) {
         toast.success('News update deleted successfully');
+        setCurrentPage(1);
         fetchNewsUpdates();
       } else {
         toast.error('Failed to delete news update');
@@ -277,6 +298,109 @@ export default function NewsUpdatesPage() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const getNewsStatus = (news: NewsUpdate) => {
+    const now = new Date();
+    
+    if (news.expires_at && new Date(news.expires_at) < now) {
+      return 'expired';
+    }
+    
+    if (news.scheduled_publish_at && new Date(news.scheduled_publish_at) > now) {
+      return 'scheduled';
+    }
+    
+    if (news.is_published) {
+      return 'active';
+    }
+    
+    return 'draft';
+  };
+
+  const filterNewsByStatus = (news: NewsUpdate[]) => {
+    if (activeTab === 'all') return news;
+    return news.filter(item => getNewsStatus(item) === activeTab);
+  };
+
+  const getStatusCounts = () => {
+    const counts = {
+      all: newsUpdates.length,
+      active: 0,
+      draft: 0,
+      scheduled: 0,
+      expired: 0,
+    };
+    
+    newsUpdates.forEach(news => {
+      const status = getNewsStatus(news);
+      counts[status as keyof typeof counts]++;
+    });
+    
+    return counts;
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <Button
+          key={i}
+          variant={i === currentPage ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePageChange(i)}
+          className={i === currentPage ? "bg-red-600 hover:bg-red-700" : ""}
+        >
+          {i}
+        </Button>
+      );
+    }
+    
+    return (
+      <div className="flex items-center justify-between mt-6">
+        <div className="text-sm text-gray-500">
+          Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} results
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          {pages}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -550,48 +674,120 @@ export default function NewsUpdatesPage() {
         </Dialog>
         </div>
 
-        <div className="grid gap-6">
-        {newsUpdates.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="text-gray-400 mb-4">
-                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No news updates yet</h3>
-              <p className="text-gray-500 text-center mb-4">
-                Create your first news update to keep your team informed
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          newsUpdates.map((news) => (
-            <Card key={news.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className={getCategoryColor(news.category)}>
-                        {categories.find(c => c.value === news.category)?.label || news.category}
-                      </Badge>
-                      {news.is_important && (
-                        <Badge variant="destructive">Important</Badge>
-                      )}
-                      <Badge variant={news.is_published ? "default" : "secondary"}>
-                        {news.is_published ? "Published" : "Draft"}
-                      </Badge>
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search news by title, summary, or content..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="pl-10 h-10"
+          />
+        </div>
+
+        {/* Status Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <span>All</span>
+              <Badge variant="secondary" className="text-xs">
+                {getStatusCounts().all}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Active</span>
+              <Badge variant="secondary" className="text-xs">
+                {getStatusCounts().active}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="draft" className="flex items-center gap-2">
+              <Edit className="w-4 h-4" />
+              <span>Drafts</span>
+              <Badge variant="secondary" className="text-xs">
+                {getStatusCounts().draft}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span>Scheduled</span>
+              <Badge variant="secondary" className="text-xs">
+                {getStatusCounts().scheduled}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="expired" className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>Expired</span>
+              <Badge variant="secondary" className="text-xs">
+                {getStatusCounts().expired}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-6">
+            <div className="grid gap-6">
+              {filterNewsByStatus(newsUpdates).length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <div className="text-gray-400 mb-4">
+                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                      </svg>
                     </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {activeTab === 'all' ? 'No news updates yet' : `No ${activeTab} news updates`}
+                    </h3>
+                    <p className="text-gray-500 text-center mb-4">
+                      {activeTab === 'all' 
+                        ? 'Create your first news update to keep your team informed'
+                        : `No news updates found in the ${activeTab} category`
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filterNewsByStatus(newsUpdates).map((news) => {
+                  <Card key={news.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={getCategoryColor(news.category)}>
+                              {categories.find(c => c.value === news.category)?.label || news.category}
+                            </Badge>
+                            {news.is_important && (
+                              <Badge variant="destructive">Important</Badge>
+                            )}
+                            {(() => {
+                              const status = getNewsStatus(news);
+                              const statusConfig = {
+                                active: { label: 'Active', variant: 'default' as const },
+                                draft: { label: 'Draft', variant: 'secondary' as const },
+                                scheduled: { label: 'Scheduled', variant: 'outline' as const },
+                                expired: { label: 'Expired', variant: 'destructive' as const },
+                              };
+                              const config = statusConfig[status as keyof typeof statusConfig];
+                              return (
+                                <Badge variant={config.variant}>
+                                  {config.label}
+                                </Badge>
+                              );
+                            })()}
+                          </div>
                     <CardTitle className="text-xl mb-2">{news.title}</CardTitle>
                     <p className="text-gray-600 mb-3">{news.summary}</p>
-                    <div className="text-sm text-gray-500">
-                      Created: {formatDate(news.created_at)} by {news.created_by}
-                      {news.published_at && (
-                        <span className="ml-4">
-                          Published: {formatDate(news.published_at)}
-                        </span>
-                      )}
-                    </div>
+                          <div className="text-sm text-gray-500 space-y-1">
+                            <div>Created: {formatDate(news.created_at)} by {news.created_by}</div>
+                            {news.published_at && (
+                              <div>Published: {formatDate(news.published_at)}</div>
+                            )}
+                            {news.scheduled_publish_at && (
+                              <div>Scheduled: {formatDate(news.scheduled_publish_at)}</div>
+                            )}
+                            {news.expires_at && (
+                              <div>Expires: {formatDate(news.expires_at)}</div>
+                            )}
+                          </div>
                   </div>
                   
                   <div className="flex items-center gap-2 ml-4">
@@ -624,9 +820,9 @@ export default function NewsUpdatesPage() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                  </div>
-                </div>
-              </CardHeader>
+                        </div>
+                      </div>
+                    </CardHeader>
               
               {(news.content || news.external_link) && (
                 <CardContent>
@@ -657,9 +853,14 @@ export default function NewsUpdatesPage() {
                 </CardContent>
               )}
             </Card>
-          ))
-        )}
-        </div>
+                })
+              )}
+            </div>
+            
+            {/* Pagination */}
+            {renderPagination()}
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   );
