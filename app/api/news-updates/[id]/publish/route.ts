@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth-config';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
