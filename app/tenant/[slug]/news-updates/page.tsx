@@ -410,19 +410,65 @@ export default function NewsUpdatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">News & Updates</h1>
-            <p className="text-gray-600 mt-1">Manage news and updates for your organization</p>
+        {/* Modern Header Section */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
+          {/* Decorative Background Elements */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
           </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} className="bg-red-600 hover:bg-red-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Create News
-            </Button>
-          </DialogTrigger>
+
+          <div className="relative p-6 lg:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              {/* Title Section */}
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <Newspaper className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-white">News & Updates</h1>
+                    <p className="text-xs text-red-100 mt-0.5">Manage and publish news articles for your organization</p>
+                  </div>
+                </div>
+
+                {/* Quick Stats in Header */}
+                <div className="flex items-center gap-4 mt-4 flex-wrap">
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/20">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    <div>
+                      <div className="text-lg font-bold text-white">{getStatusCounts().active}</div>
+                      <div className="text-[10px] text-red-100">Active</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/20">
+                    <Edit className="w-4 h-4 text-white" />
+                    <div>
+                      <div className="text-lg font-bold text-white">{getStatusCounts().draft}</div>
+                      <div className="text-[10px] text-red-100">Drafts</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/20">
+                    <Clock className="w-4 h-4 text-white" />
+                    <div>
+                      <div className="text-lg font-bold text-white">{getStatusCounts().scheduled}</div>
+                      <div className="text-[10px] text-red-100">Scheduled</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={resetForm}
+                    className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-10 px-5 text-sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create News
+                  </Button>
+                </DialogTrigger>
           
           <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
             {/* Header with gradient */}
@@ -671,196 +717,266 @@ export default function NewsUpdatesPage() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+              </Dialog>
+            </div>
+          </div>
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search news by title, summary, or content..."
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-10 h-10"
-          />
-        </div>
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search news by title, summary, or content..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10 h-10 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-100"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Status Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <span>All</span>
-              <Badge variant="secondary" className="text-xs">
-                {getStatusCounts().all}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="active" className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              <span>Active</span>
-              <Badge variant="secondary" className="text-xs">
-                {getStatusCounts().active}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="draft" className="flex items-center gap-2">
-              <Edit className="w-4 h-4" />
-              <span>Drafts</span>
-              <Badge variant="secondary" className="text-xs">
-                {getStatusCounts().draft}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="scheduled" className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Scheduled</span>
-              <Badge variant="secondary" className="text-xs">
-                {getStatusCounts().scheduled}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="expired" className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>Expired</span>
-              <Badge variant="secondary" className="text-xs">
-                {getStatusCounts().expired}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
+        <Card className="border-0 shadow-md overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full h-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 p-3 bg-gray-50 rounded-none">
+              <TabsTrigger
+                value="all"
+                className="flex items-center justify-center gap-1.5 h-10 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-red-600 rounded-lg transition-all text-xs"
+              >
+                <Newspaper className="w-3.5 h-3.5" />
+                <span className="font-medium">All</span>
+                <Badge variant="secondary" className="text-[10px] bg-gray-200 px-1.5">
+                  {getStatusCounts().all}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="flex items-center justify-center gap-1.5 h-10 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-green-600 rounded-lg transition-all text-xs"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span className="font-medium">Active</span>
+                <Badge variant="secondary" className="text-[10px] bg-gray-200 px-1.5">
+                  {getStatusCounts().active}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="draft"
+                className="flex items-center justify-center gap-1.5 h-10 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-gray-600 rounded-lg transition-all text-xs"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span className="font-medium">Drafts</span>
+                <Badge variant="secondary" className="text-[10px] bg-gray-200 px-1.5">
+                  {getStatusCounts().draft}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="scheduled"
+                className="flex items-center justify-center gap-1.5 h-10 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 rounded-lg transition-all text-xs"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span className="font-medium">Scheduled</span>
+                <Badge variant="secondary" className="text-[10px] bg-gray-200 px-1.5">
+                  {getStatusCounts().scheduled}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger
+                value="expired"
+                className="flex items-center justify-center gap-1.5 h-10 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-red-600 rounded-lg transition-all text-xs"
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span className="font-medium">Expired</span>
+                <Badge variant="secondary" className="text-[10px] bg-gray-200 px-1.5">
+                  {getStatusCounts().expired}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value={activeTab} className="mt-6">
-            <div className="grid gap-6">
+          <TabsContent value={activeTab} className="p-6 pt-4">
+            <div className="space-y-4">
               {filterNewsByStatus(newsUpdates).length === 0 ? (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {activeTab === 'all' ? 'No news updates yet' : `No ${activeTab} news updates`}
-                    </h3>
-                    <p className="text-gray-500 text-center mb-4">
-                      {activeTab === 'all' 
-                        ? 'Create your first news update to keep your team informed'
-                        : `No news updates found in the ${activeTab} category`
-                      }
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-3">
+                    <Newspaper className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+                    {activeTab === 'all' ? 'No news updates yet' : `No ${activeTab} news updates`}
+                  </h3>
+                  <p className="text-xs text-gray-500 text-center max-w-md">
+                    {activeTab === 'all'
+                      ? 'Create your first news update to keep your team informed'
+                      : `No news updates found in the ${activeTab} category`
+                    }
+                  </p>
+                </div>
               ) : (
-                filterNewsByStatus(newsUpdates).map((news) => (
-                  <Card key={news.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className={getCategoryColor(news.category)}>
-                              {categories.find(c => c.value === news.category)?.label || news.category}
-                            </Badge>
-                            {news.is_important && (
-                              <Badge variant="destructive">Important</Badge>
-                            )}
-                            {(() => {
-                              const status = getNewsStatus(news);
-                              const statusConfig = {
-                                active: { label: 'Active', variant: 'default' as const },
-                                draft: { label: 'Draft', variant: 'secondary' as const },
-                                scheduled: { label: 'Scheduled', variant: 'outline' as const },
-                                expired: { label: 'Expired', variant: 'destructive' as const },
-                              };
-                              const config = statusConfig[status as keyof typeof statusConfig];
-                              return (
-                                <Badge variant={config.variant}>
-                                  {config.label}
+                filterNewsByStatus(newsUpdates).map((news) => {
+                  const status = getNewsStatus(news);
+                  const statusConfig = {
+                    active: { label: 'Active', color: 'bg-green-100 text-green-800 border-green-300', icon: CheckCircle },
+                    draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800 border-gray-300', icon: Edit },
+                    scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: Clock },
+                    expired: { label: 'Expired', color: 'bg-red-100 text-red-800 border-red-300', icon: AlertCircle },
+                  };
+                  const statusInfo = statusConfig[status as keyof typeof statusConfig];
+                  const StatusIcon = statusInfo.icon;
+
+                  return (
+                    <Card key={news.id} className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                      <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-orange-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <CardHeader className="pb-4 relative">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                          {/* Left Content */}
+                          <div className="flex-1 min-w-0">
+                            {/* Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                              <Badge className={`${getCategoryColor(news.category)} border font-medium text-[10px] px-2 py-0.5`}>
+                                {categories.find(c => c.value === news.category)?.label || news.category}
+                              </Badge>
+                              {news.is_important && (
+                                <Badge className="bg-red-100 text-red-800 border border-red-300 font-medium text-[10px] px-2 py-0.5">
+                                  <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                                  Important
                                 </Badge>
-                              );
-                            })()}
+                              )}
+                              <Badge className={`${statusInfo.color} border font-medium text-[10px] px-2 py-0.5`}>
+                                <StatusIcon className="w-2.5 h-2.5 mr-1" />
+                                {statusInfo.label}
+                              </Badge>
+                            </div>
+
+                            {/* Title */}
+                            <CardTitle className="text-lg font-bold text-gray-900 mb-2 group-hover:text-red-600 transition-colors">
+                              {news.title}
+                            </CardTitle>
+
+                            {/* Summary */}
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{news.summary}</p>
+
+                            {/* Metadata */}
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                <span>Created {formatDate(news.created_at)}</span>
+                              </div>
+                              {news.published_at && (
+                                <div className="flex items-center gap-1 text-green-600">
+                                  <CheckCircle className="w-3 h-3" />
+                                  <span>Published {formatDate(news.published_at)}</span>
+                                </div>
+                              )}
+                              {news.scheduled_publish_at && (
+                                <div className="flex items-center gap-1 text-blue-600">
+                                  <Clock className="w-3 h-3" />
+                                  <span>Scheduled {formatDate(news.scheduled_publish_at)}</span>
+                                </div>
+                              )}
+                              {news.expires_at && (
+                                <div className="flex items-center gap-1 text-orange-600">
+                                  <AlertCircle className="w-3 h-3" />
+                                  <span>Expires {formatDate(news.expires_at)}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                    <CardTitle className="text-xl mb-2">{news.title}</CardTitle>
-                    <p className="text-gray-600 mb-3">{news.summary}</p>
-                          <div className="text-sm text-gray-500 space-y-1">
-                            <div>Created: {formatDate(news.created_at)} by {news.created_by}</div>
-                            {news.published_at && (
-                              <div>Published: {formatDate(news.published_at)}</div>
-                            )}
-                            {news.scheduled_publish_at && (
-                              <div>Scheduled: {formatDate(news.scheduled_publish_at)}</div>
-                            )}
-                            {news.expires_at && (
-                              <div>Expires: {formatDate(news.expires_at)}</div>
-                            )}
+
+                          {/* Right Actions */}
+                          <div className="flex lg:flex-col items-center lg:items-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(news)}
+                              className="border-2 hover:bg-blue-50 hover:border-blue-300 h-8 text-xs"
+                            >
+                              <Edit className="w-3.5 h-3.5 lg:mr-1.5" />
+                              <span className="hidden lg:inline">Edit</span>
+                            </Button>
+
+                            <Button
+                              variant={news.is_published ? "outline" : "default"}
+                              size="sm"
+                              onClick={() => handlePublish(news.id, !news.is_published)}
+                              className={`border-2 h-8 text-xs ${
+                                news.is_published
+                                  ? 'hover:bg-orange-50 hover:border-orange-300'
+                                  : 'bg-green-600 hover:bg-green-700 text-white border-green-600'
+                              }`}
+                            >
+                              {news.is_published ? (
+                                <>
+                                  <Eye className="w-3.5 h-3.5 lg:mr-1.5" />
+                                  <span className="hidden lg:inline">Unpublish</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3.5 h-3.5 lg:mr-1.5" />
+                                  <span className="hidden lg:inline">Publish</span>
+                                </>
+                              )}
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(news.id)}
+                              className="border-2 text-red-600 hover:bg-red-50 hover:border-red-300 h-8 text-xs"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 lg:mr-1.5" />
+                              <span className="hidden lg:inline">Delete</span>
+                            </Button>
                           </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(news)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    
-                    <Button
-                      variant={news.is_published ? "secondary" : "default"}
-                      size="sm"
-                      onClick={() => handlePublish(news.id, !news.is_published)}
-                      className={news.is_published ? "" : "bg-green-600 hover:bg-green-700"}
-                    >
-                      {news.is_published ? (
-                        <Eye className="w-4 h-4" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(news.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                         </div>
-                      </div>
-                    </CardHeader>
+                      </CardHeader>
               
-              {(news.content || news.external_link) && (
-                <CardContent>
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                    {news.content && (
-                      <div>
-                        <h4 className="font-medium mb-2">Full Content:</h4>
-                        <div 
-                          className="text-gray-700 prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: news.content }}
-                        />
-                      </div>
-                    )}
-                    {news.external_link && (
-                      <div>
-                        <h4 className="font-medium mb-2">External Link:</h4>
-                        <a 
-                          href={news.external_link} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 underline break-all"
-                        >
-                          {news.external_link}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-                ))
+                      {(news.content || news.external_link) && (
+                        <CardContent className="pt-0 relative">
+                          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border-2 border-gray-200 space-y-3">
+                            {news.content && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-1 h-4 bg-red-600 rounded-full"></div>
+                                  <h4 className="font-semibold text-sm text-gray-900">Full Content</h4>
+                                </div>
+                                <div
+                                  className="text-gray-700 prose prose-sm max-w-none text-xs"
+                                  dangerouslySetInnerHTML={{ __html: news.content }}
+                                />
+                              </div>
+                            )}
+                            {news.external_link && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
+                                  <h4 className="font-semibold text-sm text-gray-900">External Link</h4>
+                                </div>
+                                <a
+                                  href={news.external_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors text-xs"
+                                >
+                                  <span className="break-all">{news.external_link}</span>
+                                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      )}
+                    </Card>
+                  );
+                })
               )}
             </div>
             
             {/* Pagination */}
             {renderPagination()}
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </Card>
       </div>
     </DashboardLayout>
   );
