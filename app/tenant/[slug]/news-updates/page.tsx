@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Trash2, Edit, Plus, Eye, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import DashboardLayout from '@/components/layout/dashboard-layout';
+import { LoadingScreen } from '@/components/ui/loading';
 
 interface NewsUpdate {
   id: number;
@@ -210,20 +212,17 @@ export default function NewsUpdatesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-red-600"></div>
-      </div>
-    );
+    return <LoadingScreen message="Loading news updates..." />;
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">News & Updates</h1>
-          <p className="text-gray-600 mt-2">Manage news and updates for your organization</p>
-        </div>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">News & Updates</h1>
+            <p className="text-gray-600 mt-1">Manage news and updates for your organization</p>
+          </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -330,9 +329,9 @@ export default function NewsUpdatesPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
 
-      <div className="grid gap-6">
+        <div className="grid gap-6">
         {newsUpdates.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -421,7 +420,8 @@ export default function NewsUpdatesPage() {
             </Card>
           ))
         )}
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
