@@ -746,7 +746,7 @@ export default function NewsUpdatesPage() {
                   </CardContent>
                 </Card>
               ) : (
-                filterNewsByStatus(newsUpdates).map((news) => {
+                filterNewsByStatus(newsUpdates).map((news) => (
                   <Card key={news.id} className="hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <div className="flex justify-between items-start">
@@ -853,7 +853,7 @@ export default function NewsUpdatesPage() {
                 </CardContent>
               )}
             </Card>
-                })
+                ))
               )}
             </div>
             
