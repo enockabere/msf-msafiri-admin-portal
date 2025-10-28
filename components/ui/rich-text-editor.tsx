@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { Editor } from '@tinymce/tinymce-react';
+import { useRef } from 'react';
+import { Button } from './button';
+import { Bold, Italic, Underline, List, Link, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 
 interface RichTextEditorProps {
   value: string;
@@ -10,45 +11,66 @@ interface RichTextEditorProps {
   height?: number;
 }
 
-export function RichTextEditor({ value, onChange, placeholder, height = 300 }: RichTextEditorProps) {
-  const editorRef = useRef<any>(null);
+export function RichTextEditor({ value, onChange, placeholder, height = 250 }: RichTextEditorProps) {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  const execCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const insertLink = () => {
+    const url = prompt('Enter URL:');
+    if (url) {
+      execCommand('createLink', url);
+    }
+  };
+
+  const handleInput = () => {
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+  };
 
   return (
-    <Editor
-      apiKey="no-api-key" // Use free version
-      onInit={(evt, editor) => editorRef.current = editor}
-      value={value}
-      onEditorChange={(content) => onChange(content)}
-      init={{
-        height: height,
-        menubar: false,
-        plugins: [
-          'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-          'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-        ],
-        toolbar: 'undo redo | blocks | ' +
-          'bold italic forecolor | alignleft aligncenter ' +
-          'alignright alignjustify | bullist numlist outdent indent | ' +
-          'removeformat | link | help',
-        content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
-        placeholder: placeholder,
-        branding: false,
-        promotion: false,
-        setup: (editor) => {
-          editor.on('init', () => {
-            editor.getContainer().style.transition = 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out';
-          });
-          editor.on('focus', () => {
-            editor.getContainer().style.borderColor = '#EE0000';
-            editor.getContainer().style.boxShadow = '0 0 0 2px rgba(238, 0, 0, 0.2)';
-          });
-          editor.on('blur', () => {
-            editor.getContainer().style.borderColor = '#d1d5db';
-            editor.getContainer().style.boxShadow = 'none';
-          });
-        }
-      }}
-    />
+    <div className="border border-gray-300 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('bold')} className="h-8 w-8 p-0">
+          <Bold className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('italic')} className="h-8 w-8 p-0">
+          <Italic className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('underline')} className="h-8 w-8 p-0">
+          <Underline className="h-4 w-4" />
+        </Button>
+        <div className="w-px h-6 bg-gray-300 mx-1" />
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('justifyLeft')} className="h-8 w-8 p-0">
+          <AlignLeft className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('justifyCenter')} className="h-8 w-8 p-0">
+          <AlignCenter className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('justifyRight')} className="h-8 w-8 p-0">
+          <AlignRight className="h-4 w-4" />
+        </Button>
+        <div className="w-px h-6 bg-gray-300 mx-1" />
+        <Button type="button" variant="ghost" size="sm" onClick={() => execCommand('insertUnorderedList')} className="h-8 w-8 p-0">
+          <List className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={insertLink} className="h-8 w-8 p-0">
+          <Link className="h-4 w-4" />
+        </Button>
+      </div>
+      <div
+        ref={editorRef}
+        contentEditable
+        onInput={handleInput}
+        dangerouslySetInnerHTML={{ __html: value }}
+        className="p-3 focus:outline-none focus:ring-2 focus:ring-red-500 prose max-w-none"
+        style={{ minHeight: height }}
+        suppressContentEditableWarning={true}
+      />
+    </div>
   );
 }

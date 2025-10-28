@@ -365,14 +365,12 @@ export default function NewsUpdatesPage() {
                       <Label className="text-sm font-semibold text-gray-900">
                         Full Content
                       </Label>
-                      <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
-                        <RichTextEditor
-                          value={formData.content}
-                          onChange={(content) => setFormData({ ...formData, content })}
-                          placeholder="Write your detailed content here..."
-                          height={250}
-                        />
-                      </div>
+                      <RichTextEditor
+                        value={formData.content}
+                        onChange={(content) => setFormData({ ...formData, content })}
+                        placeholder="Write your detailed content here..."
+                        height={200}
+                      />
                       <p className="text-xs text-gray-500 mt-1">
                         Use the rich text editor to format your content with bold, italic, links, lists, and more.
                       </p>
