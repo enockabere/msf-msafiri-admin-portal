@@ -142,6 +142,8 @@ export default function NewsUpdatesPage() {
         params.append("search", searchQuery);
       }
 
+      console.log('Fetching news updates from:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/?${params}`);
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/?${params}`,
         {
@@ -150,6 +152,12 @@ export default function NewsUpdatesPage() {
           },
         }
       );
+      
+      console.log('Fetch response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Fetch error response:', errorText);
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -204,6 +212,9 @@ export default function NewsUpdatesPage() {
         expires_at: formData.expires_at || null,
       };
 
+      console.log('Sending data to API:', submissionData);
+      console.log('API URL:', url);
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -212,6 +223,12 @@ export default function NewsUpdatesPage() {
         },
         body: JSON.stringify(submissionData),
       });
+
+      console.log('API Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('API Error response:', errorText);
+      }
 
       if (response.ok) {
         const message =
