@@ -93,7 +93,7 @@ export default function NewsUpdatesPage() {
 
     try {
       const token = apiClient.getToken();
-      const response = await fetch('/api/news-updates', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -123,8 +123,8 @@ export default function NewsUpdatesPage() {
       }
 
       const url = editingNews
-        ? `/api/news-updates/${editingNews.id}`
-        : '/api/news-updates';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/${editingNews.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/`;
 
       const method = editingNews ? 'PUT' : 'POST';
 
@@ -176,7 +176,7 @@ export default function NewsUpdatesPage() {
         return;
       }
 
-      const response = await fetch(`/api/news-updates/${newsId}/publish`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/${newsId}/publish`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ export default function NewsUpdatesPage() {
         return;
       }
 
-      const response = await fetch(`/api/news-updates/${newsId}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/news-updates/${newsId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
