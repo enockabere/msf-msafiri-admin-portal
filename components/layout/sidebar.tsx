@@ -180,12 +180,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       href: "/transport",
       badge: null,
     },
-    {
-      icon: Shield,
-      label: "Security Briefings",
-      href: "/security-briefings",
-      badge: null,
-    },
+
   ];
   
   sections.push({
@@ -394,7 +389,7 @@ export default function Sidebar({
                 item.href === '/notifications' ? `/tenant/${tenantSlug}/notifications` :
                 item.href === '/events' ? `/tenant/${tenantSlug}/events` :
                 item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
-                item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
+
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/news-updates' ? `/tenant/${tenantSlug}/news-updates` :
