@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useParams } from 'next/navigation';
+import { useAuth, useAuthenticatedApi } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,7 +58,8 @@ const getCategoryColor = (category: string) => {
 };
 
 export default function NewsUpdatesPage() {
-  const { data: session } = useSession();
+  const { user, loading: authLoading } = useAuth();
+  const { apiClient } = useAuthenticatedApi();
   const params = useParams();
   const tenantSlug = params.slug as string;
 
@@ -83,17 +84,18 @@ export default function NewsUpdatesPage() {
 
   useEffect(() => {
     fetchNewsUpdates();
-  }, []);
+  }, [authLoading, user]);
 
   const fetchNewsUpdates = async () => {
-    try {
-      if (!session?.accessToken) {
-        return;
-      }
+    if (authLoading || !user) {
+      return;
+    }
 
+    try {
+      const token = apiClient.getToken();
       const response = await fetch('/api/news-updates', {
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -114,7 +116,8 @@ export default function NewsUpdatesPage() {
     setSubmitting(true);
 
     try {
-      if (!session?.accessToken) {
+      const token = apiClient.getToken();
+      if (!token) {
         toast.error('Please log in again');
         return;
       }
@@ -137,7 +140,7 @@ export default function NewsUpdatesPage() {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(submissionData),
       });
@@ -167,7 +170,8 @@ export default function NewsUpdatesPage() {
 
   const handlePublish = async (newsId: number, isPublished: boolean) => {
     try {
-      if (!session?.accessToken) {
+      const token = apiClient.getToken();
+      if (!token) {
         toast.error('Please log in again');
         return;
       }
@@ -176,7 +180,7 @@ export default function NewsUpdatesPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ is_published: isPublished }),
       });
@@ -199,7 +203,8 @@ export default function NewsUpdatesPage() {
     }
 
     try {
-      if (!session?.accessToken) {
+      const token = apiClient.getToken();
+      if (!token) {
         toast.error('Please log in again');
         return;
       }
@@ -207,7 +212,7 @@ export default function NewsUpdatesPage() {
       const response = await fetch(`/api/news-updates/${newsId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session.accessToken}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
