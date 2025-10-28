@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Trash2, Edit, Plus, Eye, Send } from 'lucide-react';
+import { Trash2, Edit, Plus, Eye, Send, Newspaper, X, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/layout/dashboard-layout';
 import { LoadingScreen } from '@/components/ui/loading';
@@ -22,9 +22,12 @@ interface NewsUpdate {
   title: string;
   summary: string;
   content?: string;
+  external_link?: string;
+  content_type: string;
   category: string;
   is_important: boolean;
   is_published: boolean;
+  scheduled_publish_at?: string;
   image_url?: string;
   created_by: string;
   created_at: string;
@@ -61,14 +64,19 @@ export default function NewsUpdatesPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsUpdate | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     summary: '',
     content: '',
+    external_link: '',
+    content_type: 'text',
     category: 'general',
     is_important: false,
+    scheduled_publish_at: '',
     image_url: '',
   });
+  const [publishOption, setPublishOption] = useState<'draft' | 'now' | 'scheduled'>('draft');
 
   useEffect(() => {
     fetchNewsUpdates();
@@ -96,25 +104,39 @@ export default function NewsUpdatesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setSubmitting(true);
+
     try {
-      const url = editingNews 
+      const url = editingNews
         ? `/api/news-updates/${editingNews.id}`
         : '/api/news-updates';
-      
+
       const method = editingNews ? 'PUT' : 'POST';
-      
+
+      // Prepare submission data based on publish option
+      const submissionData = {
+        ...formData,
+        is_published: publishOption === 'now',
+        scheduled_publish_at: publishOption === 'scheduled' ? formData.scheduled_publish_at : null,
+      };
+
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.accessToken}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
 
       if (response.ok) {
-        toast.success(editingNews ? 'News updated successfully' : 'News created successfully');
+        const message = publishOption === 'now' 
+          ? (editingNews ? 'News updated and published!' : 'News created and published!')
+          : publishOption === 'scheduled'
+          ? (editingNews ? 'News updated and scheduled!' : 'News created and scheduled!')
+          : (editingNews ? 'News updated as draft' : 'News saved as draft');
+        
+        toast.success(message);
         setIsDialogOpen(false);
         resetForm();
         fetchNewsUpdates();
@@ -125,6 +147,8 @@ export default function NewsUpdatesPage() {
     } catch (error) {
       console.error('Error saving news update:', error);
       toast.error('Failed to save news update');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -181,10 +205,14 @@ export default function NewsUpdatesPage() {
       title: '',
       summary: '',
       content: '',
+      external_link: '',
+      content_type: 'text',
       category: 'general',
       is_important: false,
+      scheduled_publish_at: '',
       image_url: '',
     });
+    setPublishOption('draft');
     setEditingNews(null);
   };
 
@@ -194,10 +222,20 @@ export default function NewsUpdatesPage() {
       title: news.title,
       summary: news.summary,
       content: news.content || '',
+      external_link: news.external_link || '',
+      content_type: news.content_type || 'text',
       category: news.category,
       is_important: news.is_important,
+      scheduled_publish_at: news.scheduled_publish_at || '',
       image_url: news.image_url || '',
     });
+    if (news.is_published) {
+      setPublishOption('now');
+    } else if (news.scheduled_publish_at) {
+      setPublishOption('scheduled');
+    } else {
+      setPublishOption('draft');
+    }
     setIsDialogOpen(true);
   };
 
@@ -232,101 +270,288 @@ export default function NewsUpdatesPage() {
             </Button>
           </DialogTrigger>
           
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingNews ? 'Edit News Update' : 'Create News Update'}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  placeholder="Enter news title"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="summary">Summary *</Label>
-                <Textarea
-                  id="summary"
-                  value={formData.summary}
-                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                  required
-                  placeholder="Brief summary of the news"
-                  rows={3}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="content">Full Content</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  placeholder="Detailed content (optional)"
-                  rows={6}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <Newspaper className="w-6 h-6 text-white" />
                 </div>
-                
                 <div>
-                  <Label htmlFor="image_url">Image URL</Label>
-                  <Input
-                    id="image_url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <DialogTitle className="text-lg font-bold text-white">
+                    {editingNews ? 'Edit News Update' : 'Create News Update'}
+                  </DialogTitle>
+                  <p className="text-red-100 text-xs mt-1">
+                    {editingNews
+                      ? 'Update the news article details and content'
+                      : 'Share important news and updates with your team'
+                    }
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="is_important"
-                  checked={formData.is_important}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_important: checked })}
-                />
-                <Label htmlFor="is_important">Mark as Important</Label>
-              </div>
-              
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-red-600 hover:bg-red-700">
-                  {editingNews ? 'Update' : 'Create'}
-                </Button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto modal-scrollbar">
+              <div className="p-6 pb-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Title - Full width */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="title" className="text-sm font-semibold text-gray-900">
+                      Title
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
+                      placeholder="Enter a clear and engaging title"
+                      className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    />
+                  </div>
+
+                  {/* Summary - Full width */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="summary" className="text-sm font-semibold text-gray-900">
+                      Summary
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Textarea
+                      id="summary"
+                      value={formData.summary}
+                      onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                      required
+                      placeholder="Brief summary of the news (shown in previews)"
+                      className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[4rem]"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Content Type Selector - Full width */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="text-sm font-semibold text-gray-900">
+                      Content Type
+                    </Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="content_type"
+                          value="text"
+                          checked={formData.content_type === 'text'}
+                          onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700">Rich Text Content</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="content_type"
+                          value="link"
+                          checked={formData.content_type === 'link'}
+                          onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-gray-700">External Link</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Conditional Content Fields */}
+                  {formData.content_type === 'text' ? (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="content" className="text-sm font-semibold text-gray-900">
+                        Full Content
+                      </Label>
+                      <Textarea
+                        id="content"
+                        value={formData.content}
+                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                        placeholder="Detailed content and additional information (supports basic HTML formatting)"
+                        className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[8rem]"
+                        rows={6}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        You can use basic HTML tags like &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;, &lt;p&gt;, &lt;a href="..."&gt;
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="external_link" className="text-sm font-semibold text-gray-900">
+                        External Link URL
+                        <span className="text-red-500 ml-1">*</span>
+                      </Label>
+                      <Input
+                        id="external_link"
+                        type="url"
+                        value={formData.external_link}
+                        onChange={(e) => setFormData({ ...formData, external_link: e.target.value })}
+                        placeholder="https://example.com/full-article"
+                        className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                        required={formData.content_type === 'link'}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Users will be redirected to this URL when they tap "Read more"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Category */}
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-sm font-semibold text-gray-900">
+                      Category
+                    </Label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    >
+                      <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Image URL */}
+                  <div className="space-y-2">
+                    <Label htmlFor="image_url" className="text-sm font-semibold text-gray-900">
+                      Image URL
+                    </Label>
+                    <Input
+                      id="image_url"
+                      value={formData.image_url}
+                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    />
+                  </div>
+
+                  {/* Important Toggle - Full width */}
+                  <div className="space-y-2 md:col-span-2">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div>
+                        <Label htmlFor="is_important" className="text-sm font-semibold text-gray-900 cursor-pointer">
+                          Mark as Important
+                        </Label>
+                        <p className="text-xs text-gray-500 mt-0.5">Important news will be highlighted and shown at the top</p>
+                      </div>
+                      <Switch
+                        id="is_important"
+                        checked={formData.is_important}
+                        onCheckedChange={(checked) => setFormData({ ...formData, is_important: checked })}
+                        className="bg-gray-300 data-[state=checked]:bg-red-600"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Publishing Options - Full width */}
+                  <div className="space-y-3 md:col-span-2">
+                    <Label className="text-sm font-semibold text-gray-900">
+                      Publishing Options
+                    </Label>
+                    <div className="space-y-3">
+                      <label className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="publish_option"
+                          value="draft"
+                          checked={publishOption === 'draft'}
+                          onChange={(e) => setPublishOption(e.target.value as 'draft' | 'now' | 'scheduled')}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Save as Draft</span>
+                          <p className="text-xs text-gray-500">Save without publishing</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="publish_option"
+                          value="now"
+                          checked={publishOption === 'now'}
+                          onChange={(e) => setPublishOption(e.target.value as 'draft' | 'now' | 'scheduled')}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Publish Now</span>
+                          <p className="text-xs text-gray-500">Publish immediately and send notifications</p>
+                        </div>
+                      </label>
+                      <label className="flex items-center space-x-3 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="publish_option"
+                          value="scheduled"
+                          checked={publishOption === 'scheduled'}
+                          onChange={(e) => setPublishOption(e.target.value as 'draft' | 'now' | 'scheduled')}
+                          className="text-red-600 focus:ring-red-500"
+                        />
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">Schedule Publishing</span>
+                          <p className="text-xs text-gray-500">Set a future date and time to publish</p>
+                        </div>
+                      </label>
+                    </div>
+                    
+                    {publishOption === 'scheduled' && (
+                      <div className="mt-3">
+                        <Label htmlFor="scheduled_publish_at" className="text-sm font-semibold text-gray-900">
+                          Publish Date & Time
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
+                        <Input
+                          id="scheduled_publish_at"
+                          type="datetime-local"
+                          value={formData.scheduled_publish_at}
+                          onChange={(e) => setFormData({ ...formData, scheduled_publish_at: e.target.value })}
+                          min={new Date().toISOString().slice(0, 16)}
+                          className="mt-1 h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                          required={publishOption === 'scheduled'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </form>
+
+            {/* Action Buttons - Sticky at bottom */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {editingNews ? 'Update News' : 'Create News'}
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
         </div>
@@ -409,11 +634,30 @@ export default function NewsUpdatesPage() {
                 </div>
               </CardHeader>
               
-              {news.content && (
+              {(news.content || news.external_link) && (
                 <CardContent>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Full Content:</h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">{news.content}</p>
+                    {news.content_type === 'link' ? (
+                      <div>
+                        <h4 className="font-medium mb-2">External Link:</h4>
+                        <a 
+                          href={news.external_link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline break-all"
+                        >
+                          {news.external_link}
+                        </a>
+                      </div>
+                    ) : (
+                      <div>
+                        <h4 className="font-medium mb-2">Full Content:</h4>
+                        <div 
+                          className="text-gray-700 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: news.content || '' }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               )}
