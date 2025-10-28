@@ -168,6 +168,13 @@ export default function NewsUpdatesPage() {
     setSubmitting(true);
 
     try {
+      // Validate expiry date for publishing
+      if (publishOption === "now" && !formData.expires_at) {
+        toast.error("Expiry date is required when publishing news");
+        setSubmitting(false);
+        return;
+      }
+
       const token = apiClient.getToken();
       if (!token) {
         toast.error("Please log in again");
@@ -231,6 +238,15 @@ export default function NewsUpdatesPage() {
 
   const handlePublish = async (newsId: number, isPublished: boolean) => {
     try {
+      // Check if news has expiry date before publishing
+      if (isPublished) {
+        const news = newsUpdates.find(n => n.id === newsId);
+        if (!news?.expires_at) {
+          toast.error("Cannot publish news without expiry date. Please edit and add expiry date first.");
+          return;
+        }
+      }
+
       const token = apiClient.getToken();
       if (!token) {
         toast.error("Please log in again");
@@ -854,7 +870,10 @@ export default function NewsUpdatesPage() {
                             htmlFor="expires_at"
                             className="text-sm font-semibold text-gray-900"
                           >
-                            Expiry Date & Time (Optional)
+                            Expiry Date & Time
+                            {(publishOption === "now" || publishOption === "scheduled") && (
+                              <span className="text-red-500 ml-1">*</span>
+                            )}
                           </Label>
                           <Input
                             id="expires_at"
@@ -868,9 +887,13 @@ export default function NewsUpdatesPage() {
                             }
                             min={new Date().toISOString().slice(0, 16)}
                             className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                            required={publishOption === "now" || publishOption === "scheduled"}
                           />
                           <p className="text-xs text-gray-500 mt-1">
-                            Set when this news should stop appearing in the mobile app. Leave empty for no expiry.
+                            {(publishOption === "now" || publishOption === "scheduled") 
+                              ? "Required: Set when this news should stop appearing in the mobile app."
+                              : "Set when this news should stop appearing in the mobile app. Required for publishing."
+                            }
                           </p>
                         </div>
                       </div>
