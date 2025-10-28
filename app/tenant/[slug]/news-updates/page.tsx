@@ -66,7 +66,7 @@ interface NewsUpdate {
 const categories = [
   { value: "general", label: "General" },
   { value: "health_program", label: "Health Program" },
-  { value: "security", label: "Security" },
+  { value: "security_briefing", label: "Security Briefing" },
   { value: "events", label: "Events" },
   { value: "reports", label: "Reports" },
   { value: "announcement", label: "Announcement" },
@@ -76,8 +76,8 @@ const getCategoryColor = (category: string) => {
   switch (category) {
     case "health_program":
       return "bg-green-100 text-green-800";
-    case "security":
-      return "bg-red-100 text-red-800";
+    case "security_briefing":
+      return "bg-orange-100 text-orange-800";
     case "events":
       return "bg-purple-100 text-purple-800";
     case "reports":
@@ -109,6 +109,8 @@ export default function NewsUpdatesPage() {
     summary: "",
     content: "",
     external_link: "",
+    video_url: "",
+    document_url: "",
     content_type: "text",
     category: "general",
     is_important: false,
@@ -168,9 +170,15 @@ export default function NewsUpdatesPage() {
     setSubmitting(true);
 
     try {
-      // Validate expiry date for publishing
+      // Validate required fields based on publish option
+      if (publishOption === "scheduled" && !formData.scheduled_publish_at) {
+        toast.error("Please select a scheduled publish date");
+        setSubmitting(false);
+        return;
+      }
+
       if (publishOption === "now" && !formData.expires_at) {
-        toast.error("Expiry date is required when publishing news");
+        toast.error("Please select an expiry date for immediate publishing");
         setSubmitting(false);
         return;
       }
@@ -323,6 +331,8 @@ export default function NewsUpdatesPage() {
       summary: "",
       content: "",
       external_link: "",
+      video_url: "",
+      document_url: "",
       content_type: "text",
       category: "general",
       is_important: false,
@@ -341,6 +351,8 @@ export default function NewsUpdatesPage() {
       summary: news.summary,
       content: news.content || "",
       external_link: news.external_link || "",
+      video_url: news.video_url || "",
+      document_url: news.document_url || "",
       content_type: news.content_type || "text",
       category: news.category,
       is_important: news.is_important,
@@ -549,11 +561,11 @@ export default function NewsUpdatesPage() {
                     className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-10 px-5 text-sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Create News
+                    Create News/Updates
                   </Button>
                 </DialogTrigger>
 
-                <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-2xl flex flex-col">
                   {/* Header with gradient */}
                   <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
                     <div className="flex items-center space-x-3">
@@ -721,6 +733,52 @@ export default function NewsUpdatesPage() {
                               })
                             }
                             placeholder="https://example.com/image.jpg"
+                            className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                          />
+                        </div>
+
+                        {/* Video URL */}
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="video_url"
+                            className="text-sm font-semibold text-gray-900"
+                          >
+                            Video URL (Optional)
+                          </Label>
+                          <Input
+                            id="video_url"
+                            type="url"
+                            value={formData.video_url}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                video_url: e.target.value,
+                              })
+                            }
+                            placeholder="https://example.com/video.mp4"
+                            className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                          />
+                        </div>
+
+                        {/* Document URL */}
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="document_url"
+                            className="text-sm font-semibold text-gray-900"
+                          >
+                            Document URL (Optional)
+                          </Label>
+                          <Input
+                            id="document_url"
+                            type="url"
+                            value={formData.document_url}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                document_url: e.target.value,
+                              })
+                            }
+                            placeholder="https://example.com/document.pdf"
                             className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
                           />
                         </div>
