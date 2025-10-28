@@ -85,9 +85,13 @@ export default function NewsUpdatesPage() {
 
   const fetchNewsUpdates = async () => {
     try {
+      if (!session?.accessToken) {
+        return;
+      }
+
       const response = await fetch('/api/news-updates', {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${session.accessToken}`,
         },
       });
 
@@ -108,6 +112,11 @@ export default function NewsUpdatesPage() {
     setSubmitting(true);
 
     try {
+      if (!session?.accessToken) {
+        toast.error('Please log in again');
+        return;
+      }
+
       const url = editingNews
         ? `/api/news-updates/${editingNews.id}`
         : '/api/news-updates';
@@ -125,7 +134,7 @@ export default function NewsUpdatesPage() {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${session.accessToken}`,
         },
         body: JSON.stringify(submissionData),
       });
@@ -155,11 +164,16 @@ export default function NewsUpdatesPage() {
 
   const handlePublish = async (newsId: number, isPublished: boolean) => {
     try {
+      if (!session?.accessToken) {
+        toast.error('Please log in again');
+        return;
+      }
+
       const response = await fetch(`/api/news-updates/${newsId}/publish`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${session.accessToken}`,
         },
         body: JSON.stringify({ is_published: isPublished }),
       });
@@ -182,10 +196,15 @@ export default function NewsUpdatesPage() {
     }
 
     try {
+      if (!session?.accessToken) {
+        toast.error('Please log in again');
+        return;
+      }
+
       const response = await fetch(`/api/news-updates/${newsId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${session.accessToken}`,
         },
       });
 
@@ -328,73 +347,39 @@ export default function NewsUpdatesPage() {
                     />
                   </div>
 
-                  {/* Content Type Selector - Full width */}
+                  {/* Full Content - Full width */}
                   <div className="space-y-2 md:col-span-2">
                     <Label className="text-sm font-semibold text-gray-900">
-                      Content Type
+                      Full Content
                     </Label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="content_type"
-                          value="text"
-                          checked={formData.content_type === 'text'}
-                          onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
-                          className="text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-gray-700">Rich Text Content</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="content_type"
-                          value="link"
-                          checked={formData.content_type === 'link'}
-                          onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
-                          className="text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-gray-700">External Link</span>
-                      </label>
-                    </div>
+                    <RichTextEditor
+                      value={formData.content}
+                      onChange={(content) => setFormData({ ...formData, content })}
+                      placeholder="Write your detailed content here..."
+                      height={200}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use the rich text editor to format your content with bold, italic, links, lists, and more.
+                    </p>
                   </div>
 
-                  {/* Conditional Content Fields */}
-                  {formData.content_type === 'text' ? (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-sm font-semibold text-gray-900">
-                        Full Content
-                      </Label>
-                      <RichTextEditor
-                        value={formData.content}
-                        onChange={(content) => setFormData({ ...formData, content })}
-                        placeholder="Write your detailed content here..."
-                        height={200}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Use the rich text editor to format your content with bold, italic, links, lists, and more.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="external_link" className="text-sm font-semibold text-gray-900">
-                        External Link URL
-                        <span className="text-red-500 ml-1">*</span>
-                      </Label>
-                      <Input
-                        id="external_link"
-                        type="url"
-                        value={formData.external_link}
-                        onChange={(e) => setFormData({ ...formData, external_link: e.target.value })}
-                        placeholder="https://example.com/full-article"
-                        className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                        required={formData.content_type === 'link'}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Users will be redirected to this URL when they tap "Read more"
-                      </p>
-                    </div>
-                  )}
+                  {/* External Link - Full width */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="external_link" className="text-sm font-semibold text-gray-900">
+                      External Link URL (Optional)
+                    </Label>
+                    <Input
+                      id="external_link"
+                      type="url"
+                      value={formData.external_link}
+                      onChange={(e) => setFormData({ ...formData, external_link: e.target.value })}
+                      placeholder="https://example.com/full-article"
+                      className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      If provided, users can access this link in addition to the content above
+                    </p>
+                  </div>
 
                   {/* Category */}
                   <div className="space-y-2">
@@ -635,8 +620,17 @@ export default function NewsUpdatesPage() {
               
               {(news.content || news.external_link) && (
                 <CardContent>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    {news.content_type === 'link' ? (
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                    {news.content && (
+                      <div>
+                        <h4 className="font-medium mb-2">Full Content:</h4>
+                        <div 
+                          className="text-gray-700 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: news.content }}
+                        />
+                      </div>
+                    )}
+                    {news.external_link && (
                       <div>
                         <h4 className="font-medium mb-2">External Link:</h4>
                         <a 
@@ -647,14 +641,6 @@ export default function NewsUpdatesPage() {
                         >
                           {news.external_link}
                         </a>
-                      </div>
-                    ) : (
-                      <div>
-                        <h4 className="font-medium mb-2">Full Content:</h4>
-                        <div 
-                          className="text-gray-700 prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: news.content || '' }}
-                        />
                       </div>
                     )}
                   </div>
