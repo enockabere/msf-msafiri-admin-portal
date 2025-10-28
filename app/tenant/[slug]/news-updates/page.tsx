@@ -29,6 +29,7 @@ interface NewsUpdate {
   is_important: boolean;
   is_published: boolean;
   scheduled_publish_at?: string;
+  expires_at?: string;
   image_url?: string;
   created_by: string;
   created_at: string;
@@ -75,6 +76,7 @@ export default function NewsUpdatesPage() {
     category: 'general',
     is_important: false,
     scheduled_publish_at: '',
+    expires_at: '',
     image_url: '',
   });
   const [publishOption, setPublishOption] = useState<'draft' | 'now' | 'scheduled'>('draft');
@@ -128,6 +130,7 @@ export default function NewsUpdatesPage() {
         ...formData,
         is_published: publishOption === 'now',
         scheduled_publish_at: publishOption === 'scheduled' ? formData.scheduled_publish_at : null,
+        expires_at: formData.expires_at || null,
       };
 
       const response = await fetch(url, {
@@ -230,6 +233,7 @@ export default function NewsUpdatesPage() {
       category: 'general',
       is_important: false,
       scheduled_publish_at: '',
+      expires_at: '',
       image_url: '',
     });
     setPublishOption('draft');
@@ -247,6 +251,7 @@ export default function NewsUpdatesPage() {
       category: news.category,
       is_important: news.is_important,
       scheduled_publish_at: news.scheduled_publish_at || '',
+      expires_at: news.expires_at || '',
       image_url: news.image_url || '',
     });
     if (news.is_published) {
