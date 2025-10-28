@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Trash2, Edit, Plus, Eye, Send, Newspaper, X, Save, Loader2 } from 'lucide-react';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { toast } from 'sonner';
 import DashboardLayout from '@/components/layout/dashboard-layout';
 import { LoadingScreen } from '@/components/ui/loading';
@@ -361,19 +362,19 @@ export default function NewsUpdatesPage() {
                   {/* Conditional Content Fields */}
                   {formData.content_type === 'text' ? (
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="content" className="text-sm font-semibold text-gray-900">
+                      <Label className="text-sm font-semibold text-gray-900">
                         Full Content
                       </Label>
-                      <Textarea
-                        id="content"
-                        value={formData.content}
-                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                        placeholder="Detailed content and additional information (supports basic HTML formatting)"
-                        className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[8rem]"
-                        rows={6}
-                      />
+                      <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                        <RichTextEditor
+                          value={formData.content}
+                          onChange={(content) => setFormData({ ...formData, content })}
+                          placeholder="Write your detailed content here..."
+                          height={250}
+                        />
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        You can use basic HTML tags like &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;br&gt;, &lt;p&gt;, &lt;a href="..."&gt;
+                        Use the rich text editor to format your content with bold, italic, links, lists, and more.
                       </p>
                     </div>
                   ) : (
