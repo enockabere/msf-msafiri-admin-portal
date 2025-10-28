@@ -29,6 +29,7 @@ import {
   Hotel,
   Car,
   Plane,
+  Newspaper,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
@@ -212,6 +213,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       href: "/useful-contacts",
       badge: null,
     },
+    {
+      icon: Newspaper,
+      label: "News & Updates",
+      href: "/news-updates",
+      badge: null,
+    },
   ];
   
   sections.push({
@@ -390,6 +397,7 @@ export default function Sidebar({
                 item.href === '/security-briefings' ? `/tenant/${tenantSlug}/security-briefings` :
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
+                item.href === '/news-updates' ? `/tenant/${tenantSlug}/news-updates` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
