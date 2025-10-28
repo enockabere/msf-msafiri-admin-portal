@@ -847,6 +847,32 @@ export default function NewsUpdatesPage() {
                             </div>
                           )}
                         </div>
+
+                        {/* Expiry Date - Full width */}
+                        <div className="space-y-2 md:col-span-2">
+                          <Label
+                            htmlFor="expires_at"
+                            className="text-sm font-semibold text-gray-900"
+                          >
+                            Expiry Date & Time (Optional)
+                          </Label>
+                          <Input
+                            id="expires_at"
+                            type="datetime-local"
+                            value={formData.expires_at}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                expires_at: e.target.value,
+                              })
+                            }
+                            min={new Date().toISOString().slice(0, 16)}
+                            className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Set when this news should stop appearing in the mobile app. Leave empty for no expiry.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </form>

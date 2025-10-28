@@ -44,6 +44,7 @@ export default function FeedbackPage() {
   const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
@@ -245,7 +246,7 @@ export default function FeedbackPage() {
             {/* Modern Header Section */}
             <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
               {/* Decorative Background Elements */}
-              <div className="absolute inset-0 opacity-10">
+              <div className="absolute inset-0 opacity-10 pointer-events-none">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
               </div>
@@ -288,11 +289,11 @@ export default function FeedbackPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10">
                     <Button
                       onClick={() => fetchFeedbackData(true)}
-                      disabled={refreshing}
-                      className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6"
+                      disabled={refreshing || navigating}
+                      className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6 relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {refreshing ? (
                         <>
@@ -307,11 +308,24 @@ export default function FeedbackPage() {
                       )}
                     </Button>
                     <Button
-                      onClick={() => router.push("/super-admin")}
-                      className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
+                      onClick={() => {
+                        setNavigating(true);
+                        router.push("/dashboard");
+                      }}
+                      disabled={navigating || refreshing}
+                      className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6 relative z-10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Dashboard
+                      {navigating ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Back to Dashboard
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
