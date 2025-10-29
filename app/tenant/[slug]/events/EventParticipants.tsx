@@ -694,17 +694,19 @@ export default function EventParticipants({
                         "-"}
                     </span>
                   </div>
-                  {participant.travelling_from_country && (
-                    <div>
-                      <span className="font-medium text-gray-700">
-                        Travelling From Country:
-                      </span>
-                      <br />
-                      <span className="text-gray-900">
-                        {participant.travelling_from_country}
-                      </span>
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      Travelling From Country:
+                    </span>
+                    <br />
+                    <span className="text-gray-900">
+                      {participant.travelling_from_country || "-"}
+                    </span>
+                    {/* Debug info */}
+                    <div className="text-xs text-red-500 mt-1">
+                      Debug: {JSON.stringify({travelling_from_country: participant.travelling_from_country})}
                     </div>
-                  )}
+                  </div>
                   <div>
                     <span className="font-medium text-gray-700">
                       Accommodation Type:
