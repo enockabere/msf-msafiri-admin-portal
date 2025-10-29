@@ -245,12 +245,7 @@ export default function EventParticipants({
             'X-Tenant-ID': tenantSlug
           };
 
-          console.log('Fetching participant services for:', {
-            participantId: participant.id,
-            travellingInternationally: participant.travelling_internationally || participant.travellingInternationally,
-            travellingFromCountry: participant.travelling_from_country,
-            tenantSlug
-          });
+
           
           // First, get the current event details to get the event title
           let currentEventTitle = null;
@@ -262,10 +257,10 @@ export default function EventParticipants({
             if (eventResponse.ok) {
               const eventData = await eventResponse.json();
               currentEventTitle = eventData.title;
-              console.log('Current event title:', currentEventTitle);
+
             }
           } catch (error) {
-            console.log('Could not fetch event details:', error);
+
           }
 
           // Skip transport API calls for now - service not implemented
@@ -280,8 +275,7 @@ export default function EventParticipants({
             );
             if (accommodationResponse.ok) {
               const allAccommodations = await accommodationResponse.json();
-              console.log('All accommodations from API:', allAccommodations);
-              console.log('Filtering for participant:', participant.email, 'event:', eventId);
+
 
               // Filter by participant email and event title
               const filteredAccommodations = Array.isArray(allAccommodations)
@@ -291,12 +285,7 @@ export default function EventParticipants({
                     // Check event title match
                     const eventTitleFromObject = acc.event?.title;
                     
-                    console.log('Full accommodation object:', acc);
-                    console.log('Event filtering:', {
-                      'accommodation event title': eventTitleFromObject,
-                      'current event title': currentEventTitle,
-                      'event match': currentEventTitle ? eventTitleFromObject === currentEventTitle : true
-                    });
+
                     
                     // Match by event title if we have the current event title
                     // Be more lenient - if we can't get event title or no event info, show all
@@ -307,21 +296,13 @@ export default function EventParticipants({
                     // Exclude cancelled accommodations
                     const statusMatch = acc.status?.toLowerCase() !== 'cancelled';
 
-                    console.log('Checking accommodation:', {
-                      guest_email: acc.guest_email,
-                      'event.title': eventTitleFromObject,
-                      status: acc.status,
-                      emailMatch,
-                      eventMatch,
-                      statusMatch,
-                      willInclude: emailMatch && eventMatch && statusMatch
-                    });
+
 
                     return emailMatch && eventMatch && statusMatch;
                   })
                 : [];
 
-              console.log('Filtered accommodations for participant:', filteredAccommodations);
+
               setAccommodationData(filteredAccommodations);
             } else {
               setAccommodationData([]);
@@ -413,35 +394,22 @@ export default function EventParticipants({
             (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes');
           const fromCountry = participant.travelling_from_country;
           
-          console.log('Travel requirements check:', {
-            isInternational,
-            fromCountry,
-            travellingInternationally: participant.travelling_internationally,
-            travellingInternationallyAlt: participant.travellingInternationally
-          });
+
           
           if (isInternational && fromCountry) {
             try {
-              console.log('Fetching travel requirements for country:', fromCountry);
-              
               // Get tenant info and travel requirements using apiClient
               const tenantData = await apiClient.request(`/tenants/slug/${tenantSlug}`);
               const tenantId = tenantData.id;
               
-              console.log('Got tenant ID:', tenantId, 'for slug:', tenantSlug);
-              
               const travelData = await apiClient.request(
                 `/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(fromCountry)}`
               );
-              
-              console.log('Travel requirements data:', travelData);
               setTravelRequirements(travelData);
             } catch (error) {
-              console.error('Error fetching travel requirements:', error);
               setTravelRequirements(null);
             }
           } else {
-            console.log('Not international travel or no from country specified');
             setTravelRequirements(null);
           }
         } catch {
@@ -2063,15 +2031,7 @@ export default function EventParticipants({
                 </td>
                 <td
                   className="px-3 py-4 whitespace-nowrap cursor-pointer"
-                  onClick={() => {
-                    console.log('Selected participant accommodation data:', {
-                      participant_email: participant.email,
-                      accommodation_type: participant.accommodation_type || participant.accommodationType,
-                      accommodation_needs: participant.accommodation_needs || participant.accommodationNeeds,
-                      travelling_internationally: participant.travelling_internationally || participant.travellingInternationally
-                    });
-                    handleViewParticipant(participant);
-                  }}
+                  onClick={() => handleViewParticipant(participant)}
                 >
                   <div className="flex items-center">
                     <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
