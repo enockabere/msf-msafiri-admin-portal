@@ -43,6 +43,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
   const [filterType, setFilterType] = useState<"all" | "configured" | "unconfigured">("all");
   const [editingAdditional, setEditingAdditional] = useState<string | null>(null);
   const [newRequirement, setNewRequirement] = useState({ name: "", description: "" });
+  const [creatingDefaults, setCreatingDefaults] = useState(false);
   const { apiClient } = useAuthenticatedApi();
 
 
@@ -80,6 +81,64 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       setError("Failed to load travel requirements data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createDefaultRequirements = async () => {
+    try {
+      setCreatingDefaults(true);
+      
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      // Get countries that don't have requirements yet
+      const unconfiguredCountries = countries.filter(country => 
+        country !== tenantCountry && !requirements[country]?.id
+      );
+      
+      // Create default requirements for each unconfigured country
+      for (const country of unconfiguredCountries) {
+        try {
+          const defaultReq = {
+            country,
+            visa_required: false,
+            eta_required: false,
+            passport_required: true,
+            flight_ticket_required: true,
+            additional_requirements: []
+          };
+          
+          const response = await apiClient.request<TravelRequirement>(
+            `/country-travel-requirements/tenant/${tenantId}`,
+            {
+              method: "POST",
+              body: JSON.stringify(defaultReq)
+            }
+          );
+          
+          setRequirements(prev => ({
+            ...prev,
+            [country]: response
+          }));
+        } catch (error) {
+          console.error(`Failed to create requirements for ${country}:`, error);
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: `Default requirements created for ${unconfiguredCountries.length} countries`
+      });
+      
+    } catch (error) {
+      console.error("Error creating default requirements:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create default requirements",
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingDefaults(false);
     }
   };
 
@@ -409,6 +468,21 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                 <AlertCircle className="h-3.5 w-3.5" />
                 Pending
               </Button>
+              {stats.unconfigured > 0 && (
+                <Button
+                  onClick={createDefaultRequirements}
+                  disabled={creatingDefaults}
+                  className="flex items-center gap-1.5 h-9 text-xs bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                >
+                  {creatingDefaults ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Add Defaults ({stats.unconfigured})
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
