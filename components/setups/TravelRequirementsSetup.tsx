@@ -7,10 +7,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Save, AlertCircle, CheckCircle2, Plane, FileText, CreditCard, MapPin, Search, Filter, BarChart3, Globe } from "lucide-react";
+import { Loader2, Save, AlertCircle, CheckCircle2, Plane, FileText, CreditCard, MapPin, Search, Filter, BarChart3, Globe, Plus, X, Edit3 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+
+interface AdditionalRequirement {
+  name: string;
+  required: boolean;
+  description?: string;
+}
 
 interface TravelRequirement {
   id?: number;
@@ -19,6 +25,7 @@ interface TravelRequirement {
   eta_required: boolean;
   passport_required: boolean;
   flight_ticket_required: boolean;
+  additional_requirements?: AdditionalRequirement[];
 }
 
 interface TravelRequirementsSetupProps {
@@ -34,6 +41,8 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "configured" | "unconfigured">("all");
+  const [editingAdditional, setEditingAdditional] = useState<string | null>(null);
+  const [newRequirement, setNewRequirement] = useState({ name: "", description: "" });
   const { apiClient } = useAuthenticatedApi();
 
 
@@ -74,7 +83,51 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
     }
   };
 
-  const updateRequirement = async (country: string, field: keyof Omit<TravelRequirement, 'id' | 'country'>, value: boolean) => {
+  const addAdditionalRequirement = async (country: string) => {
+    if (!newRequirement.name.trim()) return;
+    
+    const currentReq = requirements[country] || {
+      country,
+      visa_required: false,
+      eta_required: false,
+      passport_required: true,
+      flight_ticket_required: true,
+      additional_requirements: []
+    };
+    
+    const updatedAdditional = [
+      ...(currentReq.additional_requirements || []),
+      {
+        name: newRequirement.name.trim(),
+        required: false,
+        description: newRequirement.description.trim() || undefined
+      }
+    ];
+    
+    await updateRequirement(country, 'additional_requirements', updatedAdditional);
+    setNewRequirement({ name: "", description: "" });
+    setEditingAdditional(null);
+  };
+  
+  const removeAdditionalRequirement = async (country: string, index: number) => {
+    const currentReq = requirements[country];
+    if (!currentReq?.additional_requirements) return;
+    
+    const updatedAdditional = currentReq.additional_requirements.filter((_, i) => i !== index);
+    await updateRequirement(country, 'additional_requirements', updatedAdditional);
+  };
+  
+  const toggleAdditionalRequirement = async (country: string, index: number) => {
+    const currentReq = requirements[country];
+    if (!currentReq?.additional_requirements) return;
+    
+    const updatedAdditional = currentReq.additional_requirements.map((req, i) => 
+      i === index ? { ...req, required: !req.required } : req
+    );
+    await updateRequirement(country, 'additional_requirements', updatedAdditional);
+  };
+
+  const updateRequirement = async (country: string, field: keyof Omit<TravelRequirement, 'id' | 'country'>, value: boolean | AdditionalRequirement[]) => {
     try {
       setSaving(country);
       
@@ -508,6 +561,100 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                             Flight Ticket
                           </label>
                         </div>
+                        
+                        {/* Additional Requirements Section */}
+                        {(requirements[country]?.additional_requirements?.length > 0 || editingAdditional === country) && (
+                          <>
+                            <Separator />
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <Plus className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs font-medium text-muted-foreground">Additional Requirements</span>
+                              </div>
+                              
+                              {/* Existing Additional Requirements */}
+                              {requirements[country]?.additional_requirements?.map((req, index) => (
+                                <div key={index} className="flex items-center space-x-2 p-1.5 rounded-md hover:bg-accent/50 transition-colors group">
+                                  <Checkbox
+                                    checked={req.required}
+                                    onCheckedChange={() => toggleAdditionalRequirement(country, index)}
+                                    disabled={saving === country}
+                                    className="h-4 w-4"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-medium truncate">{req.name}</div>
+                                    {req.description && (
+                                      <div className="text-[10px] text-muted-foreground truncate">{req.description}</div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeAdditionalRequirement(country, index)}
+                                    disabled={saving === country}
+                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              
+                              {/* Add New Requirement Form */}
+                              {editingAdditional === country && (
+                                <div className="space-y-2 p-2 bg-accent/30 rounded-md">
+                                  <Input
+                                    placeholder="Requirement name (e.g., Vaccination)"
+                                    value={newRequirement.name}
+                                    onChange={(e) => setNewRequirement(prev => ({ ...prev, name: e.target.value }))}
+                                    className="h-7 text-xs"
+                                  />
+                                  <Input
+                                    placeholder="Description (optional)"
+                                    value={newRequirement.description}
+                                    onChange={(e) => setNewRequirement(prev => ({ ...prev, description: e.target.value }))}
+                                    className="h-7 text-xs"
+                                  />
+                                  <div className="flex gap-1">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => addAdditionalRequirement(country)}
+                                      disabled={!newRequirement.name.trim() || saving === country}
+                                      className="h-6 text-xs px-2"
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingAdditional(null);
+                                        setNewRequirement({ name: "", description: "" });
+                                      }}
+                                      className="h-6 text-xs px-2"
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                        
+                        {/* Add Additional Requirement Button */}
+                        {editingAdditional !== country && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingAdditional(country)}
+                            disabled={saving === country}
+                            className="w-full h-7 text-xs text-muted-foreground hover:text-foreground mt-2"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Requirement
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
