@@ -408,7 +408,9 @@ export default function EventParticipants({
           }
 
           // Fetch travel requirements if travelling internationally
-          const isInternational = participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes';
+          const isInternational = 
+            (participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
+            (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes');
           const fromCountry = participant.travelling_from_country;
           
           console.log('Travel requirements check:', {
@@ -479,7 +481,9 @@ export default function EventParticipants({
         }
       } else {
         // Still fetch travel requirements for other statuses if they're travelling internationally
-        const isInternational = participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes';
+        const isInternational = 
+          (participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
+          (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes');
         const fromCountry = participant.travelling_from_country;
         
         if (isInternational && fromCountry) {
@@ -898,7 +902,9 @@ export default function EventParticipants({
                     </div>
                   </div>
                   {/* Travel Requirements */}
-                  {(participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes') && participant.travelling_from_country && (
+                  {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
+                    (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) && 
+                   participant.travelling_from_country && (
                     <div>
                       <span className="font-medium text-gray-700 block mb-2">
                         Travel Requirements ({participant.travelling_from_country}):
@@ -2160,7 +2166,8 @@ export default function EventParticipants({
                   )}
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap">
-                  {participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes' ? (
+                  {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
+                    (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) ? (
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
