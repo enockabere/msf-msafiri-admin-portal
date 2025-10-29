@@ -197,6 +197,20 @@ export default function EventParticipants({
     created_at: string;
   }
 
+  interface TravelRequirement {
+    id: number;
+    country: string;
+    visa_required: boolean;
+    eta_required: boolean;
+    passport_required: boolean;
+    flight_ticket_required: boolean;
+    additional_requirements?: {
+      name: string;
+      required: boolean;
+      description?: string;
+    }[];
+  }
+
   function ParticipantDetailsModal({
     participant,
     onClose,
@@ -217,18 +231,20 @@ export default function EventParticipants({
     >([]);
     const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
     const [recommendationData, setRecommendationData] = useState<LineManagerRecommendation | null>(null);
+    const [travelRequirements, setTravelRequirements] = useState<TravelRequirement | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
       const fetchParticipantServices = async () => {
         try {
           const token = apiClient.getToken();
-          const tenantSlug = window.location.pathname.split('/')[2];
           const headers = {
             Authorization: `Bearer ${token}`,
             'X-Tenant-ID': tenantSlug
           };
 
+
+          
           // First, get the current event details to get the event title
           let currentEventTitle = null;
           try {
@@ -369,24 +385,56 @@ export default function EventParticipants({
 
           // Fetch line manager recommendation
           try {
-
-            
             const recommendationResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`,
               { headers }
             );
             
-
-            
             if (recommendationResponse.ok) {
               const recommendationData = await recommendationResponse.json();
-
               setRecommendationData(recommendationData);
             } else {
               setRecommendationData(null);
             }
           } catch (error) {
             setRecommendationData(null);
+          }
+
+          // Fetch travel requirements if travelling internationally
+          const isInternational = participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes';
+          const fromCountry = participant.travelling_from_country;
+          
+          if (isInternational && fromCountry) {
+            try {
+              // First get tenant ID
+              const tenantResponse = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+                { headers }
+              );
+              
+              if (tenantResponse.ok) {
+                const tenantData = await tenantResponse.json();
+                const tenantId = tenantData.id;
+                
+                const travelResponse = await fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/v1/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(fromCountry)}`,
+                  { headers }
+                );
+                
+                if (travelResponse.ok) {
+                  const travelData = await travelResponse.json();
+                  setTravelRequirements(travelData);
+                } else {
+                  setTravelRequirements(null);
+                }
+              } else {
+                setTravelRequirements(null);
+              }
+            } catch (error) {
+              setTravelRequirements(null);
+            }
+          } else {
+            setTravelRequirements(null);
           }
         } catch {
           // Error handled silently
@@ -407,7 +455,7 @@ export default function EventParticipants({
       } else {
         setLoading(false);
       }
-    }, [participant.id, participant.email, participant.status, eventId, apiClient]);
+    }, [participant.id, participant.email, participant.status, eventId, apiClient, participant.travelling_internationally, participant.travellingInternationally, participant.travelling_from_country]);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
@@ -816,6 +864,73 @@ export default function EventParticipants({
                       )}
                     </div>
                   </div>
+                  {/* Travel Requirements */}
+                  {(participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes') && participant.travelling_from_country && (
+                    <div>
+                      <span className="font-medium text-gray-700 block mb-2">
+                        Travel Requirements ({participant.travelling_from_country}):
+                      </span>
+                      <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                        {travelRequirements ? (
+                          <div className="space-y-3">
+                            {/* Standard Requirements */}
+                            <div className="space-y-2">
+                              {travelRequirements.visa_required && (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                  <span className="text-xs font-medium text-red-700">Visa Required</span>
+                                </div>
+                              )}
+                              {travelRequirements.eta_required && (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                  <span className="text-xs font-medium text-orange-700">eTA Required</span>
+                                </div>
+                              )}
+                              {travelRequirements.passport_required && (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  <span className="text-xs font-medium text-blue-700">Passport Required</span>
+                                </div>
+                              )}
+                              {travelRequirements.flight_ticket_required && (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span className="text-xs font-medium text-green-700">Flight Ticket Required</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Additional Requirements */}
+                            {travelRequirements.additional_requirements && travelRequirements.additional_requirements.length > 0 && (
+                              <div className="border-t pt-2">
+                                <div className="text-xs font-semibold text-gray-600 mb-2">Additional Requirements:</div>
+                                <div className="space-y-1">
+                                  {travelRequirements.additional_requirements.map((req, index) => (
+                                    <div key={index} className="flex items-start gap-2">
+                                      <div className={`w-2 h-2 rounded-full mt-1 ${req.required ? 'bg-purple-500' : 'bg-gray-400'}`}></div>
+                                      <div>
+                                        <span className={`text-xs font-medium ${req.required ? 'text-purple-700' : 'text-gray-600'}`}>
+                                          {req.name}
+                                        </span>
+                                        {req.description && (
+                                          <div className="text-[10px] text-gray-500 mt-0.5">{req.description}</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500 text-sm">
+                            No travel requirements configured for {participant.travelling_from_country}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {participant.status === 'declined' && (
                     <div>
                       <span className="font-medium text-gray-700 block mb-2">
