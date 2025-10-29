@@ -424,37 +424,18 @@ export default function EventParticipants({
             try {
               console.log('Fetching travel requirements for country:', fromCountry);
               
-              // First get tenant ID
-              const tenantResponse = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
-                { headers }
+              // Get tenant info and travel requirements using apiClient
+              const tenantData = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+              const tenantId = tenantData.id;
+              
+              console.log('Got tenant ID:', tenantId, 'for slug:', tenantSlug);
+              
+              const travelData = await apiClient.request(
+                `/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(fromCountry)}`
               );
               
-              if (tenantResponse.ok) {
-                const tenantData = await tenantResponse.json();
-                const tenantId = tenantData.id;
-                
-                console.log('Got tenant ID:', tenantId, 'for slug:', tenantSlug);
-                
-                const travelResponse = await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL}/api/v1/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(fromCountry)}`,
-                  { headers }
-                );
-                
-                console.log('Travel requirements response status:', travelResponse.status);
-                
-                if (travelResponse.ok) {
-                  const travelData = await travelResponse.json();
-                  console.log('Travel requirements data:', travelData);
-                  setTravelRequirements(travelData);
-                } else {
-                  console.log('Travel requirements not found for country:', fromCountry);
-                  setTravelRequirements(null);
-                }
-              } else {
-                console.log('Failed to get tenant data');
-                setTravelRequirements(null);
-              }
+              console.log('Travel requirements data:', travelData);
+              setTravelRequirements(travelData);
             } catch (error) {
               console.error('Error fetching travel requirements:', error);
               setTravelRequirements(null);
@@ -487,7 +468,22 @@ export default function EventParticipants({
         const fromCountry = participant.travelling_from_country;
         
         if (isInternational && fromCountry) {
-          fetchParticipantServices();
+          // Simplified fetch for travel requirements only
+          const fetchTravelRequirements = async () => {
+            try {
+              const tenantSlug = window.location.pathname.split('/')[2];
+              const tenantData = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+              const travelData = await apiClient.request(
+                `/country-travel-requirements/tenant/${tenantData.id}/country/${encodeURIComponent(fromCountry)}`
+              );
+              setTravelRequirements(travelData);
+            } catch (error) {
+              setTravelRequirements(null);
+            } finally {
+              setLoading(false);
+            }
+          };
+          fetchTravelRequirements();
         } else {
           setLoading(false);
         }
