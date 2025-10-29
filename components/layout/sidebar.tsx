@@ -196,12 +196,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       href: "/notifications",
       badge: "notifications",
     },
-    {
-      icon: MessageSquare,
-      label: "Chat Management",
-      href: "/chat",
-      badge: null,
-    },
+
     {
       icon: User,
       label: "Useful Contacts",

@@ -50,6 +50,8 @@ interface NewsUpdate {
   summary: string;
   content?: string;
   external_link?: string;
+  video_url?: string;
+  document_url?: string;
   content_type: string;
   category: string;
   is_important: boolean;
