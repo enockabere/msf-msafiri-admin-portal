@@ -238,12 +238,19 @@ export default function EventParticipants({
       const fetchParticipantServices = async () => {
         try {
           const token = apiClient.getToken();
+          // Get tenant slug from URL
+          const tenantSlug = window.location.pathname.split('/')[2];
           const headers = {
             Authorization: `Bearer ${token}`,
             'X-Tenant-ID': tenantSlug
           };
 
-
+          console.log('Fetching participant services for:', {
+            participantId: participant.id,
+            travellingInternationally: participant.travelling_internationally || participant.travellingInternationally,
+            travellingFromCountry: participant.travelling_from_country,
+            tenantSlug
+          });
           
           // First, get the current event details to get the event title
           let currentEventTitle = null;
@@ -404,8 +411,17 @@ export default function EventParticipants({
           const isInternational = participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes';
           const fromCountry = participant.travelling_from_country;
           
+          console.log('Travel requirements check:', {
+            isInternational,
+            fromCountry,
+            travellingInternationally: participant.travelling_internationally,
+            travellingInternationallyAlt: participant.travellingInternationally
+          });
+          
           if (isInternational && fromCountry) {
             try {
+              console.log('Fetching travel requirements for country:', fromCountry);
+              
               // First get tenant ID
               const tenantResponse = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
@@ -416,24 +432,33 @@ export default function EventParticipants({
                 const tenantData = await tenantResponse.json();
                 const tenantId = tenantData.id;
                 
+                console.log('Got tenant ID:', tenantId, 'for slug:', tenantSlug);
+                
                 const travelResponse = await fetch(
                   `${process.env.NEXT_PUBLIC_API_URL}/api/v1/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(fromCountry)}`,
                   { headers }
                 );
                 
+                console.log('Travel requirements response status:', travelResponse.status);
+                
                 if (travelResponse.ok) {
                   const travelData = await travelResponse.json();
+                  console.log('Travel requirements data:', travelData);
                   setTravelRequirements(travelData);
                 } else {
+                  console.log('Travel requirements not found for country:', fromCountry);
                   setTravelRequirements(null);
                 }
               } else {
+                console.log('Failed to get tenant data');
                 setTravelRequirements(null);
               }
             } catch (error) {
+              console.error('Error fetching travel requirements:', error);
               setTravelRequirements(null);
             }
           } else {
+            console.log('Not international travel or no from country specified');
             setTravelRequirements(null);
           }
         } catch {
@@ -453,7 +478,15 @@ export default function EventParticipants({
           setLoading(false);
         }
       } else {
-        setLoading(false);
+        // Still fetch travel requirements for other statuses if they're travelling internationally
+        const isInternational = participant.travelling_internationally === 'yes' || participant.travellingInternationally === 'yes';
+        const fromCountry = participant.travelling_from_country;
+        
+        if (isInternational && fromCountry) {
+          fetchParticipantServices();
+        } else {
+          setLoading(false);
+        }
       }
     }, [participant.id, participant.email, participant.status, eventId, apiClient, participant.travelling_internationally, participant.travellingInternationally, participant.travelling_from_country]);
 
@@ -871,7 +904,12 @@ export default function EventParticipants({
                         Travel Requirements ({participant.travelling_from_country}):
                       </span>
                       <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
-                        {travelRequirements ? (
+                        {loading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            <span className="text-sm text-gray-600">Loading requirements...</span>
+                          </div>
+                        ) : travelRequirements ? (
                           <div className="space-y-3">
                             {/* Standard Requirements */}
                             <div className="space-y-2">
@@ -954,8 +992,8 @@ export default function EventParticipants({
               </div>
             </div>
 
-            {/* Event Services - Show for selected, confirmed, and attended participants */}
-            {["selected", "confirmed", "attended"].includes(participant.status?.toLowerCase()) && (
+            {/* Event Services - Show for selected, confirmed, attended, and registered participants */}
+            {["selected", "confirmed", "attended", "registered"].includes(participant.status?.toLowerCase()) && (
               <div className="mt-8">
                 <h4 className="font-semibold text-gray-900 mb-6 text-xl border-b border-gray-300 pb-3">
                   Event Services
