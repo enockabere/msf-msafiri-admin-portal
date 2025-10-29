@@ -565,26 +565,28 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                         {/* Additional Requirements Section */}
                         {(requirements[country]?.additional_requirements?.length > 0 || editingAdditional === country) && (
                           <>
-                            <Separator />
-                            <div className="space-y-1.5">
-                              <div className="flex items-center gap-1.5 mb-2">
-                                <Plus className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs font-medium text-muted-foreground">Additional Requirements</span>
+                            <Separator className="my-3" />
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-6 h-6 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                                  <Plus className="h-3 w-3 text-blue-600" />
+                                </div>
+                                <span className="text-xs font-semibold text-gray-700">Additional Requirements</span>
                               </div>
-                              
+
                               {/* Existing Additional Requirements */}
                               {requirements[country]?.additional_requirements?.map((req, index) => (
-                                <div key={index} className="flex items-center space-x-2 p-1.5 rounded-md hover:bg-accent/50 transition-colors group">
+                                <div key={index} className="flex items-center space-x-2 p-2 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 hover:border-blue-300 transition-all group">
                                   <Checkbox
                                     checked={req.required}
                                     onCheckedChange={() => toggleAdditionalRequirement(country, index)}
                                     disabled={saving === country}
-                                    className="h-4 w-4"
+                                    className="h-4 w-4 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-medium truncate">{req.name}</div>
+                                    <div className="text-xs font-semibold text-gray-800 truncate">{req.name}</div>
                                     {req.description && (
-                                      <div className="text-[10px] text-muted-foreground truncate">{req.description}</div>
+                                      <div className="text-[10px] text-gray-500 truncate mt-0.5">{req.description}</div>
                                     )}
                                   </div>
                                   <Button
@@ -592,37 +594,43 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                                     size="sm"
                                     onClick={() => removeAdditionalRequirement(country, index)}
                                     disabled={saving === country}
-                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600"
                                   >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               ))}
-                              
+
                               {/* Add New Requirement Form */}
                               {editingAdditional === country && (
-                                <div className="space-y-2 p-2 bg-accent/30 rounded-md">
-                                  <Input
-                                    placeholder="Requirement name (e.g., Vaccination)"
-                                    value={newRequirement.name}
-                                    onChange={(e) => setNewRequirement(prev => ({ ...prev, name: e.target.value }))}
-                                    className="h-7 text-xs"
-                                  />
-                                  <Input
-                                    placeholder="Description (optional)"
-                                    value={newRequirement.description}
-                                    onChange={(e) => setNewRequirement(prev => ({ ...prev, description: e.target.value }))}
-                                    className="h-7 text-xs"
-                                  />
-                                  <div className="flex gap-1">
+                                <div className="space-y-2 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 shadow-sm">
+                                  <div>
+                                    <label className="text-[10px] font-semibold text-blue-700 mb-1 block">Requirement Name *</label>
+                                    <Input
+                                      placeholder="e.g., Yellow Fever Vaccination"
+                                      value={newRequirement.name}
+                                      onChange={(e) => setNewRequirement(prev => ({ ...prev, name: e.target.value }))}
+                                      className="h-8 text-xs border-2 border-blue-200 focus:border-blue-400 focus:ring-blue-100"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-semibold text-blue-700 mb-1 block">Description (Optional)</label>
+                                    <Input
+                                      placeholder="Additional details about this requirement"
+                                      value={newRequirement.description}
+                                      onChange={(e) => setNewRequirement(prev => ({ ...prev, description: e.target.value }))}
+                                      className="h-8 text-xs border-2 border-blue-200 focus:border-blue-400 focus:ring-blue-100"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
                                     <Button
                                       size="sm"
                                       onClick={() => addAdditionalRequirement(country)}
                                       disabled={!newRequirement.name.trim() || saving === country}
-                                      className="h-6 text-xs px-2"
+                                      className="h-7 text-xs px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md"
                                     >
                                       <Plus className="h-3 w-3 mr-1" />
-                                      Add
+                                      Add Requirement
                                     </Button>
                                     <Button
                                       variant="outline"
@@ -631,8 +639,9 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                                         setEditingAdditional(null);
                                         setNewRequirement({ name: "", description: "" });
                                       }}
-                                      className="h-6 text-xs px-2"
+                                      className="h-7 text-xs px-3 border-2 hover:bg-gray-100"
                                     >
+                                      <X className="h-3 w-3 mr-1" />
                                       Cancel
                                     </Button>
                                   </div>
@@ -641,19 +650,22 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                             </div>
                           </>
                         )}
-                        
+
                         {/* Add Additional Requirement Button */}
                         {editingAdditional !== country && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingAdditional(country)}
-                            disabled={saving === country}
-                            className="w-full h-7 text-xs text-muted-foreground hover:text-foreground mt-2"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add Requirement
-                          </Button>
+                          <>
+                            <Separator className="my-3" />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingAdditional(country)}
+                              disabled={saving === country}
+                              className="w-full h-8 text-xs font-semibold border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all"
+                            >
+                              <Plus className="h-3.5 w-3.5 mr-1.5" />
+                              Add Custom Requirement
+                            </Button>
+                          </>
                         )}
                       </div>
                     </CardContent>

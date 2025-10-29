@@ -62,6 +62,7 @@ interface Participant {
   travel_requirements_confirm?: string;
   daily_meals?: string;
   travelling_internationally?: string;
+  travelling_from_country?: string;
   accommodation_type?: string;
   // Alternative field names from API
   certificateName?: string;
@@ -693,6 +694,17 @@ export default function EventParticipants({
                         "-"}
                     </span>
                   </div>
+                  {participant.travelling_from_country && (
+                    <div>
+                      <span className="font-medium text-gray-700">
+                        Travelling From Country:
+                      </span>
+                      <br />
+                      <span className="text-gray-900">
+                        {participant.travelling_from_country}
+                      </span>
+                    </div>
+                  )}
                   <div>
                     <span className="font-medium text-gray-700">
                       Accommodation Type:
