@@ -44,6 +44,13 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
   const [editingAdditional, setEditingAdditional] = useState<string | null>(null);
   const [newRequirement, setNewRequirement] = useState({ name: "", description: "" });
   const [creatingDefaults, setCreatingDefaults] = useState(false);
+  const [showDefaultsModal, setShowDefaultsModal] = useState(false);
+  const [defaultSettings, setDefaultSettings] = useState({
+    visa_required: false,
+    eta_required: false,
+    passport_required: true,
+    flight_ticket_required: true
+  });
   const { apiClient } = useAuthenticatedApi();
 
 
@@ -101,10 +108,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
         try {
           const defaultReq = {
             country,
-            visa_required: false,
-            eta_required: false,
-            passport_required: true,
-            flight_ticket_required: true,
+            visa_required: defaultSettings.visa_required,
+            eta_required: defaultSettings.eta_required,
+            passport_required: defaultSettings.passport_required,
+            flight_ticket_required: defaultSettings.flight_ticket_required,
             additional_requirements: []
           };
           
@@ -129,6 +136,8 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
         title: "Success",
         description: `Default requirements created for ${unconfiguredCountries.length} countries`
       });
+      
+      setShowDefaultsModal(false);
       
     } catch (error) {
       console.error("Error creating default requirements:", error);
@@ -470,16 +479,12 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
               </Button>
               {stats.unconfigured > 0 && (
                 <Button
-                  onClick={createDefaultRequirements}
+                  onClick={() => setShowDefaultsModal(true)}
                   disabled={creatingDefaults}
-                  className="flex items-center gap-1.5 h-9 text-xs bg-blue-600 hover:bg-blue-700"
+                  className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white"
                   size="sm"
                 >
-                  {creatingDefaults ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )}
+                  <Plus className="h-3.5 w-3.5" />
                   Add Defaults ({stats.unconfigured})
                 </Button>
               )}
@@ -750,6 +755,108 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
           )}
         </CardContent>
       </Card>
+
+      {/* Defaults Selection Modal */}
+      {showDefaultsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Configure Default Requirements</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Select which requirements should be enabled by default for all {stats.unconfigured} unconfigured countries:
+            </p>
+            
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="default-visa"
+                  checked={defaultSettings.visa_required}
+                  onCheckedChange={(checked) => 
+                    setDefaultSettings(prev => ({ ...prev, visa_required: checked as boolean }))
+                  }
+                  className="h-4 w-4 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                />
+                <label htmlFor="default-visa" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-purple-600" />
+                  Visa Required
+                </label>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="default-eta"
+                  checked={defaultSettings.eta_required}
+                  onCheckedChange={(checked) => 
+                    setDefaultSettings(prev => ({ ...prev, eta_required: checked as boolean }))
+                  }
+                  className="h-4 w-4 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600"
+                />
+                <label htmlFor="default-eta" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-rose-600" />
+                  eTA Required
+                </label>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="default-passport"
+                  checked={defaultSettings.passport_required}
+                  onCheckedChange={(checked) => 
+                    setDefaultSettings(prev => ({ ...prev, passport_required: checked as boolean }))
+                  }
+                  className="h-4 w-4"
+                />
+                <label htmlFor="default-passport" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-gray-600" />
+                  Passport Required
+                </label>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="default-ticket"
+                  checked={defaultSettings.flight_ticket_required}
+                  onCheckedChange={(checked) => 
+                    setDefaultSettings(prev => ({ ...prev, flight_ticket_required: checked as boolean }))
+                  }
+                  className="h-4 w-4"
+                />
+                <label htmlFor="default-ticket" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                  <Plane className="h-4 w-4 text-gray-600" />
+                  Flight Ticket Required
+                </label>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={createDefaultRequirements}
+                disabled={creatingDefaults}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {creatingDefaults ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Defaults
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDefaultsModal(false)}
+                disabled={creatingDefaults}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
