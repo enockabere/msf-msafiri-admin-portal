@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User, Calendar, Phone, Mail, Home, MapPin, Users, Car, Package, Minus, Edit, Badge as BadgeIcon, FileText } from "lucide-react";
+import { User, Calendar, Phone, Mail, Home, MapPin, Users, Car, Package, Minus, Edit, Badge as BadgeIcon, FileText, Plane } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,6 +107,23 @@ interface ParticipantDetails {
   ticket_document?: boolean;
 }
 
+interface FlightItinerary {
+  id: number;
+  departure_city: string;
+  arrival_city: string;
+  departure_date: string;
+  departure_time: string;
+  arrival_date: string;
+  arrival_time: string;
+  airline: string;
+  flight_number: string;
+  booking_reference?: string;
+  seat_number?: string;
+  ticket_type: string;
+  status: string;
+  created_at: string;
+}
+
 export default function ParticipantDetailsPanel({
   participantId,
   participantName,
@@ -122,6 +139,7 @@ export default function ParticipantDetailsPanel({
   const [voucherSummary, setVoucherSummary] = useState<QRAllocationData | null>(null);
   const [accommodationDetails, setAccommodationDetails] = useState<AccommodationDetails[]>([]);
   const [transportDetails, setTransportDetails] = useState<TransportDetails[]>([]);
+  const [flightItineraries, setFlightItineraries] = useState<FlightItinerary[]>([]);
   const [eventDetails, setEventDetails] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
@@ -268,6 +286,18 @@ export default function ParticipantDetailsPanel({
       } catch (error) {
         console.error('Failed to fetch transport details:', error);
         setTransportDetails([]);
+      }
+
+      // Fetch flight itineraries
+      try {
+        const flightData = await apiClient.request(
+          `/flight-itinerary/participant/${participantId}?event_id=${eventId}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        setFlightItineraries(flightData as FlightItinerary[]);
+      } catch (error) {
+        console.error('Failed to fetch flight itineraries:', error);
+        setFlightItineraries([]);
       }
     } catch (error) {
       console.error("Error fetching participant data:", error);
@@ -581,6 +611,84 @@ export default function ParticipantDetailsPanel({
                   </div>
                 )}
               </div>
+
+              {/* Flight Itineraries */}
+              {flightItineraries.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Plane className="h-4 w-4 text-red-600" />
+                    <h4 className="font-medium text-gray-900">Flight Itineraries</h4>
+                    <Badge variant="outline" className="text-xs px-1">
+                      {flightItineraries.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {flightItineraries.map((flight) => (
+                      <div key={flight.id} className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs px-1">
+                              {flight.ticket_type.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                            <Badge className={`text-xs px-1 ${getStatusColor(flight.status)}`}>
+                              {flight.status.replace('_', ' ').toUpperCase()}
+                            </Badge>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {flight.airline} {flight.flight_number}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <div className="font-medium text-gray-900 mb-1">Departure</div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3 text-gray-400" />
+                                <span className="font-medium">{flight.departure_city}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-gray-400" />
+                                <span>{formatDate(flight.departure_date)} {flight.departure_time}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900 mb-1">Arrival</div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3 text-gray-400" />
+                                <span className="font-medium">{flight.arrival_city}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-gray-400" />
+                                <span>{formatDate(flight.arrival_date)} {flight.arrival_time}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {(flight.booking_reference || flight.seat_number) && (
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              {flight.booking_reference && (
+                                <div>
+                                  <span className="text-gray-600">Booking Ref:</span>
+                                  <span className="font-medium ml-1">{flight.booking_reference}</span>
+                                </div>
+                              )}
+                              {flight.seat_number && (
+                                <div>
+                                  <span className="text-gray-600">Seat:</span>
+                                  <span className="font-medium ml-1">{flight.seat_number}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Services Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
