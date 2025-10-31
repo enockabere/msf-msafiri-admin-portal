@@ -520,8 +520,8 @@ export default function ParticipantDetailsPanel({
   };
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
-      <div className="p-4">
+    <div className="border border-gray-200 rounded-xl bg-white shadow-lg">
+      <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
@@ -529,15 +529,20 @@ export default function ParticipantDetailsPanel({
             </div>
           ) : (
             <>
-              {/* Participant Information */}
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="h-4 w-4 text-red-600" />
-                  <h4 className="font-medium text-gray-900">Participant Information</h4>
+              {/* Participant Information - Enhanced */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+                  <div className="bg-red-100 p-2 rounded-lg">
+                    <User className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-base">Participant Information</h4>
+                    <p className="text-xs text-gray-500">Basic details and registration info</p>
+                  </div>
                 </div>
                 {participantDetails && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                       <div className="flex items-center gap-1">
                         <Mail className="h-3 w-3 text-gray-400" />
                         <span className="text-gray-600">Email:</span>
@@ -622,83 +627,116 @@ export default function ParticipantDetailsPanel({
                 )}
               </div>
 
-              {/* Flight Itineraries */}
+              {/* Flight Itineraries - Enhanced Design */}
               {(() => {
                 console.log('DEBUG FLIGHT RENDER: Flight itineraries state:', flightItineraries);
                 console.log('DEBUG FLIGHT RENDER: Length:', flightItineraries.length);
                 console.log('DEBUG FLIGHT RENDER: Should show section:', flightItineraries.length > 0);
                 return flightItineraries.length > 0;
               })() && (
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Plane className="h-4 w-4 text-red-600" />
-                    <h4 className="font-medium text-gray-900">Flight Itineraries</h4>
-                    <Badge variant="outline" className="text-xs px-1">
-                      {flightItineraries.length}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-blue-100 p-2 rounded-lg">
+                        <Plane className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-base">Flight Itineraries</h4>
+                        <p className="text-xs text-gray-500">Travel details and bookings</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-sm px-2 py-1 bg-blue-50 text-blue-700 border-blue-200">
+                      {flightItineraries.length} {flightItineraries.length === 1 ? 'Flight' : 'Flights'}
                     </Badge>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {flightItineraries.map((flight) => {
                       console.log('DEBUG FLIGHT RENDER: Rendering flight item:', flight);
                       return (
-                      <div key={flight.id} className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs px-1">
-                              {flight.ticket_type.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                            <Badge className={`text-xs px-1 ${getStatusColor(flight.status)}`}>
-                              {flight.status.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {flight.airline} {flight.flight_number}
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <div className="font-medium text-gray-900 mb-1">Departure</div>
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-gray-400" />
-                                <span className="font-medium">{flight.departure_city}</span>
+                      <div key={flight.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        {/* Header with airline info and status */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white p-2 rounded-lg shadow-sm">
+                              <Plane className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 text-base">
+                                {flight.airline} {flight.flight_number}
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-gray-400" />
-                                <span>{formatDate(flight.departure_date)} {flight.departure_time}</span>
+                              <div className="text-xs text-gray-600 mt-0.5">
+                                {flight.ticket_type.replace('_', ' ').charAt(0).toUpperCase() + flight.ticket_type.replace('_', ' ').slice(1)}
                               </div>
                             </div>
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900 mb-1">Arrival</div>
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-gray-400" />
-                                <span className="font-medium">{flight.arrival_city}</span>
+                          <Badge className={`text-xs px-3 py-1 ${getStatusColor(flight.status)}`}>
+                            {flight.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                        </div>
+
+                        {/* Flight route visualization */}
+                        <div className="bg-white rounded-lg p-4 mb-3">
+                          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                            {/* Departure */}
+                            <div className="text-left">
+                              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Departure</div>
+                              <div className="font-bold text-xl text-gray-900 mb-1">{flight.departure_city}</div>
+                              <div className="flex items-center gap-1 text-sm text-gray-700">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <span>{formatDate(flight.departure_date)}</span>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-gray-400" />
-                                <span>{formatDate(flight.arrival_date)} {flight.arrival_time}</span>
+                              <div className="text-lg font-semibold text-blue-600 mt-1">
+                                {flight.departure_time}
+                              </div>
+                            </div>
+
+                            {/* Arrow indicator */}
+                            <div className="flex flex-col items-center px-4">
+                              <div className="w-16 h-0.5 bg-gradient-to-r from-blue-400 to-indigo-400 relative">
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                                  <div className="w-0 h-0 border-l-8 border-l-indigo-400 border-t-4 border-t-transparent border-b-4 border-b-transparent"></div>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-2 whitespace-nowrap">
+                                <Plane className="h-3 w-3 inline mr-1" />
+                                Flight
+                              </div>
+                            </div>
+
+                            {/* Arrival */}
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Arrival</div>
+                              <div className="font-bold text-xl text-gray-900 mb-1">{flight.arrival_city}</div>
+                              <div className="flex items-center gap-1 justify-end text-sm text-gray-700">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <span>{formatDate(flight.arrival_date)}</span>
+                              </div>
+                              <div className="text-lg font-semibold text-indigo-600 mt-1">
+                                {flight.arrival_time}
                               </div>
                             </div>
                           </div>
                         </div>
+
+                        {/* Booking details */}
                         {(flight.booking_reference || flight.seat_number) && (
-                          <div className="mt-2 pt-2 border-t border-gray-200">
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              {flight.booking_reference && (
-                                <div>
-                                  <span className="text-gray-600">Booking Ref:</span>
-                                  <span className="font-medium ml-1">{flight.booking_reference}</span>
-                                </div>
-                              )}
-                              {flight.seat_number && (
-                                <div>
-                                  <span className="text-gray-600">Seat:</span>
-                                  <span className="font-medium ml-1">{flight.seat_number}</span>
-                                </div>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-4 text-sm bg-white rounded-lg p-3">
+                            {flight.booking_reference && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-600 font-medium">Booking Ref:</span>
+                                <span className="font-mono font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                                  {flight.booking_reference}
+                                </span>
+                              </div>
+                            )}
+                            {flight.seat_number && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-600 font-medium">Seat:</span>
+                                <span className="font-mono font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                                  {flight.seat_number}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -708,148 +746,345 @@ export default function ParticipantDetailsPanel({
                 </div>
               )}
 
-              {/* Services Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Transport */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4 text-red-600" />
-                    <h5 className="font-medium text-gray-900 text-sm">Transport</h5>
-                    <Badge variant="outline" className="text-xs px-1">
-                      {transportDetails.length}
-                    </Badge>
+              {/* ETA & Travel Requirements - Enhanced Section */}
+              {participantDetails && ((participantDetails as Record<string, unknown>).requires_eta ||
+                (participantDetails as Record<string, unknown>).passport_document ||
+                (participantDetails as Record<string, unknown>).ticket_document) && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-orange-100 p-2 rounded-lg">
+                        <FileText className="h-5 w-5 text-orange-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900 text-base">Travel Requirements</h4>
+                        <p className="text-xs text-gray-500">Document compliance and ETA status</p>
+                      </div>
+                    </div>
                   </div>
-                  {transportDetails.length > 0 ? (
-                    <div className="space-y-2">
-                      {transportDetails.map((transport) => (
-                        <div key={transport.id} className="bg-gray-50 rounded p-2 text-xs">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge variant="outline" className="text-xs px-1">
-                              {transport.booking_type.replace('_', ' ').toUpperCase()}
+
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* ETA Requirement */}
+                      {(participantDetails as Record<string, unknown>).requires_eta && (
+                        <div className="bg-white rounded-lg p-4 border-l-4 border-orange-500 shadow-sm">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="bg-orange-100 p-1.5 rounded">
+                                <FileText className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <span className="font-semibold text-gray-900">ETA Required</span>
+                            </div>
+                            <Badge className="bg-orange-100 text-orange-800 border-orange-300">
+                              Required
                             </Badge>
-                            <Badge className={`text-xs px-1 ${getStatusColor(transport.status)}`}>
+                          </div>
+                          <p className="text-xs text-gray-600 mt-2">
+                            Electronic Travel Authorization is needed for this participant
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Passport Document */}
+                      <div className={`bg-white rounded-lg p-4 border-l-4 shadow-sm ${
+                        (participantDetails as Record<string, unknown>).passport_document
+                          ? 'border-green-500'
+                          : 'border-gray-300'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded ${
+                              (participantDetails as Record<string, unknown>).passport_document
+                                ? 'bg-green-100'
+                                : 'bg-gray-100'
+                            }`}>
+                              <FileText className={`h-4 w-4 ${
+                                (participantDetails as Record<string, unknown>).passport_document
+                                  ? 'text-green-600'
+                                  : 'text-gray-400'
+                              }`} />
+                            </div>
+                            <span className="font-semibold text-gray-900">Passport</span>
+                          </div>
+                          <Badge className={
+                            (participantDetails as Record<string, unknown>).passport_document
+                              ? 'bg-green-100 text-green-800 border-green-300'
+                              : 'bg-gray-100 text-gray-600 border-gray-300'
+                          }>
+                            {(participantDetails as Record<string, unknown>).passport_document ? 'Uploaded' : 'Pending'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          {(participantDetails as Record<string, unknown>).passport_document
+                            ? 'Passport document has been submitted'
+                            : 'Passport document not yet uploaded'}
+                        </p>
+                      </div>
+
+                      {/* Flight Ticket Document */}
+                      <div className={`bg-white rounded-lg p-4 border-l-4 shadow-sm ${
+                        (participantDetails as Record<string, unknown>).ticket_document
+                          ? 'border-green-500'
+                          : 'border-gray-300'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1.5 rounded ${
+                              (participantDetails as Record<string, unknown>).ticket_document
+                                ? 'bg-green-100'
+                                : 'bg-gray-100'
+                            }`}>
+                              <Plane className={`h-4 w-4 ${
+                                (participantDetails as Record<string, unknown>).ticket_document
+                                  ? 'text-green-600'
+                                  : 'text-gray-400'
+                              }`} />
+                            </div>
+                            <span className="font-semibold text-gray-900">Flight Ticket</span>
+                          </div>
+                          <Badge className={
+                            (participantDetails as Record<string, unknown>).ticket_document
+                              ? 'bg-green-100 text-green-800 border-green-300'
+                              : 'bg-gray-100 text-gray-600 border-gray-300'
+                          }>
+                            {(participantDetails as Record<string, unknown>).ticket_document ? 'Uploaded' : 'Pending'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          {(participantDetails as Record<string, unknown>).ticket_document
+                            ? 'Flight ticket has been submitted'
+                            : 'Flight ticket not yet uploaded'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Services Grid */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+                  <div className="bg-indigo-100 p-2 rounded-lg">
+                    <Package className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-base">Event Services</h4>
+                    <p className="text-xs text-gray-500">Transport, accommodation, and benefits</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Transport */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-green-100 p-1.5 rounded-lg">
+                        <Car className="h-4 w-4 text-green-600" />
+                      </div>
+                      <h5 className="font-medium text-gray-900 text-sm">Transport</h5>
+                      <Badge variant="outline" className="text-xs px-2 py-0.5 bg-green-50 text-green-700 border-green-200">
+                        {transportDetails.length}
+                      </Badge>
+                    </div>
+                  {transportDetails.length > 0 ? (
+                    <div className="space-y-3">
+                      {transportDetails.map((transport) => (
+                        <div key={transport.id} className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge variant="outline" className="text-xs px-2 py-1 bg-white border-green-300 text-green-700 font-medium">
+                              {transport.booking_type.replace('_', ' ').charAt(0).toUpperCase() + transport.booking_type.replace('_', ' ').slice(1)}
+                            </Badge>
+                            <Badge className={`text-xs px-2 py-1 ${getStatusColor(transport.status)}`}>
                               {transport.status.replace('_', ' ').toUpperCase()}
                             </Badge>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-600 truncate">{transport.pickup_locations.join(', ')} → {transport.destination}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-600">{formatDate(transport.scheduled_time)} {formatTime(transport.scheduled_time)}</span>
-                            </div>
-                            {transport.driver_name && (
-                              <div className="flex items-center gap-1">
-                                <User className="h-3 w-3 text-gray-400" />
-                                <span className="text-gray-600 truncate">{transport.driver_name}</span>
+                          <div className="bg-white rounded-lg p-2.5 mb-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <MapPin className="h-4 w-4 text-green-600" />
+                              <div className="flex-1">
+                                <div className="text-xs text-gray-500 mb-0.5">Route</div>
+                                <div className="text-sm font-medium text-gray-900 truncate">
+                                  {transport.pickup_locations.join(', ')} → {transport.destination}
+                                </div>
                               </div>
-                            )}
-                            {transport.has_welcome_package && (
-                              <div className="flex items-center gap-1">
-                                <Package className="h-3 w-3 text-orange-400" />
-                                <Badge variant="outline" className={`text-xs px-1 ${
-                                  transport.package_collected ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-                                }`}>
-                                  {transport.package_collected ? 'Collected' : 'Pending'}
-                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <div className="flex-1">
+                                <div className="text-xs text-gray-500 mb-0.5">Schedule</div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {formatDate(transport.scheduled_time)} at {formatTime(transport.scheduled_time)}
+                                </div>
                               </div>
-                            )}
+                            </div>
                           </div>
+                          {transport.driver_name && (
+                            <div className="flex items-center gap-2 text-xs bg-white rounded p-2 mb-2">
+                              <User className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="text-gray-600">Driver:</span>
+                              <span className="font-medium text-gray-900 truncate">{transport.driver_name}</span>
+                            </div>
+                          )}
+                          {transport.has_welcome_package && (
+                            <div className="flex items-center justify-between bg-white rounded p-2">
+                              <div className="flex items-center gap-2">
+                                <Package className="h-3.5 w-3.5 text-orange-500" />
+                                <span className="text-xs text-gray-700 font-medium">Welcome Package</span>
+                              </div>
+                              <Badge variant="outline" className={`text-xs px-2 py-0.5 ${
+                                transport.package_collected ? 'bg-green-100 text-green-800 border-green-300' : 'bg-orange-100 text-orange-800 border-orange-300'
+                              }`}>
+                                {transport.package_collected ? 'Collected' : 'Pending'}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-gray-50 rounded p-2 text-center text-gray-500 text-xs">
-                      No transport
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 text-center border border-gray-200">
+                      <Car className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 font-medium">No transport arranged</p>
                     </div>
                   )}
                 </div>
 
-                {/* Accommodation */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Home className="h-4 w-4 text-red-600" />
-                    <h5 className="font-medium text-gray-900 text-sm">Accommodation</h5>
-                    <Badge variant="outline" className="text-xs px-1">
-                      {accommodationDetails.length}
-                    </Badge>
-                  </div>
+                  {/* Accommodation */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="bg-amber-100 p-1.5 rounded-lg">
+                        <Home className="h-4 w-4 text-amber-600" />
+                      </div>
+                      <h5 className="font-medium text-gray-900 text-sm">Accommodation</h5>
+                      <Badge variant="outline" className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 border-amber-200">
+                        {accommodationDetails.length}
+                      </Badge>
+                    </div>
                   {accommodationDetails.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {accommodationDetails.map((accommodation, index) => (
-                        <div key={index} className="bg-gray-50 rounded p-2 text-xs">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge variant="outline" className="text-xs px-1">
-                              {accommodation.type.toUpperCase()}
+                        <div key={index} className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-2">
+                            <Badge variant="outline" className="text-xs px-2 py-1 bg-white border-amber-300 text-amber-700 font-medium">
+                              {accommodation.type.charAt(0).toUpperCase() + accommodation.type.slice(1)}
                             </Badge>
                             {accommodation.status && (
-                              <Badge className={`text-xs px-1 ${getStatusColor(accommodation.status)}`}>
+                              <Badge className={`text-xs px-2 py-1 ${getStatusColor(accommodation.status)}`}>
                                 {accommodation.status.replace("_", " ").toUpperCase()}
                               </Badge>
                             )}
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1">
-                              <Home className="h-3 w-3 text-gray-400" />
-                              <span className="font-medium truncate">{accommodation.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-gray-400" />
-                              <span className="text-gray-600 truncate">{accommodation.location}</span>
-                            </div>
-                            {accommodation.check_in_date && (
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-gray-400" />
-                                <span className="text-gray-600">{formatDate(accommodation.check_in_date)} - {accommodation.check_out_date ? formatDate(accommodation.check_out_date) : 'TBD'}</span>
+                          <div className="bg-white rounded-lg p-2.5 mb-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Home className="h-4 w-4 text-amber-600" />
+                              <div className="flex-1">
+                                <div className="text-xs text-gray-500 mb-0.5">Property</div>
+                                <div className="text-sm font-semibold text-gray-900 truncate">{accommodation.name}</div>
                               </div>
-                            )}
-                            {accommodation.is_shared !== undefined && (
-                              <div className="flex items-center gap-1">
-                                <Users className="h-3 w-3 text-gray-400" />
-                                <span className="text-gray-600">
-                                  {accommodation.is_shared ? 'Shared' : 'Private'} ({accommodation.room_occupants}/{accommodation.room_capacity})
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-amber-600" />
+                              <div className="flex-1">
+                                <div className="text-xs text-gray-500 mb-0.5">Location</div>
+                                <div className="text-sm font-medium text-gray-900 truncate">{accommodation.location}</div>
+                              </div>
+                            </div>
+                          </div>
+                          {accommodation.check_in_date && (
+                            <div className="bg-white rounded p-2 mb-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3.5 w-3.5 text-amber-600" />
+                                <div className="flex-1">
+                                  <div className="text-xs text-gray-500 mb-0.5">Duration</div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {formatDate(accommodation.check_in_date)} - {accommodation.check_out_date ? formatDate(accommodation.check_out_date) : 'TBD'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {accommodation.is_shared !== undefined && (
+                            <div className="flex items-center justify-between bg-white rounded p-2">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-3.5 w-3.5 text-amber-600" />
+                                <span className="text-xs font-medium text-gray-900">
+                                  {accommodation.is_shared ? 'Shared Room' : 'Private Room'}
                                 </span>
                               </div>
-                            )}
-                          </div>
+                              <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-300">
+                                {accommodation.room_occupants}/{accommodation.room_capacity}
+                              </Badge>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="bg-gray-50 rounded p-2 text-center text-gray-500 text-xs">
-                      No accommodation
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 text-center border border-gray-200">
+                      <Home className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 font-medium">No accommodation arranged</p>
                     </div>
                   )}
                 </div>
 
-                {/* Drink Vouchers */}
+                {/* Drink Vouchers - Enhanced Design */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 text-red-600">🍺</div>
+                    <div className="bg-purple-100 p-1.5 rounded-lg">
+                      <div className="h-4 w-4 text-purple-600">🍺</div>
+                    </div>
                     <h5 className="font-medium text-gray-900 text-sm">Drink Vouchers</h5>
-                    <Badge variant="outline" className="text-xs px-1">
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 border-purple-200">
                       {voucherSummary?.total_drinks || 0}
                     </Badge>
                   </div>
                   {voucherSummary && voucherSummary.total_drinks > 0 ? (
-                    <div className="bg-gray-50 rounded p-2 text-xs">
-                      <div className="space-y-1">
-                        <div className="grid grid-cols-3 gap-1 text-xs">
-                          <div className="text-center p-1 bg-blue-50 rounded">
-                            <div className="font-medium text-blue-600">{voucherSummary.total_drinks}</div>
-                            <div className="text-gray-600">Assigned</div>
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-3 border border-purple-200">
+                      <div className="space-y-3">
+                        {/* Voucher Stats with Better Visual Design */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center p-3 bg-white rounded-lg shadow-sm border border-blue-200">
+                            <div className="text-2xl font-bold text-blue-600">{voucherSummary.total_drinks}</div>
+                            <div className="text-xs text-gray-600 mt-1 font-medium">Assigned</div>
+                            <div className="text-xs text-gray-400 mt-0.5">Total allocated</div>
                           </div>
-                          <div className="text-center p-1 bg-red-50 rounded">
-                            <div className="font-medium text-red-600">{voucherSummary.redeemed_drinks || 0}</div>
-                            <div className="text-gray-600">Redeemed</div>
+                          <div className="text-center p-3 bg-white rounded-lg shadow-sm border border-red-200">
+                            <div className="text-2xl font-bold text-red-600">{voucherSummary.redeemed_drinks || 0}</div>
+                            <div className="text-xs text-gray-600 mt-1 font-medium">Redeemed</div>
+                            <div className="text-xs text-gray-400 mt-0.5">Already used</div>
                           </div>
-                          <div className="text-center p-1 bg-green-50 rounded">
-                            <div className={`font-medium ${voucherSummary.remaining_drinks < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          <div className="text-center p-3 bg-white rounded-lg shadow-sm border border-green-200">
+                            <div className={`text-2xl font-bold ${voucherSummary.remaining_drinks < 0 ? 'text-red-600' : 'text-green-600'}`}>
                               {voucherSummary.remaining_drinks}
                             </div>
-                            <div className="text-gray-600">Remaining</div>
+                            <div className="text-xs text-gray-600 mt-1 font-medium">Remaining</div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {voucherSummary.remaining_drinks < 0 ? 'Over-redeemed' : 'Available'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="bg-white rounded-lg p-2">
+                          <div className="flex items-center justify-between mb-1 text-xs">
+                            <span className="text-gray-600 font-medium">Redemption Progress</span>
+                            <span className="text-gray-900 font-semibold">
+                              {voucherSummary.total_drinks > 0
+                                ? Math.min(100, Math.round((voucherSummary.redeemed_drinks || 0) / voucherSummary.total_drinks * 100))
+                                : 0}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div
+                              className={`h-2.5 rounded-full transition-all duration-300 ${
+                                voucherSummary.remaining_drinks < 0
+                                  ? 'bg-gradient-to-r from-red-500 to-red-600'
+                                  : 'bg-gradient-to-r from-blue-500 to-purple-600'
+                              }`}
+                              style={{
+                                width: `${voucherSummary.total_drinks > 0
+                                  ? Math.min(100, Math.round((voucherSummary.redeemed_drinks || 0) / voucherSummary.total_drinks * 100))
+                                  : 0}%`
+                              }}
+                            ></div>
                           </div>
                         </div>
                         {(() => {
@@ -863,13 +1098,13 @@ export default function ParticipantDetailsPanel({
                           });
                           return shouldShow;
                         })() && (
-                          <div className="flex gap-1 mt-1">
+                          <div className="flex gap-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => {
                                 // Create a dummy allocation if none exists
-                                const allocation = drinkVoucherAllocations.length > 0 
+                                const allocation = drinkVoucherAllocations.length > 0
                                   ? drinkVoucherAllocations[0]
                                   : {
                                       id: 0, // Will be handled by API
@@ -884,9 +1119,9 @@ export default function ParticipantDetailsPanel({
                                 setRedeemQuantity(1);
                                 setShowRedeemModal(true);
                               }}
-                              className="flex-1 h-6 text-xs bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                              className="flex-1 h-9 text-sm font-medium bg-white border-2 border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 transition-all shadow-sm"
                             >
-                              <Minus className="h-3 w-3 mr-1" />
+                              <Minus className="h-4 w-4 mr-1.5" />
                               Redeem
                             </Button>
                             <Button
@@ -894,7 +1129,7 @@ export default function ParticipantDetailsPanel({
                               variant="outline"
                               onClick={() => {
                                 // Create a dummy allocation if none exists
-                                const allocation = drinkVoucherAllocations.length > 0 
+                                const allocation = drinkVoucherAllocations.length > 0
                                   ? drinkVoucherAllocations[0]
                                   : {
                                       id: 0, // Will be handled by API
@@ -910,10 +1145,10 @@ export default function ParticipantDetailsPanel({
                                 setEditRedeemed(voucherSummary.redeemed_drinks || 0);
                                 setShowEditModal(true);
                               }}
-                              className="flex-1 h-6 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              className="flex-1 h-9 text-sm font-medium bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm"
                             >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit Vouchers
+                              <Edit className="h-4 w-4 mr-1.5" />
+                              Edit
                             </Button>
                           </div>
                         )}
@@ -942,29 +1177,32 @@ export default function ParticipantDetailsPanel({
                       No vouchers allocated
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowBadge(true)}
-                  className="gap-2 h-10 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300 font-medium"
-                >
-                  <BadgeIcon className="h-4 w-4" />
-                  Event Badge
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowPDFReport(true)}
-                  className="gap-2 h-10 bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:border-red-300 font-medium"
-                >
-                  <FileText className="h-4 w-4" />
-                  PDF Report
-                </Button>
+              {/* Action Buttons - Enhanced */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => setShowBadge(true)}
+                    className="gap-2 h-12 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 text-blue-700 hover:bg-blue-100 hover:border-blue-400 font-semibold transition-all shadow-sm"
+                  >
+                    <BadgeIcon className="h-5 w-5" />
+                    Event Badge
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    onClick={() => setShowPDFReport(true)}
+                    className="gap-2 h-12 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 font-semibold transition-all shadow-sm"
+                  >
+                    <FileText className="h-5 w-5" />
+                    PDF Report
+                  </Button>
+                </div>
               </div>
 
               {/* QR Code Section */}

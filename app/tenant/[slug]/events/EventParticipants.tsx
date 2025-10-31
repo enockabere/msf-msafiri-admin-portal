@@ -228,6 +228,12 @@ export default function EventParticipants({
     }[];
   }
 
+  interface ChecklistProgress {
+    checklist_items: Record<string, boolean>;
+    completed: boolean;
+    updated_at?: string;
+  }
+
   function ParticipantDetailsModal({
     participant,
     onClose,
@@ -250,6 +256,7 @@ export default function EventParticipants({
     const [recommendationData, setRecommendationData] = useState<LineManagerRecommendation | null>(null);
     const [travelRequirements, setTravelRequirements] = useState<TravelRequirement | null>(null);
     const [flightItineraries, setFlightItineraries] = useState<FlightItinerary[]>([]);
+    const [checklistProgress, setChecklistProgress] = useState<ChecklistProgress | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -287,46 +294,19 @@ export default function EventParticipants({
           // Fetch flight itineraries
           try {
             const flightUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/flight-itinerary/participant/${participant.id}?event_id=${eventId}`;
-            console.log(`\n🛫 === FLIGHT ITINERARY FETCH DEBUG START ===`);
-            console.log(`📍 URL: ${flightUrl}`);
-            console.log(`👤 Participant: ID=${participant.id}, Email=${participant.email}`);
-            console.log(`🎪 Event ID: ${eventId}`);
-            console.log(`🏢 Tenant: ${tenantSlug}`);
-            console.log(`🔑 Headers:`, headers);
-            
             const flightResponse = await fetch(flightUrl, { headers });
-            
-            console.log(`📡 Response Status: ${flightResponse.status} ${flightResponse.statusText}`);
-            console.log(`📋 Response Headers:`, Object.fromEntries(flightResponse.headers.entries()));
             
             if (flightResponse.ok) {
               const flightData = await flightResponse.json();
-              console.log(`✅ SUCCESS - Response Type: ${Array.isArray(flightData) ? 'Array' : typeof flightData}`);
-              console.log(`📊 Flight Data Count: ${Array.isArray(flightData) ? flightData.length : 'N/A'}`);
-              console.log(`📝 Full Flight Data:`, JSON.stringify(flightData, null, 2));
-              
               if (Array.isArray(flightData)) {
                 setFlightItineraries(flightData);
-                console.log(`✅ Set ${flightData.length} flight itineraries in state`);
               } else {
-                console.log(`⚠️ Response is not an array, setting empty array`);
                 setFlightItineraries([]);
               }
             } else {
-              const errorText = await flightResponse.text();
-              console.error(`❌ HTTP ERROR: ${flightResponse.status} ${flightResponse.statusText}`);
-              console.error(`📄 Error Response Body:`, errorText);
               setFlightItineraries([]);
             }
-            
-            console.log(`🛫 === FLIGHT ITINERARY FETCH DEBUG END ===\n`);
-          } catch (error: any) {
-            console.error(`\n💥 === FLIGHT ITINERARY FETCH ERROR ===`);
-            console.error(`❌ Error Type: ${error.constructor.name}`);
-            console.error(`📝 Error Message: ${error.message}`);
-            console.error(`📋 Error Stack:`, error.stack);
-            console.error(`🔍 Full Error Object:`, error);
-            console.error(`💥 === FLIGHT ITINERARY FETCH ERROR END ===\n`);
+          } catch (error) {
             setFlightItineraries([]);
           }
 
@@ -475,6 +455,23 @@ export default function EventParticipants({
             }
           } else {
             setTravelRequirements(null);
+          }
+
+          // Fetch checklist progress for this participant
+          try {
+            const progressResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/travel-checklist/progress/${eventId}/${participant.email}`,
+              { headers }
+            );
+            
+            if (progressResponse.ok) {
+              const progressData = await progressResponse.json();
+              setChecklistProgress(progressData);
+            } else {
+              setChecklistProgress(null);
+            }
+          } catch (error) {
+            setChecklistProgress(null);
           }
         } catch {
           // Error handled silently
@@ -929,7 +926,7 @@ export default function EventParticipants({
                       )}
                     </div>
                   </div>
-                  {/* Travel Requirements */}
+                  {/* Travel Requirements & Checklist Status */}
                   {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
                     (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) && 
                    participant.travelling_from_country && (
@@ -945,30 +942,74 @@ export default function EventParticipants({
                           </div>
                         ) : travelRequirements ? (
                           <div className="space-y-3">
-                            {/* Standard Requirements */}
+                            {/* Standard Requirements with Completion Status */}
                             <div className="space-y-2">
                               {travelRequirements.visa_required && (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                  <span className="text-xs font-medium text-red-700">Visa Required</span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span className="text-xs font-medium text-red-700">Visa Required</span>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                    checklistProgress?.checklist_items?.visa_required ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {checklistProgress?.checklist_items?.visa_required ? (
+                                      <span className="text-[8px] text-white">✓</span>
+                                    ) : (
+                                      <span className="text-[8px] text-gray-600">○</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {travelRequirements.eta_required && (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                  <span className="text-xs font-medium text-orange-700">eTA Required</span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    <span className="text-xs font-medium text-orange-700">eTA Required</span>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                    checklistProgress?.checklist_items?.eta_required ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {checklistProgress?.checklist_items?.eta_required ? (
+                                      <span className="text-[8px] text-white">✓</span>
+                                    ) : (
+                                      <span className="text-[8px] text-gray-600">○</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {travelRequirements.passport_required && (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                  <span className="text-xs font-medium text-blue-700">Passport Required</span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span className="text-xs font-medium text-blue-700">Passport Required</span>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                    checklistProgress?.checklist_items?.passport_required ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {checklistProgress?.checklist_items?.passport_required ? (
+                                      <span className="text-[8px] text-white">✓</span>
+                                    ) : (
+                                      <span className="text-[8px] text-gray-600">○</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {travelRequirements.flight_ticket_required && (
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                  <span className="text-xs font-medium text-green-700">Flight Ticket Required</span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span className="text-xs font-medium text-green-700">Flight Ticket Required</span>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                    checklistProgress?.checklist_items?.flight_ticket_required ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {checklistProgress?.checklist_items?.flight_ticket_required ? (
+                                      <span className="text-[8px] text-white">✓</span>
+                                    ) : (
+                                      <span className="text-[8px] text-gray-600">○</span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -978,22 +1019,63 @@ export default function EventParticipants({
                               <div className="border-t pt-2">
                                 <div className="text-xs font-semibold text-gray-600 mb-2">Additional Requirements:</div>
                                 <div className="space-y-1">
-                                  {travelRequirements.additional_requirements.map((req, index) => (
-                                    <div key={index} className="flex items-start gap-2">
-                                      <div className={`w-2 h-2 rounded-full mt-1 ${req.required ? 'bg-purple-500' : 'bg-gray-400'}`}></div>
-                                      <div>
-                                        <span className={`text-xs font-medium ${req.required ? 'text-purple-700' : 'text-gray-600'}`}>
-                                          {req.name}
-                                        </span>
-                                        {req.description && (
-                                          <div className="text-[10px] text-gray-500 mt-0.5">{req.description}</div>
-                                        )}
+                                  {travelRequirements.additional_requirements.map((req, index) => {
+                                    const reqKey = req.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                                    const isCompleted = checklistProgress?.checklist_items?.[reqKey];
+                                    
+                                    return (
+                                      <div key={index} className="flex items-center justify-between">
+                                        <div className="flex items-start gap-2">
+                                          <div className={`w-2 h-2 rounded-full mt-1 ${req.required ? 'bg-purple-500' : 'bg-gray-400'}`}></div>
+                                          <div>
+                                            <span className={`text-xs font-medium ${req.required ? 'text-purple-700' : 'text-gray-600'}`}>
+                                              {req.name}
+                                            </span>
+                                            {req.description && (
+                                              <div className="text-[10px] text-gray-500 mt-0.5">{req.description}</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                          isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                        }`}>
+                                          {isCompleted ? (
+                                            <span className="text-[8px] text-white">✓</span>
+                                          ) : (
+                                            <span className="text-[8px] text-gray-600">○</span>
+                                          )}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
+                            
+                            {/* Completion Summary */}
+                            <div className="border-t pt-2">
+                              <div className="text-xs text-gray-500 mb-1">Mobile Checklist Status:</div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-3 h-3 rounded-full bg-green-500 flex items-center justify-center">
+                                    <span className="text-[8px] text-white">✓</span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-600">Complete</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-3 h-3 rounded-full bg-gray-300 flex items-center justify-center">
+                                    <span className="text-[8px] text-gray-600">○</span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-600">Pending</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-3 h-3 rounded-full bg-gray-300 flex items-center justify-center">
+                                    <span className="text-[8px] text-gray-600">?</span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-600">Unknown</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         ) : (
                           <span className="text-gray-500 text-sm">
@@ -1050,12 +1132,7 @@ export default function EventParticipants({
                       </h5>
                       {flightItineraries && flightItineraries.length > 0 ? (
                         <div className="space-y-4">
-                          <div className="text-xs text-sky-700 mb-2">
-                            Debug: Found {flightItineraries.length} flight(s)
-                          </div>
-                          {flightItineraries.map((flight, index) => {
-                            console.log(`🎨 Rendering flight ${index + 1}:`, flight);
-                            return (
+                          {flightItineraries.map((flight, index) => (
                             <div
                               key={flight.id || index}
                               className="bg-white p-4 rounded-xl border-2 border-sky-100 shadow-sm hover:shadow-md transition-shadow"
@@ -1137,23 +1214,18 @@ export default function EventParticipants({
                                 )}
                               </div>
                             </div>
-                            );
-                          })}
+                            )
+                          )}
                         </div>
                       ) : (
-                        <div>
-                          <div className="text-xs text-red-600 mb-2">
-                            Debug: No flights found (count: {flightItineraries?.length || 0})
-                          </div>
-                          <div className="bg-white p-6 rounded-lg border-2 border-dashed border-sky-200 text-center">
-                            <svg className="w-12 h-12 text-sky-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                            <p className="text-sm font-medium text-gray-700">No flight itineraries</p>
-                            <p className="text-xs mt-1 text-gray-500">
-                              Flight details will appear once uploaded by the participant
-                            </p>
-                          </div>
+                        <div className="bg-white p-6 rounded-lg border-2 border-dashed border-sky-200 text-center">
+                          <svg className="w-12 h-12 text-sky-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          <p className="text-sm font-medium text-gray-700">No flight itineraries</p>
+                          <p className="text-xs mt-1 text-gray-500">
+                            Flight details will appear once uploaded by the participant
+                          </p>
                         </div>
                       )}
                     </div>
