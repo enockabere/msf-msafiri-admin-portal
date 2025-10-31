@@ -189,6 +189,23 @@ export default function EventParticipants({
     event_id?: number;
   }
 
+  interface FlightItinerary {
+    id: number;
+    departure_city: string;
+    arrival_city: string;
+    departure_date: string;
+    departure_time: string;
+    arrival_date: string;
+    arrival_time: string;
+    airline: string;
+    flight_number: string;
+    booking_reference?: string;
+    seat_number?: string;
+    ticket_type: string;
+    status: string;
+    created_at: string;
+  }
+
   interface LineManagerRecommendation {
     id: number;
     line_manager_email: string;
@@ -232,6 +249,7 @@ export default function EventParticipants({
     const [voucherData, setVoucherData] = useState<VoucherData | null>(null);
     const [recommendationData, setRecommendationData] = useState<LineManagerRecommendation | null>(null);
     const [travelRequirements, setTravelRequirements] = useState<TravelRequirement | null>(null);
+    const [flightItineraries, setFlightItineraries] = useState<FlightItinerary[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -265,6 +283,52 @@ export default function EventParticipants({
 
           // Skip transport API calls for now - service not implemented
           setTransportData([]);
+          
+          // Fetch flight itineraries
+          try {
+            const flightUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/flight-itinerary/participant/${participant.id}?event_id=${eventId}`;
+            console.log(`\n🛫 === FLIGHT ITINERARY FETCH DEBUG START ===`);
+            console.log(`📍 URL: ${flightUrl}`);
+            console.log(`👤 Participant: ID=${participant.id}, Email=${participant.email}`);
+            console.log(`🎪 Event ID: ${eventId}`);
+            console.log(`🏢 Tenant: ${tenantSlug}`);
+            console.log(`🔑 Headers:`, headers);
+            
+            const flightResponse = await fetch(flightUrl, { headers });
+            
+            console.log(`📡 Response Status: ${flightResponse.status} ${flightResponse.statusText}`);
+            console.log(`📋 Response Headers:`, Object.fromEntries(flightResponse.headers.entries()));
+            
+            if (flightResponse.ok) {
+              const flightData = await flightResponse.json();
+              console.log(`✅ SUCCESS - Response Type: ${Array.isArray(flightData) ? 'Array' : typeof flightData}`);
+              console.log(`📊 Flight Data Count: ${Array.isArray(flightData) ? flightData.length : 'N/A'}`);
+              console.log(`📝 Full Flight Data:`, JSON.stringify(flightData, null, 2));
+              
+              if (Array.isArray(flightData)) {
+                setFlightItineraries(flightData);
+                console.log(`✅ Set ${flightData.length} flight itineraries in state`);
+              } else {
+                console.log(`⚠️ Response is not an array, setting empty array`);
+                setFlightItineraries([]);
+              }
+            } else {
+              const errorText = await flightResponse.text();
+              console.error(`❌ HTTP ERROR: ${flightResponse.status} ${flightResponse.statusText}`);
+              console.error(`📄 Error Response Body:`, errorText);
+              setFlightItineraries([]);
+            }
+            
+            console.log(`🛫 === FLIGHT ITINERARY FETCH DEBUG END ===\n`);
+          } catch (error: any) {
+            console.error(`\n💥 === FLIGHT ITINERARY FETCH ERROR ===`);
+            console.error(`❌ Error Type: ${error.constructor.name}`);
+            console.error(`📝 Error Message: ${error.message}`);
+            console.error(`📋 Error Stack:`, error.stack);
+            console.error(`🔍 Full Error Object:`, error);
+            console.error(`💥 === FLIGHT ITINERARY FETCH ERROR END ===\n`);
+            setFlightItineraries([]);
+          }
 
           // Fetch accommodation allocations for this participant by email
           try {
@@ -975,7 +1039,125 @@ export default function EventParticipants({
                     <p className="text-gray-600 mt-2">Loading services...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Flight Itineraries */}
+                    <div className="bg-gradient-to-br from-sky-50 to-blue-50 p-6 rounded-xl border-2 border-sky-200">
+                      <h5 className="font-semibold text-sky-900 mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Flight Itineraries
+                      </h5>
+                      {flightItineraries && flightItineraries.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="text-xs text-sky-700 mb-2">
+                            Debug: Found {flightItineraries.length} flight(s)
+                          </div>
+                          {flightItineraries.map((flight, index) => {
+                            console.log(`🎨 Rendering flight ${index + 1}:`, flight);
+                            return (
+                            <div
+                              key={flight.id || index}
+                              className="bg-white p-4 rounded-xl border-2 border-sky-100 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              {/* Flight Header */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                    flight.ticket_type === 'arrival'
+                                      ? 'bg-green-100 text-green-700'
+                                      : flight.ticket_type === 'departure'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {flight.ticket_type?.toUpperCase() || 'FLIGHT'}
+                                  </span>
+                                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                    flight.status === 'confirmed'
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-yellow-100 text-yellow-700'
+                                  }`}>
+                                    {flight.status?.toUpperCase() || 'PENDING'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Flight Route */}
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="text-center">
+                                  <p className="text-xs text-gray-500 mb-1">From</p>
+                                  <p className="font-semibold text-sm text-gray-900">
+                                    {flight.departure_city || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    {flight.departure_time || ''}
+                                  </p>
+                                </div>
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                                <div className="text-center">
+                                  <p className="text-xs text-gray-500 mb-1">To</p>
+                                  <p className="font-semibold text-sm text-gray-900">
+                                    {flight.arrival_city || 'N/A'}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    {flight.arrival_time || ''}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Flight Details */}
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {flight.airline && (
+                                  <div>
+                                    <span className="text-gray-500">Airline:</span>
+                                    <p className="font-medium text-gray-900">{flight.airline}</p>
+                                  </div>
+                                )}
+                                {flight.flight_number && (
+                                  <div>
+                                    <span className="text-gray-500">Flight:</span>
+                                    <p className="font-medium text-gray-900">{flight.flight_number}</p>
+                                  </div>
+                                )}
+                                {flight.departure_date && (
+                                  <div>
+                                    <span className="text-gray-500">Date:</span>
+                                    <p className="font-medium text-gray-900">
+                                      {new Date(flight.departure_date).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                )}
+                                {flight.booking_reference && (
+                                  <div>
+                                    <span className="text-gray-500">Ref:</span>
+                                    <p className="font-medium text-gray-900">{flight.booking_reference}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-xs text-red-600 mb-2">
+                            Debug: No flights found (count: {flightItineraries?.length || 0})
+                          </div>
+                          <div className="bg-white p-6 rounded-lg border-2 border-dashed border-sky-200 text-center">
+                            <svg className="w-12 h-12 text-sky-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                            <p className="text-sm font-medium text-gray-700">No flight itineraries</p>
+                            <p className="text-xs mt-1 text-gray-500">
+                              Flight details will appear once uploaded by the participant
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Transport */}
                     <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
                       <h5 className="font-semibold text-purple-900 mb-4">

@@ -290,13 +290,23 @@ export default function ParticipantDetailsPanel({
 
       // Fetch flight itineraries
       try {
+        const flightUrl = `/flight-itinerary/participant/${participantId}?event_id=${eventId}`;
+        console.log(`DEBUG FLIGHT: Fetching from URL: ${flightUrl}`);
+        console.log(`DEBUG FLIGHT: Participant ID: ${participantId}, Event ID: ${eventId}, Tenant: ${tenantSlug}`);
+        console.log(`DEBUG FLIGHT: Full API base URL will be: ${apiClient.getBaseUrl()}${flightUrl}`);
+        
         const flightData = await apiClient.request(
-          `/flight-itinerary/participant/${participantId}?event_id=${eventId}`,
+          flightUrl,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
+        
+        console.log(`DEBUG FLIGHT: SUCCESS - Received ${Array.isArray(flightData) ? flightData.length : 'non-array'} flight itineraries:`, flightData);
         setFlightItineraries(flightData as FlightItinerary[]);
-      } catch (error) {
-        console.error('Failed to fetch flight itineraries:', error);
+      } catch (error: any) {
+        console.error('DEBUG FLIGHT: ERROR occurred:', error);
+        console.error('DEBUG FLIGHT: Error message:', error.message);
+        console.error('DEBUG FLIGHT: Error status:', error.status);
+        console.error('DEBUG FLIGHT: Full error object:', error);
         setFlightItineraries([]);
       }
     } catch (error) {
@@ -613,7 +623,12 @@ export default function ParticipantDetailsPanel({
               </div>
 
               {/* Flight Itineraries */}
-              {flightItineraries.length > 0 && (
+              {(() => {
+                console.log('DEBUG FLIGHT RENDER: Flight itineraries state:', flightItineraries);
+                console.log('DEBUG FLIGHT RENDER: Length:', flightItineraries.length);
+                console.log('DEBUG FLIGHT RENDER: Should show section:', flightItineraries.length > 0);
+                return flightItineraries.length > 0;
+              })() && (
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Plane className="h-4 w-4 text-red-600" />
@@ -623,7 +638,9 @@ export default function ParticipantDetailsPanel({
                     </Badge>
                   </div>
                   <div className="space-y-2">
-                    {flightItineraries.map((flight) => (
+                    {flightItineraries.map((flight) => {
+                      console.log('DEBUG FLIGHT RENDER: Rendering flight item:', flight);
+                      return (
                       <div key={flight.id} className="bg-gray-50 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -685,7 +702,8 @@ export default function ParticipantDetailsPanel({
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
