@@ -525,11 +525,11 @@ export default function TenantAdminUsersPage() {
     if (!user) return roles;
     const userRoles = user.role.split(", ").map(r => {
       const trimmed = r.trim().toLowerCase();
-      // Handle different role name formats
-      if (trimmed === 'event administrator' || trimmed === 'event_admin') return 'event_admin';
-      if (trimmed === 'hr administrator' || trimmed === 'hr_admin') return 'hr_admin';
-      if (trimmed === 'mt administrator' || trimmed === 'mt_admin') return 'mt_admin';
-      return trimmed;
+      // Map displayed role names to role values
+      if (trimmed === 'hr admin') return 'hr_admin';
+      if (trimmed === 'event admin') return 'event_admin';
+      if (trimmed === 'mt admin') return 'mt_admin';
+      return trimmed.replace(' ', '_');
     });
     return roles.filter(role => !userRoles.includes(role.value.toLowerCase()));
   };
