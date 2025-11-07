@@ -717,37 +717,37 @@ export default function EventRegistrationFormPage() {
 
           {/* Share Modal */}
           <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-            <DialogContent className="sm:max-w-md bg-white">
-              <DialogHeader>
-                <DialogTitle>Share Registration Form</DialogTitle>
+            <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col bg-white p-0 gap-0">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b">
+                <DialogTitle className="text-xl font-semibold">Share Registration Form</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
                 <div className="bg-gray-50 p-3 rounded-lg border">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Registration Link:
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    Registration Link
                   </p>
-                  <p className="text-xs text-gray-800 break-all font-mono">
+                  <p className="text-xs text-gray-600 break-all font-mono bg-white p-2 rounded border">
                     {publicUrl}
                   </p>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleCopyLink}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Link
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleCopyLink}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Link
+                </Button>
 
-                <div className="border-t pt-3 space-y-3">
+                <div className="border-t pt-4 space-y-3">
                   <div>
                     <Label
                       htmlFor="recipientEmail"
-                      className="text-sm font-medium"
+                      className="text-sm font-medium text-gray-700"
                     >
-                      Send To (Required)
+                      Send To <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="recipientEmail"
@@ -755,13 +755,13 @@ export default function EventRegistrationFormPage() {
                       value={recipientEmail}
                       onChange={(e) => setRecipientEmail(e.target.value)}
                       placeholder="recipient@example.com"
-                      className="mt-1 h-10 border-2 border-gray-300 focus:border-blue-500 text-sm"
+                      className="mt-1.5 h-10 border-gray-300 focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div>
                     <Label
                       htmlFor="ccEmails"
-                      className="text-sm font-medium"
+                      className="text-sm font-medium text-gray-700"
                     >
                       CC (Optional)
                     </Label>
@@ -770,14 +770,14 @@ export default function EventRegistrationFormPage() {
                       value={ccEmails}
                       onChange={(e) => setCcEmails(e.target.value)}
                       placeholder="cc1@example.com, cc2@example.com"
-                      className="mt-1 h-10 border-2 border-gray-300 focus:border-blue-500 text-sm"
+                      className="mt-1.5 h-10 border-gray-300 focus:border-blue-500 text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
                   </div>
                   <div>
                     <Label
                       htmlFor="emailSubject"
-                      className="text-sm font-medium"
+                      className="text-sm font-medium text-gray-700"
                     >
                       Email Subject
                     </Label>
@@ -786,25 +786,39 @@ export default function EventRegistrationFormPage() {
                       value={emailSubject}
                       onChange={(e) => setEmailSubject(e.target.value)}
                       placeholder={`Registration: ${event?.title}`}
-                      className="mt-1 h-10 border-2 border-gray-300 focus:border-blue-500 text-sm"
+                      className="mt-1.5 h-10 border-gray-300 focus:border-blue-500 text-sm"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="emailBody" className="text-sm font-medium">
-                      Email Body
+                    <Label htmlFor="emailBody" className="text-sm font-medium text-gray-700">
+                      Email Message
                     </Label>
                     <textarea
                       id="emailBody"
                       value={emailBody}
                       onChange={(e) => setEmailBody(e.target.value)}
-                      placeholder={`Please register for ${event?.title} using this link: <a href="${publicUrl}" target="_blank">${publicUrl}</a>`}
-                      className="w-full p-2.5 border-2 border-gray-300 rounded-lg resize-none mt-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-[5rem]"
+                      placeholder={`Please register for ${event?.title} using the link provided.`}
+                      rows={3}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg resize-none mt-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="px-6 py-4 border-t bg-gray-50">
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowShareModal(false)}
+                    className="flex-1 h-10"
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     onClick={handleEmailShare}
                     disabled={!recipientEmail || sendingEmail}
-                    className="w-full h-10 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
+                    className="flex-1 h-10 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
                   >
                     {sendingEmail ? (
                       <>

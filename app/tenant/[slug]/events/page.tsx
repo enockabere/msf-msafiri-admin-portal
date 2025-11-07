@@ -102,7 +102,7 @@ export default function TenantEventsPage() {
   const eventsPerPage = 8;
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<string>('start_date');
+  const [sortField, setSortField] = useState<keyof Event | string>('start_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [formData, setFormData] = useState({
     title: "",
@@ -772,8 +772,8 @@ export default function TenantEventsPage() {
     }
     
     return filtered.sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
+      const aValue = (a as unknown as Record<string, unknown>)[sortField];
+      const bValue = (b as unknown as Record<string, unknown>)[sortField];
       
       if (aValue == null && bValue == null) return 0;
       if (aValue == null) return sortDirection === 'asc' ? -1 : 1;
@@ -926,13 +926,13 @@ export default function TenantEventsPage() {
                   onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
                   onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
                   onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
-                  sortField={sortField}
+                  sortField={sortField as any}
                   sortDirection={sortDirection}
                   onSort={(field) => {
                     if (sortField === field) {
                       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
                     } else {
-                      setSortField(field as keyof Event);
+                      setSortField(field as keyof Event | string);
                       setSortDirection('desc');
                     }
                   }}
