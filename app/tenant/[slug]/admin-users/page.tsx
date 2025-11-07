@@ -521,6 +521,12 @@ export default function TenantAdminUsersPage() {
     setShowAddRoleModal(true);
   };
 
+  const getAvailableRoles = (user: AdminUser) => {
+    if (!user) return roles;
+    const userRoles = user.role.split(", ").map(r => r.trim().toLowerCase());
+    return roles.filter(role => !userRoles.includes(role.value.toLowerCase()));
+  };
+
   const handleAddRole = async () => {
     if (!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin") {
       toast({
@@ -1103,7 +1109,7 @@ export default function TenantAdminUsersPage() {
                     <SelectValue placeholder="Select role to add" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                    {roles.map((role) => (
+                    {getAvailableRoles(selectedUser).map((role) => (
                       <SelectItem
                         key={role.value}
                         value={role.value}
