@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cat:*)",
       "Read(//d/development/msafiri-visitor-api/app/api/v1/endpoints/**)",
-      "Read(//d/development/msafiri-visitor-api/**)"
+      "Read(//d/development/msafiri-visitor-api/**)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

@@ -19,10 +19,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Calendar,
@@ -93,7 +90,7 @@ export default function TenantEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
-  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
+  const [, setTenantData] = useState<{ country?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -130,7 +127,7 @@ export default function TenantEventsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
-  const [accommodationSetups, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
+  const [, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const tenantSlug = params.slug as string;
@@ -694,7 +691,9 @@ export default function TenantEventsPage() {
       start_date: "",
       end_date: "",
       vendor_accommodation_id: "",
-      accommodation_setup_id: "",
+      expected_participants: "",
+      single_rooms: "",
+      double_rooms: "",
       location: "",
       country: "",
       latitude: "",
@@ -1260,70 +1259,28 @@ export default function TenantEventsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <div>
-                    <Label htmlFor="perdiem_rate" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Per Diem Rate
-                    </Label>
-                    <Input
-                      id="perdiem_rate"
-                      type="number"
-                      value={formData.perdiem_rate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, perdiem_rate: e.target.value })
-                      }
-                      placeholder="0.00"
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="perdiem_currency" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Currency
-                    </Label>
-                    <Select
-                      value={formData.perdiem_currency}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, perdiem_currency: value })
-                      }
-                    >
-                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                        <SelectItem value="CHF">CHF</SelectItem>
-                        <SelectItem value="CAD">CAD</SelectItem>
-                        <SelectItem value="AUD">AUD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Status
-                    </Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, status: value })
-                      }
-                    >
-                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Published">Published</SelectItem>
-                        <SelectItem value="Ongoing">Ongoing</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="mt-6">
+                  <Label htmlFor="status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    Status
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
+                  >
+                    <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Published">Published</SelectItem>
+                      <SelectItem value="Ongoing">Ongoing</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -1617,64 +1574,26 @@ export default function TenantEventsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <div>
-                    <Label htmlFor="edit_perdiem_rate" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Per Diem Rate
-                    </Label>
-                    <Input
-                      id="edit_perdiem_rate"
-                      type="number"
-                      value={formData.perdiem_rate}
-                      onChange={(e) => setFormData({ ...formData, perdiem_rate: e.target.value })}
-                      placeholder="0.00"
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_perdiem_currency" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Currency
-                    </Label>
-                    <Select
-                      value={formData.perdiem_currency}
-                      onValueChange={(value) => setFormData({ ...formData, perdiem_currency: value })}
-                    >
-                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                        <SelectItem value="CHF">CHF</SelectItem>
-                        <SelectItem value="CAD">CAD</SelectItem>
-                        <SelectItem value="AUD">AUD</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="edit_status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Status
-                    </Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) => setFormData({ ...formData, status: value })}
-                    >
-                      <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Published">Published</SelectItem>
-                        <SelectItem value="Ongoing">Ongoing</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="mt-6">
+                  <Label htmlFor="edit_status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
+                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    Status
+                  </Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Draft">Draft</SelectItem>
+                      <SelectItem value="Published">Published</SelectItem>
+                      <SelectItem value="Ongoing">Ongoing</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

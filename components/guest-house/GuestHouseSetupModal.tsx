@@ -68,16 +68,10 @@ export default function GuestHouseSetupModal({
   const [formData, setFormData] = useState({
     name: "",
     location: "",
-    address: "",
     latitude: "",
     longitude: "",
     description: "",
-    contact_person: "",
-    phone: "",
-    email: "",
     house_rules: "",
-    check_in_time: "14:00",
-    check_out_time: "11:00",
     facilities: {} as Record<string, boolean>
   });
 
@@ -86,32 +80,20 @@ export default function GuestHouseSetupModal({
       setFormData({
         name: editingGuestHouse.name || "",
         location: editingGuestHouse.location || "",
-        address: editingGuestHouse.address || "",
         latitude: editingGuestHouse.latitude?.toString() || "",
         longitude: editingGuestHouse.longitude?.toString() || "",
         description: editingGuestHouse.description || "",
-        contact_person: editingGuestHouse.contact_person || "",
-        phone: editingGuestHouse.phone || "",
-        email: editingGuestHouse.email || "",
         house_rules: editingGuestHouse.house_rules || "",
-        check_in_time: editingGuestHouse.check_in_time || "14:00",
-        check_out_time: editingGuestHouse.check_out_time || "11:00",
         facilities: editingGuestHouse.facilities || {}
       });
     } else {
       setFormData({
         name: "",
         location: "",
-        address: "",
         latitude: "",
         longitude: "",
         description: "",
-        contact_person: "",
-        phone: "",
-        email: "",
         house_rules: "",
-        check_in_time: "14:00",
-        check_out_time: "11:00",
         facilities: {}
       });
     }
@@ -202,7 +184,7 @@ export default function GuestHouseSetupModal({
   };
 
   const openGoogleMaps = () => {
-    const query = encodeURIComponent(`${formData.name} ${formData.location} ${formData.address}`);
+    const query = encodeURIComponent(`${formData.name} ${formData.location}`);
     window.open(`https://www.google.com/maps/search/${query}`, '_blank');
   };
 
@@ -270,22 +252,6 @@ export default function GuestHouseSetupModal({
                 <p className="text-xs text-gray-500 mt-1 ml-1">Start typing to search for the location</p>
               </div>
 
-              {/* Address - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address" className="text-sm font-semibold text-gray-900">
-                  Full Address
-                  <span className="text-red-500 ml-1">*</span>
-                </Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Complete street address"
-                  required
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
-
               {/* Coordinates */}
               <div className="space-y-2">
                 <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
@@ -341,77 +307,6 @@ export default function GuestHouseSetupModal({
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Brief description of the guest house and its surroundings"
                   className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[5rem]"
-                />
-              </div>
-
-              {/* Contact Person */}
-              <div className="space-y-2">
-                <Label htmlFor="contact_person" className="text-sm font-semibold text-gray-900">
-                  Contact Person
-                </Label>
-                <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e.target.value }))}
-                  placeholder="Manager or contact name"
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-semibold text-gray-900">
-                  Phone Number
-                </Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+254 700 000 000"
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
-
-              {/* Email - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="email" className="text-sm font-semibold text-gray-900">
-                  Email Address
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="guesthouse@example.com"
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
-
-              {/* Check-in Time */}
-              <div className="space-y-2">
-                <Label htmlFor="check_in_time" className="text-sm font-semibold text-gray-900">
-                  Check-in Time
-                </Label>
-                <Input
-                  id="check_in_time"
-                  type="time"
-                  value={formData.check_in_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_in_time: e.target.value }))}
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
-
-              {/* Check-out Time */}
-              <div className="space-y-2">
-                <Label htmlFor="check_out_time" className="text-sm font-semibold text-gray-900">
-                  Check-out Time
-                </Label>
-                <Input
-                  id="check_out_time"
-                  type="time"
-                  value={formData.check_out_time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, check_out_time: e.target.value }))}
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
                 />
               </div>
 

@@ -7,44 +7,52 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/toast";
-import { Plane, Car, MapPin, Clock, Users, RefreshCw, Calendar, Building, Hotel, CheckCircle } from "lucide-react";
-import FlightDetailsModal from "@/components/transport/FlightDetailsModal";
+import { toast } from "@/hooks/use-toast";
+import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface FlightTicket {
-  id: string;
-  participant_name: string;
-  participant_email: string;
-  event_title: string;
-  departure_country: string;
-  departure_city: string;
-  departure_airport: string;
-  arrival_airport: string;
-  flight_number: string;
-  airline: string;
-  departure_time: string;
-  arrival_time: string;
-  seat_number: string;
-  booking_reference: string;
-  status: 'confirmed' | 'pending' | 'cancelled';
+interface TransportRequest {
+  id: number;
+  pickup_address: string;
+  pickup_latitude?: number;
+  pickup_longitude?: number;
+  dropoff_address: string;
+  dropoff_latitude?: number;
+  dropoff_longitude?: number;
+  pickup_time: string;
+  passenger_name: string;
+  passenger_phone: string;
+  passenger_email?: string;
+  vehicle_type?: string;
+  flight_details?: string;
+  notes?: string;
+  event_id: number;
+  flight_itinerary_id?: number;
+  user_email: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  event?: {
+    id: number;
+    title: string;
+    tenant_id: number;
+  };
 }
 
-interface TransportBooking {
-  id: string;
-  participant_name: string;
-  participant_email: string;
-  event_title: string;
-  pickup_location: string;
-  destination: string;
-  destination_type: 'guesthouse' | 'vendor_hotel';
-  pickup_time: string;
-  driver_name: string;
-  driver_phone: string;
-  vehicle_type: string;
-  vehicle_number: string;
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-  flight_number?: string;
-  created_at: string;
+interface TransportProvider {
+  id: number;
+  provider_name: string;
+  is_enabled: boolean;
+  client_id: string;
+  client_secret: string;
+  hmac_secret: string;
+  api_base_url: string;
+  token_url: string;
 }
 
 export default function TransportPage() {
@@ -53,150 +61,61 @@ export default function TransportPage() {
   const params = useParams();
   const tenantSlug = params.slug as string;
 
-  const [flightTickets, setFlightTickets] = useState<FlightTicket[]>([]);
-  const [transportBookings, setTransportBookings] = useState<TransportBooking[]>([]);
+  const [transportRequests, setTransportRequests] = useState<TransportRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<TransportRequest[]>([]);
+  const [transportProvider, setTransportProvider] = useState<TransportProvider | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<TransportBooking | null>(null);
-  const [showFlightModal, setShowFlightModal] = useState(false);
+  const [bookingInProgress, setBookingInProgress] = useState<number | null>(null);
+  const [showManualBookingModal, setShowManualBookingModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<TransportRequest | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [eventFilter, setEventFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [manualBookingData, setManualBookingData] = useState({
+    driverName: '',
+    driverPhone: '',
+    vehicleType: 'SUV'
+  });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmationData, setConfirmationData] = useState({
+    driverName: '',
+    driverPhone: '',
+    vehicleType: 'SUV',
+    vehicleColor: '',
+    numberPlate: ''
+  });
 
-  const fetchInternationalVisitors = useCallback(async () => {
+  const fetchTransportRequests = useCallback(async () => {
     try {
-      const token = apiClient.getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/confirmed-guests?tenant_context=${tenantSlug}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
       
-      if (response.ok) {
-        const data = await response.json();
-        // Filter for international visitors only
-        const internationalGuests = data.guests?.filter((guest: any) => 
-          guest.travelling_from_country && guest.travelling_from_country !== 'Kenya'
-        ) || [];
-        
-        return internationalGuests;
-      }
-      return [];
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}`);
+      return response || [];
     } catch (error) {
-      console.error('Error fetching international visitors:', error);
+      console.error('Error fetching transport requests:', error);
       return [];
     }
   }, [apiClient, tenantSlug]);
 
-  const generateFlightTickets = useCallback((visitors: any[]) => {
-    const airlines = ['Kenya Airways', 'Ethiopian Airlines', 'Turkish Airlines', 'Emirates', 'Qatar Airways'];
-    const airports: Record<string, { city: string; code: string }> = {
-      'Uganda': { city: 'Kampala', code: 'EBB' },
-      'Tanzania': { city: 'Dar es Salaam', code: 'DAR' },
-      'Ethiopia': { city: 'Addis Ababa', code: 'ADD' },
-      'South Sudan': { city: 'Juba', code: 'JUB' },
-      'Somalia': { city: 'Mogadishu', code: 'MGQ' }
-    };
-    
-    return visitors.map((visitor, index) => {
-      const country = visitor.travelling_from_country || 'Uganda';
-      const airport = airports[country] || airports['Uganda'];
-      const airline = airlines[index % airlines.length];
-      const flightNumber = `${airline.split(' ')[0].substring(0, 2).toUpperCase()}${(index + 1) * 100 + 12}`;
-      
-      // Generate arrival time (next few days)
-      const arrivalDate = new Date();
-      arrivalDate.setDate(arrivalDate.getDate() + (index % 7) + 1);
-      arrivalDate.setHours(8 + (index * 3) % 12, 30 + (index * 15) % 60);
-      
-      const departureDate = new Date(arrivalDate.getTime() - 2 * 60 * 60 * 1000); // 2 hours before
-      
-      return {
-        id: `FT${index + 1}`,
-        participant_name: visitor.name,
-        participant_email: visitor.email,
-        event_title: visitor.event,
-        departure_country: country,
-        departure_city: airport.city,
-        departure_airport: airport.code,
-        arrival_airport: 'NBO',
-        flight_number: flightNumber,
-        airline: airline,
-        departure_time: departureDate.toISOString(),
-        arrival_time: arrivalDate.toISOString(),
-        seat_number: `${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}`,
-        booking_reference: `MSF${String(index + 1).padStart(3, '0')}`,
-        status: 'confirmed' as const
-      };
-    });
-  }, []);
-
-  const fetchTransportBookings = useCallback(async () => {
+  const fetchTransportProvider = useCallback(async () => {
     try {
-      const token = apiClient.getToken();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/pending-bookings?tenant_context=${tenantSlug}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
       
-      if (response.ok) {
-        const bookings = await response.json();
-        return bookings.map((booking: any) => ({
-          id: booking.id.toString(),
-          participant_name: booking.participants[0]?.name || 'Unknown',
-          participant_email: booking.participants[0]?.email || '',
-          event_title: booking.participants[0]?.event || 'Unknown Event',
-          pickup_location: booking.pickup_locations[0] || 'JKIA Airport',
-          destination: booking.destination,
-          destination_type: booking.destination.toLowerCase().includes('guest') ? 'guesthouse' as const : 'vendor_hotel' as const,
-          pickup_time: booking.scheduled_time,
-          driver_name: 'Absolute Cabs Driver',
-          driver_phone: '+254700000000',
-          vehicle_type: 'SUV',
-          vehicle_number: 'Pending Assignment',
-          status: 'scheduled' as const,
-          flight_number: booking.flight_number || 'TBD',
-          created_at: booking.created_at
-        }));
+      const response = await apiClient.request(`/transport-providers/tenant/${tenantId}/provider/absolute_cabs`);
+      return response;
+    } catch (error: any) {
+      // Suppress 404 errors - expected when provider not configured
+      if (error?.message?.includes('404') || error?.message?.includes('not found')) {
+        return null;
       }
-      return [];
-    } catch (error) {
-      console.error('Error fetching transport bookings:', error);
-      return [];
+      console.error('Error fetching transport provider:', error);
+      return null;
     }
   }, [apiClient, tenantSlug]);
-
-  const createTestData = async () => {
-    try {
-      setLoading(true);
-      const token = apiClient.getToken();
-      
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/test-data/create-test-international-visitors?tenant_context=${tenantSlug}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      
-      if (response.ok) {
-        const result = await response.json();
-        toast({ 
-          title: "Test Data Created", 
-          description: `Created ${result.participants.length} international visitors for ${result.event}` 
-        });
-        
-        // Refresh data to show new visitors
-        await fetchData();
-      } else {
-        throw new Error('Failed to create test data');
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to create test data", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
@@ -204,189 +123,215 @@ export default function TransportPage() {
     try {
       setLoading(true);
       
-      // Fetch international visitors and generate flight tickets
-      const visitors = await fetchInternationalVisitors();
-      const tickets = generateFlightTickets(visitors);
+      const [requests, provider] = await Promise.all([
+        fetchTransportRequests(),
+        fetchTransportProvider()
+      ]);
       
-      // Fetch real transport bookings from API
-      const bookings = await fetchTransportBookings();
-      
-      setFlightTickets(tickets);
-      setTransportBookings(bookings);
+      setTransportRequests(requests);
+      setTransportProvider(provider);
     } catch (error) {
       console.error("Error loading transport data:", error);
       toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user, fetchInternationalVisitors, generateFlightTickets, fetchTransportBookings]);
+  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const createAbsoluteCabsBooking = async (flightTicket: FlightTicket, destination: string) => {
+  useEffect(() => {
+    filterRequests();
+  }, [transportRequests, searchTerm, statusFilter, eventFilter, dateFilter]);
+
+  const filterRequests = () => {
+    let filtered = [...transportRequests];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(request => 
+        request.passenger_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.flight_details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.user_email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'booked') {
+        filtered = filtered.filter(request => request.status === 'booked' || request.status === 'confirmed');
+      } else {
+        filtered = filtered.filter(request => request.status === statusFilter);
+      }
+    }
+
+    // Event filter
+    if (eventFilter !== 'all') {
+      filtered = filtered.filter(request => request.event_id.toString() === eventFilter);
+    }
+
+    // Date filter
+    if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter(request => request.pickup_time.split('T')[0] === today);
+    }
+
+    setFilteredRequests(filtered);
+  };
+
+  const createAbsoluteCabsBooking = async (request: TransportRequest) => {
     try {
-      const token = apiClient.getToken();
+      if (!transportProvider || !transportProvider.is_enabled) {
+        throw new Error('Transport provider not configured or disabled');
+      }
+
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
       
-      // Calculate pickup time (1 hour after flight arrival)
-      const arrivalTime = new Date(flightTicket.arrival_time);
-      const pickupTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000);
-      
-      const bookingData = {
-        pickup_address: "JKIA Airport",
-        pickup_latitude: -1.319167,
-        pickup_longitude: 36.927778,
-        dropoff_address: destination,
-        dropoff_latitude: -1.286389, // Nairobi center coordinates
-        dropoff_longitude: 36.817223,
-        pickup_time: pickupTime.toISOString().slice(0, 19), // Format: "2025-10-25T15:00:00"
-        passenger_name: flightTicket.participant_name,
-        passenger_phone: "254712345678", // Default phone
-        passenger_email: flightTicket.participant_email,
-        vehicle_type: "SUV",
-        flight_details: flightTicket.flight_number,
-        notes: `MSF visitor pickup for ${flightTicket.event_title}. Flight ${flightTicket.flight_number} from ${flightTicket.departure_city}.`
-      };
-      
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transport/create-absolute-booking`,
+      const response = await apiClient.request(
+        `/transport-requests/${request.id}/book-with-absolute-cabs`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'X-Tenant-ID': tenantSlug
-          },
-          body: JSON.stringify(bookingData)
+            'X-Tenant-ID': tenantId.toString()
+          }
         }
       );
       
-      if (response.ok) {
-        const result = await response.json();
-        return {
-          success: true,
-          booking_reference: result.booking_reference,
-          passenger: flightTicket.participant_name
-        };
-      } else {
-        throw new Error('Failed to create booking');
-      }
+      return {
+        success: true,
+        booking_reference: response.booking_reference,
+        passenger: request.passenger_name
+      };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        passenger: flightTicket.participant_name
+        passenger: request.passenger_name
       };
     }
   };
 
-  const handleGenerateBookings = async () => {
-    setGenerating(true);
+  const handleBookRequest = async (request: TransportRequest) => {
+    setBookingInProgress(request.id);
     try {
-      const accommodations = [
-        'Tanga Heights Guest House, Nairobi',
-        'Sarova Stanley Hotel, Kimathi Street',
-        'MSF Guest House Westlands, Nairobi',
-        'Hilton Nairobi, Mama Ngina Street',
-        'Serena Hotel, Kenyatta Avenue'
-      ];
+      const result = await createAbsoluteCabsBooking(request);
       
-      const results = [];
-      
-      // Create Absolute Cabs bookings for each flight ticket
-      for (let i = 0; i < flightTickets.length; i++) {
-        const ticket = flightTickets[i];
-        const destination = accommodations[i % accommodations.length];
-        
-        const result = await createAbsoluteCabsBooking(ticket, destination);
-        results.push(result);
-        
-        // Add delay between requests to avoid rate limiting
-        if (i < flightTickets.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      
-      const successCount = results.filter(r => r.success).length;
-      const failureCount = results.filter(r => !r.success).length;
-      
-      if (successCount > 0) {
+      if (result.success) {
         toast({ 
-          title: "Bookings Created", 
-          description: `${successCount} transport bookings sent to Absolute Cabs${failureCount > 0 ? `, ${failureCount} failed` : ''}` 
+          title: "Booking Created", 
+          description: `Transport booking created for ${result.passenger}` 
         });
-      }
-      
-      if (failureCount > 0) {
-        const failedPassengers = results.filter(r => !r.success).map(r => r.passenger).join(', ');
+        
+        // Refresh data to show updated status
+        await fetchData();
+      } else {
         toast({ 
-          title: "Some Bookings Failed", 
-          description: `Failed to create bookings for: ${failedPassengers}`,
+          title: "Booking Failed", 
+          description: `Failed to create booking for ${result.passenger}: ${result.error}`,
           variant: "destructive"
         });
       }
-      
-      // Update transport bookings to show created bookings
-      const newBookings = results
-        .filter(r => r.success)
-        .map((result, index) => {
-          const ticket = flightTickets[index];
-          const destination = accommodations[index % accommodations.length];
-          const arrivalTime = new Date(ticket.arrival_time);
-          const pickupTime = new Date(arrivalTime.getTime() + 60 * 60 * 1000);
-          
-          return {
-            id: `AB${index + 1}`,
-            participant_name: ticket.participant_name,
-            participant_email: ticket.participant_email,
-            event_title: ticket.event_title,
-            pickup_location: 'JKIA Airport',
-            destination: destination,
-            destination_type: destination.toLowerCase().includes('guest') ? 'guesthouse' as const : 'vendor_hotel' as const,
-            pickup_time: pickupTime.toISOString(),
-            driver_name: 'Absolute Cabs Driver',
-            driver_phone: '+254700000000',
-            vehicle_type: 'SUV',
-            vehicle_number: 'Assigned by Absolute Cabs',
-            status: 'completed' as const,
-            flight_number: ticket.flight_number,
-            created_at: new Date().toISOString()
-          };
-        });
-      
-      setTransportBookings(prev => [...prev, ...newBookings]);
-      
     } catch (error) {
-      toast({ title: "Error", description: "Failed to generate bookings", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to create booking", variant: "destructive" });
     } finally {
-      setGenerating(false);
+      setBookingInProgress(null);
     }
   };
 
-  const getFlightStats = () => {
-    return {
-      total: flightTickets.length,
-      confirmed: flightTickets.filter(t => t.status === 'confirmed').length,
-      pending: flightTickets.filter(t => t.status === 'pending').length,
-      today: flightTickets.filter(t => {
-        const arrivalDate = new Date(t.arrival_time).toDateString();
-        const today = new Date().toDateString();
-        return arrivalDate === today;
-      }).length
-    };
+  const handleManualConfirmation = async () => {
+    if (!selectedRequest || !confirmationData.driverName || !confirmationData.driverPhone || !confirmationData.numberPlate) {
+      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+
+    setBookingInProgress(selectedRequest.id);
+    try {
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      const response = await apiClient.request(
+        `/transport-requests/${selectedRequest.id}/confirm-manual`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            driver_name: confirmationData.driverName,
+            driver_phone: confirmationData.driverPhone,
+            vehicle_type: confirmationData.vehicleType,
+            vehicle_color: confirmationData.vehicleColor,
+            number_plate: confirmationData.numberPlate
+          }),
+          headers: {
+            'X-Tenant-ID': tenantId.toString()
+          }
+        }
+      );
+      
+      toast({ 
+        title: "Request Confirmed", 
+        description: `Transport request confirmed for ${selectedRequest.passenger_name}` 
+      });
+      
+      setShowConfirmModal(false);
+      setSelectedRequest(null);
+      setConfirmationData({ driverName: '', driverPhone: '', vehicleType: 'SUV', vehicleColor: '', numberPlate: '' });
+      
+      // Refresh data to show updated status
+      await fetchData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to confirm request", variant: "destructive" });
+    } finally {
+      setBookingInProgress(null);
+    }
   };
+
+  const isToday = (dateStr: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    return dateStr.split('T')[0] === today;
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      created: { color: 'bg-gray-100 text-gray-800', label: 'Created' },
+      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
+      booked: { color: 'bg-blue-100 text-blue-800', label: 'Booked' },
+      confirmed: { color: 'bg-green-100 text-green-800', label: 'Confirmed' },
+      completed: { color: 'bg-purple-100 text-purple-800', label: 'Completed' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.created;
+    return (
+      <Badge className={config.color}>
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const uniqueEvents = Array.from(new Set(transportRequests.map(r => r.event?.id))).filter(Boolean);
 
   const getTransportStats = () => {
     return {
-      total: transportBookings.length,
-      scheduled: transportBookings.filter(b => b.status === 'scheduled').length,
-      in_progress: transportBookings.filter(b => b.status === 'in_progress').length,
-      completed: transportBookings.filter(b => b.status === 'completed').length
+      total: transportRequests.length,
+      pending: transportRequests.filter(r => r.status === 'pending' || r.status === 'created').length,
+      booked: transportRequests.filter(r => r.status === 'booked' || r.status === 'confirmed').length,
+      todayPickup: transportRequests.filter(r => isToday(r.pickup_time)).length,
+      completed: transportRequests.filter(r => r.status === 'completed').length
     };
   };
 
-  const flightStats = getFlightStats();
   const transportStats = getTransportStats();
 
   if (loading) {
@@ -409,52 +354,67 @@ export default function TransportPage() {
         <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Travel & Transport Management</h1>
-              <p className="text-sm text-gray-600">Manage flight tickets and automatic transport bookings for international visitors</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Transport Requests</h1>
+              <p className="text-sm text-gray-600">Manage transport booking requests from event participants</p>
             </div>
             <div className="flex items-center gap-3">
               <Button
-                onClick={createTestData}
+                onClick={fetchData}
                 disabled={loading}
                 variant="outline"
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                <Users className="w-4 h-4 mr-2" />
-                Create Test Visitors
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
               </Button>
-              <Button
-                onClick={handleGenerateBookings}
-                disabled={generating || flightTickets.length === 0}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
-              >
-                {generating ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Generate Bookings
-                  </>
-                )}
-              </Button>
+              {!transportProvider?.is_enabled && (
+                <Button
+                  onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Setup Transport
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Transport Provider Status */}
+        {!transportProvider?.is_enabled && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              Transport provider is not configured. Please set up Absolute Cabs integration to enable booking functionality.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Flight Tickets</p>
-                  <p className="text-2xl font-bold text-gray-900">{flightStats.total}</p>
-                  <p className="text-xs text-gray-500">{flightStats.confirmed} confirmed</p>
+                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.total}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Plane className="w-6 h-6 text-blue-600" />
+                  <Car className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-yellow-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Pending</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.pending}</p>
+                </div>
+                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-yellow-600" />
                 </div>
               </div>
             </CardContent>
@@ -464,12 +424,11 @@ export default function TransportPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Transport Bookings</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.total}</p>
-                  <p className="text-xs text-gray-500">{transportStats.scheduled} scheduled</p>
+                  <p className="text-sm font-medium text-gray-500">Booked</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.booked}</p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <Car className="w-6 h-6 text-green-600" />
+                  <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
@@ -479,9 +438,8 @@ export default function TransportPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Arrivals Today</p>
-                  <p className="text-2xl font-bold text-gray-900">{flightStats.today}</p>
-                  <p className="text-xs text-gray-500">International visitors</p>
+                  <p className="text-sm font-medium text-gray-500">Today's Pickup</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.todayPickup}</p>
                 </div>
                 <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                   <Calendar className="w-6 h-6 text-orange-600" />
@@ -494,9 +452,8 @@ export default function TransportPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Active Transfers</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.in_progress}</p>
-                  <p className="text-xs text-gray-500">In progress</p>
+                  <p className="text-sm font-medium text-gray-500">Completed</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.completed}</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                   <Users className="w-6 h-6 text-purple-600" />
@@ -506,174 +463,375 @@ export default function TransportPage() {
           </Card>
         </div>
 
-        {/* Flight Tickets Section */}
+        {/* Filters */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plane className="w-5 h-5 text-blue-600" />
-              Flight Tickets - International Visitors
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {flightTickets.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  <Plane className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No International Visitors Found</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    No confirmed participants with international travel information found.
-                  </p>
-                  <Button
-                    onClick={createTestData}
-                    disabled={loading}
-                    variant="outline"
-                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Create Test International Visitors
-                  </Button>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, flight, email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              ) : (
-                flightTickets.map((ticket) => (
-                  <div key={ticket.id} className="border rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900">{ticket.participant_name}</h3>
-                          <Badge variant={ticket.status === 'confirmed' ? 'default' : 'secondary'}>
-                            {ticket.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-1">{ticket.event_title}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {ticket.departure_city} ({ticket.departure_airport}) → NBO
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {new Date(ticket.arrival_time).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-mono text-lg font-bold text-blue-600">{ticket.flight_number}</div>
-                        <div className="text-sm text-gray-500">{ticket.airline}</div>
-                        <div className="text-xs text-gray-400">Seat {ticket.seat_number}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="created">Created</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="booked">Booked</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={eventFilter} onValueChange={setEventFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Event" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  {uniqueEvents.map(eventId => {
+                    const event = transportRequests.find(r => r.event?.id === eventId)?.event;
+                    return event ? (
+                      <SelectItem key={eventId} value={eventId.toString()}>
+                        {event.title}
+                      </SelectItem>
+                    ) : null;
+                  })}
+                </SelectContent>
+              </Select>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transport Bookings Section */}
+        {/* Transport Requests Table */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-green-600" />
-              Automatic Transport Bookings
+              <Car className="w-5 h-5 text-blue-600" />
+              Transport Requests ({filteredRequests.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {transportBookings.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Transport Bookings</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Generate flight tickets first, then create transport bookings.
-                  </p>
-                  {flightTickets.length > 0 && (
-                    <Button
-                      onClick={handleGenerateBookings}
-                      disabled={generating}
-                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Generate Transport Bookings
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                transportBookings.map((booking) => (
-                  <div key={booking.id} className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900">{booking.participant_name}</h3>
-                          <Badge 
-                            variant={booking.status === 'completed' ? 'default' : 
-                                   booking.status === 'in_progress' ? 'secondary' : 'outline'}
-                            className={booking.status === 'scheduled' ? 'bg-yellow-100 text-yellow-800' : ''}
-                          >
-                            {booking.status.replace('_', ' ')}
-                          </Badge>
-                          {booking.destination_type === 'guesthouse' ? (
-                            <Building className="w-4 h-4 text-blue-500" />
-                          ) : (
-                            <Hotel className="w-4 h-4 text-purple-500" />
+            {filteredRequests.length === 0 ? (
+              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Transport Requests</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  No transport requests found matching your filters.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Passenger</TableHead>
+                    <TableHead>Flight</TableHead>
+                    <TableHead>Route</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRequests.map((request) => (
+                    <TableRow key={request.id}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">{request.passenger_name}</div>
+                          <div className="text-sm text-muted-foreground">{request.passenger_phone}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">{request.flight_details || 'N/A'}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatDateTime(request.pickup_time)}
+                          </div>
+                          {isToday(request.pickup_time) && (
+                            <Badge className="bg-orange-100 text-orange-800 text-xs">
+                              Today
+                            </Badge>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 mb-1">{booking.event_title}</p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            {booking.pickup_location} → {booking.destination}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {new Date(booking.pickup_time).toLocaleString()}
-                          </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
+                          <div className="truncate max-w-[200px]" title={request.pickup_address}>
+                            <span className="font-medium">From:</span> {request.pickup_address}
+                          </div>
+                          <div className="truncate max-w-[200px]" title={request.dropoff_address}>
+                            <span className="font-medium">To:</span> {request.dropoff_address}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
-                          <span>Flight: {booking.flight_number}</span>
-                          <span>Driver: {booking.driver_name}</span>
-                          <span>Vehicle: {booking.vehicle_type} ({booking.vehicle_number})</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {request.event?.title || 'N/A'}
                         </div>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <div className="text-sm font-medium text-gray-900">{booking.destination_type === 'guesthouse' ? 'Guest House' : 'Hotel'}</div>
-                        <div className="text-xs text-gray-500">{booking.driver_phone}</div>
-                        {booking.status === 'scheduled' && (
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(request.status)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
+                            variant="outline"
                             onClick={() => {
-                              setSelectedBooking(booking);
-                              setShowFlightModal(true);
+                              setSelectedRequest(request);
+                              setShowDetailsModal(true);
                             }}
-                            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xs px-3 py-1"
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-medium transition-all duration-200"
                           >
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Update Details
+                            View
                           </Button>
-                        )}
-                        {booking.status === 'completed' && (
-                          <div className="text-xs text-green-600 font-medium">✓ Booked with Absolute Cabs</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+                          {(request.status === 'created' || request.status === 'pending') && (
+                            <>
+                              {transportProvider?.is_enabled && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleBookRequest(request)}
+                                  disabled={bookingInProgress === request.id}
+                                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                                >
+                                  {bookingInProgress === request.id ? (
+                                    <>
+                                      <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                                      Booking...
+                                    </>
+                                  ) : (
+                                    'Book'
+                                  )}
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedRequest(request);
+                                  setShowConfirmModal(true);
+                                }}
+                                className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 font-medium transition-all duration-200"
+                              >
+                                Confirm
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
-        {/* Flight Details Modal */}
-        <FlightDetailsModal
-          open={showFlightModal}
-          onOpenChange={setShowFlightModal}
-          booking={selectedBooking}
-          onSuccess={() => {
-            fetchData();
-            setSelectedBooking(null);
-          }}
-          apiClient={apiClient}
-          tenantSlug={tenantSlug}
-        />
+        {/* Details Modal */}
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="sm:max-w-lg bg-white border-0 shadow-2xl">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-xl font-bold text-gray-900">Transport Request Details</DialogTitle>
+            </DialogHeader>
+            {selectedRequest && (
+              <div className="space-y-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-blue-900">{selectedRequest.passenger_name}</h3>
+                      <p className="text-sm text-blue-700">{selectedRequest.passenger_phone}</p>
+                    </div>
+                    <div className="ml-auto">
+                      {getStatusBadge(selectedRequest.status)}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Route Details
+                    </Label>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Pickup Location</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedRequest.pickup_address}</p>
+                      </div>
+                      <div className="border-l-2 border-gray-300 pl-4 ml-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Dropoff Location</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedRequest.dropoff_address}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Schedule & Flight
+                    </Label>
+                    <div className="mt-3 space-y-2">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Pickup Time</p>
+                        <p className="text-sm font-medium text-gray-900">{formatDateTime(selectedRequest.pickup_time)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Flight Details</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedRequest.flight_details || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {selectedRequest.event && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <Label className="text-sm font-semibold text-gray-700">Event</Label>
+                      <p className="text-sm font-medium text-gray-900 mt-1">{selectedRequest.event.title}</p>
+                    </div>
+                  )}
+                  
+                  {selectedRequest.notes && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <Label className="text-sm font-semibold text-gray-700">Notes</Label>
+                      <p className="text-sm text-gray-700 mt-1 leading-relaxed">{selectedRequest.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Manual Confirmation Modal */}
+        <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+          <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-xl font-bold text-gray-900">Confirm Transport Request</DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                Enter vehicle and driver details to confirm this transport request manually.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="text-sm text-blue-800">
+                  Confirming transport for: <strong className="text-blue-900">{selectedRequest?.passenger_name}</strong>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="confirmDriverName" className="text-sm font-semibold text-gray-700">Driver Name *</Label>
+                  <Input
+                    id="confirmDriverName"
+                    value={confirmationData.driverName}
+                    onChange={(e) => setConfirmationData(prev => ({ ...prev, driverName: e.target.value }))}
+                    placeholder="Enter driver name"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmDriverPhone" className="text-sm font-semibold text-gray-700">Driver Phone *</Label>
+                  <Input
+                    id="confirmDriverPhone"
+                    value={confirmationData.driverPhone}
+                    onChange={(e) => setConfirmationData(prev => ({ ...prev, driverPhone: e.target.value }))}
+                    placeholder="Enter phone number"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmNumberPlate" className="text-sm font-semibold text-gray-700">Number Plate *</Label>
+                <Input
+                  id="confirmNumberPlate"
+                  value={confirmationData.numberPlate}
+                  onChange={(e) => setConfirmationData(prev => ({ ...prev, numberPlate: e.target.value.toUpperCase() }))}
+                  placeholder="Enter vehicle number plate"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 font-mono text-center"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="confirmVehicleType" className="text-sm font-semibold text-gray-700">Vehicle Type</Label>
+                  <Select
+                    value={confirmationData.vehicleType}
+                    onValueChange={(value) => setConfirmationData(prev => ({ ...prev, vehicleType: value }))}
+                  >
+                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="SUV">SUV</SelectItem>
+                      <SelectItem value="Sedan">Sedan</SelectItem>
+                      <SelectItem value="Van">Van</SelectItem>
+                      <SelectItem value="Bus">Bus</SelectItem>
+                      <SelectItem value="Pickup">Pickup Truck</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmVehicleColor" className="text-sm font-semibold text-gray-700">Vehicle Color</Label>
+                  <Input
+                    id="confirmVehicleColor"
+                    value={confirmationData.vehicleColor}
+                    onChange={(e) => setConfirmationData(prev => ({ ...prev, vehicleColor: e.target.value }))}
+                    placeholder="Enter vehicle color"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="pt-6 border-t border-gray-200">
+              <div className="flex gap-3 w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    setSelectedRequest(null);
+                    setConfirmationData({ driverName: '', driverPhone: '', vehicleType: 'SUV', vehicleColor: '', numberPlate: '' });
+                  }}
+                  className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleManualConfirmation}
+                  disabled={!confirmationData.driverName || !confirmationData.driverPhone || !confirmationData.numberPlate || bookingInProgress === selectedRequest?.id}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  {bookingInProgress === selectedRequest?.id ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Confirming...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirm Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
