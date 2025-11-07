@@ -251,7 +251,13 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                 variant="outline"
                 className="px-2 py-1 text-xs font-medium border-2 border-red-200 text-red-700 bg-red-50"
               >
-                {Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                {(() => {
+                  const start = new Date(event.start_date);
+                  const end = new Date(event.end_date);
+                  const diffTime = Math.abs(end.getTime() - start.getTime());
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return diffDays;
+                })()} days
               </Badge>
               <Badge
                 className={event.event_status === 'upcoming' ? 'px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800' : event.event_status === 'ongoing' ? 'px-2 py-1 text-xs font-medium bg-green-100 text-green-800' : 'px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800'}

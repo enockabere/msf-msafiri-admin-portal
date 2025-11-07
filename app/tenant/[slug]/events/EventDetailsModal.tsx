@@ -820,7 +820,13 @@ export default function EventDetailsModal({
                         <div className="flex justify-between items-center py-2">
                           <span className="text-xs font-normal text-gray-600">Duration:</span>
                           <span className="text-xs text-red-600 font-semibold">
-                            {Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1} days
+                            {(() => {
+                              const start = new Date(event.start_date);
+                              const end = new Date(event.end_date);
+                              const diffTime = Math.abs(end.getTime() - start.getTime());
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              return diffDays;
+                            })()} days
                           </span>
                         </div>
                       </div>
@@ -1150,7 +1156,12 @@ export default function EventDetailsModal({
                   eventId={event.id}
                   tenantSlug={tenantSlug}
                   eventHasEnded={eventHasEnded}
-                  eventDays={Math.floor(Math.abs(new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60 * 24)) + 1}
+                  eventDays={(() => {
+                    const start = new Date(event.start_date);
+                    const end = new Date(event.end_date);
+                    const diffTime = Math.abs(end.getTime() - start.getTime());
+                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  })()}
                 />
               </TabsContent>
 
