@@ -936,13 +936,14 @@ export default function TenantAdminUsersPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <DropdownMenu>
+                          <DropdownMenu modal={false}>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
-                                className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="h-8 w-8 p-0 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-gray-300 focus:outline-none"
+                                aria-label="User actions"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -950,6 +951,7 @@ export default function TenantAdminUsersPage() {
                             <DropdownMenuContent
                               align="end"
                               className="w-48 bg-white border border-gray-200 shadow-lg rounded-md"
+                              sideOffset={5}
                             >
                               <DropdownMenuItem
                                 onClick={() => openAddRoleModal(user)}

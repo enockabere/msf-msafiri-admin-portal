@@ -4,7 +4,9 @@
       "Bash(cat:*)",
       "Read(//d/development/msafiri-visitor-api/app/api/v1/endpoints/**)",
       "Read(//d/development/msafiri-visitor-api/**)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []
