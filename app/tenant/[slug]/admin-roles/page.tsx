@@ -370,21 +370,11 @@ export default function TenantAdminRolesPage() {
       <div className="space-y-6">
         <div className="w-full space-y-4">
           {/* Header and Create Button */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Roles</h1>
-              <p className="text-gray-600">
-                Manage custom roles for your organization
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              disabled={!isTenantAdmin && user?.role !== "SUPER_ADMIN" && user?.role !== "super_admin"}
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-4 h-4" />
-              Create Role
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Admin Roles</h1>
+            <p className="text-gray-600">
+              View existing roles for your organization
+            </p>
           </div>
 
           {/* Table */}
@@ -422,7 +412,7 @@ export default function TenantAdminRolesPage() {
                             No roles found
                           </div>
                           <div className="text-xs text-gray-500">
-                            Create your first custom role to get started
+                            No custom roles have been created yet
                           </div>
                         </div>
                       </td>
