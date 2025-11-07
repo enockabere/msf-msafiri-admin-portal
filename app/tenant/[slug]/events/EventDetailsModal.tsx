@@ -547,17 +547,6 @@ export default function EventDetailsModal({
               >
                 {event.status}
               </Badge>
-              {canManageEvents && !eventHasStarted && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditMode(true)}
-                  className="text-gray-700 border-gray-300 hover:bg-white hover:border-red-300 hover:text-red-600"
-                >
-                  <Edit3 className="h-3.5 w-3.5 mr-1" />
-                  Edit
-                </Button>
-              )}
             </div>
           </DialogTitle>
           <DialogDescription className="sr-only">
