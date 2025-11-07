@@ -91,59 +91,78 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
     }
   };
 
-  const createDefaultRequirements = async () => {
+  const applyToAllCountries = async () => {
     try {
       setCreatingDefaults(true);
       
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
       const tenantId = tenantResponse.id;
       
-      // Get countries that don't have requirements yet
-      const unconfiguredCountries = countries.filter(country => 
-        country !== tenantCountry && !requirements[country]?.id
-      );
+      // Get all countries except tenant country
+      const allCountries = countries.filter(country => country !== tenantCountry);
+      let updatedCount = 0;
       
-      // Create default requirements for each unconfigured country
-      for (const country of unconfiguredCountries) {
+      // Apply settings to all countries
+      for (const country of allCountries) {
         try {
-          const defaultReq = {
+          const currentReq = requirements[country];
+          const newReq = {
             country,
             visa_required: defaultSettings.visa_required,
             eta_required: defaultSettings.eta_required,
             passport_required: defaultSettings.passport_required,
             flight_ticket_required: defaultSettings.flight_ticket_required,
-            additional_requirements: []
+            additional_requirements: currentReq?.additional_requirements || []
           };
           
-          const response = await apiClient.request<TravelRequirement>(
-            `/country-travel-requirements/tenant/${tenantId}`,
-            {
-              method: "POST",
-              body: JSON.stringify(defaultReq)
-            }
-          );
+          let response;
+          if (currentReq?.id) {
+            // Update existing requirement
+            response = await apiClient.request<TravelRequirement>(
+              `/country-travel-requirements/tenant/${tenantId}/country/${encodeURIComponent(country)}`,
+              {
+                method: "PUT",
+                body: JSON.stringify({
+                  visa_required: newReq.visa_required,
+                  eta_required: newReq.eta_required,
+                  passport_required: newReq.passport_required,
+                  flight_ticket_required: newReq.flight_ticket_required
+                })
+              }
+            );
+          } else {
+            // Create new requirement
+            response = await apiClient.request<TravelRequirement>(
+              `/country-travel-requirements/tenant/${tenantId}`,
+              {
+                method: "POST",
+                body: JSON.stringify(newReq)
+              }
+            );
+          }
           
           setRequirements(prev => ({
             ...prev,
             [country]: response
           }));
+          updatedCount++;
         } catch (error) {
-          console.error(`Failed to create requirements for ${country}:`, error);
+          console.error(`Failed to update requirements for ${country}:`, error);
         }
       }
       
       toast({
         title: "Success",
-        description: `Default requirements created for ${unconfiguredCountries.length} countries`
+        description: `Requirements updated for ${updatedCount} countries`
       });
       
       setShowDefaultsModal(false);
       
     } catch (error) {
-      console.error("Error creating default requirements:", error);
+      console.error("Error updating requirements:", error);
       toast({
         title: "Error",
-        description: "Failed to create default requirements",
+        description: "Failed to update requirements",
         variant: "destructive"
       });
     } finally {
@@ -477,17 +496,15 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                 <AlertCircle className="h-3.5 w-3.5" />
                 Pending
               </Button>
-              {stats.unconfigured > 0 && (
-                <Button
-                  onClick={() => setShowDefaultsModal(true)}
-                  disabled={creatingDefaults}
-                  className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white"
-                  size="sm"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Defaults ({stats.unconfigured})
-                </Button>
-              )}
+              <Button
+                onClick={() => setShowDefaultsModal(true)}
+                disabled={creatingDefaults}
+                className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white"
+                size="sm"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Configure All Countries
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -760,9 +777,9 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       {showDefaultsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Configure Default Requirements</h3>
+            <h3 className="text-lg font-semibold mb-4">Configure All Countries</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Select which requirements should be enabled by default for all {stats.unconfigured} unconfigured countries:
+              Apply these settings to all {countries.filter(c => c !== tenantCountry).length} countries. This will update existing configurations:
             </p>
             
             <div className="space-y-4">
@@ -829,19 +846,19 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
             
             <div className="flex gap-3 mt-6">
               <Button
-                onClick={createDefaultRequirements}
+                onClick={applyToAllCountries}
                 disabled={creatingDefaults}
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 {creatingDefaults ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Creating...
+                    Applying...
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Defaults
+                    Apply to All
                   </>
                 )}
               </Button>
