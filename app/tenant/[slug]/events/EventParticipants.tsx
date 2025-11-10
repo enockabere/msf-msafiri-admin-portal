@@ -21,6 +21,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 
 interface Participant {
@@ -89,6 +91,154 @@ interface EventParticipantsProps {
   allowAdminAdd?: boolean;
   onParticipantsChange?: (count: number) => void;
   eventHasEnded?: boolean;
+}
+
+// LOI Quick Access Component for table
+function LOIQuickAccess({ participant, eventId }: { participant: Participant; eventId: number }) {
+  const [hasLOI, setHasLOI] = useState<boolean | null>(null);
+  const [recordId, setRecordId] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const checkLOI = async () => {
+    if (checking || hasLOI !== null) return;
+    
+    setChecking(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/loi`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHasLOI(true);
+        setRecordId(data.record_id);
+      } else {
+        setHasLOI(false);
+      }
+    } catch (error) {
+      setHasLOI(false);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const openLOI = () => {
+    if (recordId) {
+      const url = `${window.location.origin}/public/loi/${recordId}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  // Auto-check on mount for selected/confirmed participants
+  useEffect(() => {
+    if (['selected', 'confirmed', 'attended'].includes(participant.status?.toLowerCase())) {
+      checkLOI();
+    }
+  }, [participant.status]);
+
+  if (checking) {
+    return (
+      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+    );
+  }
+
+  if (hasLOI && recordId) {
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={openLOI}
+        className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+        title="View Letter of Invitation"
+      >
+        <FileText className="h-3 w-3" />
+      </Button>
+    );
+  }
+
+  return null;
+}
+
+// LOI Component
+function LOISection({ participant, eventId }: { participant: Participant; eventId: number }) {
+  const [loiData, setLoiData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLOI = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/loi`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLoiData(data);
+      } else {
+        setError('LOI not available for this participant');
+      }
+    } catch (error) {
+      setError('Failed to fetch LOI data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openLOIPage = () => {
+    if (loiData?.record_id) {
+      const url = `${window.location.origin}/public/loi/${loiData.record_id}`;
+      window.open(url, '_blank');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {!loiData && !loading && !error && (
+        <Button
+          onClick={fetchLOI}
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Check LOI Availability
+        </Button>
+      )}
+      
+      {loading && (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          <span className="text-sm text-gray-600">Checking LOI...</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="text-sm text-gray-500">
+          {error}
+        </div>
+      )}
+      
+      {loiData && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-700">LOI Available</p>
+              <p className="text-xs text-gray-500">Record ID: {loiData.record_id}</p>
+            </div>
+            <Button
+              onClick={openLOIPage}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View LOI
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EventParticipants({
@@ -924,6 +1074,14 @@ export default function EventParticipants({
                           No recommendation available
                         </span>
                       )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2">
+                      Letter of Invitation (LOI):
+                    </span>
+                    <div className="bg-white p-4 rounded-lg border">
+                      <LOISection participant={participant} eventId={eventId} />
                     </div>
                   </div>
                   {/* Travel Requirements & Checklist Status */}
@@ -2397,6 +2555,7 @@ export default function EventParticipants({
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-1">
+                    <LOIQuickAccess participant={participant} eventId={eventId} />
                     {participant.status === "selected" &&
                       participant.email &&
                       participant.email.trim() && (

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User } from "lucide-react";
+import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User, Combine, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,12 @@ export default function TransportPage() {
     vehicleType: 'SUV'
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showPoolingModal, setShowPoolingModal] = useState(false);
+  const [selectedRequests, setSelectedRequests] = useState<number[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [poolingSuggestions, setPoolingSuggestions] = useState<any[]>([]);
+  const [selectedVehicleType, setSelectedVehicleType] = useState('');
   const [confirmationData, setConfirmationData] = useState({
     driverName: '',
     driverPhone: '',
@@ -117,19 +123,49 @@ export default function TransportPage() {
     }
   }, [apiClient, tenantSlug]);
 
+  const fetchVehicleTypes = useCallback(async () => {
+    try {
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/vehicle-types`);
+      return response.vehicle_types || [];
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error);
+      return [];
+    }
+  }, [apiClient, tenantSlug]);
+
+  const fetchPoolingSuggestions = useCallback(async () => {
+    try {
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
+      return response.suggestions || [];
+    } catch (error) {
+      console.error('Error fetching pooling suggestions:', error);
+      return [];
+    }
+  }, [apiClient, tenantSlug]);
+
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
 
     try {
       setLoading(true);
       
-      const [requests, provider] = await Promise.all([
+      const [requests, provider, types, suggestions] = await Promise.all([
         fetchTransportRequests(),
-        fetchTransportProvider()
+        fetchTransportProvider(),
+        fetchVehicleTypes(),
+        fetchPoolingSuggestions()
       ]);
       
       setTransportRequests(requests);
       setTransportProvider(provider);
+      setVehicleTypes(types);
+      setPoolingSuggestions(suggestions);
     } catch (error) {
       console.error("Error loading transport data:", error);
       toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
@@ -214,7 +250,14 @@ export default function TransportPage() {
     }
   };
 
-  const handleBookRequest = async (request: TransportRequest) => {
+  const handleBookRequest = async (request: TransportRequest, vehicleType?: string) => {
+    if (!vehicleType && transportProvider?.is_enabled) {
+      // Show vehicle selection modal
+      setSelectedRequest(request);
+      setShowVehicleModal(true);
+      return;
+    }
+
     setBookingInProgress(request.id);
     try {
       const result = await createAbsoluteCabsBooking(request);
@@ -239,6 +282,61 @@ export default function TransportPage() {
     } finally {
       setBookingInProgress(null);
     }
+  };
+
+  const handleVehicleSelection = async () => {
+    if (!selectedRequest || !selectedVehicleType) {
+      toast({ title: "Error", description: "Please select a vehicle type", variant: "destructive" });
+      return;
+    }
+
+    setShowVehicleModal(false);
+    
+    // Update the request with selected vehicle type before booking
+    const updatedRequest = { ...selectedRequest, vehicle_type: selectedVehicleType };
+    await handleBookRequest(updatedRequest, selectedVehicleType);
+    
+    setSelectedRequest(null);
+    setSelectedVehicleType('');
+  };
+
+  const handlePooledBooking = async (requestIds: number[], vehicleType: string) => {
+    try {
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      const response = await apiClient.request(
+        `/transport-requests/pool-booking`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            request_ids: requestIds,
+            vehicle_type: vehicleType,
+            notes: 'Pooled booking from admin portal'
+          }),
+          headers: {
+            'X-Tenant-ID': tenantId.toString()
+          }
+        }
+      );
+      
+      toast({ 
+        title: "Pooled Booking Created", 
+        description: `Successfully created pooled booking for ${response.passengers} passengers` 
+      });
+      
+      await fetchData();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create pooled booking", variant: "destructive" });
+    }
+  };
+
+  const toggleRequestSelection = (requestId: number) => {
+    setSelectedRequests(prev => 
+      prev.includes(requestId) 
+        ? prev.filter(id => id !== requestId)
+        : [...prev, requestId]
+    );
   };
 
   const handleManualConfirmation = async () => {
@@ -367,6 +465,16 @@ export default function TransportPage() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
+              {transportProvider?.is_enabled && poolingSuggestions.length > 0 && (
+                <Button
+                  onClick={() => setShowPoolingModal(true)}
+                  variant="outline"
+                  className="border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  <Combine className="w-4 h-4 mr-2" />
+                  Pool Requests ({poolingSuggestions.length})
+                </Button>
+              )}
               {!transportProvider?.is_enabled && (
                 <Button
                   onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
@@ -540,6 +648,7 @@ export default function TransportPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {transportProvider?.is_enabled && <TableHead className="w-12">Select</TableHead>}
                     <TableHead>Passenger</TableHead>
                     <TableHead>Flight</TableHead>
                     <TableHead>Route</TableHead>
@@ -551,6 +660,18 @@ export default function TransportPage() {
                 <TableBody>
                   {filteredRequests.map((request) => (
                     <TableRow key={request.id}>
+                      {transportProvider?.is_enabled && (
+                        <TableCell>
+                          {(request.status === 'created' || request.status === 'pending') && (
+                            <input
+                              type="checkbox"
+                              checked={selectedRequests.includes(request.id)}
+                              onChange={() => toggleRequestSelection(request.id)}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium">{request.passenger_name}</div>
@@ -642,6 +763,174 @@ export default function TransportPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Bulk Actions */}
+        {transportProvider?.is_enabled && selectedRequests.length > 0 && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Combine className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-blue-900">
+                      {selectedRequests.length} requests selected
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      Create pooled booking or individual bookings
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedRequests([])}
+                    className="border-gray-300 text-gray-700"
+                  >
+                    Clear Selection
+                  </Button>
+                  {selectedRequests.length >= 2 && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        // Auto-create pooled booking with suggested vehicle
+                        const suggestedVehicle = selectedRequests.length > 4 ? 'Van' : 'SUV';
+                        handlePooledBooking(selectedRequests, suggestedVehicle);
+                        setSelectedRequests([]);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Combine className="w-3 h-3 mr-1" />
+                      Pool Selected
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Vehicle Selection Modal */}
+        <Dialog open={showVehicleModal} onOpenChange={setShowVehicleModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Select Vehicle Type</DialogTitle>
+              <DialogDescription>
+                Choose the appropriate vehicle type for this booking
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-1 gap-3">
+                {vehicleTypes.map((vehicle) => (
+                  <div
+                    key={vehicle.id}
+                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                      selectedVehicleType === vehicle.type
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setSelectedVehicleType(vehicle.type)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{vehicle.type}</h4>
+                        <p className="text-sm text-gray-500">{vehicle.seats} seats</p>
+                      </div>
+                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        {selectedVehicleType === vehicle.type && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowVehicleModal(false);
+                  setSelectedVehicleType('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleVehicleSelection}
+                disabled={!selectedVehicleType}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Book with {selectedVehicleType}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Pooling Suggestions Modal */}
+        <Dialog open={showPoolingModal} onOpenChange={setShowPoolingModal}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Pooling Suggestions</DialogTitle>
+              <DialogDescription>
+                Suggested request groupings based on time and location proximity
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
+              {poolingSuggestions.map((suggestion) => (
+                <Card key={suggestion.group_id} className="border-green-200">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="font-medium text-green-900">
+                          {suggestion.passenger_count} passengers • {suggestion.suggested_vehicle}
+                        </h4>
+                        <p className="text-sm text-green-700">
+                          Time window: {suggestion.time_window}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const requestIds = suggestion.requests.map((r: any) => r.id);
+                          handlePooledBooking(requestIds, suggestion.suggested_vehicle);
+                          setShowPoolingModal(false);
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Combine className="w-3 h-3 mr-1" />
+                        Pool
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {suggestion.requests.map((req: any) => (
+                        <div key={req.id} className="text-sm bg-green-50 p-2 rounded">
+                          <div className="font-medium">{req.passenger_name}</div>
+                          <div className="text-green-700">
+                            {req.pickup_address} → {req.dropoff_address}
+                          </div>
+                          <div className="text-green-600">
+                            {new Date(req.pickup_time).toLocaleTimeString()} • {req.flight_details}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowPoolingModal(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Details Modal */}
         <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
