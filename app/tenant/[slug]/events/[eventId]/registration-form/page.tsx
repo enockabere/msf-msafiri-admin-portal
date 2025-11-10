@@ -512,11 +512,14 @@ export default function EventRegistrationFormPage() {
     if (!recipientEmail) {
       toast({
         title: "Email Required",
-        description: "Please enter a recipient email address.",
+        description: "Please enter at least one recipient email address.",
         variant: "destructive"
       });
       return;
     }
+    
+    const toEmails = recipientEmail.split(',').map(email => email.trim()).filter(email => email);
+    const ccEmailsList = ccEmails ? ccEmails.split(',').map(email => email.trim()).filter(email => email) : [];
     
     try {
       setSendingEmail(true);
@@ -524,8 +527,8 @@ export default function EventRegistrationFormPage() {
       await apiClient.request('/notifications/send-registration-email', {
         method: 'POST',
         body: JSON.stringify({
-          to_email: recipientEmail,
-          cc_emails: ccEmails ? ccEmails.split(',').map(email => email.trim()) : [],
+          to_email: toEmails[0], // Primary recipient
+          cc_emails: [...toEmails.slice(1), ...ccEmailsList], // Additional recipients as CC
           subject,
           message: body,
           registration_url: publicUrl,
@@ -533,14 +536,16 @@ export default function EventRegistrationFormPage() {
         })
       });
       
+      const totalRecipients = toEmails.length + ccEmailsList.length;
       toast({
         title: "Email Sent",
-        description: `Registration link sent to ${recipientEmail}${ccEmails ? ` and ${ccEmails.split(',').length} CC recipient(s)` : ''}`
+        description: `Registration link sent to ${totalRecipients} recipient(s)`
       });
     } catch {
       // Fallback to mailto
-      const ccParam = ccEmails ? `&cc=${encodeURIComponent(ccEmails)}` : '';
-      const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(
+      const allCcEmails = [...toEmails.slice(1), ...ccEmailsList].join(',');
+      const ccParam = allCcEmails ? `&cc=${encodeURIComponent(allCcEmails)}` : '';
+      const mailtoUrl = `mailto:${encodeURIComponent(toEmails[0])}?subject=${encodeURIComponent(
         subject
       )}&body=${encodeURIComponent(body)}${ccParam}`;
       window.open(mailtoUrl);
@@ -751,12 +756,12 @@ export default function EventRegistrationFormPage() {
                     </Label>
                     <Input
                       id="recipientEmail"
-                      type="email"
                       value={recipientEmail}
                       onChange={(e) => setRecipientEmail(e.target.value)}
-                      placeholder="recipient@example.com"
+                      placeholder="recipient1@example.com, recipient2@example.com"
                       className="mt-1.5 h-10 border-gray-300 focus:border-blue-500 text-sm"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
                   </div>
                   <div>
                     <Label
