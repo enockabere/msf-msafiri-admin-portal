@@ -683,7 +683,7 @@ export default function PublicEventRegistrationPage() {
           <CardContent className="p-6 sm:p-8">
             {/* Step 1: Personal Information */}
             {currentStep === 1 && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Personal Information
@@ -693,7 +693,7 @@ export default function PublicEventRegistrationPage() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label
                       htmlFor="firstName"
@@ -710,7 +710,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("firstName", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="Enter your first name"
                     />
                   </div>
@@ -731,30 +731,33 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("lastName", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="Enter your last name"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     What is your OC? <span className="text-red-500">*</span>
                   </Label>
                   <RadioGroup
                     value={formData.oc}
                     onValueChange={(value) => handleInputChange("oc", value)}
-                    className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+                    className="grid grid-cols-2 sm:grid-cols-3 gap-2"
                   >
                     {["OCA", "OCB", "OCBA", "OCG", "OCP", "WACA"].map((oc) => (
                       <div
                         key={oc}
-                        className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        onClick={() => handleInputChange("oc", oc)}
+                        className={`flex items-center space-x-2 p-2.5 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                          formData.oc === oc ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                        }`}
                       >
-                        <RadioGroupItem value={oc} id={oc} />
+                        <RadioGroupItem value={oc} id={oc} className="pointer-events-none" />
                         <Label
                           htmlFor={oc}
-                          className="font-medium cursor-pointer"
+                          className="font-medium cursor-pointer pointer-events-none"
                         >
                           {oc}
                         </Label>
@@ -763,7 +766,7 @@ export default function PublicEventRegistrationPage() {
                   </RadioGroup>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     Contract Status <span className="text-red-500">*</span>
                   </Label>
@@ -777,12 +780,15 @@ export default function PublicEventRegistrationPage() {
                     {["On contract", "Between contracts"].map((status) => (
                       <div
                         key={status}
-                        className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        onClick={() => handleInputChange("contractStatus", status)}
+                        className={`flex items-center space-x-2 p-2.5 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                          formData.contractStatus === status ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                        }`}
                       >
-                        <RadioGroupItem value={status} id={status} />
+                        <RadioGroupItem value={status} id={status} className="pointer-events-none" />
                         <Label
                           htmlFor={status}
-                          className="cursor-pointer flex-1"
+                          className="cursor-pointer flex-1 pointer-events-none"
                         >
                           {status}
                         </Label>
@@ -791,7 +797,7 @@ export default function PublicEventRegistrationPage() {
                   </RadioGroup>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     Type of Contract <span className="text-red-500">*</span>
                   </Label>
@@ -804,15 +810,18 @@ export default function PublicEventRegistrationPage() {
                     onValueChange={(value) =>
                       handleInputChange("contractType", value)
                     }
-                    className="grid grid-cols-2 gap-3"
+                    className="grid grid-cols-2 gap-2"
                   >
                     {["HQ", "IMS", "LRS", "Other"].map((type) => (
                       <div
                         key={type}
-                        className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        onClick={() => handleInputChange("contractType", type)}
+                        className={`flex items-center space-x-2 p-2.5 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                          formData.contractType === type ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                        }`}
                       >
-                        <RadioGroupItem value={type} id={type} />
-                        <Label htmlFor={type} className="cursor-pointer">
+                        <RadioGroupItem value={type} id={type} className="pointer-events-none" />
+                        <Label htmlFor={type} className="cursor-pointer pointer-events-none">
                           {type}
                         </Label>
                       </div>
@@ -820,8 +829,8 @@ export default function PublicEventRegistrationPage() {
                   </RadioGroup>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       Gender Identity <span className="text-red-500">*</span>
                     </Label>
@@ -830,7 +839,7 @@ export default function PublicEventRegistrationPage() {
                       onValueChange={(value) =>
                         handleInputChange("genderIdentity", value)
                       }
-                      className="space-y-2"
+                      className="space-y-1.5"
                     >
                       {[
                         "Man",
@@ -841,12 +850,15 @@ export default function PublicEventRegistrationPage() {
                       ].map((gender) => (
                         <div
                           key={gender}
-                          className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          onClick={() => handleInputChange("genderIdentity", gender)}
+                          className={`flex items-center space-x-2 p-2 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                            formData.genderIdentity === gender ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                          }`}
                         >
-                          <RadioGroupItem value={gender} id={gender} />
+                          <RadioGroupItem value={gender} id={gender} className="pointer-events-none" />
                           <Label
                             htmlFor={gender}
-                            className="text-sm cursor-pointer"
+                            className="text-sm cursor-pointer pointer-events-none flex-1"
                           >
                             {gender}
                           </Label>
@@ -855,7 +867,7 @@ export default function PublicEventRegistrationPage() {
                     </RadioGroup>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       Sex <span className="text-red-500">*</span>
                     </Label>
@@ -865,17 +877,20 @@ export default function PublicEventRegistrationPage() {
                     <RadioGroup
                       value={formData.sex}
                       onValueChange={(value) => handleInputChange("sex", value)}
-                      className="space-y-2"
+                      className="space-y-1.5"
                     >
                       {["Female", "Male", "Other"].map((sex) => (
                         <div
                           key={sex}
-                          className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          onClick={() => handleInputChange("sex", sex)}
+                          className={`flex items-center space-x-2 p-2 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                            formData.sex === sex ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                          }`}
                         >
-                          <RadioGroupItem value={sex} id={sex} />
+                          <RadioGroupItem value={sex} id={sex} className="pointer-events-none" />
                           <Label
                             htmlFor={sex}
-                            className="text-sm cursor-pointer"
+                            className="text-sm cursor-pointer pointer-events-none flex-1"
                           >
                             {sex}
                           </Label>
@@ -884,7 +899,7 @@ export default function PublicEventRegistrationPage() {
                     </RadioGroup>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium flex items-center gap-1">
                       Pronouns <span className="text-red-500">*</span>
                     </Label>
@@ -893,18 +908,21 @@ export default function PublicEventRegistrationPage() {
                       onValueChange={(value) =>
                         handleInputChange("pronouns", value)
                       }
-                      className="space-y-2"
+                      className="space-y-1.5"
                     >
                       {["He / him", "She / her", "They / Them", "Other"].map(
                         (pronoun) => (
                           <div
                             key={pronoun}
-                            className="flex items-center space-x-2 p-2 border rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                            onClick={() => handleInputChange("pronouns", pronoun)}
+                            className={`flex items-center space-x-2 p-2 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                              formData.pronouns === pronoun ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                            }`}
                           >
-                            <RadioGroupItem value={pronoun} id={pronoun} />
+                            <RadioGroupItem value={pronoun} id={pronoun} className="pointer-events-none" />
                             <Label
                               htmlFor={pronoun}
-                              className="text-sm cursor-pointer"
+                              className="text-sm cursor-pointer pointer-events-none flex-1"
                             >
                               {pronoun}
                             </Label>
@@ -929,12 +947,12 @@ export default function PublicEventRegistrationPage() {
                     onChange={(e) =>
                       handleInputChange("currentPosition", e.target.value)
                     }
-                    className="border-2 focus:border-red-500"
+                    className="border-2 focus:border-red-500 h-10"
                     placeholder="e.g., Project Coordinator"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label
                       htmlFor="countryOfWork"
@@ -1001,7 +1019,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("projectOfWork", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="e.g., Nairobi Project"
                     />
                   </div>
@@ -1011,7 +1029,7 @@ export default function PublicEventRegistrationPage() {
 
             {/* Step 2: Contact Details */}
             {currentStep === 2 && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Contact Details
@@ -1040,7 +1058,7 @@ export default function PublicEventRegistrationPage() {
                     onChange={(e) =>
                       handleInputChange("personalEmail", e.target.value)
                     }
-                    className={`border-2 focus:border-red-500 ${emailError ? 'border-red-500' : ''}`}
+                    className={`border-2 focus:border-red-500 h-10 ${emailError ? 'border-red-500' : ''}`}
                     placeholder="your.email@example.com"
                   />
                   {emailError && (
@@ -1054,7 +1072,7 @@ export default function PublicEventRegistrationPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="msfEmail" className="text-sm font-medium">
                       MSF Email
@@ -1066,7 +1084,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("msfEmail", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="your.name@msf.org"
                     />
                   </div>
@@ -1082,7 +1100,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("hrcoEmail", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="hrco@example.com"
                     />
                   </div>
@@ -1101,7 +1119,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("careerManagerEmail", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="manager@example.com"
                     />
                   </div>
@@ -1123,7 +1141,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("lineManagerEmail", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="line.manager@example.com"
                     />
                   </div>
@@ -1144,7 +1162,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("phoneNumber", e.target.value)
                       }
-                      className="border-2 focus:border-red-500"
+                      className="border-2 focus:border-red-500 h-10"
                       placeholder="00 XX XXXXXXXXX"
                     />
                   </div>
@@ -1154,7 +1172,7 @@ export default function PublicEventRegistrationPage() {
 
             {/* Step 3: Travel & Accommodation */}
             {currentStep === 3 && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Travel & Accommodation
@@ -1164,7 +1182,7 @@ export default function PublicEventRegistrationPage() {
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     Will you be travelling internationally for this event?{" "}
                     <span className="text-red-500">*</span>
@@ -1179,7 +1197,9 @@ export default function PublicEventRegistrationPage() {
                     {["Yes", "No"].map((option) => (
                       <div
                         key={option}
-                        className="flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                        className={`flex items-center space-x-2 p-2.5 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                          formData.travellingInternationally === option ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                        }`}
                         onClick={() => handleInputChange("travellingInternationally", option)}
                       >
                         <RadioGroupItem
@@ -1244,7 +1264,7 @@ export default function PublicEventRegistrationPage() {
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium flex items-center gap-1">
                     Accommodation Type <span className="text-red-500">*</span>
                   </Label>
@@ -1258,28 +1278,40 @@ export default function PublicEventRegistrationPage() {
                     }
                     className="space-y-2"
                   >
-                    <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                    <div
+                      onClick={() => handleInputChange("accommodationType", "Staying at accommodation")}
+                      className={`flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                        formData.accommodationType === "Staying at accommodation" ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                      }`}
+                    >
                       <RadioGroupItem
                         value="Staying at accommodation"
                         id="staying"
+                        className="pointer-events-none"
                       />
                       <Label
                         htmlFor="staying"
-                        className="cursor-pointer flex-1"
+                        className="cursor-pointer flex-1 pointer-events-none"
                       >
                         <span className="font-medium">
                           Staying at {tenant?.name || 'MSF'} accommodation overnight
                         </span>
                       </Label>
                     </div>
-                    <div className="flex items-center space-x-2 p-4 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                    <div
+                      onClick={() => handleInputChange("accommodationType", "Travelling daily")}
+                      className={`flex items-center space-x-2 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer ${
+                        formData.accommodationType === "Travelling daily" ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                      }`}
+                    >
                       <RadioGroupItem
                         value="Travelling daily"
                         id="travelling"
+                        className="pointer-events-none"
                       />
                       <Label
                         htmlFor="travelling"
-                        className="cursor-pointer flex-1"
+                        className="cursor-pointer flex-1 pointer-events-none"
                       >
                         <span className="font-medium">
                           Travelling daily and staying elsewhere
@@ -1399,7 +1431,7 @@ export default function PublicEventRegistrationPage() {
 
             {/* Step 4: Final Details */}
             {currentStep === 4 && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Final Details
@@ -1423,7 +1455,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("certificateName", e.target.value)
                       }
-                      className="border-2 focus:border-purple-500 bg-white"
+                      className="border-2 focus:border-purple-500 bg-white h-10"
                       placeholder="e.g., Dr. Jane Elizabeth Smith"
                     />
                   </div>
@@ -1441,7 +1473,7 @@ export default function PublicEventRegistrationPage() {
                       onChange={(e) =>
                         handleInputChange("badgeName", e.target.value)
                       }
-                      className="border-2 focus:border-purple-500 bg-white"
+                      className="border-2 focus:border-purple-500 bg-white h-10"
                       placeholder="e.g., Jane Smith"
                     />
                   </div>
@@ -1470,7 +1502,7 @@ export default function PublicEventRegistrationPage() {
                     <h3 className="font-semibold text-amber-900 mb-2">
                       MSF Code of Conduct
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-1">
                         I confirm that I have read and will abide by the {tenant?.name || 'MSF'}
                         code of conduct <span className="text-red-500">*</span>
@@ -1481,11 +1513,16 @@ export default function PublicEventRegistrationPage() {
                           handleInputChange("codeOfConductConfirm", value)
                         }
                       >
-                        <div className="flex items-center space-x-2 p-3 bg-white border-2 rounded-lg hover:border-amber-500 transition-all cursor-pointer">
-                          <RadioGroupItem value="Yes" id="conduct-yes" />
+                        <div
+                          onClick={() => handleInputChange("codeOfConductConfirm", "Yes")}
+                          className={`flex items-center space-x-2 p-2.5 bg-white border-2 rounded-lg hover:border-amber-500 transition-all cursor-pointer ${
+                            formData.codeOfConductConfirm === "Yes" ? 'border-amber-500 bg-amber-50' : 'border-gray-200'
+                          }`}
+                        >
+                          <RadioGroupItem value="Yes" id="conduct-yes" className="pointer-events-none" />
                           <Label
                             htmlFor="conduct-yes"
-                            className="cursor-pointer"
+                            className="cursor-pointer pointer-events-none flex-1"
                           >
                             Yes, I confirm
                           </Label>
@@ -1512,7 +1549,7 @@ export default function PublicEventRegistrationPage() {
                       <p>• HRCOs book travel for country program staff</p>
 
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <Label className="text-sm font-medium flex items-center gap-1">
                         I confirm I have read and understood the above{" "}
                         <span className="text-red-500">*</span>
@@ -1523,11 +1560,16 @@ export default function PublicEventRegistrationPage() {
                           handleInputChange("travelRequirementsConfirm", value)
                         }
                       >
-                        <div className="flex items-center space-x-2 p-3 bg-white border-2 rounded-lg hover:border-red-500 transition-all cursor-pointer">
-                          <RadioGroupItem value="Yes" id="travel-confirm-yes" />
+                        <div
+                          onClick={() => handleInputChange("travelRequirementsConfirm", "Yes")}
+                          className={`flex items-center space-x-2 p-2.5 bg-white border-2 rounded-lg hover:border-red-500 transition-all cursor-pointer ${
+                            formData.travelRequirementsConfirm === "Yes" ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                          }`}
+                        >
+                          <RadioGroupItem value="Yes" id="travel-confirm-yes" className="pointer-events-none" />
                           <Label
                             htmlFor="travel-confirm-yes"
-                            className="cursor-pointer"
+                            className="cursor-pointer pointer-events-none flex-1"
                           >
                             Yes, I confirm
                           </Label>
