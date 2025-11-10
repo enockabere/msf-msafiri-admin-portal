@@ -5,26 +5,21 @@ import { useParams } from "next/navigation";
 import { User, Calendar, MapPin, Clock, FileText, Download, CheckCircle } from "lucide-react";
 
 interface LOIData {
-  result?: {
-    status: string;
-    data?: {
-      passport_no?: string;
-      given_names?: string;
-      surname?: string;
-      nationality?: string;
-      date_of_birth?: string;
-      date_of_expiry?: string;
-      issue_country?: string;
-      gender?: string;
-      attachmeent_ids?: Array<{
-        id: number;
-        name: string;
-        filename?: string;
-        size?: number;
-        datas: string; // base64 encoded file data
-      }>;
-    };
-  };
+  passport_no?: string;
+  given_names?: string;
+  surname?: string;
+  nationality?: string;
+  date_of_birth?: string;
+  date_of_expiry?: string;
+  issue_country?: string;
+  gender?: string;
+  attachmeent_ids?: Array<{
+    id: number;
+    name: string;
+    filename?: string;
+    size?: number;
+    datas: string; // base64 encoded file data
+  }>;
 }
 
 export default function PublicLOIPage() {
@@ -118,7 +113,7 @@ export default function PublicLOIPage() {
     );
   }
 
-  if (!loiData || !loiData.result || loiData.result.status !== 'success') {
+  if (!loiData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
@@ -134,7 +129,7 @@ export default function PublicLOIPage() {
     );
   }
 
-  const data = loiData.result.data;
+  const data = loiData;
   const attachments = data?.attachmeent_ids || [];
 
   return (
