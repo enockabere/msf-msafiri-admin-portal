@@ -60,28 +60,86 @@ export default function PublicLOIPage() {
 
   const downloadBase64File = (base64Data: string, fileName: string) => {
     try {
+      console.log('Starting download for:', fileName);
+      console.log('Base64 data length:', base64Data.length);
+      
       // Remove data URL prefix if present
       const base64Content = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
       
+      // Decode base64 to binary
       const byteCharacters = atob(base64Content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
       
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      // Create blob with proper MIME type
+      const blob = new Blob([byteArray], { 
+        type: 'application/pdf'
+      });
+      
+      console.log('Blob created, size:', blob.size);
+      
+      // Try different download methods
+      if (navigator.userAgent.includes('Chrome') || navigator.userAgent.includes('Edge')) {
+        // For Chrome/Edge - use direct blob download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = fileName;
+        a.target = '_blank';
+        
+        document.body.appendChild(a);
+        
+        // Force click with timeout
+        setTimeout(() => {
+          a.click();
+          console.log('Download triggered');
+          
+          // Cleanup after delay
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+        }, 10);
+        
+      } else {
+        // Fallback for other browsers
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Cleanup after delay
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+      
     } catch (error) {
       console.error('Download failed:', error);
-      alert('Failed to download file. Please try again.');
+      
+      // Fallback: try to open in new tab as data URL
+      try {
+        const dataUrl = `data:application/pdf;base64,${base64Data}`;
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(`
+            <html>
+              <head><title>${fileName}</title></head>
+              <body style="margin:0;">
+                <embed src="${dataUrl}" type="application/pdf" width="100%" height="100%" />
+                <p><a href="${dataUrl}" download="${fileName}">Click here to download ${fileName}</a></p>
+              </body>
+            </html>
+          `);
+        } else {
+          alert('Please allow popups to download the file, or try a different browser.');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback failed:', fallbackError);
+        alert('Download failed. Please try using a different browser or contact support.');
+      }
     }
   };
 
@@ -244,13 +302,25 @@ export default function PublicLOIPage() {
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => downloadBase64File(attachment.datas, fileName)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download LOI
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => downloadBase64File(attachment.datas, fileName)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download LOI
+                          </button>
+                          <button
+                            onClick={() => {
+                              const dataUrl = `data:application/pdf;base64,${attachment.datas}`;
+                              window.open(dataUrl, '_blank');
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
+                          >
+                            <FileText className="h-4 w-4" />
+                            View PDF
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
