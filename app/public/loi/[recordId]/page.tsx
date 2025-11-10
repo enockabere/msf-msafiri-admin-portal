@@ -61,7 +61,6 @@ export default function PublicLOIPage() {
   const downloadBase64File = (base64Data: string, fileName: string) => {
     try {
       console.log('Starting download for:', fileName);
-      console.log('Base64 data length:', base64Data.length);
       
       // Remove data URL prefix if present
       const base64Content = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
@@ -75,71 +74,29 @@ export default function PublicLOIPage() {
       const byteArray = new Uint8Array(byteNumbers);
       
       // Create blob with proper MIME type
-      const blob = new Blob([byteArray], { 
-        type: 'application/pdf'
-      });
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
       
-      console.log('Blob created, size:', blob.size);
+      // Create download link
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = fileName;
       
-      // Try different download methods
-      if (navigator.userAgent.includes('Chrome') || navigator.userAgent.includes('Edge')) {
-        // For Chrome/Edge - use direct blob download
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = fileName;
-        a.target = '_blank';
-        
-        document.body.appendChild(a);
-        
-        // Force click with timeout
-        setTimeout(() => {
-          a.click();
-          console.log('Download triggered');
-          
-          // Cleanup after delay
-          setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }, 100);
-        }, 10);
-        
-      } else {
-        // Fallback for other browsers
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        
-        // Cleanup after delay
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      }
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      console.log('Download triggered successfully');
       
     } catch (error) {
       console.error('Download failed:', error);
-      
-      // Fallback: try to open in new tab as data URL
-      try {
-        const dataUrl = `data:application/pdf;base64,${base64Data}`;
-        const newWindow = window.open();
-        if (newWindow) {
-          newWindow.document.write(`
-            <html>
-              <head><title>${fileName}</title></head>
-              <body style="margin:0;">
-                <embed src="${dataUrl}" type="application/pdf" width="100%" height="100%" />
-                <p><a href="${dataUrl}" download="${fileName}">Click here to download ${fileName}</a></p>
-              </body>
-            </html>
-          `);
-        } else {
-          alert('Please allow popups to download the file, or try a different browser.');
-        }
-      } catch (fallbackError) {
-        console.error('Fallback failed:', fallbackError);
-        alert('Download failed. Please try using a different browser or contact support.');
-      }
+      alert('Download failed. Please try using a different browser or contact support.');
     }
   };
 
@@ -312,8 +269,67 @@ export default function PublicLOIPage() {
                           </button>
                           <button
                             onClick={() => {
-                              const dataUrl = `data:application/pdf;base64,${attachment.datas}`;
-                              window.open(dataUrl, '_blank');
+                              try {
+                                // Remove data URL prefix if present
+                                const base64Content = attachment.datas.includes(',') ? attachment.datas.split(',')[1] : attachment.datas;
+                                
+                                // Decode base64 to binary
+                                const byteCharacters = atob(base64Content);
+                                const byteNumbers = new Array(byteCharacters.length);
+                                for (let i = 0; i < byteCharacters.length; i++) {
+                                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                }
+                                const byteArray = new Uint8Array(byteNumbers);
+                                
+                                // Create blob with proper MIME type
+                                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                                const blobUrl = URL.createObjectURL(blob);
+                                
+                                // Open in new window with proper PDF viewer
+                                const newWindow = window.open('', '_blank');
+                                if (newWindow) {
+                                  newWindow.document.write(`
+                                    <html>
+                                      <head>
+                                        <title>${fileName}</title>
+                                        <style>
+                                          body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+                                          .header { background: #dc2626; color: white; padding: 10px; text-align: center; }
+                                          .content { height: calc(100vh - 50px); }
+                                          iframe { width: 100%; height: 100%; border: none; }
+                                          .fallback { padding: 20px; text-align: center; }
+                                          .download-btn { background: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px; }
+                                        </style>
+                                      </head>
+                                      <body>
+                                        <div class="header">
+                                          <h3>${fileName}</h3>
+                                        </div>
+                                        <div class="content">
+                                          <iframe src="${blobUrl}" type="application/pdf">
+                                            <div class="fallback">
+                                              <p>Your browser doesn't support PDF viewing.</p>
+                                              <a href="${blobUrl}" download="${fileName}" class="download-btn">Download PDF</a>
+                                            </div>
+                                          </iframe>
+                                        </div>
+                                        <script>
+                                          // Cleanup blob URL when window closes
+                                          window.addEventListener('beforeunload', function() {
+                                            URL.revokeObjectURL('${blobUrl}');
+                                          });
+                                        </script>
+                                      </body>
+                                    </html>
+                                  `);
+                                  newWindow.document.close();
+                                } else {
+                                  alert('Please allow popups to view the PDF.');
+                                }
+                              } catch (error) {
+                                console.error('PDF view failed:', error);
+                                alert('Failed to open PDF viewer. Please try downloading the file instead.');
+                              }
                             }}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
                           >
