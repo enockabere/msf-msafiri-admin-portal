@@ -1055,13 +1055,13 @@ export default function EventAllocations({
             </div>
           </div>
 
-          {/* Scanner Management Section */}
-          {scanners && scanners.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h5 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Voucher Scanners ({scanners.length})
-              </h5>
+          {/* Scanner Management Section - Always Show */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h5 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Voucher Scanners ({scanners?.length || 0})
+            </h5>
+            {scanners && scanners.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {scanners.map((scanner, index) => (
                   <div key={`scanner-${scanner.id}-${index}`} className="bg-white border border-blue-200 rounded-lg p-3">
@@ -1103,8 +1103,14 @@ export default function EventAllocations({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-6">
+                <User className="h-12 w-12 text-blue-300 mx-auto mb-3" />
+                <p className="text-blue-700 font-medium">No scanners created yet</p>
+                <p className="text-blue-600 text-sm">Click "Add Scanner" to create voucher scanner accounts</p>
+              </div>
+            )}
+          </div>
 
           {/* Voucher Statistics */}
           {voucherStats && (
