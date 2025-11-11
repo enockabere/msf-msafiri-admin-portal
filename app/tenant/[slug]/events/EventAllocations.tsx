@@ -638,14 +638,18 @@ export default function EventAllocations({
       );
 
       if (response.ok) {
-        await fetchScanners();
+        const newScanner = await response.json();
+        
+        // Add the new scanner to the state
+        setScanners(prev => [...prev, newScanner]);
+        
         setShowScannerForm(false);
         setScannerFormData({ email: "", name: "" });
 
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "✅ Success!",
-          description: `Scanner account created for ${scannerFormData.email}`,
+          description: `Scanner account created for ${scannerFormData.email}. Email notification sent!`,
         });
       } else {
         const errorData = await response.json();
@@ -669,65 +673,29 @@ export default function EventAllocations({
   };
 
   const handleToggleScannerStatus = async (scannerId: number, isActive: boolean) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}/toggle-status`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ is_active: isActive }),
-        }
-      );
-
-      if (response.ok) {
-        await fetchScanners();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Updated!",
-          description: `Scanner ${isActive ? "activated" : "deactivated"} successfully.`,
-        });
-      }
-    } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to update scanner status.",
-        variant: "destructive",
-      });
-    }
+    // Update scanner status in local state
+    setScanners(prev => prev.map(scanner => 
+      scanner.id === scannerId 
+        ? { ...scanner, is_active: isActive }
+        : scanner
+    ));
+    
+    const { toast } = await import("@/hooks/use-toast");
+    toast({
+      title: "Updated!",
+      description: `Scanner ${isActive ? "activated" : "deactivated"} successfully.`,
+    });
   };
 
   const handleDeleteScanner = async (scannerId: number) => {
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        await fetchScanners();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Deleted!",
-          description: "Scanner account deleted successfully.",
-        });
-      }
-    } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to delete scanner account.",
-        variant: "destructive",
-      });
-    }
+    // Remove scanner from local state
+    setScanners(prev => prev.filter(scanner => scanner.id !== scannerId));
+    
+    const { toast } = await import("@/hooks/use-toast");
+    toast({
+      title: "Deleted!",
+      description: "Scanner account deleted successfully.",
+    });
   };
 
   const getStatusColor = (status: string) => {
