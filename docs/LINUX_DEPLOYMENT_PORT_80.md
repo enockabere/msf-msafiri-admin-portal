@@ -62,12 +62,12 @@ Add the following configuration (adjust IPs/domains as needed):
 # Production Environment Variables for MSF Admin Portal
 
 # API Configuration - CRITICAL: Must be accessible from server
-NEXT_PUBLIC_API_URL=http://YOUR_SERVER_IP:8000
-NEXT_PUBLIC_WS_URL=ws://YOUR_SERVER_IP:8000
+NEXT_PUBLIC_API_URL=http://msf.msafiri.org:8000
+NEXT_PUBLIC_WS_URL=ws://msf.msafiri.org:8000
 
 # NextAuth Configuration
 NEXTAUTH_SECRET=your-super-secret-key-here-make-this-unique-and-long-production-key
-NEXTAUTH_URL=http://YOUR_DOMAIN_OR_IP
+NEXTAUTH_URL=http://msf.msafiri.org
 
 # Microsoft Azure AD Configuration (for SSO)
 AZURE_AD_CLIENT_ID=your-azure-client-id
@@ -157,7 +157,7 @@ sudo nano /etc/nginx/sites-available/msafiri-portal
 ```nginx
 server {
     listen 80;
-    server_name YOUR_DOMAIN_OR_IP;
+    server_name msf.msafiri.org;
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
@@ -269,8 +269,8 @@ curl http://localhost:3000
 # Test through Nginx
 curl http://localhost
 
-# Test from external (replace with your server IP)
-curl http://YOUR_SERVER_IP
+# Test from external
+curl http://msf.msafiri.org
 ```
 
 ## Maintenance Commands
@@ -350,10 +350,11 @@ sudo systemctl status nginx
 ## Security Considerations
 
 1. **Firewall**: Only allow necessary ports (22, 80, 443)
-2. **SSL/HTTPS**: Consider adding SSL certificate for production
+2. **SSL/HTTPS**: Consider adding SSL certificate for https://msf.msafiri.org
 3. **Environment Variables**: Keep sensitive data in `.env.production`
 4. **Updates**: Regularly update system packages and Node.js
 5. **Monitoring**: Set up monitoring for application health
+6. **DNS**: Ensure msf.msafiri.org points to your server IP
 
 ## Performance Optimization
 
@@ -383,11 +384,28 @@ cd api
 # Setup API deployment
 ```
 
+## SSL/HTTPS Setup (Recommended)
+
+For production, add SSL certificate for https://msf.msafiri.org:
+
+```bash
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# Get SSL certificate
+sudo certbot --nginx -d msf.msafiri.org
+
+# Auto-renewal
+sudo crontab -e
+# Add: 0 12 * * * /usr/bin/certbot renew --quiet
+```
+
 ## Access Your Application
 
 Once deployed successfully, access your application at:
-- **HTTP**: `http://YOUR_SERVER_IP` or `http://YOUR_DOMAIN`
-- **Direct**: `http://YOUR_SERVER_IP:3000` (if firewall allows)
-- **API (future)**: `http://YOUR_SERVER_IP:8000`
+- **HTTP**: `http://msf.msafiri.org`
+- **HTTPS**: `https://msf.msafiri.org` (after SSL setup)
+- **Direct**: `http://msf.msafiri.org:3000` (if firewall allows)
+- **API (future)**: `http://msf.msafiri.org:8000`
 
-The application should now be running on port 80 and accessible via your server's IP address or domain name.
+The application should now be running on port 80 and accessible via msf.msafiri.org.
