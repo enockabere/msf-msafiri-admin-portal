@@ -70,6 +70,24 @@ interface VoucherAllocation {
   created_at: string;
 }
 
+interface VoucherScanner {
+  id: number;
+  email: string;
+  name?: string;
+  is_active: boolean;
+  created_at: string;
+  created_by: string;
+}
+
+interface ParticipantRedemption {
+  user_id: number;
+  participant_name: string;
+  participant_email: string;
+  allocated_count: number;
+  redeemed_count: number;
+  last_redemption_date?: string;
+}
+
 interface InventoryItem {
   id: number;
   name: string;
@@ -94,6 +112,8 @@ export default function EventAllocations({
     VoucherAllocation[]
   >([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [scanners, setScanners] = useState<VoucherScanner[]>([]);
+  const [participantRedemptions, setParticipantRedemptions] = useState<ParticipantRedemption[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("items");
   const [itemViewMode, setItemViewMode] = useState<"card" | "table">("table");
@@ -114,6 +134,13 @@ export default function EventAllocations({
   const [voucherFormData, setVoucherFormData] = useState({
     drink_vouchers_per_participant: "",
     notes: "",
+  });
+
+  // Scanner form
+  const [showScannerForm, setShowScannerForm] = useState(false);
+  const [scannerFormData, setScannerFormData] = useState({
+    email: "",
+    name: "",
   });
 
   // Stats
@@ -256,16 +283,84 @@ export default function EventAllocations({
     }
   }, [eventId, tenantSlug]);
 
+  const fetchScanners = useCallback(async () => {
+    try {
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!tenantResponse.ok) return;
+
+      const tenantData = await tenantResponse.json();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/event/${eventId}?tenant_id=${tenantData.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setScanners(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch scanners:", error);
+    }
+  }, [eventId, tenantSlug]);
+
+  const fetchParticipantRedemptions = useCallback(async () => {
+    try {
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!tenantResponse.ok) return;
+
+      const tenantData = await tenantResponse.json();
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-redemptions/event/${eventId}/participants?tenant_id=${tenantData.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setParticipantRedemptions(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch participant redemptions:", error);
+    }
+  }, [eventId, tenantSlug]);
+
   useEffect(() => {
     fetchItemAllocations();
     fetchVoucherAllocations();
     fetchInventoryItems();
     fetchVoucherStats();
+    fetchScanners();
+    fetchParticipantRedemptions();
   }, [
     fetchItemAllocations,
     fetchVoucherAllocations,
     fetchInventoryItems,
     fetchVoucherStats,
+    fetchScanners,
+    fetchParticipantRedemptions,
   ]);
 
   const handleSubmitItemAllocation = async () => {
@@ -496,6 +591,140 @@ export default function EventAllocations({
       toast({
         title: "Error!",
         description: "Failed to delete voucher allocation.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSubmitScanner = async () => {
+    if (!scannerFormData.email) {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Please enter scanner email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      const tenantData = await tenantResponse.json();
+      const createdBy = localStorage.getItem("userEmail") || "admin";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            event_id: eventId,
+            email: scannerFormData.email,
+            name: scannerFormData.name,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        await fetchScanners();
+        setShowScannerForm(false);
+        setScannerFormData({ email: "", name: "" });
+
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "✅ Success!",
+          description: `Scanner account created for ${scannerFormData.email}`,
+        });
+      } else {
+        const errorData = await response.json();
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: errorData.message || "Failed to create scanner account.",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to create scanner account.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleScannerStatus = async (scannerId: number, isActive: boolean) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}/toggle-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ is_active: isActive }),
+        }
+      );
+
+      if (response.ok) {
+        await fetchScanners();
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Updated!",
+          description: `Scanner ${isActive ? "activated" : "deactivated"} successfully.`,
+        });
+      }
+    } catch {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to update scanner status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteScanner = async (scannerId: number) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchScanners();
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Deleted!",
+          description: "Scanner account deleted successfully.",
+        });
+      }
+    } catch {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to delete scanner account.",
         variant: "destructive",
       });
     }
@@ -833,44 +1062,210 @@ export default function EventAllocations({
 
         <TabsContent value="vouchers" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h4 className="text-lg font-semibold">Voucher Allocations</h4>
-            <Button
-              onClick={() => {
-                setShowVoucherForm(true);
-                fetchVoucherStats();
-              }}
-              disabled={eventHasEnded || voucherAllocations.length > 0}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Vouchers
-            </Button>
+            <h4 className="text-lg font-semibold">Voucher Management</h4>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowScannerForm(true)}
+                disabled={eventHasEnded}
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Add Scanner
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowVoucherForm(true);
+                  fetchVoucherStats();
+                }}
+                disabled={eventHasEnded || voucherAllocations.length > 0}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Vouchers
+              </Button>
+            </div>
           </div>
 
-          {voucherStats && (
+          {/* Scanner Management Section */}
+          {scanners && scanners.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h5 className="font-medium text-blue-900 mb-2">
+              <h5 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Voucher Scanners ({scanners.length})
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {scanners.map((scanner, index) => (
+                  <div key={`scanner-${scanner.id}-${index}`} className="bg-white border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{scanner.name || scanner.email}</div>
+                          <div className="text-xs text-gray-500">{scanner.email}</div>
+                        </div>
+                      </div>
+                      <Badge className={scanner.is_active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                        {scanner.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Created: {new Date(scanner.created_at).toLocaleDateString()}
+                    </div>
+                    <div className="flex gap-1 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleScannerStatus(scanner.id, !scanner.is_active)}
+                        className="flex-1 text-xs"
+                      >
+                        {scanner.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteScanner(scanner.id)}
+                        className="text-red-600 hover:text-red-700 text-xs"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Voucher Statistics */}
+          {voucherStats && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h5 className="font-medium text-green-900 mb-3 flex items-center gap-2">
+                <Wine className="h-4 w-4" />
                 Voucher Statistics
               </h5>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-blue-700">Total Participants:</span>
-                  <div className="font-semibold text-blue-900">
-                    {voucherStats.total_participants}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="bg-white p-3 rounded border">
+                  <span className="text-green-700 block">Total Participants:</span>
+                  <div className="font-semibold text-green-900 text-lg">
+                    {voucherStats.total_participants || 0}
                   </div>
                 </div>
-                <div>
-                  <span className="text-blue-700">Allocated Vouchers:</span>
-                  <div className="font-semibold text-blue-900">
-                    {voucherStats.total_allocated_vouchers}
+                <div className="bg-white p-3 rounded border">
+                  <span className="text-green-700 block">Allocated Vouchers:</span>
+                  <div className="font-semibold text-green-900 text-lg">
+                    {voucherStats.total_allocated_vouchers || 0}
                   </div>
                 </div>
-                <div>
-                  <span className="text-blue-700">Redeemed Vouchers:</span>
-                  <div className="font-semibold text-blue-900">
-                    {voucherStats.total_redeemed_vouchers}
+                <div className="bg-white p-3 rounded border">
+                  <span className="text-green-700 block">Redeemed Vouchers:</span>
+                  <div className="font-semibold text-green-900 text-lg">
+                    {voucherStats.total_redeemed_vouchers || 0}
                   </div>
                 </div>
+                <div className="bg-white p-3 rounded border">
+                  <span className="text-green-700 block">Remaining:</span>
+                  <div className="font-semibold text-green-900 text-lg">
+                    {(voucherStats.total_allocated_vouchers || 0) - (voucherStats.total_redeemed_vouchers || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Participant Redemption Tracking */}
+          {participantRedemptions && participantRedemptions.length > 0 && (
+            <div className="bg-white border rounded-lg">
+              <div className="p-4 border-b">
+                <h5 className="font-medium text-gray-900 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Participant Voucher Tracking ({participantRedemptions.length})
+                </h5>
+                <p className="text-sm text-gray-600 mt-1">
+                  Monitor voucher usage and identify over-redemptions
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Participant</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Allocated</TableHead>
+                      <TableHead>Redeemed</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Redemption</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {participantRedemptions.map((participant, index) => {
+                      const isOverRedeemed = (participant.redeemed_count || 0) > (participant.allocated_count || 0);
+                      const balance = (participant.allocated_count || 0) - (participant.redeemed_count || 0);
+                      
+                      return (
+                        <TableRow key={`participant-${participant.user_id}-${index}`} className={isOverRedeemed ? "bg-red-50" : ""}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                <User className="h-4 w-4 text-gray-600" />
+                              </div>
+                              <div>
+                                <div className="font-medium">{participant.participant_name || 'Unknown'}</div>
+                                <div className="text-xs text-gray-500">ID: {participant.user_id || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{participant.participant_email || 'No email'}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                              {participant.allocated_count || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={isOverRedeemed ? "bg-red-100 text-red-700" : "bg-green-50 text-green-700"}>
+                              {participant.redeemed_count || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={balance < 0 ? "bg-red-100 text-red-800" : balance === 0 ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}>
+                              {balance || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {isOverRedeemed ? (
+                              <Badge className="bg-red-100 text-red-800 flex items-center gap-1 w-fit">
+                                <XCircle className="h-3 w-3" />
+                                Over-redeemed
+                              </Badge>
+                            ) : balance === 0 ? (
+                              <Badge className="bg-yellow-100 text-yellow-800 flex items-center gap-1 w-fit">
+                                <CheckCircle className="h-3 w-3" />
+                                Fully Used
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-800 flex items-center gap-1 w-fit">
+                                <CheckCircle className="h-3 w-3" />
+                                Active
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-gray-600">
+                              {participant.last_redemption_date 
+                                ? new Date(participant.last_redemption_date).toLocaleString()
+                                : "Never"
+                              }
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           )}
@@ -1121,6 +1516,76 @@ export default function EventAllocations({
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               {loading ? "Sending..." : "Send Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scanner Form Dialog */}
+      <Dialog open={showScannerForm} onOpenChange={setShowScannerForm}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
+          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
+            <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Scanner</DialogTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Create a scanner account for voucher redemption. If the email doesn't exist, a new user will be created.
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 px-1">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Scanner Email *
+              </label>
+              <Input
+                type="email"
+                value={scannerFormData.email}
+                onChange={(e) =>
+                  setScannerFormData((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                placeholder="Enter scanner's email address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Scanner Name
+              </label>
+              <Input
+                value={scannerFormData.name}
+                onChange={(e) =>
+                  setScannerFormData((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="Enter scanner's full name (optional)"
+              />
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <h6 className="font-medium text-blue-900 mb-2">Scanner Permissions</h6>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Can scan and redeem participant vouchers</li>
+                <li>• Can view voucher balances</li>
+                <li>• Cannot modify allocations or settings</li>
+                <li>• Access limited to this event only</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowScannerForm(false)}
+              className="border-gray-300 hover:bg-gray-50"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitScanner} 
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {loading ? "Creating..." : "Create Scanner"}
             </Button>
           </DialogFooter>
         </DialogContent>
