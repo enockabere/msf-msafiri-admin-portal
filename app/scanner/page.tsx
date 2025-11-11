@@ -5,17 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  QrCode, 
-  User, 
-  Wine, 
-  CheckCircle, 
-  XCircle, 
+import {
+  QrCode,
+  User,
+  Wine,
+  CheckCircle,
+  XCircle,
   AlertTriangle,
   Scan,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface ParticipantBalance {
   participant_id: number;
@@ -32,34 +31,30 @@ export default function VoucherScannerPage() {
   const [participantId, setParticipantId] = useState("");
   const [eventId, setEventId] = useState("");
   const [tenantId, setTenantId] = useState("");
-  const [participantBalance, setParticipantBalance] = useState<ParticipantBalance | null>(null);
+  const [participantBalance, setParticipantBalance] =
+    useState<ParticipantBalance | null>(null);
   const [loading, setLoading] = useState(false);
   const [redeeming, setRedeeming] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Get tenant and event from URL params or localStorage
     const urlParams = new URLSearchParams(window.location.search);
     const eventIdParam = urlParams.get("event_id");
     const tenantIdParam = urlParams.get("tenant_id");
-    
+
     if (eventIdParam) setEventId(eventIdParam);
     if (tenantIdParam) setTenantId(tenantIdParam);
   }, []);
 
   const fetchParticipantBalance = async (participantIdToCheck: string) => {
     if (!participantIdToCheck || !eventId || !tenantId) {
-      toast({
-        title: "Error",
-        description: "Missing participant ID, event ID, or tenant ID",
-        variant: "destructive",
-      });
       return;
     }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch(
         `/api/voucher-redemptions/participant/${participantIdToCheck}/balance?event_id=${eventId}&tenant_id=${tenantId}`,
         {
@@ -73,20 +68,9 @@ export default function VoucherScannerPage() {
         const data = await response.json();
         setParticipantBalance(data);
       } else {
-        const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.detail || "Failed to fetch participant balance",
-          variant: "destructive",
-        });
         setParticipantBalance(null);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch participant balance",
-        variant: "destructive",
-      });
+    } catch {
       setParticipantBalance(null);
     } finally {
       setLoading(false);
@@ -98,7 +82,8 @@ export default function VoucherScannerPage() {
 
     setRedeeming(true);
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const token =
+        localStorage.getItem("token") || sessionStorage.getItem("token");
       const response = await fetch(
         `/api/voucher-redemptions/redeem?event_id=${eventId}&tenant_id=${tenantId}`,
         {
@@ -117,36 +102,19 @@ export default function VoucherScannerPage() {
 
       if (response.ok) {
         const data = await response.json();
-        
-        toast({
-          title: "✅ Voucher Redeemed!",
-          description: `${data.quantity_redeemed} voucher redeemed successfully`,
-        });
 
         if (data.is_over_redemption) {
-          toast({
-            title: "⚠️ Over-redemption Warning",
-            description: "This participant has exceeded their allocation",
-            variant: "destructive",
-          });
         }
 
         // Refresh balance
-        await fetchParticipantBalance(participantBalance.participant_id.toString());
+        await fetchParticipantBalance(
+          participantBalance.participant_id.toString()
+        );
       } else {
         const errorData = await response.json();
-        toast({
-          title: "Error",
-          description: errorData.detail || "Failed to redeem voucher",
-          variant: "destructive",
-        });
+        console.error("Error redeeming voucher:", errorData);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to redeem voucher",
-        variant: "destructive",
-      });
+    } catch {
     } finally {
       setRedeeming(false);
     }
@@ -159,14 +127,17 @@ export default function VoucherScannerPage() {
   };
 
   const getStatusColor = (balance: ParticipantBalance) => {
-    if (balance.is_over_redeemed) return "bg-red-100 text-red-800 border-red-200";
-    if (balance.remaining_vouchers === 0) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (balance.is_over_redeemed)
+      return "bg-red-100 text-red-800 border-red-200";
+    if (balance.remaining_vouchers === 0)
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
     return "bg-green-100 text-green-800 border-green-200";
   };
 
   const getStatusIcon = (balance: ParticipantBalance) => {
     if (balance.is_over_redeemed) return <XCircle className="h-4 w-4" />;
-    if (balance.remaining_vouchers === 0) return <AlertTriangle className="h-4 w-4" />;
+    if (balance.remaining_vouchers === 0)
+      return <AlertTriangle className="h-4 w-4" />;
     return <CheckCircle className="h-4 w-4" />;
   };
 
@@ -221,10 +192,6 @@ export default function VoucherScannerPage() {
                 className="w-full"
                 onClick={() => {
                   // In a real app, this would open camera for QR scanning
-                  toast({
-                    title: "QR Scanner",
-                    description: "QR code scanning would open camera here",
-                  });
                 }}
               >
                 <QrCode className="h-4 w-4 mr-2" />
@@ -245,8 +212,12 @@ export default function VoucherScannerPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="font-medium">{participantBalance.participant_name}</div>
-                <div className="text-sm text-gray-600">{participantBalance.participant_email}</div>
+                <div className="font-medium">
+                  {participantBalance.participant_name}
+                </div>
+                <div className="text-sm text-gray-600">
+                  {participantBalance.participant_email}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4 text-center">
@@ -271,14 +242,17 @@ export default function VoucherScannerPage() {
               </div>
 
               <div className="flex justify-center">
-                <Badge className={`${getStatusColor(participantBalance)} flex items-center gap-1`}>
+                <Badge
+                  className={`${getStatusColor(
+                    participantBalance
+                  )} flex items-center gap-1`}
+                >
                   {getStatusIcon(participantBalance)}
                   {participantBalance.is_over_redeemed
                     ? `Over-redeemed by ${participantBalance.over_redemption_count}`
                     : participantBalance.remaining_vouchers === 0
                     ? "Fully Used"
-                    : "Active"
-                  }
+                    : "Active"}
                 </Badge>
               </div>
 
@@ -289,7 +263,9 @@ export default function VoucherScannerPage() {
                     <span className="font-medium">Over-redemption Alert</span>
                   </div>
                   <p className="text-sm text-red-700 mt-1">
-                    This participant has redeemed {participantBalance.over_redemption_count} more vouchers than allocated.
+                    This participant has redeemed{" "}
+                    {participantBalance.over_redemption_count} more vouchers
+                    than allocated.
                   </p>
                 </div>
               )}
@@ -316,8 +292,8 @@ export default function VoucherScannerPage() {
             <h3 className="font-medium mb-2">How to use:</h3>
             <ol className="text-sm text-gray-600 space-y-1">
               <li>1. Enter participant ID or scan QR code</li>
-              <li>2. Review participant's voucher balance</li>
-              <li>3. Click "Redeem 1 Voucher" to process</li>
+              <li>2. Review participant&apos;s voucher balance</li>
+              <li>3. Click &quot;Redeem 1 Voucher&quot; to process</li>
               <li>4. Watch for over-redemption warnings</li>
             </ol>
           </CardContent>
