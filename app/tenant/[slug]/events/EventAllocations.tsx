@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -1344,6 +1345,9 @@ export default function EventAllocations({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-50">
           <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
             <DialogTitle className="text-xl font-semibold text-gray-900">Request Items</DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              Request items from inventory for this event. An email will be sent to the assigned person.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-1">
             <div>
@@ -1500,9 +1504,9 @@ export default function EventAllocations({
         <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
           <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
             <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Scanner</DialogTitle>
-            <p className="text-sm text-gray-600 mt-1">
+            <DialogDescription className="text-sm text-gray-600">
               Create a scanner account for voucher redemption. If the email doesn't exist, a new user will be created.
-            </p>
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-1">
             <div>
@@ -1570,6 +1574,9 @@ export default function EventAllocations({
         <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
           <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
             <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Allocation</DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              Set the number of drink vouchers each participant will receive for this event.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-1">
             <div>
