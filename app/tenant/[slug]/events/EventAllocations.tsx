@@ -113,41 +113,7 @@ export default function EventAllocations({
   >([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [scanners, setScanners] = useState<VoucherScanner[]>([]);
-  const [participantRedemptions, setParticipantRedemptions] = useState<ParticipantRedemption[]>([
-    // Mock data for demonstration - remove when backend is connected
-    {
-      user_id: 1,
-      participant_name: "John Doe",
-      participant_email: "john.doe@msf.org",
-      allocated_count: 3,
-      redeemed_count: 2,
-      last_redemption_date: "2024-11-10T14:30:00Z"
-    },
-    {
-      user_id: 2,
-      participant_name: "Jane Smith",
-      participant_email: "jane.smith@msf.org",
-      allocated_count: 3,
-      redeemed_count: 5, // Over-redeemed
-      last_redemption_date: "2024-11-11T09:15:00Z"
-    },
-    {
-      user_id: 3,
-      participant_name: "Mike Johnson",
-      participant_email: "mike.johnson@msf.org",
-      allocated_count: 3,
-      redeemed_count: 3, // Fully used
-      last_redemption_date: "2024-11-11T10:45:00Z"
-    },
-    {
-      user_id: 4,
-      participant_name: "Sarah Wilson",
-      participant_email: "sarah.wilson@msf.org",
-      allocated_count: 3,
-      redeemed_count: 0, // Not used
-      last_redemption_date: null
-    }
-  ]);
+  const [participantRedemptions, setParticipantRedemptions] = useState<ParticipantRedemption[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("items");
   const [itemViewMode, setItemViewMode] = useState<"card" | "table">("table");
@@ -182,12 +148,7 @@ export default function EventAllocations({
     total_participants: number;
     total_allocated_vouchers: number;
     total_redeemed_vouchers: number;
-  } | null>({
-    // Mock data for demonstration - remove when backend is connected
-    total_participants: 4,
-    total_allocated_vouchers: 12,
-    total_redeemed_vouchers: 10
-  });
+  } | null>(null);
 
   const categories = [
     { value: "stationary", label: "Stationery", icon: FileText },
@@ -661,7 +622,7 @@ export default function EventAllocations({
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
+        `/api/voucher-scanners/simple`,
         {
           method: "POST",
           headers: {
