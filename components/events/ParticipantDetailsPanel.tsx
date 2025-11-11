@@ -155,6 +155,7 @@ export default function ParticipantDetailsPanel({
   const [selectedAllocation, setSelectedAllocation] = useState<DrinkVoucherAllocation | null>(null);
   const [qrRefreshKey, setQrRefreshKey] = useState(0);
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [travelChecklistProgress, setTravelChecklistProgress] = useState<any>(null);
 
   const { apiClient } = useAuthenticatedApi();
 
@@ -308,6 +309,26 @@ export default function ParticipantDetailsPanel({
         console.error('DEBUG FLIGHT: Error status:', error.status);
         console.error('DEBUG FLIGHT: Full error object:', error);
         setFlightItineraries([]);
+      }
+
+      // Fetch travel checklist progress
+      try {
+        const checklistUrl = `/travel-checklist/progress/${eventId}/${participantEmail}`;
+        console.log(`🔍 PORTAL DEBUG: Fetching checklist from URL: ${checklistUrl}`);
+        console.log(`🔍 PORTAL DEBUG: Participant Email: ${participantEmail}, Event ID: ${eventId}`);
+        
+        const checklistData = await apiClient.request(
+          checklistUrl,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        
+        console.log(`✅ PORTAL DEBUG: SUCCESS - Received checklist progress:`, checklistData);
+        setTravelChecklistProgress(checklistData);
+      } catch (error: any) {
+        console.error('❌ PORTAL DEBUG: ERROR fetching checklist:', error);
+        console.error('❌ PORTAL DEBUG: Error message:', error.message);
+        console.error('❌ PORTAL DEBUG: Error status:', error.status);
+        setTravelChecklistProgress(null);
       }
     } catch (error) {
       console.error("Error fetching participant data:", error);
@@ -762,6 +783,73 @@ export default function ParticipantDetailsPanel({
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Debug Info */}
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="text-xs font-mono text-yellow-800">
+                      <div>🔍 PORTAL DEBUG: Travel Requirements Status</div>
+                      <div>📧 Participant: {participantEmail}</div>
+                      <div>🎫 Event ID: {eventId}</div>
+                      <div>📋 Passport Document: {String((participantDetails as Record<string, unknown>).passport_document)}</div>
+                      <div>✈️ Ticket Document: {String((participantDetails as Record<string, unknown>).ticket_document)}</div>
+                      <div>🌍 Requires ETA: {String((participantDetails as Record<string, unknown>).requires_eta)}</div>
+                      <div>💾 Mobile Checklist Status: {travelChecklistProgress ? 'Loaded' : 'Not Loaded'}</div>
+                      {travelChecklistProgress && (
+                        <>
+                          <div>✅ Checklist Completed: {String(travelChecklistProgress.completed)}</div>
+                          <div>📝 Checklist Items: {JSON.stringify(travelChecklistProgress.checklist_items)}</div>
+                          <div>🕰️ Last Updated: {travelChecklistProgress.updated_at || 'Never'}</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Mobile Checklist Status */}
+                  {travelChecklistProgress && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-blue-100 p-1.5 rounded">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <span className="font-semibold text-gray-900">Mobile Checklist Status</span>
+                        <Badge className={`text-xs px-2 py-1 ${
+                          travelChecklistProgress.completed
+                            ? 'bg-green-100 text-green-800 border-green-300'
+                            : 'bg-orange-100 text-orange-800 border-orange-300'
+                        }`}>
+                          {travelChecklistProgress.completed ? '✅ Complete' : '🔄 Pending'}
+                        </Badge>
+                      </div>
+                      
+                      {travelChecklistProgress.checklist_items && Object.keys(travelChecklistProgress.checklist_items).length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {Object.entries(travelChecklistProgress.checklist_items).map(([key, value]) => (
+                            <div key={key} className="flex items-center gap-2 bg-white p-2 rounded">
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                value ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                              }`}>
+                                {value && <span className="text-white text-xs">✓</span>}
+                              </div>
+                              <span className="text-gray-700 capitalize">
+                                {key.replace(/_/g, ' ')}
+                              </span>
+                              <span className={`text-xs px-1 py-0.5 rounded ${
+                                value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {value ? '✓' : '❌'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {travelChecklistProgress.updated_at && (
+                        <div className="mt-3 text-xs text-gray-500">
+                          Last updated: {new Date(travelChecklistProgress.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-5">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
