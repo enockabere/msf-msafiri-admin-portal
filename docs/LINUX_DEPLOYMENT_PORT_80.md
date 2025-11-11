@@ -35,17 +35,18 @@ sudo apt install git -y
 ### 1. Clone and Setup Application
 
 ```bash
-# Create application directory
-sudo mkdir -p /var/www/msf-admin-portal
-cd /var/www/msf-admin-portal
+# Create unified msafiri directory
+sudo mkdir -p /var/www/msafiri
+cd /var/www/msafiri
 
-# Clone repository (replace with your repo URL)
-sudo git clone <your-repo-url> .
+# Clone portal repository
+sudo git clone <your-portal-repo-url> portal
 
 # Set proper ownership
-sudo chown -R $USER:$USER /var/www/msf-admin-portal
+sudo chown -R $USER:$USER /var/www/msafiri
 
-# Install dependencies
+# Install portal dependencies
+cd portal
 npm install
 ```
 
@@ -99,10 +100,10 @@ sudo nano ecosystem.config.js
 module.exports = {
   apps: [
     {
-      name: 'msf-admin-portal',
+      name: 'msafiri-portal',
       script: 'npm',
       args: 'start',
-      cwd: '/var/www/msf-admin-portal',
+      cwd: '/var/www/msafiri/portal',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -112,9 +113,9 @@ module.exports = {
         PORT: 3000,
         HOSTNAME: '0.0.0.0'
       },
-      error_file: './logs/err.log',
-      out_file: './logs/out.log',
-      log_file: './logs/combined.log',
+      error_file: '/var/www/msafiri/logs/portal-err.log',
+      out_file: '/var/www/msafiri/logs/portal-out.log',
+      log_file: '/var/www/msafiri/logs/portal-combined.log',
       time: true
     }
   ]
@@ -124,8 +125,12 @@ module.exports = {
 ### 5. Start Application with PM2
 
 ```bash
-# Create logs directory
+# Create unified logs directory
+cd /var/www/msafiri
 mkdir -p logs
+
+# Go back to portal directory
+cd portal
 
 # Start application
 pm2 start ecosystem.config.js
@@ -139,14 +144,14 @@ pm2 startup
 
 # Check status
 pm2 status
-pm2 logs msf-admin-portal
+pm2 logs msafiri-portal
 ```
 
 ### 6. Configure Nginx Reverse Proxy (Port 80)
 
 Create Nginx configuration:
 ```bash
-sudo nano /etc/nginx/sites-available/msf-admin-portal
+sudo nano /etc/nginx/sites-available/msafiri-portal
 ```
 
 ```nginx
@@ -212,7 +217,7 @@ server {
 Enable the site:
 ```bash
 # Enable the site
-sudo ln -s /etc/nginx/sites-available/msf-admin-portal /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/msafiri-portal /etc/nginx/sites-enabled/
 
 # Remove default site (optional)
 sudo rm /etc/nginx/sites-enabled/default
@@ -357,10 +362,32 @@ sudo systemctl status nginx
 3. **CDN**: Consider using a CDN for static assets
 4. **Database**: Ensure API backend is optimized
 
+## Future API Deployment
+
+This structure is designed to accommodate the API deployment later:
+
+```bash
+/var/www/msafiri/
+├── portal/          # Next.js admin portal (port 3000)
+├── api/             # FastAPI backend (port 8000) - future
+└── logs/            # Unified logs for both services
+    ├── portal-*.log
+    └── api-*.log    # future
+```
+
+To add the API later:
+```bash
+cd /var/www/msafiri
+git clone <your-api-repo-url> api
+cd api
+# Setup API deployment
+```
+
 ## Access Your Application
 
 Once deployed successfully, access your application at:
 - **HTTP**: `http://YOUR_SERVER_IP` or `http://YOUR_DOMAIN`
 - **Direct**: `http://YOUR_SERVER_IP:3000` (if firewall allows)
+- **API (future)**: `http://YOUR_SERVER_IP:8000`
 
 The application should now be running on port 80 and accessible via your server's IP address or domain name.
