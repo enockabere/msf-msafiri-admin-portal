@@ -140,8 +140,7 @@ export default function EventAllocations({
   // Scanner form
   const [showScannerForm, setShowScannerForm] = useState(false);
   const [scannerFormData, setScannerFormData] = useState({
-    email: "",
-    name: "",
+    emails: [""], // Support multiple emails
   });
 
   // Stats
@@ -598,11 +597,13 @@ export default function EventAllocations({
   };
 
   const handleSubmitScanner = async () => {
-    if (!scannerFormData.email) {
+    const validEmails = scannerFormData.emails.filter(email => email.trim() && email.includes('@'));
+    
+    if (validEmails.length === 0) {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
-        description: "Please enter scanner email address.",
+        description: "Please enter at least one valid email address.",
         variant: "destructive",
       });
       return;
@@ -623,7 +624,7 @@ export default function EventAllocations({
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `/api/voucher-scanners/simple`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/bulk?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
         {
           method: "POST",
           headers: {
@@ -632,32 +633,31 @@ export default function EventAllocations({
           },
           body: JSON.stringify({
             event_id: eventId,
-            email: scannerFormData.email,
-            name: scannerFormData.name,
+            emails: validEmails,
           }),
         }
       );
 
       if (response.ok) {
-        const newScanner = await response.json();
+        const newScanners = await response.json();
         
-        // Add the new scanner to the state
-        setScanners(prev => [...prev, newScanner]);
+        // Add the new scanners to the state
+        setScanners(prev => [...prev, ...newScanners]);
         
         setShowScannerForm(false);
-        setScannerFormData({ email: "", name: "" });
+        setScannerFormData({ emails: [""] });
 
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "✅ Success!",
-          description: `Scanner account created for ${scannerFormData.email}. Email notification sent!`,
+          description: `${newScanners.length} scanner account(s) created. Email notifications sent!`,
         });
       } else {
         const errorData = await response.json();
         const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Error!",
-          description: errorData.message || "Failed to create scanner account.",
+          description: errorData.detail || "Failed to create scanner accounts.",
           variant: "destructive",
         });
       }
@@ -665,7 +665,7 @@ export default function EventAllocations({
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
-        description: "Failed to create scanner account.",
+        description: "Failed to create scanner accounts.",
         variant: "destructive",
       });
     } finally {
@@ -1510,42 +1510,55 @@ export default function EventAllocations({
           </DialogHeader>
           <div className="space-y-4 px-1">
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Scanner Email *
-              </label>
-              <Input
-                type="email"
-                value={scannerFormData.email}
-                onChange={(e) =>
-                  setScannerFormData((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
-                placeholder="Enter scanner's email address"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Scanner Name
-              </label>
-              <Input
-                value={scannerFormData.name}
-                onChange={(e) =>
-                  setScannerFormData((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                placeholder="Enter scanner's full name (optional)"
-              />
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-medium">
+                  Scanner Emails *
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setScannerFormData(prev => ({ emails: [...prev.emails, ""] }))}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Add Email
+                </Button>
+              </div>
+              {scannerFormData.emails.map((email, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      const newEmails = [...scannerFormData.emails];
+                      newEmails[index] = e.target.value;
+                      setScannerFormData({ emails: newEmails });
+                    }}
+                    placeholder="Enter email address"
+                    className="flex-1"
+                  />
+                  {scannerFormData.emails.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newEmails = scannerFormData.emails.filter((_, i) => i !== index);
+                        setScannerFormData({ emails: newEmails });
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <h6 className="font-medium text-blue-900 mb-2">Scanner Permissions</h6>
+              <h6 className="font-medium text-blue-900 mb-2">Scanner Information</h6>
               <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Existing users will get scanner role added to their account</li>
+                <li>• New users will be created with temporary password</li>
+                <li>• All scanners receive email with access instructions</li>
                 <li>• Can scan and redeem participant vouchers</li>
-                <li>• Can view voucher balances</li>
-                <li>• Cannot modify allocations or settings</li>
                 <li>• Access limited to this event only</li>
               </ul>
             </div>
