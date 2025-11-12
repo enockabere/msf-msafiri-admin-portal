@@ -527,7 +527,7 @@ export default function CreateBookingModal({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                 <SelectItem value="airport_pickup">Airport Pickup</SelectItem>
                 <SelectItem value="event_transfer">Event Transfer</SelectItem>
                 <SelectItem value="office_visit">Office Visit</SelectItem>
@@ -550,7 +550,7 @@ export default function CreateBookingModal({
               <SelectTrigger>
                 <SelectValue placeholder="Select event" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                 {formData.booking_type !== 'event_transfer' && <SelectItem value="none">No event</SelectItem>}
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id.toString()}>
@@ -675,7 +675,7 @@ export default function CreateBookingModal({
                 <SelectTrigger>
                   <SelectValue placeholder="Select accommodation" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                   {participantAccommodations.map((accommodation, index) => (
                     <SelectItem key={`${accommodation.id || index}-${accommodation.address}`} value={accommodation.address}>
                       {accommodation.name}
@@ -760,7 +760,7 @@ export default function CreateBookingModal({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                   <SelectItem value="absolute_taxi">Absolute Taxi (API)</SelectItem>
                   <SelectItem value="manual_vendor">Manual Vendor</SelectItem>
                 </SelectContent>

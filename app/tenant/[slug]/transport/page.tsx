@@ -1066,7 +1066,7 @@ export default function TransportPage() {
                     <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg z-50">
                       <SelectItem value="SUV">SUV</SelectItem>
                       <SelectItem value="Sedan">Sedan</SelectItem>
                       <SelectItem value="Van">Van</SelectItem>
