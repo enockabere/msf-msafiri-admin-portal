@@ -143,7 +143,11 @@ export default function TransportPage() {
       
       const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
       return response.suggestions || [];
-    } catch (error) {
+    } catch (error: any) {
+      // Suppress geopy module errors - pooling suggestions are optional
+      if (error?.message?.includes('geopy') || error?.message?.includes('No module named')) {
+        return [];
+      }
       console.error('Error fetching pooling suggestions:', error);
       return [];
     }
@@ -155,12 +159,19 @@ export default function TransportPage() {
     try {
       setLoading(true);
       
-      const [requests, provider, types, suggestions] = await Promise.all([
+      const [requests, provider, types] = await Promise.all([
         fetchTransportRequests(),
         fetchTransportProvider(),
-        fetchVehicleTypes(),
-        fetchPoolingSuggestions()
+        fetchVehicleTypes()
       ]);
+      
+      // Fetch pooling suggestions separately to avoid blocking the page
+      let suggestions = [];
+      try {
+        suggestions = await fetchPoolingSuggestions();
+      } catch (error) {
+        console.warn('Pooling suggestions unavailable:', error);
+      }
       
       setTransportRequests(requests);
       setTransportProvider(provider);
