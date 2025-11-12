@@ -145,28 +145,12 @@ export default function TransportPage() {
     }
   }, [apiClient, tenantSlug]);
 
-  const fetchPoolingSuggestions = useCallback(async () => {
-    try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
-      const tenantId = tenantResponse.id;
-      
-      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
-      return response.suggestions || [];
-    } catch (error: any) {
-      // Suppress geopy module errors - pooling suggestions are optional
-      if (error?.message?.includes('geopy') || error?.message?.includes('No module named')) {
-        return [];
-      }
-      console.error('Error fetching pooling suggestions:', error);
-      return [];
-    }
-  }, [apiClient, tenantSlug]);
-
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
 
     try {
       setLoading(true);
+      console.log('🔍 FETCH DEBUG: Starting to fetch data...');
       
       const [requests, provider, types] = await Promise.all([
         fetchTransportRequests(),
@@ -174,10 +158,16 @@ export default function TransportPage() {
         fetchVehicleTypes()
       ]);
       
+      console.log('🔍 FETCH DEBUG: Transport requests:', requests);
+      console.log('🔍 FETCH DEBUG: Transport provider:', provider);
+      console.log('🔍 FETCH DEBUG: Provider enabled:', provider?.is_enabled);
+      
       // Fetch pooling suggestions separately to avoid blocking the page
       let suggestions = [];
       try {
+        console.log('🔍 FETCH DEBUG: About to fetch pooling suggestions...');
         suggestions = await fetchPoolingSuggestions();
+        console.log('🔍 FETCH DEBUG: Pooling suggestions result:', suggestions);
       } catch (error) {
         console.warn('Pooling suggestions unavailable:', error);
       }
@@ -186,17 +176,73 @@ export default function TransportPage() {
       setTransportProvider(provider);
       setVehicleTypes(types);
       setPoolingSuggestions(suggestions);
+      
+      console.log('🔍 FETCH DEBUG: Final state - Provider enabled:', provider?.is_enabled);
+      console.log('🔍 FETCH DEBUG: Final state - Suggestions count:', suggestions.length);
+      console.log('🔍 FETCH DEBUG: Should show pool button:', provider?.is_enabled && suggestions.length > 0);
+      
     } catch (error) {
       console.error("Error loading transport data:", error);
       toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider]);
+  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchPoolingSuggestions]);
+
+  const fetchData = useCallback(async () => {
+    if (authLoading || !user) return;
+
+    try {
+      setLoading(true);
+      console.log('🔍 FETCH DEBUG: Starting to fetch data...');
+      
+      const [requests, provider, types] = await Promise.all([
+        fetchTransportRequests(),
+        fetchTransportProvider(),
+        fetchVehicleTypes()
+      ]);
+      
+      console.log('🔍 FETCH DEBUG: Transport requests:', requests);
+      console.log('🔍 FETCH DEBUG: Transport provider:', provider);
+      console.log('🔍 FETCH DEBUG: Provider enabled:', provider?.is_enabled);
+      
+      // Fetch pooling suggestions separately to avoid blocking the page
+      let suggestions = [];
+      try {
+        console.log('🔍 FETCH DEBUG: About to fetch pooling suggestions...');
+        suggestions = await fetchPoolingSuggestions();
+        console.log('🔍 FETCH DEBUG: Pooling suggestions result:', suggestions);
+      } catch (error) {
+        console.warn('Pooling suggestions unavailable:', error);
+      }
+      
+      setTransportRequests(requests);
+      setTransportProvider(provider);
+      setVehicleTypes(types);
+      setPoolingSuggestions(suggestions);
+      
+      console.log('🔍 FETCH DEBUG: Final state - Provider enabled:', provider?.is_enabled);
+      console.log('🔍 FETCH DEBUG: Final state - Suggestions count:', suggestions.length);
+      console.log('🔍 FETCH DEBUG: Should show pool button:', provider?.is_enabled && suggestions.length > 0);
+      
+    } catch (error) {
+      console.error("Error loading transport data:", error);
+      toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchPoolingSuggestions]);
 
   useEffect(() => {
+    console.log('🔍 EFFECT DEBUG: useEffect triggered, calling fetchData');
     fetchData();
   }, [fetchData]);
+  
+  // Debug effect to log state changes
+  useEffect(() => {
+    console.log('🔍 STATE DEBUG: transportProvider changed:', transportProvider);
+    console.log('🔍 STATE DEBUG: poolingSuggestions changed:', poolingSuggestions);
+  }, [transportProvider, poolingSuggestions]);
 
   useEffect(() => {
     filterRequests();
@@ -520,16 +566,26 @@ export default function TransportPage() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
-              {transportProvider?.is_enabled && poolingSuggestions.length > 0 && (
-                <Button
-                  onClick={() => setShowPoolingModal(true)}
-                  variant="outline"
-                  className="border-green-300 text-green-700 hover:bg-green-50"
-                >
-                  <Combine className="w-4 h-4 mr-2" />
-                  Pool Requests ({poolingSuggestions.length})
-                </Button>
-              )}
+              {(() => {
+                console.log('🔍 BUTTON DEBUG: Checking pool button conditions...');
+                console.log('🔍 BUTTON DEBUG: transportProvider?.is_enabled:', transportProvider?.is_enabled);
+                console.log('🔍 BUTTON DEBUG: poolingSuggestions.length:', poolingSuggestions.length);
+                console.log('🔍 BUTTON DEBUG: poolingSuggestions:', poolingSuggestions);
+                
+                const shouldShow = transportProvider?.is_enabled && poolingSuggestions.length > 0;
+                console.log('🔍 BUTTON DEBUG: Should show button:', shouldShow);
+                
+                return shouldShow ? (
+                  <Button
+                    onClick={() => setShowPoolingModal(true)}
+                    variant="outline"
+                    className="border-green-300 text-green-700 hover:bg-green-50"
+                  >
+                    <Combine className="w-4 h-4 mr-2" />
+                    Pool Requests ({poolingSuggestions.length})
+                  </Button>
+                ) : null;
+              })()}
               {!transportProvider?.is_enabled && (
                 <Button
                   onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
