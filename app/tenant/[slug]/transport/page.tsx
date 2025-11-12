@@ -99,6 +99,8 @@ export default function TransportPage() {
   });
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
+  const [requestPoolingSuggestions, setRequestPoolingSuggestions] = useState<any[]>([]);
+  const [loadingPoolingSuggestions, setLoadingPoolingSuggestions] = useState(false);
 
   const fetchTransportRequests = useCallback(async () => {
     try {
@@ -367,6 +369,28 @@ export default function TransportPage() {
       toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
     } finally {
       setLoadingBookingDetails(false);
+    }
+  };
+
+  const fetchRequestPoolingSuggestions = async (requestId: number) => {
+    setLoadingPoolingSuggestions(true);
+    try {
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
+      
+      // Filter suggestions that include the current request
+      const relevantSuggestions = response.suggestions.filter((suggestion: any) => 
+        suggestion.requests.some((req: any) => req.id === requestId)
+      );
+      
+      setRequestPoolingSuggestions(relevantSuggestions);
+    } catch (error) {
+      console.error('Error fetching pooling suggestions:', error);
+      setRequestPoolingSuggestions([]);
+    } finally {
+      setLoadingPoolingSuggestions(false);
     }
   };
 
@@ -748,15 +772,20 @@ export default function TransportPage() {
                             onClick={() => {
                               setSelectedRequest(request);
                               setBookingDetails(null); // Reset booking details
+                              setRequestPoolingSuggestions([]); // Reset pooling suggestions
                               setShowDetailsModal(true);
+                              
                               // Fetch booking details if request has booking reference
                               if (request.booking_reference && (request.status === 'booked' || request.status === 'confirmed')) {
                                 fetchBookingDetails(request.booking_reference);
+                              } else if (request.status === 'pending' || request.status === 'created') {
+                                // Fetch pooling suggestions for pending requests
+                                fetchRequestPoolingSuggestions(request.id);
                               }
                             }}
                             className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-medium transition-all duration-200"
                           >
-                            View
+                            {(request.status === 'booked' || request.status === 'confirmed') ? 'View Booking' : 'View'}
                           </Button>
                           {(request.status === 'created' || request.status === 'pending') && (
                             <>
@@ -1027,7 +1056,12 @@ export default function TransportPage() {
         <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
           <DialogContent className="sm:max-w-lg bg-white border-0 shadow-2xl">
             <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-bold text-gray-900">Transport Request Details</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-900">
+                {selectedRequest && (selectedRequest.status === 'booked' || selectedRequest.status === 'confirmed') 
+                  ? 'Booking Details' 
+                  : 'Transport Request Details'
+                }
+              </DialogTitle>
             </DialogHeader>
             {selectedRequest && (
               <div className="space-y-6">
@@ -1095,7 +1129,7 @@ export default function TransportPage() {
                     </div>
                   )}
                   
-                  {/* Booking Details Section */}
+                  {/* Booking Details Section - Priority */}
                   {(selectedRequest.status === 'booked' || selectedRequest.status === 'confirmed') && selectedRequest.booking_reference && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <Label className="text-sm font-semibold text-green-800 flex items-center gap-2">
@@ -1166,6 +1200,77 @@ export default function TransportPage() {
                           </p>
                           <p className="text-xs text-green-600 mt-1">
                             Booking details will be available once confirmed by the transport provider.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Pooling Suggestions Section - For Pending Requests */}
+                  {(selectedRequest.status === 'pending' || selectedRequest.status === 'created') && transportProvider?.is_enabled && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <Label className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                        <Combine className="w-4 h-4" />
+                        Pooling Suggestions
+                      </Label>
+                      
+                      {loadingPoolingSuggestions ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                          <span className="text-sm text-blue-700">Finding pooling opportunities...</span>
+                        </div>
+                      ) : requestPoolingSuggestions.length > 0 ? (
+                        <div className="mt-3 space-y-3">
+                          {requestPoolingSuggestions.map((suggestion, index) => (
+                            <div key={suggestion.group_id} className="bg-white border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <h4 className="text-sm font-medium text-blue-900">
+                                    Pool with {suggestion.passenger_count - 1} other passenger{suggestion.passenger_count > 2 ? 's' : ''}
+                                  </h4>
+                                  <p className="text-xs text-blue-700">
+                                    {suggestion.suggested_vehicle} • {suggestion.time_window}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    const requestIds = suggestion.requests.map((r: any) => r.id);
+                                    handlePooledBooking(requestIds, suggestion.suggested_vehicle);
+                                    setShowDetailsModal(false);
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1"
+                                >
+                                  <Combine className="w-3 h-3 mr-1" />
+                                  Pool Now
+                                </Button>
+                              </div>
+                              <div className="space-y-1">
+                                {suggestion.requests
+                                  .filter((req: any) => req.id !== selectedRequest.id)
+                                  .map((req: any) => (
+                                    <div key={req.id} className="text-xs bg-blue-100 p-2 rounded">
+                                      <div className="font-medium text-blue-900">{req.passenger_name}</div>
+                                      <div className="text-blue-700">
+                                        {req.pickup_address.slice(0, 30)}... → {req.dropoff_address.slice(0, 30)}...
+                                      </div>
+                                      <div className="text-blue-600">
+                                        {new Date(req.pickup_time).toLocaleTimeString()} • {req.flight_details}
+                                      </div>
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <p className="text-sm text-blue-700">
+                            No pooling opportunities found for this request.
+                          </p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            This request can be booked individually or you can check the pooling suggestions page for other combinations.
                           </p>
                         </div>
                       )}
