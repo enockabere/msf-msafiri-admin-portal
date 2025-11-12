@@ -317,6 +317,8 @@ export default function EventAllocations({
 
   const fetchParticipantRedemptions = useCallback(async () => {
     try {
+      console.log(`🔍 FRONTEND DEBUG: Fetching participant redemptions for event ${eventId}`);
+      
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
@@ -326,24 +328,36 @@ export default function EventAllocations({
         }
       );
 
-      if (!tenantResponse.ok) return;
+      if (!tenantResponse.ok) {
+        console.error(`❌ FRONTEND DEBUG: Failed to fetch tenant data, status: ${tenantResponse.status}`);
+        return;
+      }
 
       const tenantData = await tenantResponse.json();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-redemptions/event/${eventId}/participants?tenant_id=${tenantData.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      console.log(`✅ FRONTEND DEBUG: Got tenant data:`, tenantData);
+      
+      const redemptionUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-redemptions/event/${eventId}/participants?tenant_id=${tenantData.id}`;
+      console.log(`🔍 FRONTEND DEBUG: Fetching from URL: ${redemptionUrl}`);
+      
+      const response = await fetch(redemptionUrl, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
+      console.log(`📡 FRONTEND DEBUG: Redemptions response status: ${response.status}`);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ FRONTEND DEBUG: Got participant redemptions data:`, data);
+        console.log(`📊 FRONTEND DEBUG: Number of participants with redemption data: ${data.length}`);
         setParticipantRedemptions(data);
+      } else {
+        const errorText = await response.text();
+        console.error(`❌ FRONTEND DEBUG: Failed to fetch participant redemptions:`, errorText);
       }
     } catch (error) {
-      console.error("Failed to fetch participant redemptions:", error);
+      console.error("❌ FRONTEND DEBUG: Exception in fetchParticipantRedemptions:", error);
     }
   }, [eventId, tenantSlug]);
 

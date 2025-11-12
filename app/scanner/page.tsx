@@ -44,6 +44,35 @@ export default function VoucherScannerPage() {
 
     if (eventIdParam) setEventId(eventIdParam);
     if (tenantIdParam) setTenantId(tenantIdParam);
+
+    // Hide any potential navigation elements on mobile
+    const hideElements = () => {
+      const selectors = [
+        'header',
+        'nav',
+        '[role="banner"]',
+        '.navbar',
+        '.topbar',
+        '.header'
+      ];
+      
+      selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+          if (el instanceof HTMLElement) {
+            el.style.display = 'none';
+          }
+        });
+      });
+    };
+
+    hideElements();
+    
+    // Also hide on DOM changes
+    const observer = new MutationObserver(hideElements);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
   }, []);
 
   const fetchParticipantBalance = async (participantIdToCheck: string) => {
@@ -142,7 +171,14 @@ export default function VoucherScannerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="fixed inset-0 bg-gray-50 p-4 overflow-y-auto z-50" style={{ 
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999
+    }}>
       <div className="max-w-md mx-auto space-y-6">
         {/* Header */}
         <Card>
