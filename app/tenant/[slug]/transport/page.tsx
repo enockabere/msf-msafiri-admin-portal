@@ -35,6 +35,11 @@ interface TransportRequest {
   flight_itinerary_id?: number;
   user_email: string;
   status: string;
+  booking_reference?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  vehicle_number?: string;
+  vehicle_color?: string;
   created_at: string;
   updated_at: string;
   event?: {
@@ -92,6 +97,8 @@ export default function TransportPage() {
     vehicleColor: '',
     numberPlate: ''
   });
+  const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
 
   const fetchTransportRequests = useCallback(async () => {
     try {
@@ -348,6 +355,19 @@ export default function TransportPage() {
         ? prev.filter(id => id !== requestId)
         : [...prev, requestId]
     );
+  };
+
+  const fetchBookingDetails = async (refNo: string) => {
+    setLoadingBookingDetails(true);
+    try {
+      const response = await apiClient.request(`/booking-details/${refNo}`);
+      setBookingDetails(response.booking);
+    } catch (error) {
+      console.error('Error fetching booking details:', error);
+      toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
+    } finally {
+      setLoadingBookingDetails(false);
+    }
   };
 
   const handleManualConfirmation = async () => {
@@ -727,7 +747,12 @@ export default function TransportPage() {
                             variant="outline"
                             onClick={() => {
                               setSelectedRequest(request);
+                              setBookingDetails(null); // Reset booking details
                               setShowDetailsModal(true);
+                              // Fetch booking details if request has booking reference
+                              if (request.booking_reference && (request.status === 'booked' || request.status === 'confirmed')) {
+                                fetchBookingDetails(request.booking_reference);
+                              }
                             }}
                             className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-medium transition-all duration-200"
                           >
@@ -752,17 +777,19 @@ export default function TransportPage() {
                                   )}
                                 </Button>
                               )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowConfirmModal(true);
-                                }}
-                                className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 font-medium transition-all duration-200"
-                              >
-                                Confirm
-                              </Button>
+                              {!transportProvider?.is_enabled && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedRequest(request);
+                                    setShowConfirmModal(true);
+                                  }}
+                                  className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 font-medium transition-all duration-200"
+                                >
+                                  Manual Booking
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>
@@ -825,57 +852,110 @@ export default function TransportPage() {
 
         {/* Vehicle Selection Modal */}
         <Dialog open={showVehicleModal} onOpenChange={setShowVehicleModal}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Select Vehicle Type</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-md bg-white shadow-xl">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-xl font-bold text-gray-900">Select Vehicle Type</DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
                 Choose the appropriate vehicle type for this booking
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 gap-3">
-                {vehicleTypes.map((vehicle) => (
-                  <div
-                    key={vehicle.id}
-                    className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                      selectedVehicleType === vehicle.type
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setSelectedVehicleType(vehicle.type)}
+
+            {selectedRequest && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-blue-900">{selectedRequest.passenger_name}</h3>
+                    <p className="text-sm text-blue-700">
+                      {selectedRequest.pickup_address.slice(0, 40)}{selectedRequest.pickup_address.length > 40 ? '...' : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="vehicleTypeSelect" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Car className="w-4 h-4 text-blue-600" />
+                  Vehicle Type
+                </Label>
+                <Select value={selectedVehicleType} onValueChange={setSelectedVehicleType}>
+                  <SelectTrigger
+                    id="vehicleTypeSelect"
+                    className="w-full h-12 border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{vehicle.type}</h4>
-                        <p className="text-sm text-gray-500">{vehicle.seats} seats</p>
+                    <SelectValue placeholder="Select a vehicle type..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-gray-200 shadow-xl max-h-[300px]">
+                    {vehicleTypes.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <Car className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No vehicle types available</p>
                       </div>
-                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                        {selectedVehicleType === vehicle.type && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                        )}
-                      </div>
+                    ) : (
+                      vehicleTypes.map((vehicle) => (
+                        <SelectItem
+                          key={vehicle.id}
+                          value={vehicle.type}
+                          className="cursor-pointer hover:bg-blue-50 focus:bg-blue-50 py-3"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                                <Car className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <div className="font-semibold text-gray-900">{vehicle.type}</div>
+                                <div className="text-xs text-gray-600">{vehicle.seats} seats capacity</div>
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {selectedVehicleType && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">
+                        Selected: {selectedVehicleType}
+                        {vehicleTypes.find(v => v.type === selectedVehicleType)?.seats &&
+                          ` (${vehicleTypes.find(v => v.type === selectedVehicleType)?.seats} seats)`
+                        }
+                      </span>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowVehicleModal(false);
-                  setSelectedVehicleType('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleVehicleSelection}
-                disabled={!selectedVehicleType}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Book with {selectedVehicleType}
-              </Button>
+
+            <DialogFooter className="pt-4 border-t border-gray-200">
+              <div className="flex gap-3 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowVehicleModal(false);
+                    setSelectedVehicleType('');
+                  }}
+                  className="flex-1 sm:flex-initial border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleVehicleSelection}
+                  disabled={!selectedVehicleType}
+                  className="flex-1 sm:flex-initial bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Car className="w-4 h-4 mr-2" />
+                  Book with {selectedVehicleType || 'Selected Vehicle'}
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1014,25 +1094,102 @@ export default function TransportPage() {
                       <p className="text-sm text-gray-700 mt-1 leading-relaxed">{selectedRequest.notes}</p>
                     </div>
                   )}
+                  
+                  {/* Booking Details Section */}
+                  {(selectedRequest.status === 'booked' || selectedRequest.status === 'confirmed') && selectedRequest.booking_reference && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <Label className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        Booking Details
+                      </Label>
+                      
+                      {loadingBookingDetails ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-green-600" />
+                          <span className="text-sm text-green-700">Loading booking details...</span>
+                        </div>
+                      ) : bookingDetails ? (
+                        <div className="mt-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Reference Number</p>
+                              <p className="text-sm font-medium text-green-900">{bookingDetails.ref_no}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Status</p>
+                              <p className="text-sm font-medium text-green-900">{bookingDetails.status}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Vehicle Type</p>
+                              <p className="text-sm font-medium text-green-900">{bookingDetails.vehicle_type}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Pickup Date & Time</p>
+                              <p className="text-sm font-medium text-green-900">
+                                {bookingDetails.pickup_date} {bookingDetails.pickup_time}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {bookingDetails.drivers && bookingDetails.drivers.length > 0 && (
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Assigned Driver</p>
+                              <div className="text-sm font-medium text-green-900">
+                                {bookingDetails.drivers[0].name} - {bookingDetails.drivers[0].telephone}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {bookingDetails.vehicles && bookingDetails.vehicles.length > 0 && (
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Assigned Vehicle</p>
+                              <div className="text-sm font-medium text-green-900">
+                                {bookingDetails.vehicles[0].name} - {bookingDetails.vehicles[0].registration}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {bookingDetails.flightdetails && (
+                            <div>
+                              <p className="text-xs text-green-600 uppercase tracking-wide">Flight Details</p>
+                              <p className="text-sm font-medium text-green-900">{bookingDetails.flightdetails}</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <p className="text-sm text-green-700">
+                            Booking Reference: {selectedRequest.booking_reference}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Booking details will be available once confirmed by the transport provider.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Manual Confirmation Modal */}
+        {/* Manual Booking Modal */}
         <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
           <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl">
             <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-bold text-gray-900">Confirm Transport Request</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-900">Manual Booking</DialogTitle>
               <DialogDescription className="text-sm text-gray-600">
-                Enter vehicle and driver details to confirm this transport request manually.
+                Enter vehicle and driver details to create a manual booking for this transport request.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="text-sm text-blue-800">
-                  Confirming transport for: <strong className="text-blue-900">{selectedRequest?.passenger_name}</strong>
+                  Creating manual booking for: <strong className="text-blue-900">{selectedRequest?.passenger_name}</strong>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1124,7 +1281,7 @@ export default function TransportPage() {
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Confirm Request
+                      Create Manual Booking
                     </>
                   )}
                 </Button>
