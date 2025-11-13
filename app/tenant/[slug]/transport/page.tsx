@@ -490,16 +490,23 @@ export default function TransportPage() {
     });
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, request?: TransportRequest) => {
+    // Check if request is past date and not booked
+    const isPast = request && isPastDate(request.pickup_time) && (status === 'created' || status === 'pending');
+    
     const statusConfig = {
       created: { color: 'bg-gray-100 text-gray-800', label: 'Created' },
       pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
       booked: { color: 'bg-blue-100 text-blue-800', label: 'Booked' },
       confirmed: { color: 'bg-green-100 text-green-800', label: 'Confirmed' },
-      completed: { color: 'bg-purple-100 text-purple-800', label: 'Completed' }
+      completed: { color: 'bg-purple-100 text-purple-800', label: 'Completed' },
+      expired: { color: 'bg-red-100 text-red-800', label: 'Expired' }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.created;
+    const config = isPast 
+      ? statusConfig.expired 
+      : statusConfig[status as keyof typeof statusConfig] || statusConfig.created;
+    
     return (
       <Badge className={config.color}>
         {config.label}
@@ -566,8 +573,7 @@ export default function TransportPage() {
                 return shouldShow ? (
                   <Button
                     onClick={() => setShowPoolingModal(true)}
-                    variant="outline"
-                    className="border-green-300 text-green-700 hover:bg-green-50"
+                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
                   >
                     <Combine className="w-4 h-4 mr-2" />
                     Pool Requests ({poolingSuggestions.length})
@@ -811,7 +817,7 @@ export default function TransportPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(request.status)}
+                        {getStatusBadge(request.status, request)}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
