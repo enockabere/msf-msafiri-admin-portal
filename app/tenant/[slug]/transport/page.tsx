@@ -77,8 +77,16 @@ interface VehicleTypesResponse {
   vehicle_types: VehicleType[];
 }
 
+interface PoolingSuggestion {
+  group_id: string;
+  requests: any[];
+  passenger_count: number;
+  time_window: string;
+  suggested_vehicle: string;
+}
+
 interface PoolingSuggestionsResponse {
-  suggestions: any[];
+  suggestions: PoolingSuggestion[];
 }
 
 export default function TransportPage() {
@@ -101,7 +109,7 @@ export default function TransportPage() {
   const [showPoolingModal, setShowPoolingModal] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<number[]>([]);
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
-  const [poolingSuggestions, setPoolingSuggestions] = useState<any[]>([]);
+  const [poolingSuggestions, setPoolingSuggestions] = useState<PoolingSuggestion[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState('');
   const [confirmationData, setConfirmationData] = useState({
     driverName: '',
@@ -112,7 +120,7 @@ export default function TransportPage() {
   });
   const [bookingDetails, setBookingDetails] = useState<any>(null);
   const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
-  const [requestPoolingSuggestions, setRequestPoolingSuggestions] = useState<any[]>([]);
+  const [requestPoolingSuggestions, setRequestPoolingSuggestions] = useState<PoolingSuggestion[]>([]);
   const [loadingPoolingSuggestions, setLoadingPoolingSuggestions] = useState(false);
   const [activeTab, setActiveTab] = useState('new');
   const [currentPage, setCurrentPage] = useState(1);
@@ -192,7 +200,7 @@ export default function TransportPage() {
       ]);
       
       // Fetch pooling suggestions separately to avoid blocking the page
-      let suggestions = [];
+      let suggestions: PoolingSuggestion[] = [];
       try {
         suggestions = await fetchPoolingSuggestions();
       } catch (error) {
@@ -366,7 +374,7 @@ export default function TransportPage() {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch  {
       toast({ title: "Error", description: "Failed to create booking", variant: "destructive" });
     } finally {
       setBookingInProgress(null);
@@ -415,7 +423,7 @@ export default function TransportPage() {
       });
       
       await fetchData();
-    } catch (error) {
+    } catch{
       toast({ title: "Error", description: "Failed to create pooled booking", variant: "destructive" });
     }
   };
@@ -431,10 +439,9 @@ export default function TransportPage() {
   const fetchBookingDetails = async (refNo: string) => {
     setLoadingBookingDetails(true);
     try {
-      const response = await apiClient.request(`/booking-details/${refNo}`);
+      const response = await apiClient.request(`/booking-details/${refNo}`) as { booking: any };
       setBookingDetails(response.booking);
-    } catch (error) {
-      console.error('Error fetching booking details:', error);
+    } catch {
       toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
     } finally {
       setLoadingBookingDetails(false);
@@ -455,8 +462,7 @@ export default function TransportPage() {
       );
       
       setRequestPoolingSuggestions(relevantSuggestions);
-    } catch (error) {
-      console.error('Error fetching pooling suggestions:', error);
+    } catch {
       setRequestPoolingSuggestions([]);
     } finally {
       setLoadingPoolingSuggestions(false);
@@ -474,7 +480,7 @@ export default function TransportPage() {
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(
+      await apiClient.request(
         `/transport-requests/${selectedRequest.id}/confirm-manual`,
         {
           method: 'POST',
@@ -489,7 +495,7 @@ export default function TransportPage() {
             'X-Tenant-ID': tenantId.toString()
           }
         }
-      ) as any;
+      );
       
       toast({ 
         title: "Request Confirmed", 
@@ -502,7 +508,7 @@ export default function TransportPage() {
       
       // Refresh data to show updated status
       await fetchData();
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Failed to confirm request", variant: "destructive" });
     } finally {
       setBookingInProgress(null);
@@ -715,6 +721,7 @@ export default function TransportPage() {
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
                   {uniqueEvents.map(eventId => {
+                    if (!eventId) return null;
                     const event = transportRequests.find(r => r.event?.id === eventId)?.event;
                     return event ? (
                       <SelectItem key={eventId} value={eventId.toString()}>
@@ -1417,7 +1424,7 @@ export default function TransportPage() {
                         </div>
                       ) : requestPoolingSuggestions.length > 0 ? (
                         <div className="mt-3 space-y-3">
-                          {requestPoolingSuggestions.map((suggestion, index) => (
+                          {requestPoolingSuggestions.map((suggestion) => (
                             <div key={suggestion.group_id} className="bg-white border border-blue-200 rounded-lg p-3">
                               <div className="flex items-center justify-between mb-2">
                                 <div>
