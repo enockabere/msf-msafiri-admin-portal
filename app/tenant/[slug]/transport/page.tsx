@@ -439,7 +439,7 @@ export default function TransportPage() {
   const fetchBookingDetails = async (refNo: string) => {
     setLoadingBookingDetails(true);
     try {
-      const response = await apiClient.request(`/booking-details/${refNo}`) as { booking: any };
+      const response = await apiClient.request(`/booking-details/${refNo}`) as { booking: object };
       setBookingDetails(response.booking);
     } catch {
       toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
@@ -457,8 +457,8 @@ export default function TransportPage() {
       const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`) as PoolingSuggestionsResponse;
       
       // Filter suggestions that include the current request
-      const relevantSuggestions = response.suggestions.filter((suggestion: any) => 
-        suggestion.requests.some((req: any) => req.id === requestId)
+      const relevantSuggestions = response.suggestions.filter((suggestion) => 
+        suggestion.requests.some((req: { id: number }) => req.id === requestId)
       );
       
       setRequestPoolingSuggestions(relevantSuggestions);
