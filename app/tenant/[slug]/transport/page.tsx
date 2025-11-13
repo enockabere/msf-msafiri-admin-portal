@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User, Combine, Plus, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Car, MapPin, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, User, Combine, Plus, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,20 @@ interface TransportProvider {
   token_url: string;
 }
 
+interface TenantResponse {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface VehicleTypesResponse {
+  vehicle_types: any[];
+}
+
+interface PoolingSuggestionsResponse {
+  suggestions: any[];
+}
+
 export default function TransportPage() {
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
@@ -109,10 +123,10 @@ export default function TransportPage() {
 
   const fetchTransportRequests = useCallback(async () => {
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}`);
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}`) as TransportRequest[];
       return response || [];
     } catch (error) {
       console.error('Error fetching transport requests:', error);
@@ -122,10 +136,10 @@ export default function TransportPage() {
 
   const fetchTransportProvider = useCallback(async () => {
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(`/transport-providers/tenant/${tenantId}/provider/absolute_cabs`);
+      const response = await apiClient.request(`/transport-providers/tenant/${tenantId}/provider/absolute_cabs`) as TransportProvider;
       return response;
     } catch (error: any) {
       // Suppress 404 errors - expected when provider not configured
@@ -139,10 +153,10 @@ export default function TransportPage() {
 
   const fetchVehicleTypes = useCallback(async () => {
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/vehicle-types`);
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/vehicle-types`) as VehicleTypesResponse;
       return response.vehicle_types || [];
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
@@ -152,10 +166,10 @@ export default function TransportPage() {
 
   const fetchPoolingSuggestions = useCallback(async () => {
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`) as PoolingSuggestionsResponse;
       const suggestions = response.suggestions || [];
       
       return suggestions;
@@ -301,7 +315,7 @@ export default function TransportPage() {
         throw new Error('Transport provider not configured or disabled');
       }
 
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
       const response = await apiClient.request(
@@ -312,7 +326,7 @@ export default function TransportPage() {
             'X-Tenant-ID': tenantId.toString()
           }
         }
-      );
+      ) as { booking_reference: string };
       
       return {
         success: true,
@@ -380,7 +394,7 @@ export default function TransportPage() {
 
   const handlePooledBooking = async (requestIds: number[], vehicleType: string) => {
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
       const response = await apiClient.request(
@@ -396,7 +410,7 @@ export default function TransportPage() {
             'X-Tenant-ID': tenantId.toString()
           }
         }
-      );
+      ) as { passengers: number };
       
       toast({ 
         title: "Pooled Booking Created", 
@@ -433,10 +447,10 @@ export default function TransportPage() {
   const fetchRequestPoolingSuggestions = async (requestId: number) => {
     setLoadingPoolingSuggestions(true);
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
-      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`) as PoolingSuggestionsResponse;
       
       // Filter suggestions that include the current request
       const relevantSuggestions = response.suggestions.filter((suggestion: any) => 
@@ -460,7 +474,7 @@ export default function TransportPage() {
 
     setBookingInProgress(selectedRequest.id);
     try {
-      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
       
       const response = await apiClient.request(
@@ -478,7 +492,7 @@ export default function TransportPage() {
             'X-Tenant-ID': tenantId.toString()
           }
         }
-      );
+      ) as any;
       
       toast({ 
         title: "Request Confirmed", 
