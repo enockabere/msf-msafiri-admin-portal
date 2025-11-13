@@ -79,7 +79,7 @@ interface VehicleTypesResponse {
 
 interface PoolingSuggestion {
   group_id: string;
-  requests: any[];
+  requests: { id: number; passenger_name: string; pickup_address: string; dropoff_address: string; pickup_time: string; flight_details: string }[];
   passenger_count: number;
   time_window: string;
   suggested_vehicle: string;
@@ -87,6 +87,17 @@ interface PoolingSuggestion {
 
 interface PoolingSuggestionsResponse {
   suggestions: PoolingSuggestion[];
+}
+
+interface BookingDetails {
+  ref_no: string;
+  status: string;
+  vehicle_type: string;
+  pickup_date: string;
+  pickup_time: string;
+  drivers?: { name: string; telephone: string }[];
+  vehicles?: { name: string; registration: string }[];
+  flightdetails?: string;
 }
 
 export default function TransportPage() {
@@ -118,7 +129,7 @@ export default function TransportPage() {
     vehicleColor: '',
     numberPlate: ''
   });
-  const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
   const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
   const [requestPoolingSuggestions, setRequestPoolingSuggestions] = useState<PoolingSuggestion[]>([]);
   const [loadingPoolingSuggestions, setLoadingPoolingSuggestions] = useState(false);
@@ -146,9 +157,9 @@ export default function TransportPage() {
       
       const response = await apiClient.request(`/transport-providers/tenant/${tenantId}/provider/absolute_cabs`) as TransportProvider;
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Suppress 404 errors - expected when provider not configured
-      if (error?.message?.includes('404') || error?.message?.includes('not found')) {
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('not found'))) {
         return null;
       }
       console.error('Error fetching transport provider:', error);
@@ -178,9 +189,9 @@ export default function TransportPage() {
       const suggestions = response.suggestions || [];
       
       return suggestions;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Suppress geopy module errors - pooling suggestions are optional
-      if (error?.message?.includes('geopy') || error?.message?.includes('No module named')) {
+      if (error instanceof Error && (error.message.includes('geopy') || error.message.includes('No module named'))) {
         return [];
       }
       return [];
@@ -439,7 +450,7 @@ export default function TransportPage() {
   const fetchBookingDetails = async (refNo: string) => {
     setLoadingBookingDetails(true);
     try {
-      const response = await apiClient.request(`/booking-details/${refNo}`) as { booking: object };
+      const response = await apiClient.request(`/booking-details/${refNo}`) as { booking: BookingDetails };
       setBookingDetails(response.booking);
     } catch {
       toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
@@ -540,22 +551,22 @@ export default function TransportPage() {
   const getStatusBadge = (status: string, request?: TransportRequest) => {
     // Check if request is past date and not booked
     const isPast = request && isPastDate(request.pickup_time) && (status === 'created' || status === 'pending');
-    
+
     const statusConfig = {
-      created: { color: 'bg-gray-100 text-gray-800', label: 'Created' },
-      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-      booked: { color: 'bg-blue-100 text-blue-800', label: 'Booked' },
-      confirmed: { color: 'bg-green-100 text-green-800', label: 'Confirmed' },
-      completed: { color: 'bg-purple-100 text-purple-800', label: 'Completed' },
-      expired: { color: 'bg-red-100 text-red-800', label: 'Expired' }
+      created: { color: 'bg-gray-100 text-gray-700 border border-gray-300', label: 'Created' },
+      pending: { color: 'bg-yellow-50 text-yellow-700 border border-yellow-200', label: 'Pending' },
+      booked: { color: 'bg-blue-50 text-blue-700 border border-blue-200', label: 'Booked' },
+      confirmed: { color: 'bg-green-50 text-green-700 border border-green-200', label: 'Confirmed' },
+      completed: { color: 'bg-purple-50 text-purple-700 border border-purple-200', label: 'Completed' },
+      expired: { color: 'bg-red-50 text-red-700 border border-red-200', label: 'Expired' }
     };
-    
-    const config = isPast 
-      ? statusConfig.expired 
+
+    const config = isPast
+      ? statusConfig.expired
       : statusConfig[status as keyof typeof statusConfig] || statusConfig.created;
-    
+
     return (
-      <Badge className={config.color}>
+      <Badge className={`${config.color} px-2.5 py-0.5 font-medium text-xs`}>
         {config.label}
       </Badge>
     );
@@ -578,10 +589,18 @@ export default function TransportPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-            <p className="text-sm font-medium text-gray-600">Loading transport data...</p>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-6">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto shadow-lg"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Car className="w-8 h-8 text-blue-600 animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-lg font-bold text-gray-900">Loading Transport Data</p>
+              <p className="text-sm text-gray-600">Please wait while we fetch your transport requests...</p>
+            </div>
           </div>
         </div>
       </DashboardLayout>
@@ -592,26 +611,31 @@ export default function TransportPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Transport Requests</h1>
-              <p className="text-sm text-gray-600">Manage transport booking requests from event participants</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <Car className="w-5 h-5 text-blue-600" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Transport Requests</h1>
+              </div>
+              <p className="text-sm text-gray-600 max-w-2xl">Manage and coordinate transport booking requests from event participants</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Button
                 onClick={fetchData}
                 disabled={loading}
                 variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
               {transportProvider?.is_enabled && poolingSuggestions.length > 0 && (
                 <Button
                   onClick={() => setShowPoolingModal(true)}
-                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
+                  className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-medium"
                 >
                   <Combine className="w-4 h-4 mr-2" />
                   Pool Requests ({poolingSuggestions.length})
@@ -620,7 +644,7 @@ export default function TransportPage() {
               {!transportProvider?.is_enabled && (
                 <Button
                   onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200 font-medium"
                 >
                   <Settings className="w-4 h-4 mr-2" />
                   Setup Transport
@@ -632,66 +656,71 @@ export default function TransportPage() {
 
         {/* Transport Provider Status */}
         {!transportProvider?.is_enabled && (
-          <Alert className="border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              Transport provider is not configured. Please set up Absolute Cabs integration to enable booking functionality.
-            </AlertDescription>
+          <Alert className="border border-orange-200 bg-orange-50">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-1">Transport Provider Not Configured</h3>
+                <AlertDescription className="text-sm text-gray-700">
+                  Set up Absolute Cabs integration to enable automated booking functionality and streamline your transport management.
+                </AlertDescription>
+              </div>
+            </div>
           </Alert>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">New Requests</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.new}</p>
+                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">New Requests</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{transportStats.new}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Plus className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-green-500">
-            <CardContent className="p-6">
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Booked</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.booked}</p>
+                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Booked</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{transportStats.booked}</p>
                 </div>
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="p-6">
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.completed}</p>
+                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Completed</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{transportStats.completed}</p>
                 </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Users className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-red-500">
-            <CardContent className="p-6">
+          <Card className="border border-gray-200 hover:shadow-md transition-shadow duration-200">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Expired</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.expired}</p>
+                  <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Expired</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{transportStats.expired}</p>
                 </div>
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                   <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
@@ -700,22 +729,22 @@ export default function TransportPage() {
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="shadow-md border-gray-200">
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                   <Input
                     placeholder="Search by name, flight, email..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
                   />
                 </div>
               </div>
               <Select value={eventFilter} onValueChange={setEventFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-[200px] border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
                   <SelectValue placeholder="Event" />
                 </SelectTrigger>
                 <SelectContent>
@@ -732,7 +761,7 @@ export default function TransportPage() {
                 </SelectContent>
               </Select>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[150px] border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all">
                   <SelectValue placeholder="Date" />
                 </SelectTrigger>
                 <SelectContent>
@@ -743,7 +772,7 @@ export default function TransportPage() {
               <Button
                 onClick={exportToCSV}
                 variant="outline"
-                className="border-green-300 text-green-700 hover:bg-green-50"
+                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 hover:shadow-md transition-all duration-200 font-medium"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV
@@ -753,29 +782,41 @@ export default function TransportPage() {
         </Card>
 
         {/* Transport Requests with Tabs */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-blue-600" />
+        <Card className="border border-gray-200 shadow-sm">
+          <CardHeader className="border-b border-gray-200">
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Car className="w-5 h-5 text-gray-700" />
               Transport Requests
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setCurrentPage(1); }}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="new" className="flex items-center gap-2">
+              <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-lg gap-1">
+                <TabsTrigger
+                  value="new"
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200 font-medium text-sm"
+                >
                   <Plus className="w-4 h-4" />
                   New ({transportStats.new})
                 </TabsTrigger>
-                <TabsTrigger value="booked" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="booked"
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200 font-medium text-sm"
+                >
                   <CheckCircle className="w-4 h-4" />
                   Booked ({transportStats.booked})
                 </TabsTrigger>
-                <TabsTrigger value="completed" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="completed"
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200 font-medium text-sm"
+                >
                   <Users className="w-4 h-4" />
                   Completed ({transportStats.completed})
                 </TabsTrigger>
-                <TabsTrigger value="expired" className="flex items-center gap-2">
+                <TabsTrigger
+                  value="expired"
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all duration-200 font-medium text-sm"
+                >
                   <AlertCircle className="w-4 h-4" />
                   Expired ({transportStats.expired})
                 </TabsTrigger>
@@ -789,18 +830,23 @@ export default function TransportPage() {
                 return (
                   <TabsContent key={tab} value={tab} className="mt-6">
                     {tabRequests.length === 0 ? (
-                      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                        <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No {tab.charAt(0).toUpperCase() + tab.slice(1)} Requests</h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                          No {tab} transport requests found.
+                      <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Car className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">No {tab.charAt(0).toUpperCase() + tab.slice(1)} Requests</h3>
+                        <p className="text-sm text-gray-600 max-w-md mx-auto">
+                          {tab === 'new' && "New transport requests from participants will appear here."}
+                          {tab === 'booked' && "Confirmed and booked transport requests will be displayed here."}
+                          {tab === 'completed' && "Successfully completed transport requests will show up here."}
+                          {tab === 'expired' && "Past-due transport requests that weren't booked will appear here."}
                         </p>
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                           <p className="text-sm text-gray-600">
-                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, tabRequests.length)} of {tabRequests.length} requests
+                            Showing <span className="font-medium text-gray-900">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, tabRequests.length)}</span> of <span className="font-medium text-gray-900">{tabRequests.length}</span> requests
                           </p>
                           {totalPages > 1 && (
                             <div className="flex items-center gap-2">
@@ -809,10 +855,12 @@ export default function TransportPage() {
                                 size="sm"
                                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                 disabled={currentPage === 1}
+                                className="border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                               >
-                                <ChevronLeft className="w-4 h-4" />
+                                <ChevronLeft className="w-4 h-4 mr-1" />
+                                Previous
                               </Button>
-                              <span className="text-sm text-gray-600">
+                              <span className="text-sm text-gray-600 px-3">
                                 Page {currentPage} of {totalPages}
                               </span>
                               <Button
@@ -820,27 +868,29 @@ export default function TransportPage() {
                                 size="sm"
                                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                 disabled={currentPage === totalPages}
+                                className="border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                               >
-                                <ChevronRight className="w-4 h-4" />
+                                Next
+                                <ChevronRight className="w-4 h-4 ml-1" />
                               </Button>
                             </div>
                           )}
                         </div>
                         <Table>
                 <TableHeader>
-                  <TableRow>
-                    {transportProvider?.is_enabled && <TableHead className="w-12">Select</TableHead>}
-                    <TableHead>Passenger</TableHead>
-                    <TableHead>Flight</TableHead>
-                    <TableHead>Route</TableHead>
-                    <TableHead>Event</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-gray-50 border-b-2 border-gray-200">
+                    {transportProvider?.is_enabled && <TableHead className="w-12 font-bold text-gray-700">Select</TableHead>}
+                    <TableHead className="font-bold text-gray-700">Passenger</TableHead>
+                    <TableHead className="font-bold text-gray-700">Flight</TableHead>
+                    <TableHead className="font-bold text-gray-700">Route</TableHead>
+                    <TableHead className="font-bold text-gray-700">Event</TableHead>
+                    <TableHead className="font-bold text-gray-700">Status</TableHead>
+                    <TableHead className="font-bold text-gray-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                           <TableBody>
                             {paginatedRequests.map((request) => (
-                    <TableRow key={request.id}>
+                    <TableRow key={request.id} className="border-b border-gray-200 hover:bg-blue-50 transition-colors duration-150">
                       {transportProvider?.is_enabled && (
                         <TableCell>
                           {(request.status === 'created' || request.status === 'pending') && !isPastDate(request.pickup_time) && (
@@ -905,7 +955,7 @@ export default function TransportPage() {
                               setBookingDetails(null); // Reset booking details
                               setRequestPoolingSuggestions([]); // Reset pooling suggestions
                               setShowDetailsModal(true);
-                              
+
                               // Fetch booking details if request has booking reference
                               if (request.booking_reference && (request.status === 'booked' || request.status === 'confirmed')) {
                                 fetchBookingDetails(request.booking_reference);
@@ -914,7 +964,7 @@ export default function TransportPage() {
                                 fetchRequestPoolingSuggestions(request.id);
                               }
                             }}
-                            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 font-medium transition-all duration-200"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium transition-all duration-200"
                           >
                             {(request.status === 'booked' || request.status === 'confirmed') ? 'View Booking' : 'View'}
                           </Button>
@@ -925,10 +975,10 @@ export default function TransportPage() {
                                   size="sm"
                                   onClick={() => handleBookRequest(request)}
                                   disabled={bookingInProgress === request.id || isPastDate(request.pickup_time)}
-                                  className={`font-medium shadow-md hover:shadow-lg transition-all duration-200 ${
-                                    isPastDate(request.pickup_time) 
-                                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
+                                  className={`font-medium transition-all duration-200 ${
+                                    isPastDate(request.pickup_time)
+                                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                      : 'bg-blue-600 hover:bg-blue-700 text-white'
                                   }`}
                                   title={isPastDate(request.pickup_time) ? 'Cannot book past dates' : ''}
                                 >
@@ -956,7 +1006,7 @@ export default function TransportPage() {
                                   className={`font-medium transition-all duration-200 ${
                                     isPastDate(request.pickup_time)
                                       ? 'border-gray-300 text-gray-500 cursor-not-allowed'
-                                      : 'border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300'
+                                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                                   }`}
                                   title={isPastDate(request.pickup_time) ? 'Cannot book past dates' : ''}
                                 >
@@ -982,19 +1032,19 @@ export default function TransportPage() {
 
         {/* Bulk Actions */}
         {transportProvider?.is_enabled && selectedRequests.length > 0 && (
-          <Card className="border-blue-200 bg-blue-50">
+          <Card className="border border-blue-200 bg-blue-50 shadow-sm">
             <CardContent className="pt-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <Combine className="w-4 h-4 text-blue-600" />
+                    <Combine className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-blue-900">
-                      {selectedRequests.length} requests selected
+                    <h3 className="font-semibold text-gray-900">
+                      {selectedRequests.length} request{selectedRequests.length > 1 ? 's' : ''} selected
                     </h3>
-                    <p className="text-sm text-blue-700">
-                      Create pooled booking or individual bookings
+                    <p className="text-sm text-gray-600">
+                      Create pooled booking or manage selected requests
                     </p>
                   </div>
                 </div>
@@ -1003,7 +1053,7 @@ export default function TransportPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setSelectedRequests([])}
-                    className="border-gray-300 text-gray-700"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
                   >
                     Clear Selection
                   </Button>
@@ -1013,12 +1063,12 @@ export default function TransportPage() {
                         value={selectedVehicleType}
                         onValueChange={setSelectedVehicleType}
                       >
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectTrigger className="w-32 h-9 text-sm bg-white font-medium border-gray-300">
                           <SelectValue placeholder={selectedRequests.length > 4 ? 'Van' : 'SUV'} />
                         </SelectTrigger>
                         <SelectContent>
                           {vehicleTypes.map((vehicle) => (
-                            <SelectItem key={vehicle.id} value={vehicle.type} className="text-xs">
+                            <SelectItem key={vehicle.id} value={vehicle.type} className="text-sm">
                               {vehicle.type} ({vehicle.seats} seats)
                             </SelectItem>
                           ))}
@@ -1032,9 +1082,9 @@ export default function TransportPage() {
                           setSelectedRequests([]);
                           setSelectedVehicleType('');
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
                       >
-                        <Combine className="w-3 h-3 mr-1" />
+                        <Combine className="w-4 h-4 mr-1" />
                         Pool Selected
                       </Button>
                     </div>
@@ -1208,7 +1258,7 @@ export default function TransportPage() {
                           <Button
                             size="sm"
                             onClick={() => {
-                              const requestIds = suggestion.requests.map((r: any) => r.id);
+                              const requestIds = suggestion.requests.map((r: { id: number }) => r.id);
                               const vehicleType = selectedVehicleType || suggestion.suggested_vehicle;
                               handlePooledBooking(requestIds, vehicleType);
                               setShowPoolingModal(false);
@@ -1222,7 +1272,7 @@ export default function TransportPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        {suggestion.requests.map((req: any) => (
+                        {suggestion.requests.map((req: { id: number; passenger_name: string; pickup_address: string; dropoff_address: string; pickup_time: string; flight_details: string }) => (
                           <div key={req.id} className="text-sm bg-green-50 border border-green-100 p-3 rounded-lg">
                             <div className="font-medium text-green-900">{req.passenger_name}</div>
                             <div className="text-green-700 mt-1">
@@ -1438,7 +1488,7 @@ export default function TransportPage() {
                                 <Button
                                   size="sm"
                                   onClick={() => {
-                                    const requestIds = suggestion.requests.map((r: any) => r.id);
+                                    const requestIds = suggestion.requests.map((r: { id: number }) => r.id);
                                     handlePooledBooking(requestIds, suggestion.suggested_vehicle);
                                     setShowDetailsModal(false);
                                   }}
@@ -1450,8 +1500,8 @@ export default function TransportPage() {
                               </div>
                               <div className="space-y-1">
                                 {suggestion.requests
-                                  .filter((req: any) => req.id !== selectedRequest.id)
-                                  .map((req: any) => (
+                                  .filter((req: { id: number; passenger_name: string; pickup_address: string; dropoff_address: string; pickup_time: string; flight_details: string }) => req.id !== selectedRequest.id)
+                                  .map((req: { id: number; passenger_name: string; pickup_address: string; dropoff_address: string; pickup_time: string; flight_details: string }) => (
                                     <div key={req.id} className="text-xs bg-blue-100 p-2 rounded">
                                       <div className="font-medium text-blue-900">{req.passenger_name}</div>
                                       <div className="text-blue-700">

@@ -463,13 +463,17 @@ export default function EventAllocations({
       return;
     }
 
-    // Check if voucher allocation already exists
-    if (voucherAllocations.length > 0) {
+    // Check if voucher allocation already exists for THIS EVENT
+    const existingVoucherForEvent = voucherAllocations.find(alloc => 
+      alloc.id && alloc.drink_vouchers_per_participant > 0
+    );
+    
+    if (existingVoucherForEvent) {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
         description:
-          "Voucher allocation already exists. You can edit or delete the existing one.",
+          "Voucher allocation already exists for this event. You can edit or delete the existing one.",
         variant: "destructive",
       });
       return;
