@@ -1089,7 +1089,7 @@ export default function TransportPage() {
                             <SelectContent>
                               {vehicleTypes.map((vehicle) => (
                                 <SelectItem key={vehicle.id} value={vehicle.type} className="text-xs">
-                                  {vehicle.type}
+                                  {vehicle.type} ({vehicle.seats} seats)
                                 </SelectItem>
                               ))}
                             </SelectContent>
