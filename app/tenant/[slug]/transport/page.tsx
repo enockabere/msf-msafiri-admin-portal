@@ -473,6 +473,12 @@ export default function TransportPage() {
     return dateStr.split('T')[0] === today;
   };
 
+  const isPastDate = (dateStr: string) => {
+    const pickupDate = new Date(dateStr);
+    const now = new Date();
+    return pickupDate < now;
+  };
+
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
@@ -755,13 +761,18 @@ export default function TransportPage() {
                     <TableRow key={request.id}>
                       {transportProvider?.is_enabled && (
                         <TableCell>
-                          {(request.status === 'created' || request.status === 'pending') && (
+                          {(request.status === 'created' || request.status === 'pending') && !isPastDate(request.pickup_time) && (
                             <input
                               type="checkbox"
                               checked={selectedRequests.includes(request.id)}
                               onChange={() => toggleRequestSelection(request.id)}
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
+                          )}
+                          {isPastDate(request.pickup_time) && (
+                            <Badge className="bg-gray-100 text-gray-600 text-xs">
+                              Past
+                            </Badge>
                           )}
                         </TableCell>
                       )}
@@ -831,14 +842,21 @@ export default function TransportPage() {
                                 <Button
                                   size="sm"
                                   onClick={() => handleBookRequest(request)}
-                                  disabled={bookingInProgress === request.id}
-                                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                                  disabled={bookingInProgress === request.id || isPastDate(request.pickup_time)}
+                                  className={`font-medium shadow-md hover:shadow-lg transition-all duration-200 ${
+                                    isPastDate(request.pickup_time) 
+                                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                      : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white'
+                                  }`}
+                                  title={isPastDate(request.pickup_time) ? 'Cannot book past dates' : ''}
                                 >
                                   {bookingInProgress === request.id ? (
                                     <>
                                       <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
                                       Booking...
                                     </>
+                                  ) : isPastDate(request.pickup_time) ? (
+                                    'Past Date'
                                   ) : (
                                     'Book'
                                   )}
@@ -852,9 +870,15 @@ export default function TransportPage() {
                                     setSelectedRequest(request);
                                     setShowConfirmModal(true);
                                   }}
-                                  className="border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300 font-medium transition-all duration-200"
+                                  disabled={isPastDate(request.pickup_time)}
+                                  className={`font-medium transition-all duration-200 ${
+                                    isPastDate(request.pickup_time)
+                                      ? 'border-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300'
+                                  }`}
+                                  title={isPastDate(request.pickup_time) ? 'Cannot book past dates' : ''}
                                 >
-                                  Manual Booking
+                                  {isPastDate(request.pickup_time) ? 'Past Date' : 'Manual Booking'}
                                 </Button>
                               )}
                             </>
