@@ -519,7 +519,9 @@ export default function TransportPage() {
   const getTransportStats = () => {
     return {
       total: transportRequests.length,
-      pending: transportRequests.filter(r => r.status === 'pending' || r.status === 'created').length,
+      pending: transportRequests.filter(r => 
+        (r.status === 'pending' || r.status === 'created') && !isPastDate(r.pickup_time)
+      ).length,
       booked: transportRequests.filter(r => r.status === 'booked' || r.status === 'confirmed').length,
       todayPickup: transportRequests.filter(r => isToday(r.pickup_time)).length,
       completed: transportRequests.filter(r => r.status === 'completed').length
