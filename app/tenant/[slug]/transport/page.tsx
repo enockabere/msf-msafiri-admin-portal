@@ -90,6 +90,7 @@ export default function TransportPage() {
   const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
   const [poolingSuggestions, setPoolingSuggestions] = useState<any[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState('');
+  const [bulkVehicleType, setBulkVehicleType] = useState('');
   const [confirmationData, setConfirmationData] = useState({
     driverName: '',
     driverPhone: '',
@@ -145,49 +146,30 @@ export default function TransportPage() {
     }
   }, [apiClient, tenantSlug]);
 
-  const fetchData = useCallback(async () => {
-    if (authLoading || !user) return;
-
+  const fetchPoolingSuggestions = useCallback(async () => {
     try {
-      setLoading(true);
-      console.log('🔍 FETCH DEBUG: Starting to fetch data...');
+      console.log('🔍 POOLING DEBUG: Starting to fetch pooling suggestions...');
+      const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
+      const tenantId = tenantResponse.id;
+      console.log('🔍 POOLING DEBUG: Tenant ID:', tenantId);
       
-      const [requests, provider, types] = await Promise.all([
-        fetchTransportRequests(),
-        fetchTransportProvider(),
-        fetchVehicleTypes()
-      ]);
+      const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
+      console.log('🔍 POOLING DEBUG: API response:', response);
       
-      console.log('🔍 FETCH DEBUG: Transport requests:', requests);
-      console.log('🔍 FETCH DEBUG: Transport provider:', provider);
-      console.log('🔍 FETCH DEBUG: Provider enabled:', provider?.is_enabled);
+      const suggestions = response.suggestions || [];
+      console.log('🔍 POOLING DEBUG: Extracted suggestions:', suggestions);
       
-      // Fetch pooling suggestions separately to avoid blocking the page
-      let suggestions = [];
-      try {
-        console.log('🔍 FETCH DEBUG: About to fetch pooling suggestions...');
-        suggestions = await fetchPoolingSuggestions();
-        console.log('🔍 FETCH DEBUG: Pooling suggestions result:', suggestions);
-      } catch (error) {
-        console.warn('Pooling suggestions unavailable:', error);
+      return suggestions;
+    } catch (error: any) {
+      console.error('🔍 POOLING DEBUG: Error fetching pooling suggestions:', error);
+      // Suppress geopy module errors - pooling suggestions are optional
+      if (error?.message?.includes('geopy') || error?.message?.includes('No module named')) {
+        console.log('🔍 POOLING DEBUG: Suppressing geopy error');
+        return [];
       }
-      
-      setTransportRequests(requests);
-      setTransportProvider(provider);
-      setVehicleTypes(types);
-      setPoolingSuggestions(suggestions);
-      
-      console.log('🔍 FETCH DEBUG: Final state - Provider enabled:', provider?.is_enabled);
-      console.log('🔍 FETCH DEBUG: Final state - Suggestions count:', suggestions.length);
-      console.log('🔍 FETCH DEBUG: Should show pool button:', provider?.is_enabled && suggestions.length > 0);
-      
-    } catch (error) {
-      console.error("Error loading transport data:", error);
-      toast({ title: "Error", description: "Failed to load transport data", variant: "destructive" });
-    } finally {
-      setLoading(false);
+      return [];
     }
-  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchPoolingSuggestions]);
+  }, [apiClient, tenantSlug]);
 
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
@@ -915,19 +897,36 @@ export default function TransportPage() {
                     Clear Selection
                   </Button>
                   {selectedRequests.length >= 2 && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        // Auto-create pooled booking with suggested vehicle
-                        const suggestedVehicle = selectedRequests.length > 4 ? 'Van' : 'SUV';
-                        handlePooledBooking(selectedRequests, suggestedVehicle);
-                        setSelectedRequests([]);
-                      }}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <Combine className="w-3 h-3 mr-1" />
-                      Pool Selected
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={selectedVehicleType}
+                        onValueChange={setSelectedVehicleType}
+                      >
+                        <SelectTrigger className="w-32 h-8 text-xs">
+                          <SelectValue placeholder={selectedRequests.length > 4 ? 'Van' : 'SUV'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {vehicleTypes.map((vehicle) => (
+                            <SelectItem key={vehicle.id} value={vehicle.type} className="text-xs">
+                              {vehicle.type} ({vehicle.seats} seats)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const vehicleType = selectedVehicleType || (selectedRequests.length > 4 ? 'Van' : 'SUV');
+                          handlePooledBooking(selectedRequests, vehicleType);
+                          setSelectedRequests([]);
+                          setSelectedVehicleType('');
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Combine className="w-3 h-3 mr-1" />
+                        Pool Selected
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1047,60 +1046,97 @@ export default function TransportPage() {
 
         {/* Pooling Suggestions Modal */}
         <Dialog open={showPoolingModal} onOpenChange={setShowPoolingModal}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Pooling Suggestions</DialogTitle>
-              <DialogDescription>
+          <DialogContent className="sm:max-w-2xl bg-white border-0 shadow-2xl">
+            <DialogHeader className="pb-4">
+              <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Combine className="w-5 h-5 text-green-600" />
+                Pooling Suggestions
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
                 Suggested request groupings based on time and location proximity
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 max-h-96 overflow-y-auto">
-              {poolingSuggestions.map((suggestion) => (
-                <Card key={suggestion.group_id} className="border-green-200">
-                  <CardContent className="pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium text-green-900">
-                          {suggestion.passenger_count} passengers • {suggestion.suggested_vehicle}
-                        </h4>
-                        <p className="text-sm text-green-700">
-                          Time window: {suggestion.time_window}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const requestIds = suggestion.requests.map((r: any) => r.id);
-                          handlePooledBooking(requestIds, suggestion.suggested_vehicle);
-                          setShowPoolingModal(false);
-                        }}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Combine className="w-3 h-3 mr-1" />
-                        Pool
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {suggestion.requests.map((req: any) => (
-                        <div key={req.id} className="text-sm bg-green-50 p-2 rounded">
-                          <div className="font-medium">{req.passenger_name}</div>
-                          <div className="text-green-700">
-                            {req.pickup_address} → {req.dropoff_address}
-                          </div>
-                          <div className="text-green-600">
-                            {new Date(req.pickup_time).toLocaleTimeString()} • {req.flight_details}
-                          </div>
+              {poolingSuggestions.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                  <Combine className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Pooling Suggestions</h3>
+                  <p className="text-sm text-gray-500">
+                    No compatible requests found for pooling at this time.
+                  </p>
+                </div>
+              ) : (
+                poolingSuggestions.map((suggestion) => (
+                  <Card key={suggestion.group_id} className="border-green-200 bg-white shadow-sm">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-medium text-green-900">
+                            {suggestion.passenger_count} passengers
+                          </h4>
+                          <p className="text-sm text-green-700">
+                            Time window: {suggestion.time_window}
+                          </p>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={selectedVehicleType || suggestion.suggested_vehicle}
+                            onValueChange={setSelectedVehicleType}
+                          >
+                            <SelectTrigger className="w-32 h-8 text-xs">
+                              <SelectValue placeholder="Vehicle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {vehicleTypes.map((vehicle) => (
+                                <SelectItem key={vehicle.id} value={vehicle.type} className="text-xs">
+                                  {vehicle.type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const requestIds = suggestion.requests.map((r: any) => r.id);
+                              const vehicleType = selectedVehicleType || suggestion.suggested_vehicle;
+                              handlePooledBooking(requestIds, vehicleType);
+                              setShowPoolingModal(false);
+                              setSelectedVehicleType('');
+                            }}
+                            className="bg-green-600 hover:bg-green-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                          >
+                            <Combine className="w-3 h-3 mr-1" />
+                            Pool
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {suggestion.requests.map((req: any) => (
+                          <div key={req.id} className="text-sm bg-green-50 border border-green-100 p-3 rounded-lg">
+                            <div className="font-medium text-green-900">{req.passenger_name}</div>
+                            <div className="text-green-700 mt-1">
+                              📍 {req.pickup_address} → {req.dropoff_address}
+                            </div>
+                            <div className="text-green-600 mt-1 flex items-center gap-2">
+                              <span>🕒 {new Date(req.pickup_time).toLocaleTimeString()}</span>
+                              <span>✈️ {req.flight_details}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-4 border-t border-gray-200">
               <Button
                 variant="outline"
-                onClick={() => setShowPoolingModal(false)}
+                onClick={() => {
+                  setShowPoolingModal(false);
+                  setSelectedVehicleType('');
+                }}
+                className="border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
               >
                 Close
               </Button>
