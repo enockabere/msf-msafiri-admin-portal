@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User, Combine, Plus } from "lucide-react";
+import { Car, MapPin, Clock, Users, RefreshCw, Calendar, CheckCircle, AlertCircle, Settings, Search, Filter, User, Combine, Plus, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TransportRequest {
   id: number;
@@ -102,6 +103,9 @@ export default function TransportPage() {
   const [loadingBookingDetails, setLoadingBookingDetails] = useState(false);
   const [requestPoolingSuggestions, setRequestPoolingSuggestions] = useState<any[]>([]);
   const [loadingPoolingSuggestions, setLoadingPoolingSuggestions] = useState(false);
+  const [activeTab, setActiveTab] = useState('new');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const fetchTransportRequests = useCallback(async () => {
     try {
@@ -148,23 +152,16 @@ export default function TransportPage() {
 
   const fetchPoolingSuggestions = useCallback(async () => {
     try {
-      console.log('🔍 POOLING DEBUG: Starting to fetch pooling suggestions...');
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
       const tenantId = tenantResponse.id;
-      console.log('🔍 POOLING DEBUG: Tenant ID:', tenantId);
       
       const response = await apiClient.request(`/transport-requests/tenant/${tenantId}/pooling-suggestions`);
-      console.log('🔍 POOLING DEBUG: API response:', response);
-      
       const suggestions = response.suggestions || [];
-      console.log('🔍 POOLING DEBUG: Extracted suggestions:', suggestions);
       
       return suggestions;
     } catch (error: any) {
-      console.error('🔍 POOLING DEBUG: Error fetching pooling suggestions:', error);
       // Suppress geopy module errors - pooling suggestions are optional
       if (error?.message?.includes('geopy') || error?.message?.includes('No module named')) {
-        console.log('🔍 POOLING DEBUG: Suppressing geopy error');
         return [];
       }
       return [];
@@ -176,7 +173,6 @@ export default function TransportPage() {
 
     try {
       setLoading(true);
-      console.log('🔍 FETCH DEBUG: Starting to fetch data...');
       
       const [requests, provider, types] = await Promise.all([
         fetchTransportRequests(),
@@ -184,16 +180,10 @@ export default function TransportPage() {
         fetchVehicleTypes()
       ]);
       
-      console.log('🔍 FETCH DEBUG: Transport requests:', requests);
-      console.log('🔍 FETCH DEBUG: Transport provider:', provider);
-      console.log('🔍 FETCH DEBUG: Provider enabled:', provider?.is_enabled);
-      
       // Fetch pooling suggestions separately to avoid blocking the page
       let suggestions = [];
       try {
-        console.log('🔍 FETCH DEBUG: About to fetch pooling suggestions...');
         suggestions = await fetchPoolingSuggestions();
-        console.log('🔍 FETCH DEBUG: Pooling suggestions result:', suggestions);
       } catch (error) {
         console.warn('Pooling suggestions unavailable:', error);
       }
@@ -202,10 +192,6 @@ export default function TransportPage() {
       setTransportProvider(provider);
       setVehicleTypes(types);
       setPoolingSuggestions(suggestions);
-      
-      console.log('🔍 FETCH DEBUG: Final state - Provider enabled:', provider?.is_enabled);
-      console.log('🔍 FETCH DEBUG: Final state - Suggestions count:', suggestions.length);
-      console.log('🔍 FETCH DEBUG: Should show pool button:', provider?.is_enabled && suggestions.length > 0);
       
     } catch (error) {
       console.error("Error loading transport data:", error);
@@ -216,22 +202,27 @@ export default function TransportPage() {
   }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchPoolingSuggestions]);
 
   useEffect(() => {
-    console.log('🔍 EFFECT DEBUG: useEffect triggered, calling fetchData');
     fetchData();
   }, [fetchData]);
-  
-  // Debug effect to log state changes
-  useEffect(() => {
-    console.log('🔍 STATE DEBUG: transportProvider changed:', transportProvider);
-    console.log('🔍 STATE DEBUG: poolingSuggestions changed:', poolingSuggestions);
-  }, [transportProvider, poolingSuggestions]);
 
-  useEffect(() => {
-    filterRequests();
-  }, [transportRequests, searchTerm, statusFilter, eventFilter, dateFilter]);
-
-  const filterRequests = () => {
+  const getFilteredRequestsByTab = (tab: string) => {
     let filtered = [...transportRequests];
+
+    // Tab filter
+    switch (tab) {
+      case 'new':
+        filtered = filtered.filter(r => (r.status === 'created' || r.status === 'pending') && !isPastDate(r.pickup_time));
+        break;
+      case 'booked':
+        filtered = filtered.filter(r => r.status === 'booked' || r.status === 'confirmed');
+        break;
+      case 'completed':
+        filtered = filtered.filter(r => r.status === 'completed');
+        break;
+      case 'expired':
+        filtered = filtered.filter(r => (r.status === 'created' || r.status === 'pending') && isPastDate(r.pickup_time));
+        break;
+    }
 
     // Search filter
     if (searchTerm) {
@@ -240,15 +231,6 @@ export default function TransportPage() {
         request.flight_details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         request.user_email.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'booked') {
-        filtered = filtered.filter(request => request.status === 'booked' || request.status === 'confirmed');
-      } else {
-        filtered = filtered.filter(request => request.status === statusFilter);
-      }
     }
 
     // Event filter
@@ -262,7 +244,55 @@ export default function TransportPage() {
       filtered = filtered.filter(request => request.pickup_time.split('T')[0] === today);
     }
 
-    setFilteredRequests(filtered);
+    return filtered;
+  };
+
+  const getPaginatedRequests = (requests: TransportRequest[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return requests.slice(startIndex, startIndex + itemsPerPage);
+  };
+
+  const getTotalPages = (requests: TransportRequest[]) => {
+    return Math.ceil(requests.length / itemsPerPage);
+  };
+
+  const exportToCSV = () => {
+    const dataToExport = getFilteredRequestsByTab(activeTab);
+    const headers = [
+      'Passenger Name', 'Phone', 'Email', 'Flight Details', 'Pickup Time',
+      'Pickup Address', 'Dropoff Address', 'Event', 'Status', 'Vehicle Type',
+      'Booking Reference', 'Driver Name', 'Driver Phone', 'Notes'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      ...dataToExport.map(request => [
+        `"${request.passenger_name}"`,
+        `"${request.passenger_phone}"`,
+        `"${request.user_email}"`,
+        `"${request.flight_details || 'N/A'}"`,
+        `"${formatDateTime(request.pickup_time)}"`,
+        `"${request.pickup_address}"`,
+        `"${request.dropoff_address}"`,
+        `"${request.event?.title || 'N/A'}"`,
+        `"${request.status}"`,
+        `"${request.vehicle_type || 'N/A'}"`,
+        `"${request.booking_reference || 'N/A'}"`,
+        `"${request.driver_name || 'N/A'}"`,
+        `"${request.driver_phone || 'N/A'}"`,
+        `"${request.notes || 'N/A'}"`
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transport-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const createAbsoluteCabsBooking = async (request: TransportRequest) => {
@@ -519,12 +549,10 @@ export default function TransportPage() {
   const getTransportStats = () => {
     return {
       total: transportRequests.length,
-      pending: transportRequests.filter(r => 
-        (r.status === 'pending' || r.status === 'created') && !isPastDate(r.pickup_time)
-      ).length,
+      new: transportRequests.filter(r => (r.status === 'pending' || r.status === 'created') && !isPastDate(r.pickup_time)).length,
       booked: transportRequests.filter(r => r.status === 'booked' || r.status === 'confirmed').length,
-      todayPickup: transportRequests.filter(r => isToday(r.pickup_time)).length,
-      completed: transportRequests.filter(r => r.status === 'completed').length
+      completed: transportRequests.filter(r => r.status === 'completed').length,
+      expired: transportRequests.filter(r => (r.status === 'pending' || r.status === 'created') && isPastDate(r.pickup_time)).length
     };
   };
 
@@ -563,25 +591,15 @@ export default function TransportPage() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
               </Button>
-              {(() => {
-                console.log('🔍 BUTTON DEBUG: Checking pool button conditions...');
-                console.log('🔍 BUTTON DEBUG: transportProvider?.is_enabled:', transportProvider?.is_enabled);
-                console.log('🔍 BUTTON DEBUG: poolingSuggestions.length:', poolingSuggestions.length);
-                console.log('🔍 BUTTON DEBUG: poolingSuggestions:', poolingSuggestions);
-                
-                const shouldShow = transportProvider?.is_enabled && poolingSuggestions.length > 0;
-                console.log('🔍 BUTTON DEBUG: Should show button:', shouldShow);
-                
-                return shouldShow ? (
-                  <Button
-                    onClick={() => setShowPoolingModal(true)}
-                    className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
-                  >
-                    <Combine className="w-4 h-4 mr-2" />
-                    Pool Requests ({poolingSuggestions.length})
-                  </Button>
-                ) : null;
-              })()}
+              {transportProvider?.is_enabled && poolingSuggestions.length > 0 && (
+                <Button
+                  onClick={() => setShowPoolingModal(true)}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
+                >
+                  <Combine className="w-4 h-4 mr-2" />
+                  Pool Requests ({poolingSuggestions.length})
+                </Button>
+              )}
               {!transportProvider?.is_enabled && (
                 <Button
                   onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
@@ -606,30 +624,16 @@ export default function TransportPage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Total Requests</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.total}</p>
+                  <p className="text-sm font-medium text-gray-500">New Requests</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.new}</p>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Car className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-yellow-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Pending</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.pending}</p>
-                </div>
-                <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-yellow-600" />
+                  <Plus className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
@@ -649,20 +653,6 @@ export default function TransportPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-l-4 border-l-orange-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Today's Pickup</p>
-                  <p className="text-2xl font-bold text-gray-900">{transportStats.todayPickup}</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="border-l-4 border-l-purple-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -672,6 +662,20 @@ export default function TransportPage() {
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                   <Users className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-red-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Expired</p>
+                  <p className="text-2xl font-bold text-gray-900">{transportStats.expired}</p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
               </div>
             </CardContent>
@@ -693,18 +697,6 @@ export default function TransportPage() {
                   />
                 </div>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="created">Created</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="booked">Booked</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
               <Select value={eventFilter} onValueChange={setEventFilter}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Event" />
@@ -730,29 +722,93 @@ export default function TransportPage() {
                   <SelectItem value="today">Today</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                onClick={exportToCSV}
+                variant="outline"
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transport Requests Table */}
+        {/* Transport Requests with Tabs */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="w-5 h-5 text-blue-600" />
-              Transport Requests ({filteredRequests.length})
+              Transport Requests
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {filteredRequests.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Transport Requests</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  No transport requests found matching your filters.
-                </p>
-              </div>
-            ) : (
-              <Table>
+            <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setCurrentPage(1); }}>
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="new" className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  New ({transportStats.new})
+                </TabsTrigger>
+                <TabsTrigger value="booked" className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
+                  Booked ({transportStats.booked})
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Completed ({transportStats.completed})
+                </TabsTrigger>
+                <TabsTrigger value="expired" className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Expired ({transportStats.expired})
+                </TabsTrigger>
+              </TabsList>
+              
+              {['new', 'booked', 'completed', 'expired'].map(tab => {
+                const tabRequests = getFilteredRequestsByTab(tab);
+                const paginatedRequests = getPaginatedRequests(tabRequests);
+                const totalPages = getTotalPages(tabRequests);
+                
+                return (
+                  <TabsContent key={tab} value={tab} className="mt-6">
+                    {tabRequests.length === 0 ? (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No {tab.charAt(0).toUpperCase() + tab.slice(1)} Requests</h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                          No {tab} transport requests found.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-sm text-gray-600">
+                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, tabRequests.length)} of {tabRequests.length} requests
+                          </p>
+                          {totalPages > 1 && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </Button>
+                              <span className="text-sm text-gray-600">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <Table>
                 <TableHeader>
                   <TableRow>
                     {transportProvider?.is_enabled && <TableHead className="w-12">Select</TableHead>}
@@ -764,8 +820,8 @@ export default function TransportPage() {
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {filteredRequests.map((request) => (
+                          <TableBody>
+                            {paginatedRequests.map((request) => (
                     <TableRow key={request.id}>
                       {transportProvider?.is_enabled && (
                         <TableCell>
@@ -893,11 +949,16 @@ export default function TransportPage() {
                           )}
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                            </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </>
+                    )}
+                  </TabsContent>
+                );
+              })}
+            </Tabs>
           </CardContent>
         </Card>
 
