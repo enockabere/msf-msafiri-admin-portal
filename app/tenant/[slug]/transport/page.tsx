@@ -67,8 +67,14 @@ interface TenantResponse {
   slug: string;
 }
 
+interface VehicleType {
+  id: number;
+  type: string;
+  seats: number;
+}
+
 interface VehicleTypesResponse {
-  vehicle_types: any[];
+  vehicle_types: VehicleType[];
 }
 
 interface PoolingSuggestionsResponse {
@@ -82,30 +88,21 @@ export default function TransportPage() {
   const tenantSlug = params.slug as string;
 
   const [transportRequests, setTransportRequests] = useState<TransportRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<TransportRequest[]>([]);
   const [transportProvider, setTransportProvider] = useState<TransportProvider | null>(null);
   const [loading, setLoading] = useState(true);
   const [bookingInProgress, setBookingInProgress] = useState<number | null>(null);
-  const [showManualBookingModal, setShowManualBookingModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<TransportRequest | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [eventFilter, setEventFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
-  const [manualBookingData, setManualBookingData] = useState({
-    driverName: '',
-    driverPhone: '',
-    vehicleType: 'SUV'
-  });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [showPoolingModal, setShowPoolingModal] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<number[]>([]);
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([]);
   const [poolingSuggestions, setPoolingSuggestions] = useState<any[]>([]);
   const [selectedVehicleType, setSelectedVehicleType] = useState('');
-  const [bulkVehicleType, setBulkVehicleType] = useState('');
   const [confirmationData, setConfirmationData] = useState({
     driverName: '',
     driverPhone: '',
@@ -151,7 +148,7 @@ export default function TransportPage() {
     }
   }, [apiClient, tenantSlug]);
 
-  const fetchVehicleTypes = useCallback(async () => {
+  const fetchVehicleTypes = useCallback(async (): Promise<VehicleType[]> => {
     try {
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`) as TenantResponse;
       const tenantId = tenantResponse.id;
@@ -213,7 +210,7 @@ export default function TransportPage() {
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchPoolingSuggestions]);
+  }, [authLoading, user, fetchTransportRequests, fetchTransportProvider, fetchVehicleTypes, fetchPoolingSuggestions]);
 
   useEffect(() => {
     fetchData();
