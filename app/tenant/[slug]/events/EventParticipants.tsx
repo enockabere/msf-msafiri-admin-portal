@@ -124,7 +124,8 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
 
   const openLOI = () => {
     if (recordId) {
-      const url = `${window.location.origin}/public/loi/${recordId}`;
+      // Use the backend API endpoint that handles both raw and slugified IDs
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/passport/loi/record/${recordId}`;
       window.open(url, '_blank');
     }
   };
@@ -188,7 +189,8 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
 
   const openLOIPage = () => {
     if (loiData?.record_id) {
-      const url = `${window.location.origin}/public/loi/${loiData.record_id}`;
+      // Use the backend API endpoint that handles both raw and slugified IDs
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/passport/loi/record/${loiData.record_id}`;
       window.open(url, '_blank');
     }
   };
