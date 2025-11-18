@@ -1518,18 +1518,10 @@ function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) 
   useEffect(() => {
     const checkLOIAvailability = async () => {
       try {
-        console.log('🔍 LOI DEBUG: Checking availability for:', {
-          participantEmail,
-          eventId,
-          tenantSlug
-        });
-        
         const response = await apiClient.request(
           `/loi/participant/${participantEmail}/event/${eventId}/check`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
-        
-        console.log('🔍 LOI DEBUG: API Response:', response);
         
         setLoiStatus({
           available: response.available,
@@ -1537,14 +1529,7 @@ function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) 
           message: response.message,
           loading: false
         });
-        
-        console.log('🔍 LOI DEBUG: Updated state:', {
-          available: response.available,
-          slug: response.slug,
-          message: response.message
-        });
       } catch (error) {
-        console.error('❌ LOI DEBUG: Failed to check LOI availability:', error);
         setLoiStatus({
           available: false,
           message: 'Failed to check LOI availability',
@@ -1557,16 +1542,9 @@ function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) 
   }, [participantEmail, eventId, tenantSlug, apiClient]);
 
   const handleViewLOI = () => {
-    console.log('🔗 LOI DEBUG: handleViewLOI called with loiStatus:', loiStatus);
-    console.log('🔗 LOI DEBUG: NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL);
-    
     if (loiStatus.slug) {
       const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
-      console.log('🔗 LOI DEBUG: Opening URL:', loiUrl);
       window.open(loiUrl, '_blank');
-    } else {
-      console.error('❌ LOI DEBUG: No slug available! loiStatus:', loiStatus);
-      alert('LOI slug not available. Please check availability first.');
     }
   };
 

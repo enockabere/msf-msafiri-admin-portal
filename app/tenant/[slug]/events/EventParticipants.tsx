@@ -104,46 +104,32 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     
     setChecking(true);
     try {
-      console.log('🟢 LOI QUICK ACCESS DEBUG: Checking availability for:', participant.email, 'event:', eventId);
-      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
       );
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🟢 LOI QUICK ACCESS DEBUG: Check response:', data);
-        
         if (data.available && data.slug) {
           setHasLOI(true);
           setLoiSlug(data.slug);
-          console.log('🟢 LOI QUICK ACCESS DEBUG: LOI available with slug:', data.slug);
         } else {
           setHasLOI(false);
-          console.log('🟡 LOI QUICK ACCESS DEBUG: LOI not available:', data.message);
         }
       } else {
         setHasLOI(false);
-        console.log('🔴 LOI QUICK ACCESS DEBUG: Check failed:', response.status);
       }
     } catch (error) {
       setHasLOI(false);
-      console.error('🔴 LOI QUICK ACCESS DEBUG: Check error:', error);
     } finally {
       setChecking(false);
     }
   };
 
   const openLOI = () => {
-    console.log('🟢 LOI QUICK ACCESS DEBUG: openLOI called with slug:', loiSlug);
-    
     if (loiSlug) {
       const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiSlug}`;
-      console.log('🟢 LOI QUICK ACCESS DEBUG: Opening slug-based URL:', loiUrl);
       window.open(loiUrl, '_blank');
-    } else {
-      console.error('❌ LOI QUICK ACCESS DEBUG: No slug available');
-      alert('LOI slug not available. Please try checking availability again.');
     }
   };
 
@@ -191,16 +177,12 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
     setLoiStatus(prev => ({ ...prev, loading: true }));
     setError(null);
     try {
-      console.log('🔵 LOI SECTION DEBUG: Checking availability for:', participant.email, 'event:', eventId);
-      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
       );
       
       if (response.ok) {
         const data = await response.json();
-        console.log('🔵 LOI SECTION DEBUG: Check response:', data);
-        
         setLoiStatus({
           available: data.available,
           slug: data.slug,
@@ -212,22 +194,15 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
         setLoiStatus(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
-      console.error('🔵 LOI SECTION DEBUG: Check error:', error);
       setError('Failed to fetch LOI data');
       setLoiStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
   const openLOIPage = () => {
-    console.log('🔵 LOI SECTION DEBUG: openLOIPage called with loiStatus:', loiStatus);
-    
     if (loiStatus.slug) {
       const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
-      console.log('🔵 LOI SECTION DEBUG: Opening slug-based URL:', loiUrl);
       window.open(loiUrl, '_blank');
-    } else {
-      console.error('❌ LOI SECTION DEBUG: No slug available in loiStatus');
-      alert('LOI slug not available. Please check availability first.');
     }
   };
 
