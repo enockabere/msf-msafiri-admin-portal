@@ -949,6 +949,24 @@ export default function ParticipantDetailsPanel({
                 </div>
               )}
 
+              {/* Letter of Invitation (LOI) Section */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 text-base">Letter of Invitation (LOI)</h4>
+                    <p className="text-xs text-gray-500">Official invitation document for visa applications</p>
+                  </div>
+                </div>
+                <LOISection 
+                  participantEmail={participantEmail}
+                  eventId={eventId}
+                  tenantSlug={tenantSlug}
+                />
+              </div>
+
               {/* Services Grid */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
@@ -1476,6 +1494,127 @@ export default function ParticipantDetailsPanel({
             </>
           )}
         </div>
+    </div>
+  );
+}
+
+// LOI Section Component
+interface LOISectionProps {
+  participantEmail: string;
+  eventId: number;
+  tenantSlug: string;
+}
+
+function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) {
+  const [loiStatus, setLoiStatus] = useState<{
+    available: boolean;
+    slug?: string;
+    message: string;
+    loading: boolean;
+  }>({ available: false, message: '', loading: true });
+
+  const { apiClient } = useAuthenticatedApi();
+
+  useEffect(() => {
+    const checkLOIAvailability = async () => {
+      try {
+        const response = await apiClient.request(
+          `/loi/participant/${participantEmail}/event/${eventId}/check`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        
+        setLoiStatus({
+          available: response.available,
+          slug: response.slug,
+          message: response.message,
+          loading: false
+        });
+      } catch (error) {
+        console.error('Failed to check LOI availability:', error);
+        setLoiStatus({
+          available: false,
+          message: 'Failed to check LOI availability',
+          loading: false
+        });
+      }
+    };
+
+    checkLOIAvailability();
+  }, [participantEmail, eventId, tenantSlug, apiClient]);
+
+  const handleViewLOI = () => {
+    if (loiStatus.slug) {
+      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
+      window.open(loiUrl, '_blank');
+    }
+  };
+
+  if (loiStatus.loading) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-4 text-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600">Checking LOI availability...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-lg p-4 border-2 ${
+      loiStatus.available 
+        ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
+        : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${
+            loiStatus.available ? 'bg-green-100' : 'bg-gray-100'
+          }`}>
+            <FileText className={`h-5 w-5 ${
+              loiStatus.available ? 'text-green-600' : 'text-gray-400'
+            }`} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-900">LOI Document</span>
+              <Badge className={`text-xs px-2 py-1 ${
+                loiStatus.available 
+                  ? 'bg-green-100 text-green-800 border-green-300'
+                  : 'bg-gray-100 text-gray-600 border-gray-300'
+              }`}>
+                {loiStatus.available ? 'Available' : 'Not Available'}
+              </Badge>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">{loiStatus.message}</p>
+          </div>
+        </div>
+        
+        {loiStatus.available && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setLoiStatus(prev => ({ ...prev, loading: true }));
+                // Re-check availability
+                setTimeout(() => {
+                  setLoiStatus(prev => ({ ...prev, loading: false }));
+                }, 1000);
+              }}
+              className="bg-white border-2 border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
+            >
+              Check Availability
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleViewLOI}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              View LOI
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

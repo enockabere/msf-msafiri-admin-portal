@@ -33,7 +33,7 @@ export default function PublicLOIPage() {
     const fetchLOIData = async () => {
       try {
         console.log('Fetching LOI data for slug:', slug);
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/passport/loi/${slug}`);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/slug/${slug}`);
         console.log('LOI response:', response.status, response.statusText);
         
         if (response.ok) {

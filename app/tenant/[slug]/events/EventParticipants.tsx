@@ -124,9 +124,9 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
 
   const openLOI = () => {
     if (recordId) {
-      // Use the backend redirect endpoint that converts raw ID to slugified URL
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/passport/loi/record/${recordId}`;
-      window.open(url, '_blank');
+      // Temporary fallback: Use direct LOI endpoint if passport redirect is not available
+      const fallbackUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/record/${recordId}/loi`;
+      window.open(fallbackUrl, '_blank');
     }
   };
 
@@ -189,9 +189,9 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
 
   const openLOIPage = () => {
     if (loiData?.record_id) {
-      // Use the backend redirect endpoint that converts raw ID to slugified URL
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/passport/loi/record/${loiData.record_id}`;
-      window.open(url, '_blank');
+      // Temporary fallback: Use direct LOI endpoint if passport redirect is not available
+      const fallbackUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/record/${loiData.record_id}/loi`;
+      window.open(fallbackUrl, '_blank');
     }
   };
 
