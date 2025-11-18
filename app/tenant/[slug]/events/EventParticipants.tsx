@@ -96,7 +96,7 @@ interface EventParticipantsProps {
 // LOI Quick Access Component for table
 function LOIQuickAccess({ participant, eventId }: { participant: Participant; eventId: number }) {
   const [hasLOI, setHasLOI] = useState<boolean | null>(null);
-  const [recordId, setRecordId] = useState<number | null>(null);
+  const [loiSlug, setLoiSlug] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
   const checkLOI = async () => {
@@ -104,29 +104,46 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     
     setChecking(true);
     try {
+      console.log('🟢 LOI QUICK ACCESS DEBUG: Checking availability for:', participant.email, 'event:', eventId);
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/loi`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
       );
       
       if (response.ok) {
         const data = await response.json();
-        setHasLOI(true);
-        setRecordId(data.record_id);
+        console.log('🟢 LOI QUICK ACCESS DEBUG: Check response:', data);
+        
+        if (data.available && data.slug) {
+          setHasLOI(true);
+          setLoiSlug(data.slug);
+          console.log('🟢 LOI QUICK ACCESS DEBUG: LOI available with slug:', data.slug);
+        } else {
+          setHasLOI(false);
+          console.log('🟡 LOI QUICK ACCESS DEBUG: LOI not available:', data.message);
+        }
       } else {
         setHasLOI(false);
+        console.log('🔴 LOI QUICK ACCESS DEBUG: Check failed:', response.status);
       }
     } catch (error) {
       setHasLOI(false);
+      console.error('🔴 LOI QUICK ACCESS DEBUG: Check error:', error);
     } finally {
       setChecking(false);
     }
   };
 
   const openLOI = () => {
-    if (recordId) {
-      // Temporary fallback: Use direct LOI endpoint if passport redirect is not available
-      const fallbackUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/record/${recordId}/loi`;
-      window.open(fallbackUrl, '_blank');
+    console.log('🟢 LOI QUICK ACCESS DEBUG: openLOI called with slug:', loiSlug);
+    
+    if (loiSlug) {
+      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiSlug}`;
+      console.log('🟢 LOI QUICK ACCESS DEBUG: Opening slug-based URL:', loiUrl);
+      window.open(loiUrl, '_blank');
+    } else {
+      console.error('❌ LOI QUICK ACCESS DEBUG: No slug available');
+      alert('LOI slug not available. Please try checking availability again.');
     }
   };
 
@@ -143,7 +160,7 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     );
   }
 
-  if (hasLOI && recordId) {
+  if (hasLOI && loiSlug) {
     return (
       <Button
         size="sm"
@@ -162,42 +179,61 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
 
 // LOI Component
 function LOISection({ participant, eventId }: { participant: Participant; eventId: number }) {
-  const [loiData, setLoiData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loiStatus, setLoiStatus] = useState<{
+    available: boolean;
+    slug?: string;
+    message: string;
+    loading: boolean;
+  }>({ available: false, message: '', loading: false });
   const [error, setError] = useState<string | null>(null);
 
   const fetchLOI = async () => {
-    setLoading(true);
+    setLoiStatus(prev => ({ ...prev, loading: true }));
     setError(null);
     try {
+      console.log('🔵 LOI SECTION DEBUG: Checking availability for:', participant.email, 'event:', eventId);
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/loi`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
       );
       
       if (response.ok) {
         const data = await response.json();
-        setLoiData(data);
+        console.log('🔵 LOI SECTION DEBUG: Check response:', data);
+        
+        setLoiStatus({
+          available: data.available,
+          slug: data.slug,
+          message: data.message,
+          loading: false
+        });
       } else {
         setError('LOI not available for this participant');
+        setLoiStatus(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
+      console.error('🔵 LOI SECTION DEBUG: Check error:', error);
       setError('Failed to fetch LOI data');
-    } finally {
-      setLoading(false);
+      setLoiStatus(prev => ({ ...prev, loading: false }));
     }
   };
 
   const openLOIPage = () => {
-    if (loiData?.record_id) {
-      // Temporary fallback: Use direct LOI endpoint if passport redirect is not available
-      const fallbackUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/record/${loiData.record_id}/loi`;
-      window.open(fallbackUrl, '_blank');
+    console.log('🔵 LOI SECTION DEBUG: openLOIPage called with loiStatus:', loiStatus);
+    
+    if (loiStatus.slug) {
+      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
+      console.log('🔵 LOI SECTION DEBUG: Opening slug-based URL:', loiUrl);
+      window.open(loiUrl, '_blank');
+    } else {
+      console.error('❌ LOI SECTION DEBUG: No slug available in loiStatus');
+      alert('LOI slug not available. Please check availability first.');
     }
   };
 
   return (
     <div className="space-y-3">
-      {!loiData && !loading && !error && (
+      {!loiStatus.available && !loiStatus.loading && !error && (
         <Button
           onClick={fetchLOI}
           size="sm"
@@ -208,7 +244,7 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
         </Button>
       )}
       
-      {loading && (
+      {loiStatus.loading && (
         <div className="flex items-center gap-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           <span className="text-sm text-gray-600">Checking LOI...</span>
@@ -221,12 +257,12 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
         </div>
       )}
       
-      {loiData && (
+      {loiStatus.available && loiStatus.slug && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-700">LOI Available</p>
-              <p className="text-xs text-gray-500">Record ID: {loiData.record_id}</p>
+              <p className="text-xs text-gray-500">Slug: {loiStatus.slug}</p>
             </div>
             <Button
               onClick={openLOIPage}
