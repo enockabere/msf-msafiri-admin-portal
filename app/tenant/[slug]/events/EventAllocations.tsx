@@ -631,7 +631,7 @@ export default function EventAllocations({
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/bulk?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`,
         {
           method: "POST",
           headers: {
@@ -660,9 +660,20 @@ export default function EventAllocations({
       } else {
         const errorData = await response.json();
         const { toast } = await import("@/hooks/use-toast");
+        
+        // Handle validation errors
+        let errorMessage = "Failed to create scanner accounts.";
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map(err => err.msg || err).join(", ");
+          } else {
+            errorMessage = errorData.detail;
+          }
+        }
+        
         toast({
           title: "Error!",
-          description: errorData.detail || "Failed to create scanner accounts.",
+          description: errorMessage,
           variant: "destructive",
         });
       }
