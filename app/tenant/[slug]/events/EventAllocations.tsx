@@ -285,6 +285,8 @@ export default function EventAllocations({
 
   const fetchScanners = useCallback(async () => {
     try {
+      console.log('🔍 Fetching scanners for event:', eventId, 'tenant:', tenantSlug);
+      
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
@@ -294,21 +296,31 @@ export default function EventAllocations({
         }
       );
 
-      if (!tenantResponse.ok) return;
+      if (!tenantResponse.ok) {
+        console.error('❌ Tenant fetch failed:', tenantResponse.status);
+        return;
+      }
 
       const tenantData = await tenantResponse.json();
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/event/${eventId}?tenant_id=${tenantData.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      console.log('✅ Tenant data:', tenantData.id);
+      
+      const scannerUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/event/${eventId}?tenant_id=${tenantData.id}`;
+      console.log('🔗 Scanner URL:', scannerUrl);
+      
+      const response = await fetch(scannerUrl, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
+      console.log('📡 Scanner response:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Scanner data:', data);
         setScanners(data);
+      } else {
+        console.error('❌ Scanner fetch failed:', response.status, await response.text());
       }
     } catch (error) {
       console.error("Failed to fetch scanners:", error);
