@@ -130,5 +130,24 @@
     position: fixed !important;
     top: 1rem !important;
     right: 1rem !important;
+    pointer-events: none !important;
+    width: auto !important;
+    max-width: 400px !important;
+  }
+
+  [data-sonner-toast] {
+    pointer-events: auto !important;
+    min-height: 60px !important;
+    padding: 16px !important;
+    margin-bottom: 8px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    max-width: 400px !important;
+  }
+
+  /* Force toast above everything */
+  body > [data-sonner-toaster] {
+    z-index: 2147483647 !important;
   }
 }

@@ -46,8 +46,11 @@ export default function RootLayout({
                   toastOptions={{
                     style: {
                       zIndex: 2147483647
-                    }
+                    },
+                    className: 'z-[2147483647]'
                   }}
+                  richColors
+                  closeButton
                 />
               </SidebarProvider>
             </TenantProvider>
