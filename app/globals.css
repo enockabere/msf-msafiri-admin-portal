@@ -115,10 +115,16 @@
 
   /* Ensure Sonner toasts appear above modals */
   [data-sonner-toaster] {
-    z-index: 9999 !important;
+    z-index: 99999 !important;
   }
 
   [data-sonner-toast] {
-    z-index: 9999 !important;
+    z-index: 99999 !important;
+  }
+
+  /* Additional toast positioning */
+  [data-sonner-toaster][data-theme] {
+    z-index: 99999 !important;
+    position: fixed !important;
   }
 }

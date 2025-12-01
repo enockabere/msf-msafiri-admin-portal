@@ -40,7 +40,7 @@ export default function RootLayout({
                 <NavigationLoader />
                 {children}
                 <ToastContainer />
-                <Toaster position="top-right" className="z-[9999]" />
+                <Toaster position="top-right" className="z-[99999]" />
               </SidebarProvider>
             </TenantProvider>
           </SessionProvider>
