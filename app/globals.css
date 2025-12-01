@@ -151,3 +151,32 @@
     z-index: 2147483647 !important;
   }
 }
+
+/* CRITICAL: Toast z-index overrides - OUTSIDE of layers for maximum specificity */
+/* This ensures toasts appear above ALL modals including Radix UI Dialog portals */
+[data-sonner-toaster] {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+  isolation: isolate !important;
+}
+
+[data-sonner-toast] {
+  z-index: 2147483647 !important;
+  position: relative !important;
+}
+
+/* Target the portal element if it exists */
+body > div[data-sonner-toaster] {
+  z-index: 2147483647 !important;
+}
+
+/* Ensure toaster is always on top */
+ol[data-sonner-toaster] {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}
+
+/* Individual toast items */
+li[data-sonner-toast] {
+  z-index: 2147483647 !important;
+}

@@ -44,6 +44,8 @@ import {
   User,
   Grid3X3,
   List,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 interface ItemAllocation {
@@ -120,6 +122,13 @@ export default function EventAllocations({
   const [itemViewMode, setItemViewMode] = useState<"card" | "table">("table");
   const [, setEditingItemId] = useState<number | null>(null);
   const [, setEditingVoucherId] = useState<number | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Helper function to show feedback message
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedbackMessage({ type, message });
+    setTimeout(() => setFeedbackMessage(null), 5000);
+  };
 
   // Item allocation form
   const [showItemForm, setShowItemForm] = useState(false);
@@ -385,19 +394,15 @@ export default function EventAllocations({
 
     if (
       validItems.length === 0 ||
-      !itemFormData.category ||
-      !itemFormData.requested_email
+      !itemFormData.category
     ) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Please fill in all required fields.');
       return;
     }
 
     setLoading(true);
+    setFeedbackMessage(null);
+
     try {
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
@@ -446,19 +451,15 @@ export default function EventAllocations({
           requested_email: "",
         });
 
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "✅ Success!",
-          description: `Item request sent to ${itemFormData.requested_email}`,
-        });
+        const successMessage = itemFormData.requested_email 
+          ? `Item request sent to ${itemFormData.requested_email}`
+          : 'Item request created successfully';
+        showFeedback('success', successMessage);
+      } else {
+        showFeedback('error', 'Failed to create item allocation.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to create item allocation.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to create item allocation.');
     } finally {
       setLoading(false);
     }
@@ -466,32 +467,23 @@ export default function EventAllocations({
 
   const handleSubmitVoucherAllocation = async () => {
     if (!voucherFormData.drink_vouchers_per_participant) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Please enter number of vouchers per participant.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Please enter number of vouchers per participant.');
       return;
     }
 
     // Check if voucher allocation already exists for THIS EVENT
-    const existingVoucherForEvent = voucherAllocations.find(alloc => 
+    const existingVoucherForEvent = voucherAllocations.find(alloc =>
       alloc.id && alloc.drink_vouchers_per_participant > 0
     );
-    
+
     if (existingVoucherForEvent) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description:
-          "Voucher allocation already exists for this event. You can edit or delete the existing one.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Voucher allocation already exists for this event. You can edit or delete the existing one.');
       return;
     }
 
     setLoading(true);
+    setFeedbackMessage(null);
+
     try {
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
@@ -536,25 +528,20 @@ export default function EventAllocations({
           notes: "",
         });
 
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "✅ Success!",
-          description: "Voucher allocation created successfully.",
-        });
+        showFeedback('success', 'Voucher allocation created successfully.');
+      } else {
+        showFeedback('error', 'Failed to create voucher allocation.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to create voucher allocation.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to create voucher allocation.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteItemAllocation = async (id: number) => {
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/items/${id}`,
@@ -568,23 +555,18 @@ export default function EventAllocations({
 
       if (response.ok) {
         await fetchItemAllocations();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Deleted!",
-          description: "Item allocation deleted successfully.",
-        });
+        showFeedback('success', 'Item allocation deleted successfully.');
+      } else {
+        showFeedback('error', 'Failed to delete item allocation.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to delete item allocation.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to delete item allocation.');
     }
   };
 
   const handleDeleteVoucherAllocation = async (id: number) => {
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/vouchers/${id}`,
@@ -599,36 +581,26 @@ export default function EventAllocations({
       if (response.ok) {
         await fetchVoucherAllocations();
         await fetchVoucherStats();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Deleted!",
-          description: "Voucher allocation deleted successfully.",
-        });
+        showFeedback('success', 'Voucher allocation deleted successfully.');
+      } else {
+        showFeedback('error', 'Failed to delete voucher allocation.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to delete voucher allocation.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to delete voucher allocation.');
     }
   };
 
   const handleSubmitScanner = async () => {
     const validEmails = scannerFormData.emails.filter(email => email.trim() && email.includes('@'));
-    
+
     if (validEmails.length === 0) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Please enter at least one valid email address.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Please enter at least one valid email address.');
       return;
     }
 
     setLoading(true);
+    setFeedbackMessage(null);
+
     try {
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
@@ -660,48 +632,36 @@ export default function EventAllocations({
       if (response.ok) {
         // Refresh scanners list from server
         await fetchScanners();
-        
+
         setShowScannerForm(false);
         setScannerFormData({ emails: [""] });
 
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "✅ Success!",
-          description: `Scanner account(s) created successfully. Email notifications sent!`,
-        });
+        showFeedback('success', 'Scanner account(s) created successfully. Email notifications sent!');
       } else {
         const errorData = await response.json();
-        const { toast } = await import("@/hooks/use-toast");
-        
+
         // Handle validation errors
         let errorMessage = "Failed to create scanner accounts.";
         if (errorData.detail) {
           if (Array.isArray(errorData.detail)) {
-            errorMessage = errorData.detail.map(err => err.msg || err).join(", ");
+            errorMessage = errorData.detail.map((err: {msg?: string}) => err.msg || err).join(", ");
           } else {
             errorMessage = errorData.detail;
           }
         }
-        
-        toast({
-          title: "Error!",
-          description: errorMessage,
-          variant: "destructive",
-        });
+
+        showFeedback('error', errorMessage);
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to create scanner accounts.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to create scanner accounts.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggleScannerStatus = async (scannerId: number, isActive: boolean) => {
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}/toggle-status`,
@@ -717,23 +677,18 @@ export default function EventAllocations({
 
       if (response.ok) {
         await fetchScanners();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Updated!",
-          description: `Scanner ${isActive ? "activated" : "deactivated"} successfully.`,
-        });
+        showFeedback('success', `Scanner ${isActive ? "activated" : "deactivated"} successfully.`);
+      } else {
+        showFeedback('error', 'Failed to update scanner status.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to update scanner status.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to update scanner status.');
     }
   };
 
   const handleDeleteScanner = async (scannerId: number) => {
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}`,
@@ -747,19 +702,12 @@ export default function EventAllocations({
 
       if (response.ok) {
         await fetchScanners();
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Deleted!",
-          description: "Scanner account deleted successfully.",
-        });
+        showFeedback('success', 'Scanner account deleted successfully.');
+      } else {
+        showFeedback('error', 'Failed to delete scanner account.');
       }
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to delete scanner account.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to delete scanner account.');
     }
   };
 
@@ -820,6 +768,38 @@ export default function EventAllocations({
 
   return (
     <div className="space-y-6">
+      {/* Feedback Message */}
+      {feedbackMessage && (
+        <div className={`flex items-center justify-between p-4 rounded-lg border-2 shadow-md animate-in slide-in-from-top-2 ${
+          feedbackMessage.type === 'success'
+            ? 'bg-green-50 border-green-200'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {feedbackMessage.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className={`text-sm font-medium ${
+              feedbackMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {feedbackMessage.message}
+            </span>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage(null)}
+            className={`p-1 rounded-lg transition-colors ${
+              feedbackMessage.type === 'success'
+                ? 'hover:bg-green-100 text-green-600'
+                : 'hover:bg-red-100 text-red-600'
+            }`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Event Allocations</h3>
@@ -1439,7 +1419,7 @@ export default function EventAllocations({
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Assign to Email *
+                Assign to Email (Optional)
               </label>
               <Input
                 type="email"
@@ -1450,7 +1430,7 @@ export default function EventAllocations({
                     requested_email: e.target.value,
                   }))
                 }
-                placeholder="Enter email address of person responsible"
+                placeholder="Enter email address of person responsible (optional)"
               />
             </div>
 

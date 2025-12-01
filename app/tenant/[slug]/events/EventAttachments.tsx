@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, ExternalLink, Trash2, File} from 'lucide-react'
+import { Plus, ExternalLink, Trash2, File, CheckCircle, AlertCircle, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Attachment {
@@ -33,6 +33,7 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
   })
   const [selectedType, setSelectedType] = useState('')
   const [customName, setCustomName] = useState('')
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null)
 
   const fetchAttachments = useCallback(async () => {
     try {
@@ -58,8 +59,10 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
 
   const handleAddAttachment = async () => {
     if (!newAttachment.name.trim() || !newAttachment.url.trim()) return
-    
+
     setLoading(true)
+    setFeedbackMessage(null) // Clear any previous messages
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/attachments/`, {
         method: 'POST',
@@ -69,7 +72,7 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
         },
         body: JSON.stringify(newAttachment)
       })
-      
+
       if (response.ok) {
         const attachment = await response.json()
         const newAttachments = [...attachments, attachment]
@@ -79,28 +82,42 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
         setSelectedType('')
         setCustomName('')
         setShowAddForm(false)
-        
-        const { toast } = await import('@/hooks/use-toast')
-        toast({
-          title: 'Success!',
-          description: 'Attachment added successfully.'
+
+        // Show success message
+        setFeedbackMessage({
+          type: 'success',
+          message: 'Attachment added successfully!'
         })
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000)
       } else {
-        const { toast } = await import('@/hooks/use-toast')
-        toast({
-          title: 'Error!',
-          description: 'Failed to add attachment. Please try again.',
-          variant: 'destructive'
+        // Show error message
+        setFeedbackMessage({
+          type: 'error',
+          message: 'Failed to add attachment. Please try again.'
         })
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000)
       }
     } catch (error) {
       console.error('Failed to add attachment:', error)
+      setFeedbackMessage({
+        type: 'error',
+        message: 'Network error. Please check your connection and try again.'
+      })
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => setFeedbackMessage(null), 5000)
     } finally {
       setLoading(false)
     }
   }
 
   const handleRemoveAttachment = async (attachmentId: number) => {
+    setFeedbackMessage(null) // Clear any previous messages
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/attachments/${attachmentId}/`, {
         method: 'DELETE',
@@ -108,14 +125,39 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       })
-      
+
       if (response.ok) {
         const newAttachments = attachments.filter(a => a.id !== attachmentId)
         setAttachments(newAttachments)
         onAttachmentsChange?.(newAttachments.length)
+
+        // Show success message
+        setFeedbackMessage({
+          type: 'success',
+          message: 'Attachment removed successfully!'
+        })
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000)
+      } else {
+        // Show error message
+        setFeedbackMessage({
+          type: 'error',
+          message: 'Failed to remove attachment. Please try again.'
+        })
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => setFeedbackMessage(null), 5000)
       }
     } catch (error) {
       console.error('Failed to remove attachment:', error)
+      setFeedbackMessage({
+        type: 'error',
+        message: 'Network error. Please check your connection and try again.'
+      })
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => setFeedbackMessage(null), 5000)
     }
   }
 
@@ -123,13 +165,45 @@ export default function EventAttachments({ eventId, onAttachmentsChange, eventHa
 
   return (
     <div className="space-y-4">
+      {/* Feedback Message */}
+      {feedbackMessage && (
+        <div className={`flex items-center justify-between p-4 rounded-lg border-2 shadow-md animate-in slide-in-from-top-2 ${
+          feedbackMessage.type === 'success'
+            ? 'bg-green-50 border-green-200'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {feedbackMessage.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className={`text-sm font-medium ${
+              feedbackMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {feedbackMessage.message}
+            </span>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage(null)}
+            className={`p-1 rounded-lg transition-colors ${
+              feedbackMessage.type === 'success'
+                ? 'hover:bg-green-100 text-green-600'
+                : 'hover:bg-red-100 text-red-600'
+            }`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900">Event Attachments</h3>
           <p className="text-sm text-gray-600 mt-1">{attachments.length} attachments uploaded</p>
         </div>
-        <Button 
-          onClick={() => setShowAddForm(true)} 
+        <Button
+          onClick={() => setShowAddForm(true)}
           disabled={eventHasEnded}
           className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
