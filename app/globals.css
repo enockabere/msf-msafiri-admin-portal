@@ -113,18 +113,22 @@
     background: linear-gradient(to bottom, rgba(220, 38, 38, 0.7), rgba(220, 38, 38, 0.5));
   }
 
-  /* Ensure Sonner toasts appear above modals */
-  [data-sonner-toaster] {
-    z-index: 99999 !important;
-  }
-
-  [data-sonner-toast] {
-    z-index: 99999 !important;
-  }
-
-  /* Additional toast positioning */
-  [data-sonner-toaster][data-theme] {
-    z-index: 99999 !important;
+  /* Ensure Sonner toasts appear above modals - maximum z-index */
+  [data-sonner-toaster],
+  [data-sonner-toaster] *,
+  [data-sonner-toast],
+  [data-sonner-toast] *,
+  .sonner-toaster,
+  .sonner-toast {
+    z-index: 2147483647 !important;
     position: fixed !important;
+  }
+
+  /* Override any modal z-index */
+  [data-sonner-toaster] {
+    z-index: 2147483647 !important;
+    position: fixed !important;
+    top: 1rem !important;
+    right: 1rem !important;
   }
 }

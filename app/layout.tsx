@@ -40,7 +40,15 @@ export default function RootLayout({
                 <NavigationLoader />
                 {children}
                 <ToastContainer />
-                <Toaster position="top-right" className="z-[99999]" />
+                <Toaster 
+                  position="top-right" 
+                  className="z-[2147483647]" 
+                  toastOptions={{
+                    style: {
+                      zIndex: 2147483647
+                    }
+                  }}
+                />
               </SidebarProvider>
             </TenantProvider>
           </SessionProvider>
