@@ -23,6 +23,9 @@ import {
   ChevronRight,
   FileText,
   ExternalLink,
+  CheckCircle,
+  AlertCircle,
+  X,
 } from "lucide-react";
 
 interface Participant {
@@ -289,6 +292,13 @@ export default function EventParticipants({
   const [bulkRole, setBulkRole] = useState<string>("");
   const [processingBulkRole, setProcessingBulkRole] = useState(false);
   const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Helper function to show feedback message
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedbackMessage({ type, message });
+    setTimeout(() => setFeedbackMessage(null), 5000);
+  };
 
   // Participant Details Modal Component
   interface ParticipantDetailsModalProps {
@@ -686,6 +696,38 @@ export default function EventParticipants({
       <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white w-full h-full overflow-y-auto">
           <div className="p-6">
+            {/* Feedback Message */}
+            {feedbackMessage && (
+              <div className={`flex items-center justify-between p-4 rounded-lg border-2 shadow-md animate-in slide-in-from-top-2 mb-6 ${
+                feedbackMessage.type === 'success'
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  {feedbackMessage.type === 'success' ? (
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  )}
+                  <span className={`text-sm font-medium ${
+                    feedbackMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {feedbackMessage.message}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setFeedbackMessage(null)}
+                  className={`p-1 rounded-lg transition-colors ${
+                    feedbackMessage.type === 'success'
+                      ? 'hover:bg-green-100 text-green-600'
+                      : 'hover:bg-red-100 text-red-600'
+                  }`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-4">
                 <div>
@@ -1791,6 +1833,8 @@ export default function EventParticipants({
     participantId: number,
     newStatus: string
   ) => {
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
@@ -1806,15 +1850,15 @@ export default function EventParticipants({
 
       if (response.ok) {
         fetchParticipants(); // Refresh the list
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Success!",
-          description: `Participant status updated to ${newStatus}. ${
-            newStatus === "selected" ? "Invitation email sent." : ""
-          }`,
-        });
+        const message = `Participant status updated to ${newStatus}.${
+          newStatus === "selected" ? " Invitation email sent." : ""
+        }`;
+        showFeedback('success', message);
+      } else {
+        showFeedback('error', 'Failed to update participant status.');
       }
     } catch (error) {
+      showFeedback('error', 'Network error. Please try again.');
     }
   };
 
@@ -2034,6 +2078,8 @@ export default function EventParticipants({
 
   const handleRoleChange = async (participantId: number, newRole: string) => {
     setUpdatingRoleId(participantId);
+    setFeedbackMessage(null);
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participantId}/role`,
@@ -2049,7 +2095,7 @@ export default function EventParticipants({
 
       if (response.ok) {
         fetchParticipants();
-        
+
         // If viewing this participant in modal, refresh their data after a short delay
         // to allow backend accommodation reallocation to complete
         if (viewingParticipant && viewingParticipant.id === participantId) {
@@ -2060,27 +2106,13 @@ export default function EventParticipants({
             }
           }, 2000); // 2 second delay to allow backend processing
         }
-        
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Success!",
-          description: `Participant role updated to ${newRole}. Accommodation will be reallocated automatically.`,
-        });
+
+        showFeedback('success', `Participant role updated to ${newRole}. Accommodation will be reallocated automatically.`);
       } else {
-        const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Error!",
-          description: "Failed to update participant role.",
-          variant: "destructive",
-        });
+        showFeedback('error', 'Failed to update participant role.');
       }
     } catch (error) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to update participant role.",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to update participant role.');
     } finally {
       setUpdatingRoleId(null);
     }
@@ -2090,6 +2122,9 @@ export default function EventParticipants({
     if (!bulkStatus || selectedParticipants.length === 0) return;
 
     setProcessingBulk(true);
+    setFeedbackMessage(null);
+
+    const count = selectedParticipants.length;
     try {
       for (const participantId of selectedParticipants) {
         await handleStatusChange(participantId, bulkStatus);
@@ -2097,18 +2132,9 @@ export default function EventParticipants({
       }
       setSelectedParticipants([]);
       setBulkStatus("");
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Success!",
-        description: `Updated ${selectedParticipants.length} participants to ${bulkStatus}`,
-      });
+      showFeedback('success', `Updated ${count} participants to ${bulkStatus}`);
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to update some participants",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to update some participants');
     } finally {
       setProcessingBulk(false);
     }
@@ -2118,6 +2144,9 @@ export default function EventParticipants({
     if (!bulkRole || selectedParticipants.length === 0) return;
 
     setProcessingBulkRole(true);
+    setFeedbackMessage(null);
+
+    const count = selectedParticipants.length;
     try {
       for (const participantId of selectedParticipants) {
         await handleRoleChange(participantId, bulkRole);
@@ -2125,18 +2154,9 @@ export default function EventParticipants({
       }
       setSelectedParticipants([]);
       setBulkRole("");
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Success!",
-        description: `Updated ${selectedParticipants.length} participants to ${bulkRole} role`,
-      });
+      showFeedback('success', `Updated ${count} participants to ${bulkRole} role`);
     } catch {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Error!",
-        description: "Failed to update some participant roles",
-        variant: "destructive",
-      });
+      showFeedback('error', 'Failed to update some participant roles');
     } finally {
       setProcessingBulkRole(false);
     }
@@ -2168,6 +2188,38 @@ export default function EventParticipants({
 
   return (
     <div className="space-y-4">
+      {/* Feedback Message */}
+      {feedbackMessage && (
+        <div className={`flex items-center justify-between p-4 rounded-lg border-2 shadow-md animate-in slide-in-from-top-2 ${
+          feedbackMessage.type === 'success'
+            ? 'bg-green-50 border-green-200'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {feedbackMessage.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className={`text-sm font-medium ${
+              feedbackMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {feedbackMessage.message}
+            </span>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage(null)}
+            className={`p-1 rounded-lg transition-colors ${
+              feedbackMessage.type === 'success'
+                ? 'hover:bg-green-100 text-green-600'
+                : 'hover:bg-red-100 text-red-600'
+            }`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900">

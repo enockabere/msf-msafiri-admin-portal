@@ -16,8 +16,8 @@ function Toast({ message, type, onClose }: ToastProps) {
   }, [onClose]);
 
   return (
-    <div className="fixed top-4 right-4 z-[99999] animate-in slide-in-from-top-2 pointer-events-none">
-      <div className={`flex items-center space-x-3 px-4 py-3 rounded-lg shadow-lg border pointer-events-auto ${
+    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2">
+      <div className={`flex items-center space-x-3 px-4 py-3 rounded-lg shadow-lg border ${
         type === 'success'
           ? 'bg-green-50 border-green-200 text-green-800'
           : 'bg-red-50 border-red-200 text-red-800'
