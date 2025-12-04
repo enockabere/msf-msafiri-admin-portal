@@ -6,7 +6,7 @@ export function LoginHeader() {
     <CardHeader className="text-center">
       <div className="w-60 h-30 mx-auto">
         <Image
-          src="/icon/MSF_logo_square.png"
+          src="/portal/icon/MSF_logo_square.png"
           alt="MSF Logo"
           width={200}
           height={200}

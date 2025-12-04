@@ -434,7 +434,7 @@ export default function LoginComponent() {
         <div>
           <div className="flex items-center justify-center mb-4">
             <Image
-              src="/icon/MSF_logo_square.png"
+              src="/portal/icon/MSF_logo_square.png"
               alt="MSF Logo"
               width={200}
               height={200}
@@ -466,7 +466,7 @@ export default function LoginComponent() {
           {/* Mobile/Tablet logo (shown on screens smaller than xl) */}
           <div className="flex justify-center xl:hidden mb-2 sm:mb-4">
             <Image
-              src="/icon/MSF_logo_square.png"
+              src="/portal/icon/MSF_logo_square.png"
               alt="MSF Logo"
               width={80}
               height={80}

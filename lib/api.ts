@@ -1,5 +1,6 @@
 import { signOut } from "next-auth/react";
 import { tokenManager } from "./token-refresh";
+import { getInternalApiUrl } from "./base-path";
 
 export interface User {
   id: number;
@@ -649,7 +650,7 @@ class ApiClient {
   async getPendingInvitations(): Promise<
     Array<{ id: number; email: string; full_name: string; created_at: string }>
   > {
-    const response = await fetch("/api/super-admin/pending-invitations");
+    const response = await fetch(getInternalApiUrl("/api/super-admin/pending-invitations"));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -660,7 +661,7 @@ class ApiClient {
   }
 
   async resendInvitation(invitationId: number): Promise<{ message: string }> {
-    const response = await fetch("/api/super-admin/resend-invitation", {
+    const response = await fetch(getInternalApiUrl("/api/super-admin/resend-invitation"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invitationId }),
@@ -675,7 +676,7 @@ class ApiClient {
   }
 
   async cancelInvitation(invitationId: number): Promise<{ message: string }> {
-    const response = await fetch("/api/super-admin/cancel-invitation", {
+    const response = await fetch(getInternalApiUrl("/api/super-admin/cancel-invitation"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ invitationId }),
@@ -711,7 +712,7 @@ class ApiClient {
 
   async getMyProfile(): Promise<UserProfile> {
     // Use Next.js API route instead of direct external API call
-    const response = await fetch("/api/profile/me");
+    const response = await fetch(getInternalApiUrl("/api/profile/me"));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -724,7 +725,7 @@ class ApiClient {
   async updateMyProfile(profileData: UserProfileUpdate): Promise<User> {
     try {
       // Use Next.js API route instead of direct external API call
-      const response = await fetch("/api/profile/me", {
+      const response = await fetch(getInternalApiUrl("/api/profile/me"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -749,7 +750,7 @@ class ApiClient {
   }
 
   async getEditableFields(): Promise<EditableFieldsResponse> {
-    const response = await fetch("/api/profile/editable-fields");
+    const response = await fetch(getInternalApiUrl("/api/profile/editable-fields"));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -760,7 +761,7 @@ class ApiClient {
   }
 
   async getProfileStats(): Promise<ProfileStatsResponse> {
-    const response = await fetch("/api/profile/stats");
+    const response = await fetch(getInternalApiUrl("/api/profile/stats"));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -824,7 +825,7 @@ class ApiClient {
   // Notification methods
   async getNotifications(unreadOnly: boolean = false): Promise<Notification[]> {
     const query = unreadOnly ? "?unread_only=true" : "";
-    const response = await fetch(`/api/notifications${query}`);
+    const response = await fetch(getInternalApiUrl(`/api/notifications${query}`));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -839,7 +840,7 @@ class ApiClient {
   }
 
   async getNotificationStats(): Promise<NotificationStats> {
-    const response = await fetch("/api/notifications/stats");
+    const response = await fetch(getInternalApiUrl("/api/notifications/stats"));
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -852,7 +853,7 @@ class ApiClient {
   async markNotificationRead(
     notificationId: number
   ): Promise<{ message: string }> {
-    const response = await fetch("/api/notifications/mark-read", {
+    const response = await fetch(getInternalApiUrl("/api/notifications/mark-read"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notificationId }),
@@ -867,7 +868,7 @@ class ApiClient {
   }
 
   async markAllNotificationsRead(): Promise<{ message: string }> {
-    const response = await fetch("/api/notifications/mark-all-read", {
+    const response = await fetch(getInternalApiUrl("/api/notifications/mark-all-read"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -892,7 +893,7 @@ class ApiClient {
   async sendBroadcastNotification(
     notificationData: BroadcastNotificationRequest
   ): Promise<Notification> {
-    const response = await fetch("/api/notifications/broadcast", {
+    const response = await fetch(getInternalApiUrl("/api/notifications/broadcast"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(notificationData),

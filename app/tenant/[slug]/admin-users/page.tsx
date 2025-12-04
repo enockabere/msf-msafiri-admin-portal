@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { getInternalApiUrl } from "@/lib/base-path";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -314,7 +315,7 @@ export default function TenantAdminUsersPage() {
 
     try {
       setSubmitting(true);
-      const response = await fetch("/api/invitations", {
+      const response = await fetch(getInternalApiUrl("/api/invitations"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

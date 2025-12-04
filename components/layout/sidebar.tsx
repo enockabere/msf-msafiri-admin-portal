@@ -481,7 +481,7 @@ export default function Sidebar({
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-2 shadow-sm">
                   <Image
-                    src="/icon/favicon.png"
+                    src="/portal/icon/favicon.png"
                     alt="MSF Logo"
                     width={32}
                     height={32}

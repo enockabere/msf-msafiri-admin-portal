@@ -1,4 +1,5 @@
 import { getSession, signOut } from "next-auth/react";
+import { getInternalApiUrl } from "./base-path";
 
 interface TokenRefreshResponse {
   access_token: string;
@@ -47,9 +48,9 @@ class TokenManager {
       }
 
       const data: TokenRefreshResponse = await response.json();
-      
+
       // Update the session with new token
-      await fetch("/api/auth/session", {
+      await fetch(getInternalApiUrl("/api/auth/session"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

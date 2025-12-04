@@ -315,7 +315,7 @@ export function SuperAdminNavbar({
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 p-2 backdrop-blur-sm border border-red-300/40">
                 <Image
-                  src="/icon/favicon.png"
+                  src="/portal/icon/favicon.png"
                   alt="MSF Logo"
                   width={32}
                   height={32}
@@ -350,7 +350,7 @@ export function SuperAdminNavbar({
           <div className="flex items-center space-x-3 min-w-0 flex-1 sm:flex-none">
             <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 p-2 backdrop-blur-sm border border-red-300/40 flex-shrink-0">
               <Image
-                src="/icon/favicon.png"
+                src="/portal/icon/favicon.png"
                 alt="MSF Logo"
                 width={32}
                 height={32}

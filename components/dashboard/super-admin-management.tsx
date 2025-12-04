@@ -15,6 +15,7 @@ import { useAuthenticatedApi } from "@/lib/auth";
 import { User } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { SuperAdminTable } from "./super-admin-table";
+import { getInternalApiUrl } from "@/lib/base-path";
 
 export default function SuperAdminManagement() {
   const { apiClient } = useAuthenticatedApi();
@@ -55,11 +56,11 @@ export default function SuperAdminManagement() {
 
     try {
       await apiClient.inviteSuperAdmin(inviteForm.email, inviteForm.full_name);
-      
+
       // Send notification to all super admins about new invitation
       try {
 
-        const notifResponse = await fetch('/api/notifications/send-to-super-admins', {
+        const notifResponse = await fetch(getInternalApiUrl('/api/notifications/send-to-super-admins'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

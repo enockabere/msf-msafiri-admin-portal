@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Shield, Eye, EyeOff, Check, X } from "lucide-react";
+import { getInternalApiUrl } from "@/lib/base-path";
 
 function ChangePasswordContent() {
   const router = useRouter();
@@ -75,7 +76,7 @@ function ChangePasswordContent() {
     setError(null);
 
     try {
-      const response = await fetch("/api/change-password", {
+      const response = await fetch(getInternalApiUrl("/api/change-password"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

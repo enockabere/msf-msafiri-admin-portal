@@ -215,7 +215,7 @@ export default function ResetPasswordComponent() {
             <CardHeader className="text-center space-y-4">
               <div className="w-40 h-16 mx-auto">
                 <Image
-                  src="/icon/logo1.png"
+                  src="/portal/icon/logo1.png"
                   alt="MSF Logo"
                   width={150}
                   height={104}
@@ -256,7 +256,7 @@ export default function ResetPasswordComponent() {
           <CardHeader className="text-center space-y-4">
             <div className="w-40 h-16 mx-auto">
               <Image
-                src="/icon/logo1.png"
+                src="/portal/icon/logo1.png"
                 alt="MSF Logo"
                 width={150}
                 height={104}

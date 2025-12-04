@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "MSF Admin Portal",
   description: "MSF Msafiri Admin Dashboard",
   icons: {
-    icon: "/icon/MSF_Logo.png",
+    icon: "/portal/icon/MSF_Logo.png",
   },
 };
 
