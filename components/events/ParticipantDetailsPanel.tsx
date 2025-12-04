@@ -262,11 +262,23 @@ export default function ParticipantDetailsPanel({
 
         const accommodationData = await apiClient.request(
           accommodationUrl,
-          { headers: { 'X-Tenant-ID': tenantSlug } }
+          { 
+            headers: { 
+              'X-Tenant-ID': tenantSlug,
+              'X-Tenant-Context': tenantSlug  // 🔥 Add explicit tenant context
+            } 
+          }
         );
 
-        console.log(`DEBUG ACCOMMODATION: SUCCESS - Received ${accommodationData.length} accommodations:`, accommodationData);
-        setAccommodationDetails(accommodationData as AccommodationDetails[]);
+        console.log(`DEBUG ACCOMMODATION: SUCCESS - Received ${Array.isArray(accommodationData) ? accommodationData.length : 'non-array'} accommodations:`, accommodationData);
+        
+        // 🔥 CRITICAL FIX: Ensure we handle the response correctly
+        if (Array.isArray(accommodationData)) {
+          setAccommodationDetails(accommodationData as AccommodationDetails[]);
+        } else {
+          console.warn('DEBUG ACCOMMODATION: Response is not an array, setting empty array');
+          setAccommodationDetails([]);
+        }
       } catch (error: any) {
         console.error('DEBUG ACCOMMODATION: ERROR occurred:', error);
         console.error('DEBUG ACCOMMODATION: Error message:', error.message);
@@ -1064,6 +1076,13 @@ export default function ParticipantDetailsPanel({
                         {accommodationDetails.length}
                       </Badge>
                     </div>
+                  {/* 🔥 DEBUG: Show accommodation state */}
+                  <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                    <div>🏠 DEBUG: Accommodation State</div>
+                    <div>📊 Count: {accommodationDetails.length}</div>
+                    <div>📋 Data: {JSON.stringify(accommodationDetails, null, 2)}</div>
+                  </div>
+                  
                   {accommodationDetails.length > 0 ? (
                     <div className="space-y-3">
                       {accommodationDetails.map((accommodation, index) => (
@@ -1127,6 +1146,9 @@ export default function ParticipantDetailsPanel({
                     <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-lg p-4 text-center border border-gray-200">
                       <Home className="h-8 w-8 text-gray-300 mx-auto mb-2" />
                       <p className="text-sm text-gray-500 font-medium">No accommodation arranged</p>
+                      <div className="mt-2 text-xs text-gray-400">
+                        🔍 Debug: Participant {participantId}, Event {eventId}, Tenant {tenantSlug}
+                      </div>
                     </div>
                   )}
                 </div>
