@@ -25,9 +25,12 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
     refreshInProgress = true;
     lastRefreshAttempt = now;
-    
+
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+    const refreshUrl = apiUrl.endsWith('/api/v1')
+      ? `${apiUrl}/auth/refresh`
+      : `${apiUrl}/api/v1/auth/refresh`;
+    const response = await fetch(refreshUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,8 +82,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const loginUrl = `${apiUrl}/api/v1/auth/login`;
-        const healthUrl = `${apiUrl}/health`;
+        // API URL should already include /api/v1 if needed
+        const loginUrl = apiUrl.endsWith('/api/v1')
+          ? `${apiUrl}/auth/login`
+          : `${apiUrl}/api/v1/auth/login`;
+        const healthUrl = apiUrl.replace('/api/v1', '/health');
         
         try {
           // First, check if API is reachable via health endpoint
@@ -181,9 +187,12 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === 'azure-ad') {
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                    
+
           // Call API SSO endpoint with Microsoft token
-          const response = await fetch(`${apiUrl}/api/v1/auth/sso/microsoft`, {
+          const ssoUrl = apiUrl.endsWith('/api/v1')
+            ? `${apiUrl}/auth/sso/microsoft`
+            : `${apiUrl}/api/v1/auth/sso/microsoft`;
+          const response = await fetch(ssoUrl, {
             method: 'POST',
             headers: {
               'X-Microsoft-Token': account.access_token!,
