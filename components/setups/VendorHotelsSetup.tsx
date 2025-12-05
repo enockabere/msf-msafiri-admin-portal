@@ -21,7 +21,6 @@ interface VendorAccommodation {
   id: number;
   vendor_name: string;
   location: string;
-  accommodation_type: string;
   capacity: number;
   current_occupants: number;
   description: string;
@@ -161,8 +160,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
   const filteredVendors = vendors.filter(vendor =>
     vendor.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vendor.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-
+    vendor.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredVendors.length / itemsPerPage);
@@ -178,7 +176,6 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       ...vendors.map(vendor => [
         `"${vendor.vendor_name}"`,
         `"${vendor.location}"`,
-
         `"${vendor.description || 'No description'}"`
       ].join(","))
     ].join("\n");
