@@ -249,6 +249,10 @@ export function useProfile(): UseProfileResult {
         };
         setProfile(optimisticProfile);
 
+        // Actually update the profile via API
+        await apiClient.updateMyProfile(data);
+
+        // Reload profile data to get the updated values from server
         await loadProfileData();
 
         return true;

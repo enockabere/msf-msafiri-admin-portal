@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Edit, Power, PowerOff, Search, Download, Eye, Loader2 } from "lucide-react";
+import { MoreHorizontal, Edit, Power, PowerOff, Search, Download, Eye, Loader2, X, CheckCircle, XCircle } from "lucide-react";
 import { Tenant } from "@/lib/api";
 import { format } from "date-fns";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
@@ -375,24 +375,74 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
 
       {/* Confirmation Dialog */}
       <AlertDialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="bg-white sm:max-w-[500px]">
+          {/* Close Button */}
+          <button
+            onClick={() => setConfirmAction(null)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction?.type === 'activate' ? 'Activate' : 'Deactivate'} Tenant
+            <AlertDialogTitle className="flex items-center gap-2 text-gray-900 text-xl">
+              {confirmAction?.type === 'activate' ? (
+                <>
+                  <Power className="w-5 h-5 text-green-600" />
+                  Activate MSF Tenant
+                </>
+              ) : (
+                <>
+                  <PowerOff className="w-5 h-5 text-red-600" />
+                  Deactivate MSF Tenant
+                </>
+              )}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to {confirmAction?.type} &quot;{confirmAction?.tenant.name}&quot;?
-              {confirmAction?.type === 'deactivate' && 
-                ' This will prevent users from accessing this tenant.'}
+            <AlertDialogDescription className="text-gray-600 pt-2">
+              {confirmAction?.type === 'activate' ? (
+                <>
+                  Are you sure you want to activate <strong className="text-gray-900">&quot;{confirmAction?.tenant.name}&quot;</strong>?
+                  <br />
+                  <span className="text-green-700 font-medium mt-2 inline-block">
+                    This will allow users to access this tenant and its resources.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Are you sure you want to deactivate <strong className="text-gray-900">&quot;{confirmAction?.tenant.name}&quot;</strong>?
+                  <br />
+                  <span className="text-red-700 font-medium mt-2 inline-block">
+                    ⚠️ This will prevent all users from accessing this tenant.
+                  </span>
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="flex items-center gap-2">
+              <XCircle className="w-4 h-4" />
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmAction}
-              className={confirmAction?.type === 'activate' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              className={`flex items-center gap-2 ${
+                confirmAction?.type === 'activate'
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
             >
-              {confirmAction?.type === 'activate' ? 'Activate' : 'Deactivate'}
+              {confirmAction?.type === 'activate' ? (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  Activate Tenant
+                </>
+              ) : (
+                <>
+                  <PowerOff className="w-4 h-4" />
+                  Deactivate Tenant
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

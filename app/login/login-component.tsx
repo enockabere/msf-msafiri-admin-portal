@@ -481,7 +481,7 @@ export default function LoginComponent() {
                 Welcome to MSF Msafiri
               </h2>
               <p className="text-xs sm:text-sm text-gray-600">
-                Travel & Events Admin Portal
+                Your One-Stop Companion for MSF Traveller
               </p>
               {/* Mobile/Tablet description */}
               <p className="text-xs text-gray-500 xl:hidden px-2">

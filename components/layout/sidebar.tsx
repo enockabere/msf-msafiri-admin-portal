@@ -679,11 +679,14 @@ export default function Sidebar({
                       const [basePath, query] = child.href.split('?');
                       return pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
                     }
-                    return pathname === child.href;
+                    return pathname === child.href || pathname?.startsWith(child.href + '/');
                   });
-                  const isActive = pathname === item.href || hasActiveChild;
+                  // Both parent and child should be active - parent is active if any child is active
+                  const isActive = item.isNested
+                    ? hasActiveChild  // Parent menu is active if any child is active
+                    : (pathname === item.href || pathname?.startsWith(item.href + '/'));
                   const badgeCount = getBadgeCount(item.badge, item.href);
-                  const isExpanded = expandedMenus.includes(item.label);
+                  const isExpanded = expandedMenus.includes(item.label) || hasActiveChild;
 
                   return (
                     <div key={index}>
@@ -755,7 +758,8 @@ export default function Sidebar({
                                   const [basePath, query] = child.href.split('?');
                                   childIsActive = pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
                                 } else {
-                                  childIsActive = pathname === child.href;
+                                  // More flexible matching for child items too
+                                  childIsActive = pathname === child.href || pathname?.startsWith(child.href + '/');
                                 }
 
                                 return (
@@ -906,12 +910,12 @@ export default function Sidebar({
                         className={cn(
                           "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
                           "hover:scale-[1.02] active:scale-[0.98]",
-                          pathname === "/admin/system"
+                          (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                             ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
                             : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
                         )}
                       >
-                        {pathname === "/admin/system" && (
+                        {(pathname === "/admin/system" || pathname?.startsWith("/admin/system/")) && (
                           <>
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
                             <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
@@ -920,14 +924,14 @@ export default function Sidebar({
 
                         <div className={cn(
                           "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
-                          pathname === "/admin/system"
+                          (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                             ? "bg-white/20 shadow-lg ring-2 ring-white/40"
                             : "bg-white/5 group-hover:bg-white/15"
                         )}>
                           <Settings
                             className={cn(
                               "h-4 w-4 flex-shrink-0 transition-all duration-300",
-                              pathname === "/admin/system"
+                              (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                                 ? "text-white drop-shadow-lg"
                                 : "text-red-200 group-hover:text-white group-hover:scale-110"
                             )}
@@ -941,12 +945,12 @@ export default function Sidebar({
                       className={cn(
                         "w-full flex items-center px-2 lg:px-3 py-2 text-left transition-all duration-300 rounded-xl group relative overflow-hidden",
                         "hover:scale-[1.02] active:scale-[0.98]",
-                        pathname === "/admin/system"
+                        (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                           ? "bg-gradient-to-r from-white/20 to-white/10 text-white shadow-xl backdrop-blur-md border-2 border-white/30"
                           : "text-red-100 hover:bg-white/10 hover:text-white border-2 border-transparent"
                       )}
                     >
-                      {pathname === "/admin/system" && (
+                      {(pathname === "/admin/system" || pathname?.startsWith("/admin/system/")) && (
                         <>
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-gradient-to-b from-white via-white/90 to-white/80 rounded-r-full shadow-lg" />
                           <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-50" />
@@ -955,14 +959,14 @@ export default function Sidebar({
 
                       <div className={cn(
                         "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300",
-                        pathname === "/admin/system"
+                        (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                           ? "bg-white/20 shadow-lg ring-2 ring-white/40"
                           : "bg-white/5 group-hover:bg-white/15"
                       )}>
                         <Settings
                           className={cn(
                             "h-4 w-4 flex-shrink-0 transition-all duration-300",
-                            pathname === "/admin/system"
+                            (pathname === "/admin/system" || pathname?.startsWith("/admin/system/"))
                               ? "text-white drop-shadow-lg"
                               : "text-red-200 group-hover:text-white group-hover:scale-110"
                           )}
@@ -972,7 +976,7 @@ export default function Sidebar({
                       {(!collapsed || isMobile) && (
                         <span className={cn(
                           "ml-3 font-medium text-xs transition-all duration-300",
-                          pathname === "/admin/system" ? "text-white" : ""
+                          (pathname === "/admin/system" || pathname?.startsWith("/admin/system/")) ? "text-white" : ""
                         )}>
                           System Settings
                         </span>

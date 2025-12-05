@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Building2 } from "lucide-react";
 import apiClient, { TenantCreateRequest } from "@/lib/api";
 import { CountrySelect } from "@/components/ui/country-select";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 interface AddTenantModalProps {
   open: boolean;
@@ -58,9 +58,25 @@ export function AddTenantModal({
       setFormData((prev) => ({ ...prev, slug }));
     }
 
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
+    // Real-time email validation
+    if (field === "contact_email" || field === "admin_email") {
+      if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        setErrors((prev) => ({
+          ...prev,
+          [field]: "Please enter a valid email address"
+        }));
+      } else {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    } else {
+      // Clear error when user starts typing
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: "" }));
+      }
     }
   };
 
@@ -196,7 +212,7 @@ export function AddTenantModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose} modal>
-      <DialogContent className="sm:max-w-[600px] bg-white max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] bg-white max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2 text-gray-900">
             <Building2 className="w-5 h-5" />
@@ -353,16 +369,11 @@ export function AddTenantModal({
             <Label htmlFor="description" className="text-gray-700">
               Description (Optional)
             </Label>
-            <Textarea
-              id="description"
+            <RichTextEditor
+              value={formData.description || ""}
+              onChange={(value) => handleInputChange("description", value)}
               placeholder="Brief description of the organization..."
-              value={formData.description}
-              onChange={(e: { target: { value: string } }) =>
-                handleInputChange("description", e.target.value)
-              }
-              rows={3}
-              disabled={isSubmitting}
-              className="bg-white border-gray-300"
+              height={200}
             />
             <p className="text-xs text-gray-500">
               Provide a brief description of the organization&apos;s purpose or

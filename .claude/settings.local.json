@@ -6,7 +6,9 @@
       "Read(//d/development/msafiri-visitor-api/**)",
       "Bash(npm run build:*)",
       "WebFetch(domain:localhost)",
-      "Bash(nul)"
+      "Bash(nul)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

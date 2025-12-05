@@ -5,18 +5,19 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2 } from "lucide-react";
 import { useAuthenticatedApi } from "@/lib/auth";
 import { Tenant } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { CountrySelect } from "@/components/ui/country-select";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 interface EditTenantModalProps {
   tenant: Tenant | null;
@@ -37,6 +38,7 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
     country: "",
   });
   const [reason, setReason] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tenant) {
@@ -50,6 +52,31 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
       });
     }
   }, [tenant]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
+
+    // Real-time email validation
+    if (field === "contact_email" || field === "admin_email") {
+      if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        setErrors((prev) => ({
+          ...prev,
+          [field]: "Please enter a valid email address"
+        }));
+      } else {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    } else {
+      // Clear error when user starts typing
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: "" }));
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,84 +104,173 @@ export function EditTenantModal({ tenant, open, onClose, onSuccess }: EditTenant
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] bg-white max-h-[95vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Tenant</DialogTitle>
+          <DialogTitle className="flex items-center space-x-2 text-gray-900">
+            <Building2 className="w-5 h-5" />
+            <span>Edit Tenant Organization</span>
+          </DialogTitle>
+          <DialogDescription className="text-gray-600">
+            Update tenant organization information and settings.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 my-4">
-          <div className="space-y-3">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-6 bg-white my-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Organization Name */}
+            <div className="space-y-3">
+              <Label htmlFor="name" className="text-gray-700">
+                Organization Name *
+              </Label>
+              <Input
+                id="name"
+                placeholder="e.g., MSF Kenya"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                className="bg-white border-gray-300"
+                disabled={loading}
+                required
+              />
+            </div>
+
+            {/* Country */}
+            <div className="space-y-3">
+              <Label htmlFor="country" className="text-gray-700">
+                Country *
+              </Label>
+              <CountrySelect
+                value={formData.country}
+                onChange={(value) => handleInputChange("country", value)}
+                placeholder="Select country"
+              />
+            </div>
           </div>
-          <div className="space-y-3">
-            <Label htmlFor="contact_email">Contact Email</Label>
-            <Input
-              id="contact_email"
-              type="email"
-              value={formData.contact_email}
-              onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-              required
-            />
+
+          {/* Contact and Admin Emails */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Contact Email */}
+            <div className="space-y-3">
+              <Label htmlFor="contact_email" className="text-gray-700">
+                Contact Email *
+              </Label>
+              <Input
+                id="contact_email"
+                type="email"
+                placeholder="contact@organization.org"
+                value={formData.contact_email}
+                onChange={(e) => handleInputChange("contact_email", e.target.value)}
+                className={`bg-white border-gray-300 ${
+                  errors.contact_email ? "border-red-300" : ""
+                }`}
+                disabled={loading}
+                required
+              />
+              {errors.contact_email && (
+                <p className="text-sm text-red-600">{errors.contact_email}</p>
+              )}
+              <p className="text-xs text-gray-500">
+                General contact email for the organization
+              </p>
+            </div>
+
+            {/* Admin Email */}
+            <div className="space-y-3">
+              <Label htmlFor="admin_email" className="text-gray-700">
+                Admin Email *
+              </Label>
+              <Input
+                id="admin_email"
+                type="email"
+                placeholder="admin@organization.org"
+                value={formData.admin_email}
+                onChange={(e) => handleInputChange("admin_email", e.target.value)}
+                className={`bg-white border-gray-300 ${
+                  errors.admin_email ? "border-red-300" : ""
+                }`}
+                disabled={loading}
+                required
+              />
+              {errors.admin_email && (
+                <p className="text-sm text-red-600">{errors.admin_email}</p>
+              )}
+              <p className="text-xs text-gray-500">
+                Email of the person who will have admin access to this tenant
+              </p>
+            </div>
           </div>
+
+          {/* Domain and Reason */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Domain */}
+            <div className="space-y-3">
+              <Label htmlFor="domain" className="text-gray-700">
+                Domain (Optional)
+              </Label>
+              <Input
+                id="domain"
+                placeholder="e.g., msf-kenya.org"
+                value={formData.domain}
+                onChange={(e) => handleInputChange("domain", e.target.value)}
+                className="bg-white border-gray-300"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Reason for Change */}
+            <div className="space-y-3">
+              <Label htmlFor="reason" className="text-gray-700">
+                Reason for Change (Optional)
+              </Label>
+              <Input
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Brief reason for this update"
+                className="bg-white border-gray-300"
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {/* Description */}
           <div className="space-y-3">
-            <Label htmlFor="admin_email">Admin Email</Label>
-            <Input
-              id="admin_email"
-              type="email"
-              value={formData.admin_email}
-              onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
-              required
-              placeholder="Email of the tenant administrator"
+            <Label htmlFor="description" className="text-gray-700">
+              Description (Optional)
+            </Label>
+            <RichTextEditor
+              value={formData.description || ""}
+              onChange={(value) => handleInputChange("description", value)}
+              placeholder="Brief description of the organization..."
+              height={200}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Only this email address will have access to the tenant dashboard
+            <p className="text-xs text-gray-500">
+              Provide a brief description of the organization&apos;s purpose or location.
             </p>
           </div>
-          <div className="space-y-3">
-            <Label htmlFor="country">Country</Label>
-            <CountrySelect
-              value={formData.country}
-              onChange={(value) => setFormData({ ...formData, country: value })}
-              placeholder="Select country"
-            />
-          </div>
-          <div className="space-y-3">
-            <Label htmlFor="domain">Domain</Label>
-            <Input
-              id="domain"
-              value={formData.domain}
-              onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-            />
-          </div>
-          <div className="space-y-3">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-          <div className="space-y-3">
-            <Label htmlFor="reason">Reason for Change</Label>
-            <Input
-              id="reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Brief reason for this update"
-            />
-          </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} className="border-black text-black hover:bg-gray-50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

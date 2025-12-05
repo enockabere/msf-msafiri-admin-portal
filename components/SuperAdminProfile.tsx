@@ -299,7 +299,7 @@ export function SuperAdminProfile({
   return (
     <Dialog open={open} onOpenChange={onClose} modal>
       <DialogContent
-        className="sm:max-w-[600px] bg-white border border-gray-200 shadow-2xl z-50 max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] bg-white border border-gray-200 shadow-2xl z-50 max-h-[95vh] overflow-y-auto"
         style={{
           backgroundColor: "#ffffff",
           backdropFilter: "none",

@@ -28,9 +28,18 @@ export function RichTextEditor({ value, onChange, placeholder, height = 250 }: R
 
   const handleInput = () => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      // Clean the HTML by removing data attributes
+      const cleanHTML = editorRef.current.innerHTML
+        .replace(/\s*data-start="[^"]*"/g, '')
+        .replace(/\s*data-end="[^"]*"/g, '');
+      onChange(cleanHTML);
     }
   };
+
+  // Clean the value before displaying
+  const cleanValue = value
+    .replace(/\s*data-start="[^"]*"/g, '')
+    .replace(/\s*data-end="[^"]*"/g, '');
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden">
@@ -66,7 +75,7 @@ export function RichTextEditor({ value, onChange, placeholder, height = 250 }: R
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: cleanValue }}
         className="p-3 focus:outline-none focus:ring-2 focus:ring-red-500 prose max-w-none"
         style={{ minHeight: height }}
         suppressContentEditableWarning={true}

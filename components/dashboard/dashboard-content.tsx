@@ -88,7 +88,7 @@ export function DashboardContent({
         <div className="bg-white rounded-lg border shadow-sm p-6">
           <div className="mb-6">
             <h2 className="card-title mb-2">
-              {currentView === 'super-admins' 
+              {currentView === 'super-admins'
                 ? 'Super Administrator Management'
                 : currentView === 'pending-invitations'
                 ? 'Pending Super Admin Invitations'
@@ -108,34 +108,17 @@ export function DashboardContent({
               }
             </p>
           </div>
-          
+
           {currentView === 'super-admins' ? (
             <SuperAdminManagement />
           ) : currentView === 'pending-invitations' ? (
             <PendingInvitations />
           ) : (
-            <TenantManagement 
+            <TenantManagement
               filter={currentView === 'active' ? 'active' : currentView === 'inactive' ? 'inactive' : 'all'}
               onTenantUpdate={onTenantUpdate}
             />
           )}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && totalTenants === 0 && !error && (
-        <div className="text-center py-8 sm:py-12">
-          <div className="max-w-md mx-auto px-4">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4 sm:mb-6">
-              <Building2 className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-              No Tenants Yet
-            </h3>
-            <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
-              Get started by adding your first tenant organization to the system.
-            </p>
-          </div>
         </div>
       )}
     </>

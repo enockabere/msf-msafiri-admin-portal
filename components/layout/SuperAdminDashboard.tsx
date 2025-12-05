@@ -18,7 +18,7 @@ import type { AuthUser } from "@/types/auth";
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
-  const { profile } = useProfile();
+  const { profile, refreshProfile } = useProfile();
   const { tenants, loading, error, refreshTenants } = useTenant();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -130,7 +130,11 @@ export default function SuperAdminDashboard() {
 
         <SuperAdminProfile
           open={showProfile}
-          onClose={() => setShowProfile(false)}
+          onClose={() => {
+            setShowProfile(false);
+            // Refresh profile data when closing the modal to ensure latest data is displayed
+            refreshProfile();
+          }}
           user={typedUser}
         />
       </div>
