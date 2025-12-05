@@ -76,13 +76,26 @@ export default function GuestHouseSetupModal({
 
   useEffect(() => {
     if (editingGuestHouse) {
+      let parsedFacilities = {};
+      try {
+        // Handle both string and object formats
+        if (typeof editingGuestHouse.facilities === 'string') {
+          parsedFacilities = JSON.parse(editingGuestHouse.facilities);
+        } else if (editingGuestHouse.facilities && typeof editingGuestHouse.facilities === 'object') {
+          parsedFacilities = editingGuestHouse.facilities;
+        }
+      } catch (error) {
+        console.error('Error parsing facilities:', error);
+        parsedFacilities = {};
+      }
+
       setFormData({
         name: editingGuestHouse.name || "",
         location: editingGuestHouse.location || "",
         latitude: editingGuestHouse.latitude?.toString() || "",
         longitude: editingGuestHouse.longitude?.toString() || "",
         house_rules: editingGuestHouse.house_rules || "",
-        facilities: editingGuestHouse.facilities || {}
+        facilities: parsedFacilities
       });
     } else {
       setFormData({
