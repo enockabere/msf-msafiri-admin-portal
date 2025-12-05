@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
-import { Plus, Edit, Trash2, Bed, Users, Settings, Loader2, Save } from "lucide-react";
+import { Plus, Edit, Trash2, Bed, Users, Settings, Loader2, Save, X } from "lucide-react";
 
 interface GuestHouseRoom {
   id: number;
@@ -20,7 +20,6 @@ interface GuestHouseRoom {
   capacity: number;
   room_type?: string;
   facilities?: Record<string, any>;
-  description?: string;
   is_active: boolean;
 }
 
@@ -78,7 +77,6 @@ export default function RoomManagementModal({
     room_name: "",
     capacity: 1,
     room_type: "",
-    description: "",
     facilities: {} as Record<string, boolean>
   });
 
@@ -116,7 +114,6 @@ export default function RoomManagementModal({
       room_name: "",
       capacity: 1,
       room_type: "",
-      description: "",
       facilities: {}
     });
     setEditingRoom(null);
@@ -129,7 +126,6 @@ export default function RoomManagementModal({
       room_name: room.room_name || "",
       capacity: room.capacity,
       room_type: room.room_type || "",
-      description: room.description || "",
       facilities: room.facilities || {}
     });
     setEditingRoom(room);
@@ -230,16 +226,24 @@ export default function RoomManagementModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-0 shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Gradient Header */}
-        <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+      <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+        {/* Header with close button */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+        >
+          <X className="h-4 w-4 text-gray-500" />
+          <span className="sr-only">Close</span>
+        </button>
+
+        <div className="p-6 pb-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Bed className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Bed className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-lg font-bold text-white">Room Management</DialogTitle>
-              <p className="text-red-100 text-xs mt-1">
+              <DialogTitle className="text-xl font-bold text-gray-900">Room Management</DialogTitle>
+              <p className="text-gray-600 text-sm mt-1">
                 Manage rooms and configurations for {guestHouse.name}
               </p>
             </div>
@@ -274,7 +278,7 @@ export default function RoomManagementModal({
                     resetForm();
                     setShowAddForm(true);
                   }}
-                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                  className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Room
@@ -339,39 +343,25 @@ export default function RoomManagementModal({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="room_type" className="text-sm font-semibold text-gray-900">
-                        Room Type
-                      </Label>
-                      <Select
-                        value={formData.room_type}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, room_type: value }))}
-                      >
-                        <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500">
-                          <SelectValue placeholder="Select room type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roomTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description" className="text-sm font-semibold text-gray-900">
-                        Description
-                      </Label>
-                      <Input
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Brief room description"
-                        className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="room_type" className="text-sm font-semibold text-gray-900">
+                      Room Type
+                    </Label>
+                    <Select
+                      value={formData.room_type}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, room_type: value }))}
+                    >
+                      <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500">
+                        <SelectValue placeholder="Select room type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roomTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -399,7 +389,7 @@ export default function RoomManagementModal({
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                     >
                       {loading ? (
                         <>
@@ -437,7 +427,7 @@ export default function RoomManagementModal({
                       resetForm();
                       setShowAddForm(true);
                     }}
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                    className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Room
@@ -486,9 +476,7 @@ export default function RoomManagementModal({
                             </div>
                           )}
 
-                          {room.description && (
-                            <p className="text-xs text-gray-600 mt-3 ml-14">{room.description}</p>
-                          )}
+
                         </div>
 
                         <div className="flex gap-2 ml-14 sm:ml-0">

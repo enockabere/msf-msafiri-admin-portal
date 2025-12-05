@@ -31,7 +31,13 @@ export function useChatUnreadCount({ tenantSlug, enabled = true }: UseChatUnread
       const totalUnread = (conversations as Conversation[]).reduce((sum: number, conv: Conversation) => sum + (conv.unread_count || 0), 0);
       setUnreadCount(totalUnread);
     } catch (error) {
-      console.error("Error fetching chat unread count:", error);
+      // Silently handle 403 errors (user doesn't have chat access)
+      if (error instanceof Error && (error.message.includes('403') || error.message.includes('Insufficient permissions') || error.message.includes('Access denied'))) {
+        // User doesn't have chat access, set count to 0 and don't log error
+        setUnreadCount(0);
+      } else {
+        console.error("Error fetching chat unread count:", error);
+      }
     } finally {
       setLoading(false);
     }

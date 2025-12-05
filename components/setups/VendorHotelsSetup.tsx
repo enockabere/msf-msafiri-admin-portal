@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import { toast } from "@/components/ui/toast";
+import { toast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -423,7 +423,6 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                   <TableRow>
                     <TableHead>Hotel Name</TableHead>
                     <TableHead>Location</TableHead>
-
                     <TableHead>Description</TableHead>
                     {canEdit && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
@@ -433,8 +432,9 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                     <TableRow key={vendor.id}>
                       <TableCell className="font-medium text-xs">{vendor.vendor_name}</TableCell>
                       <TableCell className="text-xs">{vendor.location}</TableCell>
-
-                      <TableCell className="max-w-48 break-words whitespace-normal py-3 text-xs leading-relaxed">{vendor.description || 'No description'}</TableCell>
+                      <TableCell className="max-w-48 break-words whitespace-normal py-3 text-xs leading-relaxed">
+                        {vendor.description ? vendor.description.replace(/<[^>]*>/g, '').replace(/&lt;[^&]*&gt;/g, '') || 'No description' : 'No description'}
+                      </TableCell>
                       {canEdit && (
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end space-x-2">

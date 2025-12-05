@@ -5,10 +5,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LocationSelect } from "@/components/ui/location-select";
-import { toast } from "@/components/ui/toast";
+import { toast } from "@/hooks/use-toast";
 import { MapPin, Clock, X, Save, Loader2, Home } from "lucide-react";
 
 interface GuestHouse {
@@ -70,7 +70,6 @@ export default function GuestHouseSetupModal({
     location: "",
     latitude: "",
     longitude: "",
-    description: "",
     house_rules: "",
     facilities: {} as Record<string, boolean>
   });
@@ -82,7 +81,6 @@ export default function GuestHouseSetupModal({
         location: editingGuestHouse.location || "",
         latitude: editingGuestHouse.latitude?.toString() || "",
         longitude: editingGuestHouse.longitude?.toString() || "",
-        description: editingGuestHouse.description || "",
         house_rules: editingGuestHouse.house_rules || "",
         facilities: editingGuestHouse.facilities || {}
       });
@@ -92,7 +90,6 @@ export default function GuestHouseSetupModal({
         location: "",
         latitude: "",
         longitude: "",
-        description: "",
         house_rules: "",
         facilities: {}
       });
@@ -190,18 +187,26 @@ export default function GuestHouseSetupModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+      <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+        {/* Header with close button */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+        >
+          <X className="h-4 w-4 text-gray-500" />
+          <span className="sr-only">Close</span>
+        </button>
+
+        <div className="p-6 pb-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Home className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Home className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-white">
+              <DialogTitle className="text-xl font-bold text-gray-900">
                 {editingGuestHouse ? "Edit Guest House" : "Add New Guest House"}
               </DialogTitle>
-              <p className="text-red-100 text-sm mt-1">
+              <p className="text-gray-600 text-sm mt-1">
                 {editingGuestHouse 
                   ? "Update the guest house details and configuration"
                   : "Set up a new guest house with location and facility details"
@@ -211,151 +216,95 @@ export default function GuestHouseSetupModal({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto modal-scrollbar">
-          <div className="p-6 pb-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Guest House Name - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="name" className="text-sm font-semibold text-gray-900">
-                  Guest House Name
-                  <span className="text-red-500 ml-1">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., MSF Guest House Westlands"
-                  required
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Guest House Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                Guest House Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                required
+                placeholder="Enter guest house name"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                disabled={loading}
+              />
+            </div>
 
-              {/* Location */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="location" className="text-sm font-semibold text-gray-900">
-                  Location/Area
-                  <span className="text-red-500 ml-1">*</span>
-                </Label>
-                <LocationSelect
-                  value={formData.location}
-                  country={tenantData?.country}
-                  onChange={(value, placeDetails) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      location: value,
-                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
-                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
-                    }));
-                  }}
-                  placeholder="Search and select guest house location"
-                />
-                <p className="text-xs text-gray-500 mt-1 ml-1">Start typing to search for the location</p>
-              </div>
+            {/* Location */}
+            <div className="space-y-2">
+              <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                Location <span className="text-red-500">*</span>
+              </Label>
+              <LocationSelect
+                value={formData.location}
+                country={tenantData?.country}
+                onChange={(value, placeDetails) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    location: value,
+                    latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                    longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                  }));
+                }}
+                placeholder="Search and select guest house location"
+              />
+              <p className="text-xs text-gray-500">Start typing to search for the location</p>
+            </div>
 
-              {/* Coordinates */}
-              <div className="space-y-2">
-                <Label htmlFor="latitude" className="text-sm font-semibold text-gray-900">
-                  Latitude
-                </Label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={formData.latitude}
-                  readOnly
-                  placeholder="Auto-filled"
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 bg-gray-50 rounded-lg cursor-not-allowed"
-                />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="longitude" className="text-sm font-semibold text-gray-900">
-                  Longitude
-                </Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={formData.longitude}
-                  readOnly
-                  placeholder="Auto-filled"
-                  className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 bg-gray-50 rounded-lg cursor-not-allowed"
-                />
-              </div>
 
-              {/* Map Button - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={openGoogleMaps}
-                  className="w-full h-10 px-4 text-sm hover:bg-blue-50 hover:border-blue-300 transition-all"
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  View on Google Maps
-                </Button>
+            {/* Facilities */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-gray-700">
+                Facilities & Amenities
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {commonFacilities.map((facility) => (
+                  <div key={facility.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={facility.key}
+                      checked={formData.facilities[facility.key] || false}
+                      onCheckedChange={(checked) => handleFacilityChange(facility.key, checked as boolean)}
+                      className="border-gray-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                    />
+                    <Label htmlFor={facility.key} className="text-sm font-medium text-gray-700 cursor-pointer">
+                      {facility.label}
+                    </Label>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              {/* Description - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="description" className="text-sm font-semibold text-gray-900">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of the guest house and its surroundings"
-                  className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[5rem]"
-                />
-              </div>
-
-              {/* Facilities - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-sm font-semibold text-gray-900">
-                  Facilities & Amenities
-                </Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  {commonFacilities.map((facility) => (
-                    <div key={facility.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={facility.key}
-                        checked={formData.facilities[facility.key] || false}
-                        onCheckedChange={(checked) => handleFacilityChange(facility.key, checked as boolean)}
-                        className="border-gray-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
-                      />
-                      <Label htmlFor={facility.key} className="text-sm font-medium text-gray-700 cursor-pointer">
-                        {facility.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* House Rules - Full width */}
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="house_rules" className="text-sm font-semibold text-gray-900">
-                  House Rules
-                </Label>
-                <Textarea
-                  id="house_rules"
-                  value={formData.house_rules}
-                  onChange={(e) => setFormData(prev => ({ ...prev, house_rules: e.target.value }))}
-                  placeholder="Enter house rules and policies (e.g., no smoking, quiet hours 10 PM - 7 AM, etc.)"
-                  className="px-4 py-2.5 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none min-h-[5rem]"
-                />
-              </div>
+            {/* House Rules */}
+            <div className="space-y-2">
+              <Label htmlFor="house_rules" className="text-sm font-medium text-gray-700">
+                House Rules
+              </Label>
+              <RichTextEditor
+                value={formData.house_rules}
+                onChange={(value) => setFormData(prev => ({ ...prev, house_rules: value }))}
+                placeholder="Enter house rules and policies (e.g., no smoking, quiet hours 10 PM - 7 AM, etc.)..."
+                height={200}
+              />
+              <p className="text-xs text-gray-500">
+                Specify rules and policies for guests
+              </p>
             </div>
           </div>
         </form>
 
-        {/* Action Buttons - Sticky at bottom */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
+            disabled={loading}
+            className="px-6"
           >
             <X className="w-4 h-4 mr-2" />
             Cancel
@@ -363,12 +312,12 @@ export default function GuestHouseSetupModal({
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 bg-red-600 hover:bg-red-700 text-white"
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
+                {editingGuestHouse ? "Updating..." : "Creating..."}
               </>
             ) : (
               <>

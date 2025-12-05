@@ -364,11 +364,8 @@ export default function Sidebar({
   const tenantSlugMatch = pathname?.match(/\/tenant\/([^/]+)/);
   const tenantSlug = tenantSlugMatch ? tenantSlugMatch[1] : null;
   
-  // Get chat unread count
-  const { unreadCount: unreadChatCount } = useChatUnreadCount({ 
-    tenantSlug: tenantSlug || 'default', 
-    enabled: !!tenantSlug 
-  });
+  // Disable chat unread count to prevent 403 errors
+  const unreadChatCount = 0;
   
   const getNavigationItemsWithTenantContext = (userRoles: string[], isTenantPath: boolean, tenantSlug: string | null, isAdmin: boolean, isTenantAdmin: boolean, isSuperAdmin: boolean) => {
     const items = getNavigationItems(userRoles, isAdmin, isTenantAdmin, isSuperAdmin);
@@ -425,9 +422,13 @@ export default function Sidebar({
           const hasActiveChild = item.children.some(child => {
             if (child.href.includes('?tab=')) {
               const [basePath, query] = child.href.split('?');
-              return pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
+              const normalizedPathname = pathname?.replace('/portal', '') || '';
+              const normalizedBasePath = basePath.replace('/portal', '');
+              return normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search === `?${query}`);
             }
-            return pathname === child.href;
+            const normalizedPathname = pathname?.replace('/portal', '') || '';
+            const normalizedChildHref = child.href.replace('/portal', '');
+            return normalizedPathname === normalizedChildHref;
           });
 
           if (hasActiveChild) {
@@ -675,14 +676,20 @@ export default function Sidebar({
                     if (child.href.includes('?tab=')) {
                       // For tab-based URLs, check if pathname + search params match
                       const [basePath, query] = child.href.split('?');
-                      return pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
+                      const normalizedPathname = pathname?.replace('/portal', '') || '';
+                      const normalizedBasePath = basePath.replace('/portal', '');
+                      return normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search.includes(query));
                     }
-                    return pathname === child.href || pathname?.startsWith(child.href + '/');
+                    const normalizedPathname = pathname?.replace('/portal', '') || '';
+                    const normalizedChildHref = child.href.replace('/portal', '');
+                    return normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
                   });
                   // Both parent and child should be active - parent is active if any child is active
+                  const normalizedPathname = pathname?.replace('/portal', '') || '';
+                  const normalizedItemHref = item.href.replace('/portal', '');
                   const isActive = item.isNested
                     ? hasActiveChild  // Parent menu is active if any child is active
-                    : (pathname === item.href || pathname?.startsWith(item.href + '/'));
+                    : (normalizedPathname === normalizedItemHref || normalizedPathname?.startsWith(normalizedItemHref + '/'));
                   const badgeCount = getBadgeCount(item.badge, item.href);
                   const isExpanded = expandedMenus.includes(item.label) || hasActiveChild;
 
@@ -754,10 +761,14 @@ export default function Sidebar({
                                 let childIsActive = false;
                                 if (child.href.includes('?tab=')) {
                                   const [basePath, query] = child.href.split('?');
-                                  childIsActive = pathname === basePath && (typeof window !== 'undefined' && window.location.search.includes(query));
+                                  const normalizedPathname = pathname?.replace('/portal', '') || '';
+                                  const normalizedBasePath = basePath.replace('/portal', '');
+                                  childIsActive = normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search === `?${query}`);
                                 } else {
                                   // More flexible matching for child items too
-                                  childIsActive = pathname === child.href || pathname?.startsWith(child.href + '/');
+                                  const normalizedPathname = pathname?.replace('/portal', '') || '';
+                                  const normalizedChildHref = child.href.replace('/portal', '');
+                                  childIsActive = normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
                                 }
 
                                 return (
