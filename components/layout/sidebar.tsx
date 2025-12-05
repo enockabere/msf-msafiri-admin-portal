@@ -101,7 +101,7 @@ function Tooltip({ children, content, side = "right" }: TooltipProps) {
 
 const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin: boolean, isSuperAdmin: boolean) => {
   const sections = [];
-  
+
   // Overview - All roles
   sections.push({
     title: "Overview",
@@ -109,19 +109,8 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
     ],
   });
-  
-  // User Management - Only for Super Admin or Tenant Admin (owner)
-  if (isSuperAdmin || isTenantAdmin) {
-    sections.push({
-      title: "User Management",
-      items: [
-        { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
-        { icon: Shield, label: "Admin Roles", href: "/admin-roles", badge: null },
-      ],
-    });
-  }
-  
-  // Operations - Show to all users for now
+
+  // Operations - Show to all users for now (moved up after Dashboard)
   const operationsItems = [
     {
       icon: Settings,
@@ -182,12 +171,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
     },
 
   ];
-  
+
   sections.push({
     title: "Operations",
     items: operationsItems,
   });
-  
+
   // Communication - Show all to all users for now
   const communicationItems = [
     {
@@ -210,12 +199,22 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
       badge: null,
     },
   ];
-  
+
   sections.push({
     title: "Communication",
     items: communicationItems,
   });
-  
+
+  // User Management - Only for Super Admin or Tenant Admin (owner) (moved down before System)
+  if (isSuperAdmin || isTenantAdmin) {
+    sections.push({
+      title: "User Management",
+      items: [
+        { icon: Users, label: "Admin Users", href: "/admin-users", badge: null },
+      ],
+    });
+  }
+
   return sections;
 
 };
@@ -380,7 +379,6 @@ export default function Sidebar({
           ...item,
           href: item.href === '/dashboard' ? `/tenant/${tenantSlug}/dashboard` :
                 item.href === '/admin-users' ? `/tenant/${tenantSlug}/admin-users` :
-                item.href === '/admin-roles' ? `/tenant/${tenantSlug}/admin-roles` :
                 item.href === '/notifications' ? `/tenant/${tenantSlug}/notifications` :
                 item.href === '/events' ? `/tenant/${tenantSlug}/events` :
                 item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :

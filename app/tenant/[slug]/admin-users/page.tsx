@@ -40,6 +40,10 @@ import {
   Clock,
   UserMinus,
   XCircle,
+  X,
+  Send,
+  UserPlus,
+  Shield,
 } from "lucide-react";
 import { toast } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
@@ -331,6 +335,7 @@ export default function TenantAdminUsersPage() {
         throw new Error(errorData.error || "Failed to send invitation");
       }
 
+      // Close modal and reset form on success
       setShowInviteModal(false);
       setFormData({ email: "", full_name: "", role: "" });
       await fetchPendingInvitations();
@@ -343,6 +348,12 @@ export default function TenantAdminUsersPage() {
       console.error("Invite user error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to send invitation";
+
+      // Close modal on error (fail softly)
+      setShowInviteModal(false);
+      setFormData({ email: "", full_name: "", role: "" });
+
+      // Show error notification
       toast({
         title: "Error",
         description: errorMessage,
@@ -989,16 +1000,28 @@ export default function TenantAdminUsersPage() {
             if (!open) closeModals(open);
           }}
         >
-          <DialogContent className="bg-white border border-gray-200 shadow-lg">
+          <DialogContent className="sm:max-w-[550px] bg-white border border-gray-200 shadow-lg">
+            <button
+              onClick={() => closeModals()}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+            >
+              <X className="h-4 w-4 text-gray-500" />
+              <span className="sr-only">Close</span>
+            </button>
             <DialogHeader>
-              <DialogTitle className="text-gray-900">
+              <DialogTitle className="flex items-center gap-2 text-xl text-gray-900">
+                <UserPlus className="w-6 h-6 text-red-600" />
                 Invite Admin User
               </DialogTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Send an invitation to add a new administrator to your organization
+              </p>
             </DialogHeader>
-            <div className="space-y-4 bg-white">
-              <div>
-                <Label htmlFor="email" className="text-gray-700">
-                  Email Address
+            <div className="space-y-5 bg-white py-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-gray-500" />
+                  Email Address *
                 </Label>
                 <Input
                   id="email"
@@ -1007,13 +1030,15 @@ export default function TenantAdminUsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  placeholder="Enter email address"
-                  className="mt-2 bg-white border-gray-300"
+                  placeholder="admin@example.com"
+                  className="bg-white border-gray-300"
+                  disabled={submitting}
                 />
               </div>
-              <div>
-                <Label htmlFor="full_name" className="text-gray-700">
-                  Full Name
+              <div className="space-y-2">
+                <Label htmlFor="full_name" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-500" />
+                  Full Name *
                 </Label>
                 <Input
                   id="full_name"
@@ -1021,22 +1046,25 @@ export default function TenantAdminUsersPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, full_name: e.target.value })
                   }
-                  placeholder="Enter full name"
-                  className="mt-2 bg-white border-gray-300"
+                  placeholder="John Doe"
+                  className="bg-white border-gray-300"
+                  disabled={submitting}
                 />
               </div>
-              <div>
-                <Label htmlFor="role" className="text-gray-700">
-                  Role
+              <div className="space-y-2">
+                <Label htmlFor="role" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-gray-500" />
+                  Role *
                 </Label>
                 <Select
                   value={formData.role}
                   onValueChange={(value) =>
                     setFormData({ ...formData, role: value })
                   }
+                  disabled={submitting}
                 >
-                  <SelectTrigger className="mt-2 bg-white border-gray-300">
-                    <SelectValue placeholder="Select a role" />
+                  <SelectTrigger className="bg-white border-gray-300">
+                    <SelectValue placeholder="Select administrator role" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-gray-200 shadow-lg">
                     {roles.map((role) => (
@@ -1052,12 +1080,14 @@ export default function TenantAdminUsersPage() {
                 </Select>
               </div>
             </div>
-            <DialogFooter className="bg-white">
+            <DialogFooter className="bg-white gap-2">
               <Button
                 variant="outline"
                 onClick={() => closeModals()}
+                disabled={submitting}
                 className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
@@ -1073,10 +1103,13 @@ export default function TenantAdminUsersPage() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
+                    Sending Invitation...
                   </>
                 ) : (
-                  "Send Invitation"
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Invitation
+                  </>
                 )}
               </Button>
             </DialogFooter>
@@ -1089,33 +1122,49 @@ export default function TenantAdminUsersPage() {
             if (!open) closeModals(open);
           }}
         >
-          <DialogContent className="bg-white border border-gray-200 shadow-lg">
+          <DialogContent className="sm:max-w-[500px] bg-white border border-gray-200 shadow-lg">
+            <button
+              onClick={() => closeModals()}
+              className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+            >
+              <X className="h-4 w-4 text-gray-500" />
+              <span className="sr-only">Close</span>
+            </button>
             <DialogHeader>
-              <DialogTitle className="text-gray-900">
+              <DialogTitle className="flex items-center gap-2 text-xl text-gray-900">
+                <Plus className="w-6 h-6 text-red-600" />
                 Add Role to User
               </DialogTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                Assign an additional role to this user
+              </p>
             </DialogHeader>
-            <div className="space-y-4 bg-white">
-              <div>
-                <Label className="text-gray-700">User</Label>
-                <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+            <div className="space-y-5 bg-white py-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-500" />
+                  User
+                </Label>
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="font-medium text-gray-900">
                     {selectedUser?.full_name}
                   </p>
                   <p className="text-sm text-gray-600">{selectedUser?.email}</p>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="add_role" className="text-gray-700">
-                  Additional Role
+              <div className="space-y-2">
+                <Label htmlFor="add_role" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-gray-500" />
+                  Additional Role *
                 </Label>
                 <Select
                   value={formData.role}
                   onValueChange={(value) =>
                     setFormData({ ...formData, role: value })
                   }
+                  disabled={submitting}
                 >
-                  <SelectTrigger className="mt-2 bg-white border-gray-300">
+                  <SelectTrigger className="bg-white border-gray-300">
                     <SelectValue placeholder="Select role to add" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -1132,12 +1181,14 @@ export default function TenantAdminUsersPage() {
                 </Select>
               </div>
             </div>
-            <DialogFooter className="bg-white">
+            <DialogFooter className="bg-white gap-2">
               <Button
                 variant="outline"
                 onClick={() => closeModals()}
+                disabled={submitting}
                 className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
               >
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button
@@ -1148,10 +1199,13 @@ export default function TenantAdminUsersPage() {
                 {submitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Adding...
+                    Adding Role...
                   </>
                 ) : (
-                  "Add Role"
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Role
+                  </>
                 )}
               </Button>
             </DialogFooter>

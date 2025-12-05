@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { LocationSelect } from "@/components/ui/location-select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -51,7 +51,6 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     location: "",
     latitude: "",
     longitude: "",
-    accommodation_type: "Hotel",
     description: "",
   });
   const [searchTerm, setSearchTerm] = useState("");
@@ -138,12 +137,11 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       if (response.ok) {
         await fetchData();
         setAddVendorModalOpen(false);
-        setVendorForm({ 
+        setVendorForm({
           vendor_name: "",
           location: "",
           latitude: "",
           longitude: "",
-          accommodation_type: "Hotel",
           description: "",
         });
         toast({ title: "Success", description: "Vendor hotel created successfully" });
@@ -164,7 +162,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   const filteredVendors = vendors.filter(vendor =>
     vendor.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     vendor.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vendor.accommodation_type.toLowerCase().includes(searchTerm.toLowerCase())
+
   );
 
   const totalPages = Math.ceil(filteredVendors.length / itemsPerPage);
@@ -174,13 +172,13 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   );
 
   const exportToCSV = (vendors: VendorAccommodation[]) => {
-    const headers = ["Hotel Name", "Location", "Type", "Description"];
+    const headers = ["Hotel Name", "Location", "Description"];
     const csvData = [
       headers.join(","),
       ...vendors.map(vendor => [
         `"${vendor.vendor_name}"`,
         `"${vendor.location}"`,
-        `"${vendor.accommodation_type}"`,
+
         `"${vendor.description || 'No description'}"`
       ].join(","))
     ].join("\n");
@@ -255,115 +253,97 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     return canEdit ? (
       <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
         <DialogTrigger asChild>
-          <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
             <Plus className="w-4 h-4 mr-2" />
             Add Vendor Hotel
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-white border-0 shadow-2xl max-w-3xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-          {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+        <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+          {/* Header with close button */}
+          <button
+            onClick={() => setAddVendorModalOpen(false)}
+            className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+            <span className="sr-only">Close</span>
+          </button>
+
+          <div className="p-6 pb-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                <Hotel className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Hotel className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-white">Add New Vendor Hotel</DialogTitle>
-                <p className="text-red-100 text-sm mt-1">Register a new accommodation partner</p>
+                <DialogTitle className="text-xl font-bold text-gray-900">Add New Vendor Hotel</DialogTitle>
+                <p className="text-gray-600 text-sm mt-1">Register a new accommodation partner</p>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleAddVendor} className="flex-1 overflow-y-auto modal-scrollbar">
-            <div className="p-6 pb-0">
-              {/* Two-column grid layout for better space utilization */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Hotel Name */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="vendor_name" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
-                    Hotel Name
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="vendor_name"
-                      value={vendorForm.vendor_name}
-                      onChange={(e) => setVendorForm({ ...vendorForm, vendor_name: e.target.value })}
-                      required
-                      placeholder="Enter hotel or accommodation name"
-                      className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                    />
-                  </div>
-                </div>
+          <form onSubmit={handleAddVendor} className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              {/* Hotel Name */}
+              <div className="space-y-2">
+                <Label htmlFor="vendor_name" className="text-sm font-medium text-gray-700">
+                  Hotel Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="vendor_name"
+                  value={vendorForm.vendor_name}
+                  onChange={(e) => setVendorForm({ ...vendorForm, vendor_name: e.target.value })}
+                  required
+                  placeholder="Enter hotel or accommodation name"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  disabled={submitting}
+                />
+              </div>
 
-                {/* Location */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="location" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
-                    Location
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <LocationSelect
-                    value={vendorForm.location}
-                    country={tenantData?.country}
-                    onChange={(value, placeDetails) => {
-                      setVendorForm({
-                        ...vendorForm,
-                        location: value,
-                        latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
-                        longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
-                      });
-                    }}
-                    placeholder="Search and select hotel location"
-                  />
-                  <p className="text-xs text-gray-500 mt-1 ml-1">Start typing to search for the location</p>
-                </div>
+              {/* Location */}
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                  Location <span className="text-red-500">*</span>
+                </Label>
+                <LocationSelect
+                  value={vendorForm.location}
+                  country={tenantData?.country}
+                  onChange={(value, placeDetails) => {
+                    setVendorForm({
+                      ...vendorForm,
+                      location: value,
+                      latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                      longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                    });
+                  }}
+                  placeholder="Search and select hotel location"
+                />
+                <p className="text-xs text-gray-500">Start typing to search for the location</p>
+              </div>
 
-                {/* Accommodation Type */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="accommodation_type" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
-                    Accommodation Type
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="accommodation_type"
-                      value={vendorForm.accommodation_type}
-                      onChange={(e) => setVendorForm({ ...vendorForm, accommodation_type: e.target.value })}
-                      placeholder="Hotel, Lodge, Guest House, Resort, etc."
-                      className="pl-4 pr-4 py-3 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="description" className="text-sm font-semibold text-gray-900 flex items-center">
-                    <div className="w-1.5 h-4 bg-red-600 rounded-full mr-2"></div>
-                    Description
-                  </Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the facilities, services, and amenities available at this accommodation..."
-                    value={vendorForm.description}
-                    onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })}
-                    className="min-h-[100px] text-sm border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all resize-none"
-                  />
-                  <p className="text-xs text-gray-500 mt-1 ml-1">
-                    {vendorForm.description.length} / 500 characters
-                  </p>
-                </div>
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                  Description
+                </Label>
+                <RichTextEditor
+                  value={vendorForm.description}
+                  onChange={(value) => setVendorForm({ ...vendorForm, description: value })}
+                  placeholder="Describe the facilities, services, and amenities available at this accommodation..."
+                  height={250}
+                />
+                <p className="text-xs text-gray-500">
+                  Provide details about the accommodation facilities and services
+                </p>
               </div>
             </div>
 
-            {/* Action Buttons - Sticky at bottom */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setAddVendorModalOpen(false)}
-                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
+                disabled={submitting}
+                className="px-6"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
@@ -371,7 +351,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               <Button
                 type="submit"
                 disabled={submitting}
-                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {submitting ? (
                   <>
@@ -446,7 +426,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                   <TableRow>
                     <TableHead>Hotel Name</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Type</TableHead>
+
                     <TableHead>Description</TableHead>
                     {canEdit && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
@@ -456,7 +436,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                     <TableRow key={vendor.id}>
                       <TableCell className="font-medium text-xs">{vendor.vendor_name}</TableCell>
                       <TableCell className="text-xs">{vendor.location}</TableCell>
-                      <TableCell className="text-xs">{vendor.accommodation_type}</TableCell>
+
                       <TableCell className="max-w-48 break-words whitespace-normal py-3 text-xs leading-relaxed">{vendor.description || 'No description'}</TableCell>
                       {canEdit && (
                         <TableCell className="text-right">

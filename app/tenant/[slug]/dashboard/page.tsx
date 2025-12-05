@@ -46,6 +46,7 @@ export default function TenantDashboardPage() {
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [navigationLoading, setNavigationLoading] = useState(false);
+  const [cardNavigating, setCardNavigating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const tenantSlug = params.slug as string;
@@ -286,8 +287,21 @@ export default function TenantDashboardPage() {
     router.push("/dashboard");
   };
 
+  const handleCardClick = (path: string | null) => {
+    if (path) {
+      setCardNavigating(true);
+      router.push(path);
+    } else {
+      alert("Feature coming soon!");
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message="Loading tenant dashboard..." />;
+  }
+
+  if (cardNavigating) {
+    return <LoadingScreen message="Loading page..." />;
   }
 
   if (error || !tenant) {
@@ -344,7 +358,7 @@ export default function TenantDashboardPage() {
       enabled: true,
     },
     {
-      title: "Inventory",
+      title: "Inventory Setup",
       description: `${stats.totalInventory} items available`,
       icon: Coins,
       path: `/tenant/${tenantSlug}/inventory`,
@@ -352,26 +366,26 @@ export default function TenantDashboardPage() {
       enabled: true,
     },
     {
-      title: "Approvals",
-      description: "Handle allocations",
+      title: "Travel Requirements Setup",
+      description: "Manage travel requirements",
       icon: AlertCircle,
-      path: `/tenant/${tenantSlug}/allocation-approvals`,
+      path: `/tenant/${tenantSlug}/travel-requirements`,
       color: "indigo",
       enabled: true,
     },
     {
-      title: "Visitors",
-      description: `${stats.totalVisitors} participants`,
+      title: "Transport Setup",
+      description: "Manage transport settings",
       icon: Users,
-      path: null,
+      path: `/tenant/${tenantSlug}/transport-setup`,
       color: "blue",
       enabled: true,
     },
     {
-      title: "Security",
-      description: "Briefings & alerts",
+      title: "News & Updates",
+      description: "Latest news & announcements",
       icon: Bell,
-      path: `/tenant/${tenantSlug}/security-briefings`,
+      path: `/tenant/${tenantSlug}/news-updates`,
       color: "red",
       enabled: true,
     },
@@ -443,11 +457,8 @@ export default function TenantDashboardPage() {
                 key={index}
                 variant="outline"
                 className="h-auto p-6 justify-start hover:shadow-md transition-all duration-200 border-2 hover:border-gray-300"
-                onClick={() =>
-                  action.path
-                    ? router.push(action.path)
-                    : alert("Feature coming soon!")
-                }
+                onClick={() => handleCardClick(action.path)}
+                disabled={cardNavigating}
               >
                 <div
                   className={`p-3 rounded-lg text-white ${
@@ -579,7 +590,14 @@ export default function TenantDashboardPage() {
                   <label className="text-xs font-medium text-gray-500">
                     Description
                   </label>
-                  <p className="text-xs text-gray-900">{tenant.description}</p>
+                  <div
+                    className="text-xs text-gray-900 prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: tenant.description
+                        .replace(/\s*data-start="[^"]*"/g, '')
+                        .replace(/\s*data-end="[^"]*"/g, '')
+                    }}
+                  />
                 </div>
               )}
             </div>
