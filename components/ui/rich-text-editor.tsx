@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { Button } from './button';
 import { Bold, Italic, Underline, List, Link, AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 
@@ -13,6 +13,12 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ value, onChange, placeholder, height = 250 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value;
+    }
+  }, [value]);
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -28,18 +34,15 @@ export function RichTextEditor({ value, onChange, placeholder, height = 250 }: R
 
   const handleInput = () => {
     if (editorRef.current) {
-      // Clean the HTML by removing data attributes
-      const cleanHTML = editorRef.current.innerHTML
-        .replace(/\s*data-start="[^"]*"/g, '')
-        .replace(/\s*data-end="[^"]*"/g, '');
-      onChange(cleanHTML);
+      onChange(editorRef.current.innerHTML);
     }
   };
 
-  // Clean the value before displaying
-  const cleanValue = value
-    .replace(/\s*data-start="[^"]*"/g, '')
-    .replace(/\s*data-end="[^"]*"/g, '');
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+  };
 
   return (
     <div className="border border-gray-300 rounded-lg overflow-hidden">
@@ -75,10 +78,11 @@ export function RichTextEditor({ value, onChange, placeholder, height = 250 }: R
         ref={editorRef}
         contentEditable
         onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: cleanValue }}
+        onPaste={handlePaste}
         className="p-3 focus:outline-none focus:ring-2 focus:ring-red-500 prose max-w-none"
         style={{ minHeight: height }}
         suppressContentEditableWarning={true}
+        placeholder={placeholder}
       />
     </div>
   );
