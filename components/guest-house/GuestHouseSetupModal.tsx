@@ -76,6 +76,10 @@ export default function GuestHouseSetupModal({
 
   useEffect(() => {
     if (editingGuestHouse) {
+      console.log('🔍 [DEBUG] Editing guest house data:', editingGuestHouse);
+      console.log('🔍 [DEBUG] Facilities raw:', editingGuestHouse.facilities);
+      console.log('🔍 [DEBUG] House rules raw:', editingGuestHouse.house_rules);
+      
       let parsedFacilities = {};
       try {
         // Handle both string and object formats
@@ -88,6 +92,8 @@ export default function GuestHouseSetupModal({
         console.error('Error parsing facilities:', error);
         parsedFacilities = {};
       }
+      
+      console.log('🔍 [DEBUG] Parsed facilities:', parsedFacilities);
 
       setFormData({
         name: editingGuestHouse.name || "",
