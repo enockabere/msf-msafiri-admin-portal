@@ -250,7 +250,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     return canEdit ? (
       <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
         <DialogTrigger asChild>
-          <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+          <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
             <Plus className="w-4 h-4 mr-2" />
             Add Vendor Hotel
           </Button>
@@ -348,7 +348,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               <Button
                 type="submit"
                 disabled={submitting}
-                className="px-6 bg-blue-600 hover:bg-blue-700 text-white"
+                className="px-6 bg-red-600 hover:bg-red-700 text-white"
               >
                 {submitting ? (
                   <>
