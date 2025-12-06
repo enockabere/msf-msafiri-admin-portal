@@ -11,6 +11,7 @@ import { Loader2, Save, AlertCircle, CheckCircle2, Plane, FileText, CreditCard, 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AdditionalRequirement {
   name: string;
@@ -94,14 +95,15 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
   const applyToAllCountries = async () => {
     try {
       setCreatingDefaults(true);
-      
+
       const tenantResponse = await apiClient.request(`/tenants/slug/${tenantSlug}`);
       const tenantId = tenantResponse.id;
-      
+
       // Get all countries except tenant country
       const allCountries = countries.filter(country => country !== tenantCountry);
       let updatedCount = 0;
-      
+      const updatedRequirements: Record<string, TravelRequirement> = { ...requirements };
+
       // Apply settings to all countries
       for (const country of allCountries) {
         try {
@@ -114,7 +116,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
             flight_ticket_required: defaultSettings.flight_ticket_required,
             additional_requirements: currentReq?.additional_requirements || []
           };
-          
+
           let response;
           if (currentReq?.id) {
             // Update existing requirement
@@ -140,24 +142,24 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
               }
             );
           }
-          
-          setRequirements(prev => ({
-            ...prev,
-            [country]: response
-          }));
+
+          updatedRequirements[country] = response;
           updatedCount++;
         } catch (error) {
           console.error(`Failed to update requirements for ${country}:`, error);
         }
       }
-      
+
+      // Update all requirements at once to trigger stats recalculation
+      setRequirements(updatedRequirements);
+
       toast({
         title: "Success",
         description: `Requirements updated for ${updatedCount} countries`
       });
-      
+
       setShowDefaultsModal(false);
-      
+
     } catch (error) {
       console.error("Error updating requirements:", error);
       toast({
@@ -469,43 +471,66 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={filterType === "all" ? "default" : "outline"}
-                onClick={() => setFilterType("all")}
-                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
-                size="sm"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">All</span>
-              </Button>
-              <Button
-                variant={filterType === "configured" ? "default" : "outline"}
-                onClick={() => setFilterType("configured")}
-                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
-                size="sm"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Configured</span>
-              </Button>
-              <Button
-                variant={filterType === "unconfigured" ? "default" : "outline"}
-                onClick={() => setFilterType("unconfigured")}
-                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
-                size="sm"
-              >
-                <AlertCircle className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">Pending</span>
-              </Button>
-              <Button
-                onClick={() => setShowDefaultsModal(true)}
-                disabled={creatingDefaults}
-                className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
-                size="sm"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Configure All Countries</span>
-                <span className="sm:hidden">Configure All</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterType === "all" ? "default" : "outline"}
+                    onClick={() => setFilterType("all")}
+                    className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
+                    size="sm"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">All</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Show all countries</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterType === "configured" ? "default" : "outline"}
+                    onClick={() => setFilterType("configured")}
+                    className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
+                    size="sm"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Configured</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Show countries with requirements set</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterType === "unconfigured" ? "default" : "outline"}
+                    onClick={() => setFilterType("unconfigured")}
+                    className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
+                    size="sm"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Pending</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Show countries without requirements</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setShowDefaultsModal(true)}
+                    disabled={creatingDefaults}
+                    className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+                    size="sm"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Configure All Countries</span>
+                    <span className="sm:hidden">Configure All</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Apply default settings to all countries at once</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardContent>
@@ -758,10 +783,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                               size="sm"
                               onClick={() => setEditingAdditional(country)}
                               disabled={saving === country}
-                              className="w-full h-8 text-xs font-semibold border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all"
+                              className="w-full h-auto py-2 text-[11px] sm:text-xs font-semibold border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all"
                             >
-                              <Plus className="h-3.5 w-3.5 mr-1.5" />
-                              Add Custom Requirement
+                              <Plus className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
+                              <span className="break-words">Add Custom Requirement</span>
                             </Button>
                           </>
                         )}
@@ -777,8 +802,8 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
       {/* Defaults Selection Modal */}
       {showDefaultsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md border border-gray-200">
             <h3 className="text-lg font-semibold mb-4">Configure All Countries</h3>
             <p className="text-sm text-gray-600 mb-6">
               Apply these settings to all {countries.filter(c => c !== tenantCountry).length} countries. This will update existing configurations:
