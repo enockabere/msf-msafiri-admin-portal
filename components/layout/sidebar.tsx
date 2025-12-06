@@ -424,7 +424,8 @@ export default function Sidebar({
               const [basePath, query] = child.href.split('?');
               const normalizedPathname = pathname?.replace('/portal', '') || '';
               const normalizedBasePath = basePath.replace('/portal', '');
-              return normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search === `?${query}`);
+              const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+              return normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
             }
             const normalizedPathname = pathname?.replace('/portal', '') || '';
             const normalizedChildHref = child.href.replace('/portal', '');
@@ -678,7 +679,8 @@ export default function Sidebar({
                       const [basePath, query] = child.href.split('?');
                       const normalizedPathname = pathname?.replace('/portal', '') || '';
                       const normalizedBasePath = basePath.replace('/portal', '');
-                      return normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search.includes(query));
+                      const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+                      return normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
                     }
                     const normalizedPathname = pathname?.replace('/portal', '') || '';
                     const normalizedChildHref = child.href.replace('/portal', '');
@@ -763,7 +765,8 @@ export default function Sidebar({
                                   const [basePath, query] = child.href.split('?');
                                   const normalizedPathname = pathname?.replace('/portal', '') || '';
                                   const normalizedBasePath = basePath.replace('/portal', '');
-                                  childIsActive = normalizedPathname === normalizedBasePath && (typeof window !== 'undefined' && window.location.search === `?${query}`);
+                                  const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+                                  childIsActive = normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
                                 } else {
                                   // More flexible matching for child items too
                                   const normalizedPathname = pathname?.replace('/portal', '') || '';
