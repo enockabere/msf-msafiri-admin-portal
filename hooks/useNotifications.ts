@@ -31,13 +31,32 @@ export function useNotifications() {
 
       apiClient.setToken(accessToken);
 
-      const [notificationsData, statsData] = await Promise.all([
+      // Fetch notifications and stats separately to handle errors independently
+      const [notificationsResult, statsResult] = await Promise.allSettled([
         apiClient.getNotifications(),
         apiClient.getNotificationStats(),
       ]);
 
-      setNotifications(notificationsData);
-      setStats(statsData);
+      // Handle notifications result
+      if (notificationsResult.status === 'fulfilled') {
+        setNotifications(notificationsResult.value);
+      } else {
+        console.error("Failed to fetch notifications:", notificationsResult.reason);
+        setNotifications([]);
+      }
+
+      // Handle stats result - fail silently with default values
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value);
+      } else {
+        console.error("Failed to fetch notification stats:", statsResult.reason);
+        // Set default stats instead of failing
+        setStats({
+          total: 0,
+          unread: 0,
+          urgent: 0
+        });
+      }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
       const errorMessage =
@@ -52,6 +71,12 @@ export function useNotifications() {
       }
 
       setError(errorMessage);
+      // Set defaults on error
+      setStats({
+        total: 0,
+        unread: 0,
+        urgent: 0
+      });
     } finally {
       setLoading(false);
     }
