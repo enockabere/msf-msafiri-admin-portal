@@ -383,7 +383,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       )}
 
       {/* Statistics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -458,8 +458,8 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       {/* Search and Filter Section */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
+          <div className="flex flex-col gap-3">
+            <div className="relative">
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search countries..."
@@ -468,42 +468,43 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                 className="pl-8 h-9 text-sm"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={filterType === "all" ? "default" : "outline"}
                 onClick={() => setFilterType("all")}
-                className="flex items-center gap-1.5 h-9 text-xs"
+                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
                 size="sm"
               >
                 <Filter className="h-3.5 w-3.5" />
-                All
+                <span className="hidden xs:inline">All</span>
               </Button>
               <Button
                 variant={filterType === "configured" ? "default" : "outline"}
                 onClick={() => setFilterType("configured")}
-                className="flex items-center gap-1.5 h-9 text-xs"
+                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
                 size="sm"
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Configured
+                <span className="hidden xs:inline">Configured</span>
               </Button>
               <Button
                 variant={filterType === "unconfigured" ? "default" : "outline"}
                 onClick={() => setFilterType("unconfigured")}
-                className="flex items-center gap-1.5 h-9 text-xs"
+                className="flex items-center gap-1.5 h-9 text-xs flex-1 sm:flex-none"
                 size="sm"
               >
                 <AlertCircle className="h-3.5 w-3.5" />
-                Pending
+                <span className="hidden xs:inline">Pending</span>
               </Button>
               <Button
                 onClick={() => setShowDefaultsModal(true)}
                 disabled={creatingDefaults}
-                className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white"
+                className="flex items-center gap-1.5 h-9 text-xs bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
                 size="sm"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Configure All Countries
+                <span className="hidden sm:inline">Configure All Countries</span>
+                <span className="sm:hidden">Configure All</span>
               </Button>
             </div>
           </div>
@@ -530,7 +531,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredCountries.map((country) => {
                 const isConfigured = !!requirements[country]?.id;
                 const visaReq = getRequirementValue(country, 'visa_required');
@@ -543,9 +544,9 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                       isConfigured ? 'border-green-200 bg-green-50/30' : 'border-muted'
                     }`}
                   >
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 p-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                        <CardTitle className="text-xs sm:text-sm font-semibold flex items-center gap-1.5">
                           <Globe className="h-3.5 w-3.5 text-muted-foreground" />
                           {country}
                         </CardTitle>
@@ -571,7 +572,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                         </div>
                       )}
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-2 p-3 sm:p-4 pt-0">
                       {saving === country && (
                         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
                           <div className="flex items-center gap-1.5 bg-background px-3 py-1.5 rounded-lg shadow-lg">
@@ -723,10 +724,11 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                                       size="sm"
                                       onClick={() => addAdditionalRequirement(country)}
                                       disabled={!newRequirement.name.trim() || saving === country}
-                                      className="h-7 text-xs px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md"
+                                      className="h-7 text-xs px-2 sm:px-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md"
                                     >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Add Requirement
+                                      <Plus className="h-3 w-3 sm:mr-1" />
+                                      <span className="hidden xs:inline">Add Requirement</span>
+                                      <span className="xs:hidden">Add</span>
                                     </Button>
                                     <Button
                                       variant="outline"
@@ -735,10 +737,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                                         setEditingAdditional(null);
                                         setNewRequirement({ name: "", description: "" });
                                       }}
-                                      className="h-7 text-xs px-3 border-2 hover:bg-gray-100"
+                                      className="h-7 text-xs px-2 sm:px-3 border-2 hover:bg-gray-100"
                                     >
-                                      <X className="h-3 w-3 mr-1" />
-                                      Cancel
+                                      <X className="h-3 w-3 sm:mr-1" />
+                                      <span className="hidden xs:inline">Cancel</span>
                                     </Button>
                                   </div>
                                 </div>
@@ -775,8 +777,8 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
       {/* Defaults Selection Modal */}
       {showDefaultsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">Configure All Countries</h3>
             <p className="text-sm text-gray-600 mb-6">
               Apply these settings to all {countries.filter(c => c !== tenantCountry).length} countries. This will update existing configurations:
@@ -844,11 +846,11 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
               </div>
             </div>
             
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <Button
                 onClick={applyToAllCountries}
                 disabled={creatingDefaults}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm"
               >
                 {creatingDefaults ? (
                   <>
@@ -866,7 +868,7 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                 variant="outline"
                 onClick={() => setShowDefaultsModal(false)}
                 disabled={creatingDefaults}
-                className="flex-1"
+                className="flex-1 text-sm"
               >
                 Cancel
               </Button>
