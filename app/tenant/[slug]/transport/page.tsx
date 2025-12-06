@@ -1310,11 +1310,14 @@ export default function TransportPage() {
           <DialogContent className="sm:max-w-lg bg-white border-0 shadow-2xl">
             <DialogHeader className="pb-4">
               <DialogTitle className="text-xl font-bold text-gray-900">
-                {selectedRequest && (selectedRequest.status === 'booked' || selectedRequest.status === 'confirmed') 
-                  ? 'Booking Details' 
+                {selectedRequest && (selectedRequest.status === 'booked' || selectedRequest.status === 'confirmed')
+                  ? 'Booking Details'
                   : 'Transport Request Details'
                 }
               </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                View complete details for this transport request
+              </DialogDescription>
             </DialogHeader>
             {selectedRequest && (
               <div className="space-y-6">

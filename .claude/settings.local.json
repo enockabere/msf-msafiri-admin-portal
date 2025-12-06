@@ -15,7 +15,12 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(find:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git branch:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(source:*)",
+      "Bash(./venv/Scripts/activate)",
+      "Bash(python -m alembic:*)"
     ],
     "deny": [],
     "ask": []
