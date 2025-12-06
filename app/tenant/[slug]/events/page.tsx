@@ -82,6 +82,33 @@ interface UserRole {
   role: string;
 }
 
+// Helper function to get timezone from country
+const getTimezoneFromCountry = (country: string): string => {
+  const timezoneMap: Record<string, string> = {
+    'Kenya': 'EAT (UTC+3)',
+    'Uganda': 'EAT (UTC+3)',
+    'Tanzania': 'EAT (UTC+3)',
+    'Rwanda': 'CAT (UTC+2)',
+    'Ethiopia': 'EAT (UTC+3)',
+    'South Africa': 'SAST (UTC+2)',
+    'Nigeria': 'WAT (UTC+1)',
+    'Ghana': 'GMT (UTC+0)',
+    'Egypt': 'EET (UTC+2)',
+    'Morocco': 'WET (UTC+0)',
+    'United States': 'EST/PST (UTC-5/-8)',
+    'United Kingdom': 'GMT/BST (UTC+0/+1)',
+    'France': 'CET (UTC+1)',
+    'Germany': 'CET (UTC+1)',
+    'India': 'IST (UTC+5:30)',
+    'China': 'CST (UTC+8)',
+    'Japan': 'JST (UTC+9)',
+    'Australia': 'AEST (UTC+10)',
+    'Brazil': 'BRT (UTC-3)',
+    'Canada': 'EST/PST (UTC-5/-8)',
+  };
+  return timezoneMap[country] || 'Local Time';
+};
+
 export default function TenantEventsPage() {
   const params = useParams();
   const router = useRouter();
@@ -90,7 +117,7 @@ export default function TenantEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
-  const [, setTenantData] = useState<{ country?: string } | null>(null);
+  const [tenantData, setTenantData] = useState<{ country?: string; timezone?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -263,7 +290,10 @@ export default function TenantEventsPage() {
       try {
         const tenant = await apiClient.request<{ admin_email: string; country?: string }>(`/tenants/slug/${tenantSlug}`);
         setIsTenantAdmin(tenant.admin_email === user.email);
-        setTenantData({ country: tenant.country });
+
+        // Get timezone from country
+        const timezone = getTimezoneFromCountry(tenant.country || '');
+        setTenantData({ country: tenant.country, timezone });
       } catch {
         setIsTenantAdmin(false);
         setTenantData(null);
@@ -994,16 +1024,16 @@ export default function TenantEventsPage() {
         </div>
 
         <Dialog open={showCreateModal} onOpenChange={closeModals}>
-          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col rounded-2xl">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+          <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+            {/* Header without gradient - matching vendor hotels */}
+            <div className="p-6 pb-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-bold text-white">Create New Event</DialogTitle>
-                  <p className="text-red-100 text-xs mt-1">Set up a new event for your organization</p>
+                  <DialogTitle className="text-xl font-bold text-gray-900">Create New Event</DialogTitle>
+                  <p className="text-gray-600 text-sm mt-1">Set up a new event for your organization</p>
                 </div>
               </div>
             </div>
@@ -1012,33 +1042,30 @@ export default function TenantEventsPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Event Title - Takes 2 columns */}
-                    <div className="md:col-span-2">
-                      <Label htmlFor="title" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Event Title
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="title" className="text-sm font-medium text-gray-700">
+                        Event Title <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="title"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="Enter event title"
-                        className="h-11 text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all"
+                        required
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
 
                     {/* Event Type - 1 column */}
-                    <div>
-                      <Label htmlFor="event_type" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Event Type
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="event_type" className="text-sm font-medium text-gray-700">
+                        Event Type <span className="text-red-500">*</span>
                       </Label>
                       <Select
                         value={formData.event_type}
                         onValueChange={(value) => setFormData({ ...formData, event_type: value })}
                       >
-                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1054,10 +1081,9 @@ export default function TenantEventsPage() {
                     </div>
                   </div>
 
-                  {/* Description - Full width */}
+                  {/* Description - Full width with CKEditor placeholder */}
                   <div>
-                    <Label htmlFor="description" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2 block">
                       Description
                     </Label>
                     <Textarea
@@ -1065,8 +1091,9 @@ export default function TenantEventsPage() {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Describe the event, its purpose, and what participants can expect..."
-                      className="min-h-[80px] text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all resize-none"
+                      className="min-h-[120px] text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg transition-all resize-none"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
                   </div>
 
                   {/* Venue and Accommodation Details */}
@@ -1162,7 +1189,7 @@ export default function TenantEventsPage() {
                   <div>
                     <Label htmlFor="start_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
                       <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Start Date
+                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <Input
@@ -1179,7 +1206,7 @@ export default function TenantEventsPage() {
                   <div>
                     <Label htmlFor="end_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
                       <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      End Date
+                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
                     <Input
