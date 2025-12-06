@@ -32,7 +32,7 @@ import {
   Search,
   Download,
 } from "lucide-react";
-import { toast } from "@/components/ui/toast";
+import { toast } from "sonner";
 
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import AddItemModal from "@/components/inventory/AddItemModal";
@@ -111,28 +111,16 @@ export default function InventoryPage() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: editingItem
-            ? "Item updated successfully"
-            : "Item added successfully",
-        });
+        toast.success(editingItem ? "Item updated successfully" : "Item added successfully");
         setShowModal(false);
         setEditingItem(null);
         fetchItems();
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to save item",
-          variant: "destructive",
-        });
+        const errorData = await response.json().catch(() => ({ detail: "Failed to save item" }));
+        toast.error(errorData.detail || "Failed to save item");
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Error saving item",
-        variant: "destructive",
-      });
+      toast.error("Network error occurred");
     }
   };
 
@@ -166,24 +154,14 @@ export default function InventoryPage() {
       );
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Item deleted successfully",
-        });
+        toast.success("Item deleted successfully");
         fetchItems();
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to delete item",
-          variant: "destructive",
-        });
+        const errorData = await response.json().catch(() => ({ detail: "Failed to delete item" }));
+        toast.error(errorData.detail || "Failed to delete item");
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Error deleting item",
-        variant: "destructive",
-      });
+      toast.error("Network error occurred");
     }
   };
 
