@@ -21,6 +21,8 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 import {
   Calendar,
   Plus,
@@ -1081,36 +1083,46 @@ export default function TenantEventsPage() {
                     </div>
                   </div>
 
-                  {/* Description - Full width with CKEditor placeholder */}
+                  {/* Description - Full width with CKEditor */}
                   <div>
                     <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2 block">
                       Description
                     </Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Describe the event, its purpose, and what participants can expect..."
-                      className="min-h-[120px] text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg transition-all resize-none"
-                    />
+                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[150px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
+                      <CKEditor
+                        editor={ClassicEditor}
+                        data={formData.description}
+                        onChange={(event, editor) => {
+                          const data = editor.getData();
+                          setFormData({ ...formData, description: data });
+                        }}
+                        config={{
+                          placeholder: "Describe the event, its purpose, and what participants can expect...",
+                          toolbar: [
+                            'heading', '|',
+                            'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                            'outdent', 'indent', '|',
+                            'blockQuote', 'undo', 'redo'
+                          ]
+                        }}
+                      />
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
                   </div>
 
                   {/* Venue and Accommodation Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <Label htmlFor="vendor_accommodation_id" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Venue (Hotel)
-                        <span className="text-red-500 ml-1">*</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">
+                        Venue (Hotel) <span className="text-red-500">*</span>
                       </Label>
                       <Select
                         value={formData.vendor_accommodation_id}
                         onValueChange={(value) => {
                           const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
                           setSelectedVendorId(value);
-                          setFormData({ 
-                            ...formData, 
+                          setFormData({
+                            ...formData,
                             vendor_accommodation_id: value,
                             location: selectedHotel?.location || "",
                             latitude: selectedHotel?.latitude || "",
@@ -1118,7 +1130,7 @@ export default function TenantEventsPage() {
                           });
                         }}
                       >
-                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                           <SelectValue placeholder="Select venue hotel" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1130,11 +1142,9 @@ export default function TenantEventsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="expected_participants" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Expected Participants
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="expected_participants" className="text-sm font-medium text-gray-700">
+                        Expected Participants <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="expected_participants"
@@ -1142,7 +1152,8 @@ export default function TenantEventsPage() {
                         value={formData.expected_participants}
                         onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
                         placeholder="Enter expected number of participants"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        required
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="1"
                       />
                     </div>
@@ -1150,11 +1161,9 @@ export default function TenantEventsPage() {
 
                   {/* Room Configuration */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label htmlFor="single_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Single Rooms
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="single_rooms" className="text-sm font-medium text-gray-700">
+                        Single Rooms <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="single_rooms"
@@ -1162,15 +1171,13 @@ export default function TenantEventsPage() {
                         value={formData.single_rooms}
                         onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
                         placeholder="Number of single rooms needed"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="0"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="double_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Double Rooms
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="double_rooms" className="text-sm font-medium text-gray-700">
+                        Double Rooms <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="double_rooms"
@@ -1178,7 +1185,7 @@ export default function TenantEventsPage() {
                         value={formData.double_rooms}
                         onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
                         placeholder="Number of double rooms needed"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="0"
                       />
                     </div>
@@ -1186,11 +1193,9 @@ export default function TenantEventsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-                  <div>
-                    <Label htmlFor="start_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
-                      <span className="text-red-500 ml-1">*</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="start_date" className="text-sm font-medium text-gray-700">
+                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="start_date"
@@ -1200,14 +1205,12 @@ export default function TenantEventsPage() {
                       onChange={(e) =>
                         handleDateChange("start_date", e.target.value)
                       }
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="end_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
-                      <span className="text-red-500 ml-1">*</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_date" className="text-sm font-medium text-gray-700">
+                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="end_date"
@@ -1217,12 +1220,11 @@ export default function TenantEventsPage() {
                       onChange={(e) =>
                         handleDateChange("end_date", e.target.value)
                       }
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="registration_deadline" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="space-y-2">
+                    <Label htmlFor="registration_deadline" className="text-sm font-medium text-gray-700">
                       Registration Deadline
                     </Label>
                     <Input
@@ -1233,28 +1235,26 @@ export default function TenantEventsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, registration_deadline: e.target.value })
                       }
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="duration_days" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="space-y-2">
+                    <Label htmlFor="duration_days" className="text-sm font-medium text-gray-700">
                       Duration (Days)
                     </Label>
                     <Input
                       id="duration_days"
                       value={formData.duration_days}
                       readOnly
-                      className="h-11 bg-gray-50 border-gray-300 rounded-lg"
+                      className="bg-gray-50 border-gray-300"
                       placeholder="Auto-calculated"
                     />
                   </div>
                 </div>
 
                 {formData.vendor_accommodation_id && (
-                  <div className="bg-gray-50 p-4 rounded-lg mt-6">
-                    <Label className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
+                    <Label className="text-sm font-medium text-gray-700 mb-3 block">
                       Selected Configuration
                     </Label>
                     <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1270,9 +1270,8 @@ export default function TenantEventsPage() {
                   </div>
                 )}
 
-                <div className="mt-6">
-                  <Label htmlFor="banner_image" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="banner_image" className="text-sm font-medium text-gray-700">
                     Banner Image URL
                   </Label>
                   <Input
@@ -1282,13 +1281,12 @@ export default function TenantEventsPage() {
                       setFormData({ ...formData, banner_image: e.target.value })
                     }
                     placeholder="https://example.com/banner.jpg"
-                    className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
-                <div className="mt-6">
-                  <Label htmlFor="status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="status" className="text-sm font-medium text-gray-700">
                     Status
                   </Label>
                   <Select
@@ -1297,7 +1295,7 @@ export default function TenantEventsPage() {
                       setFormData({ ...formData, status: value })
                     }
                   >
-                    <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
