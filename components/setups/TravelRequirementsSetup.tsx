@@ -73,16 +73,24 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       setTenantCountry(tenantResponse.country || "");
 
       // Fetch existing travel requirements
-      const requirementsResponse = await apiClient.request<TravelRequirement[]>(
-        `/country-travel-requirements/tenant/${tenantResponse.id}`
-      );
+      try {
+        const requirementsResponse = await apiClient.request<TravelRequirement[]>(
+          `/country-travel-requirements/tenant/${tenantResponse.id}`
+        );
 
-      // Convert array to object for easier lookup
-      const requirementsMap: Record<string, TravelRequirement> = {};
-      requirementsResponse.forEach(req => {
-        requirementsMap[req.country] = req;
-      });
-      setRequirements(requirementsMap);
+        // Convert array to object for easier lookup
+        const requirementsMap: Record<string, TravelRequirement> = {};
+        requirementsResponse.forEach(req => {
+          requirementsMap[req.country] = req;
+        });
+        setRequirements(requirementsMap);
+      } catch (reqError) {
+        console.error("Error fetching travel requirements:", reqError);
+        console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+        console.log("Tenant ID:", tenantResponse.id);
+        // Set empty requirements instead of failing completely
+        setRequirements({});
+      }
 
     } catch (error) {
       console.error("Error fetching data:", error);
