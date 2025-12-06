@@ -32,6 +32,12 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('Backend API error for notification stats:', {
+        status: response.status,
+        errorData,
+        url: `${apiUrl}/api/v1/notifications/stats`,
+        tenantSlug
+      });
       return NextResponse.json(
         errorData,
         { status: response.status }
@@ -42,8 +48,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching notification stats:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
