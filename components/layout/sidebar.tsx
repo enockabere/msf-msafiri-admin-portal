@@ -122,7 +122,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
         {
           icon: Hotel,
           label: "Vendor Hotels",
-          href: "/setups?tab=vendor-hotels",
+          href: "/vendor-hotels",
           badge: null,
         },
         {
@@ -379,26 +379,24 @@ export default function Sidebar({
                 item.href === '/notifications' ? `/tenant/${tenantSlug}/notifications` :
                 item.href === '/events' ? `/tenant/${tenantSlug}/events` :
                 item.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
-
+                item.href === '/vendor-hotels' ? `/tenant/${tenantSlug}/vendor-hotels` :
                 item.href === '/chat' ? `/tenant/${tenantSlug}/chat` :
                 item.href === '/useful-contacts' ? `/tenant/${tenantSlug}/useful-contacts` :
                 item.href === '/news-updates' ? `/tenant/${tenantSlug}/news-updates` :
                 item.href === '/accommodation' ? `/tenant/${tenantSlug}/accommodation` :
                 item.href === '/transport' ? `/tenant/${tenantSlug}/transport` :
                 item.href === '/setups' ? `/tenant/${tenantSlug}/setups` :
-
                 item.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                 item.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                 item.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
-                item.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${item.href}` :
                 item.href,
           children: item.children ? item.children.map(child => ({
             ...child,
             href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
+                  child.href === '/vendor-hotels' ? `/tenant/${tenantSlug}/vendor-hotels` :
                   child.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                   child.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                   child.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
-                  child.href.startsWith('/setups?') ? `/tenant/${tenantSlug}${child.href}` :
                   child.href
           })) : undefined
         }))
@@ -420,16 +418,9 @@ export default function Sidebar({
       section.items.forEach(item => {
         if (item.isNested && item.children) {
           const hasActiveChild = item.children.some(child => {
-            if (child.href.includes('?tab=')) {
-              const [basePath, query] = child.href.split('?');
-              const normalizedPathname = pathname?.replace('/portal', '') || '';
-              const normalizedBasePath = basePath.replace('/portal', '');
-              const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
-              return normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
-            }
             const normalizedPathname = pathname?.replace('/portal', '') || '';
             const normalizedChildHref = child.href.replace('/portal', '');
-            return normalizedPathname === normalizedChildHref;
+            return normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
           });
 
           if (hasActiveChild) {
@@ -674,14 +665,6 @@ export default function Sidebar({
               <div className="space-y-2 px-2 lg:px-3">
                 {section.items.map((item, index) => {
                   const hasActiveChild = item.children && item.children.some(child => {
-                    if (child.href.includes('?tab=')) {
-                      // For tab-based URLs, check if pathname + search params match
-                      const [basePath, query] = child.href.split('?');
-                      const normalizedPathname = pathname?.replace('/portal', '') || '';
-                      const normalizedBasePath = basePath.replace('/portal', '');
-                      const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
-                      return normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
-                    }
                     const normalizedPathname = pathname?.replace('/portal', '') || '';
                     const normalizedChildHref = child.href.replace('/portal', '');
                     return normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
@@ -760,19 +743,9 @@ export default function Sidebar({
                           {(!collapsed || isMobile) && isExpanded && item.children && (
                             <div className="ml-6 mt-1.5 space-y-1 border-l-2 border-white/20 pl-3">
                               {item.children.map((child, childIndex) => {
-                                let childIsActive = false;
-                                if (child.href.includes('?tab=')) {
-                                  const [basePath, query] = child.href.split('?');
-                                  const normalizedPathname = pathname?.replace('/portal', '') || '';
-                                  const normalizedBasePath = basePath.replace('/portal', '');
-                                  const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
-                                  childIsActive = normalizedPathname === normalizedBasePath && currentSearch === `?${query}`;
-                                } else {
-                                  // More flexible matching for child items too
-                                  const normalizedPathname = pathname?.replace('/portal', '') || '';
-                                  const normalizedChildHref = child.href.replace('/portal', '');
-                                  childIsActive = normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
-                                }
+                                const normalizedPathname = pathname?.replace('/portal', '') || '';
+                                const normalizedChildHref = child.href.replace('/portal', '');
+                                const childIsActive = normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
 
                                 return (
                                   <Link key={childIndex} href={child.href}>
