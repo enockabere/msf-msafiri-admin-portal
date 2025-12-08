@@ -31,7 +31,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
-import { toast } from "@/components/ui/toast";
+import { toast as sonnerToast } from "sonner";
 import { LoadingScreen } from "@/components/ui/loading";
 import { Progress } from "@/components/ui/progress";
 
@@ -211,10 +211,8 @@ export default function EventRegistrationFormPage() {
       );
     } catch (error) {
       console.error("Error fetching event:", error);
-      toast({
-        title: "Error",
+      sonnerToast.error("Error", {
         description: "Failed to fetch event details",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -360,20 +358,16 @@ export default function EventRegistrationFormPage() {
       formData.accommodationType === "Travelling daily" &&
       formData.dailyMeals.length === 0
     ) {
-      toast({
-        title: "Required Field Missing",
+      sonnerToast.error("Required Field Missing", {
         description: "Please select at least one meal option",
-        variant: "destructive",
       });
       return false;
     }
 
     for (const field of required) {
       if (!formData[field as keyof FormData]) {
-        toast({
-          title: "Required Field Missing",
-          description: `Please fill in all required fields`,
-          variant: "destructive",
+        sonnerToast.error("Required Field Missing", {
+          description: "Please fill in all required fields",
         });
         return false;
       }
@@ -381,10 +375,8 @@ export default function EventRegistrationFormPage() {
 
     // Check if travelling from country is required
     if (formData.travellingInternationally === "Yes" && !formData.travellingFromCountry) {
-      toast({
-        title: "Required Field Missing",
+      sonnerToast.error("Required Field Missing", {
         description: "Please specify which country you are travelling from",
-        variant: "destructive",
       });
       return false;
     }
@@ -399,10 +391,8 @@ export default function EventRegistrationFormPage() {
       event?.registration_deadline &&
       new Date() > new Date(event.registration_deadline)
     ) {
-      toast({
-        title: "Registration Closed",
+      sonnerToast.error("Registration Closed", {
         description: "The registration deadline has passed.",
-        variant: "destructive",
       });
       return;
     }
@@ -418,8 +408,7 @@ export default function EventRegistrationFormPage() {
         }),
       });
 
-      toast({
-        title: "Registration Successful",
+      sonnerToast.success("Registration Successful", {
         description:
           "Thank you for registering! You will be contacted with further details.",
       });
@@ -428,10 +417,8 @@ export default function EventRegistrationFormPage() {
       window.location.href = `/tenant/${tenantSlug}/events/${eventId}/participants`;
     } catch (error) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Failed",
+      sonnerToast.error("Registration Failed", {
         description: "Please try again or contact support",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -478,8 +465,7 @@ export default function EventRegistrationFormPage() {
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(publicUrl);
-    toast({
-      title: "Link Copied",
+    sonnerToast.success("Link Copied", {
       description: "Registration form link copied to clipboard",
     });
   };
@@ -489,12 +475,10 @@ export default function EventRegistrationFormPage() {
     const body =
       emailBody ||
       `Please register for ${event?.title} using this link: ${publicUrl}`;
-    
+
     if (!recipientEmail) {
-      toast({
-        title: "Email Required",
+      sonnerToast.error("Email Required", {
         description: "Please enter at least one recipient email address.",
-        variant: "destructive"
       });
       return;
     }
@@ -516,11 +500,10 @@ export default function EventRegistrationFormPage() {
           event_id: eventId
         })
       });
-      
+
       const totalRecipients = toEmails.length + ccEmailsList.length;
-      toast({
-        title: "Email Sent",
-        description: `Registration link sent to ${totalRecipients} recipient(s)`
+      sonnerToast.success("Email Sent", {
+        description: `Registration link sent to ${totalRecipients} recipient(s)`,
       });
     } catch {
       // Fallback to mailto
@@ -530,10 +513,9 @@ export default function EventRegistrationFormPage() {
         subject
       )}&body=${encodeURIComponent(body)}${ccParam}`;
       window.open(mailtoUrl);
-      
-      toast({
-        title: "Email Client Opened",
-        description: "Please send the email from your email client."
+
+      sonnerToast.success("Email Client Opened", {
+        description: "Please send the email from your email client.",
       });
     } finally {
       setSendingEmail(false);
@@ -572,10 +554,10 @@ export default function EventRegistrationFormPage() {
                   </div>
                   <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                     {event.registration_form_title ||
-                      `${event.title} - Registration`}
+                      `${event.title} - Application Form`}
                   </CardTitle>
                   <p className="text-sm text-gray-600 mb-4">
-                    Complete the registration form below. Takes approximately 8
+                    Complete the application form below. Takes approximately 8
                     minutes.
                   </p>
                 </div>
@@ -639,7 +621,7 @@ export default function EventRegistrationFormPage() {
                   <div className="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg text-red-700">
                     <Clock className="w-4 h-4" />
                     <span className="font-medium">
-                      Registration Deadline:{" "}
+                      Application Deadline:{" "}
                       {new Date(event.registration_deadline).toLocaleDateString(
                         "en-US",
                         {

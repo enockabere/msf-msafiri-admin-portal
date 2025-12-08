@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +18,10 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
-import { toast } from "@/components/ui/toast";
 import { Progress } from "@/components/ui/progress";
 import Select from "react-select";
+
+const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
 
 interface Event {
   id: number;
@@ -112,6 +114,8 @@ export default function PublicEventRegistrationPage() {
 
   const [emailError, setEmailError] = useState("");
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [editorLoaded, setEditorLoaded] = useState(false);
+  const editorRef = useRef<any>(null);
 
   const eventId = params.eventId as string;
 
@@ -203,10 +207,9 @@ export default function PublicEventRegistrationPage() {
       }
     } catch (error) {
       console.error("Error fetching event:", error);
-      toast({
-        title: "Error",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.error("Error", {
         description: "Failed to fetch event details",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -216,6 +219,18 @@ export default function PublicEventRegistrationPage() {
   useEffect(() => {
     fetchEvent();
     fetchCountries();
+
+    // Load CKEditor
+    if (typeof window !== 'undefined') {
+      import('@ckeditor/ckeditor5-build-classic')
+        .then((module) => {
+          editorRef.current = module.default;
+          setEditorLoaded(true);
+        })
+        .catch((error) => {
+          console.error('Error loading CKEditor:', error);
+        });
+    }
 
     // Clear form data on page unload for privacy
     const handleBeforeUnload = () => {
@@ -375,20 +390,18 @@ export default function PublicEventRegistrationPage() {
       formData.accommodationType === "Travelling daily" &&
       formData.dailyMeals.length === 0
     ) {
-      toast({
-        title: "Required Field Missing",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.error("Required Field Missing", {
         description: "Please select at least one meal option",
-        variant: "destructive",
       });
       return false;
     }
 
     for (const field of required) {
       if (!formData[field as keyof FormData]) {
-        toast({
-          title: "Required Field Missing",
-          description: `Please fill in all required fields`,
-          variant: "destructive",
+        const { toast: sonnerToast } = await import("sonner");
+        sonnerToast.error("Required Field Missing", {
+          description: "Please fill in all required fields",
         });
         return false;
       }
@@ -404,10 +417,9 @@ export default function PublicEventRegistrationPage() {
       event?.registration_deadline &&
       new Date() > new Date(event.registration_deadline)
     ) {
-      toast({
-        title: "Registration Closed",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.error("Registration Closed", {
         description: "The registration deadline has passed.",
-        variant: "destructive",
       });
       return;
     }
@@ -440,20 +452,19 @@ export default function PublicEventRegistrationPage() {
         throw new Error(errorData.message || "Registration failed");
       }
 
-      toast({
-        title: "Registration Successful",
-        description:
-          "Thank you for registering! You will be contacted with further details.",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.success("Registration Successful", {
+        description: "Thank you for registering! You will be contacted with further details.",
       });
 
       // Clear form data for privacy - redirect to prevent back button access
-      window.location.href = `/public/event-registration/${eventId}/success`;
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+      window.location.href = `${baseUrl}/public/event-registration/${eventId}/success`;
     } catch (error) {
       console.error("Registration error:", error);
-      toast({
-        title: "Registration Failed",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.error("Registration Failed", {
         description: "Please try again or contact support",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -465,23 +476,21 @@ export default function PublicEventRegistrationPage() {
       // Check email registration before proceeding from contact details
       const emailExists = await checkEmailRegistration(formData.personalEmail, formData.msfEmail);
       if (emailExists) {
-        toast({
-          title: "Email Already Registered",
+        const { toast: sonnerToast } = await import("sonner");
+        sonnerToast.error("Email Already Registered", {
           description: "This email is already registered for this event. Please use a different email.",
-          variant: "destructive",
         });
         return;
       }
     }
-    
+
     if (isStepValid(currentStep)) {
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      toast({
-        title: "Required Fields Missing",
+      const { toast: sonnerToast } = await import("sonner");
+      sonnerToast.error("Required Fields Missing", {
         description: "Please complete all required fields before proceeding",
-        variant: "destructive",
       });
     }
   };
@@ -531,10 +540,10 @@ export default function PublicEventRegistrationPage() {
         <div className="text-center py-12 max-w-md mx-auto">
           <Clock className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Registration Closed
+            Applications Closed
           </h1>
           <p className="text-gray-600 mb-4">
-            Registration for this event closed on{" "}
+            Applications for this event closed on{" "}
             {event.registration_deadline &&
               new Date(event.registration_deadline).toLocaleDateString(
                 "en-US",
@@ -576,10 +585,10 @@ export default function PublicEventRegistrationPage() {
                 </div>
                 <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   {event.registration_form_title ||
-                    `${event.title} - Registration`}
+                    `${event.title} - Application Form`}
                 </CardTitle>
                 <p className="text-sm text-gray-600 mb-4">
-                  Complete the registration form below. Takes approximately 8
+                  Complete the application form below. Takes approximately 8
                   minutes.
                 </p>
               </div>
@@ -610,7 +619,7 @@ export default function PublicEventRegistrationPage() {
                 <div className="flex items-center gap-2 bg-red-50 px-3 py-2 rounded-lg text-red-700">
                   <Clock className="w-4 h-4" />
                   <span className="font-medium">
-                    Registration Deadline:{" "}
+                    Application Deadline:{" "}
                     {new Date(event.registration_deadline).toLocaleDateString(
                       "en-US",
                       {
@@ -1392,15 +1401,24 @@ export default function PublicEventRegistrationPage() {
                         Include religious, cultural, or medical requirements
                         (e.g., Halal, vegetarian, allergies)
                       </p>
-                      <textarea
-                        id="dietaryRequirements"
-                        value={formData.dietaryRequirements}
-                        onChange={(e) =>
-                          handleInputChange("dietaryRequirements", e.target.value)
-                        }
-                        className="w-full p-3 border-2 rounded-lg focus:border-red-500 h-20 resize-none bg-white"
-                        placeholder="e.g., Vegetarian, no nuts, Halal food only"
-                      />
+                      <div className="border-2 rounded-lg bg-white">
+                        {editorLoaded && editorRef.current ? (
+                          <CKEditor
+                            editor={editorRef.current}
+                            data={formData.dietaryRequirements}
+                            onChange={(_event: any, editor: any) => {
+                              const data = editor.getData();
+                              handleInputChange("dietaryRequirements", data);
+                            }}
+                            config={{
+                              toolbar: ['bold', 'italic', 'bulletedList', 'numberedList', 'undo', 'redo'],
+                              placeholder: "e.g., Vegetarian, no nuts, Halal food only",
+                            }}
+                          />
+                        ) : (
+                          <div className="p-3 text-sm text-gray-500">Loading editor...</div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1416,15 +1434,24 @@ export default function PublicEventRegistrationPage() {
                     Any special requirements we should know about? Note: Single
                     rooms are not available.
                   </p>
-                  <textarea
-                    id="accommodationNeeds"
-                    value={formData.accommodationNeeds}
-                    onChange={(e) =>
-                      handleInputChange("accommodationNeeds", e.target.value)
-                    }
-                    className="w-full p-3 border-2 rounded-lg focus:border-red-500 h-24 resize-none"
-                    placeholder="Any special requirements..."
-                  />
+                  <div className="border-2 rounded-lg bg-white">
+                    {editorLoaded && editorRef.current ? (
+                      <CKEditor
+                        editor={editorRef.current}
+                        data={formData.accommodationNeeds}
+                        onChange={(_event: any, editor: any) => {
+                          const data = editor.getData();
+                          handleInputChange("accommodationNeeds", data);
+                        }}
+                        config={{
+                          toolbar: ['bold', 'italic', 'bulletedList', 'numberedList', 'undo', 'redo'],
+                          placeholder: "Any special requirements...",
+                        }}
+                      />
+                    ) : (
+                      <div className="p-3 text-sm text-gray-500">Loading editor...</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1486,15 +1513,24 @@ export default function PublicEventRegistrationPage() {
                   <p className="text-sm text-blue-800 mb-3">
                     Please explain your motivation for attending this event and how it aligns with your role and development goals.
                   </p>
-                  <textarea
-                    id="motivationLetter"
-                    value={formData.motivationLetter}
-                    onChange={(e) =>
-                      handleInputChange("motivationLetter", e.target.value)
-                    }
-                    className="w-full p-3 border-2 border-blue-300 rounded-lg focus:border-blue-500 bg-white h-32 resize-none"
-                    placeholder="Please describe your motivation for attending this event..."
-                  />
+                  <div className="border-2 border-blue-300 rounded-lg bg-white">
+                    {editorLoaded && editorRef.current ? (
+                      <CKEditor
+                        editor={editorRef.current}
+                        data={formData.motivationLetter}
+                        onChange={(_event: any, editor: any) => {
+                          const data = editor.getData();
+                          handleInputChange("motivationLetter", data);
+                        }}
+                        config={{
+                          toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'blockQuote', 'undo', 'redo'],
+                          placeholder: "Please describe your motivation for attending this event...",
+                        }}
+                      />
+                    ) : (
+                      <div className="p-3 text-sm text-gray-500">Loading editor...</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-500 space-y-4">
@@ -1614,8 +1650,17 @@ export default function PublicEventRegistrationPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || !isStepValid(currentStep)}
-                  className="w-full sm:w-auto bg-green-600 text-white hover:bg-green-700"
+                  disabled={
+                    submitting ||
+                    !isStepValid(currentStep) ||
+                    (event?.registration_deadline && new Date() > new Date(event.registration_deadline))
+                  }
+                  className="w-full sm:w-auto bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400"
+                  title={
+                    event?.registration_deadline && new Date() > new Date(event.registration_deadline)
+                      ? "Application deadline has passed"
+                      : ""
+                  }
                 >
                   {submitting ? (
                     <>
@@ -1625,7 +1670,7 @@ export default function PublicEventRegistrationPage() {
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-2 text-white" />
-                      Submit Registration
+                      Submit Application
                     </>
                   )}
                 </Button>
