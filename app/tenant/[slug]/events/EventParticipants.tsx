@@ -1666,24 +1666,25 @@ export default function EventParticipants({
                               </div>
                             )}
                             {voucherData.qr_token && (
-                              <div className="mt-2">
-                                <p className="text-xs text-gray-500 font-mono">
-                                  Token: {voucherData.qr_token.slice(0, 8)}...
-                                </p>
+                              <div className="mt-4 space-y-2">
+                                <div className="bg-gray-50 p-2 rounded">
+                                  <p className="text-xs text-gray-500 mb-1">Token:</p>
+                                  <p className="text-xs font-mono text-gray-700 break-all">
+                                    {voucherData.qr_token.slice(0, 8)}...
+                                  </p>
+                                </div>
 
-                                <p className="text-xs text-blue-600 mt-1">
-                                  QR URL:{" "}
+                                <div className="bg-blue-50 p-2 rounded">
+                                  <p className="text-xs text-gray-500 mb-1">QR URL:</p>
                                   <a
                                     href={`${process.env.NEXT_PUBLIC_BASE_URL}/public/qr/${voucherData.qr_token}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="underline"
-
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline break-all block"
                                   >
-                                    {process.env.NEXT_PUBLIC_BASE_URL}
-                                    /public/qr/{voucherData.qr_token}
+                                    {process.env.NEXT_PUBLIC_BASE_URL}/public/qr/{voucherData.qr_token}
                                   </a>
-                                </p>
+                                </div>
                               </div>
                             )}
                           </div>
