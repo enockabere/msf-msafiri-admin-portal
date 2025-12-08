@@ -130,31 +130,6 @@ export default function EventAgenda({
           start_date: data.start_date,
           end_date: data.end_date,
         });
-
-        // Fetch tenant data to get country for timezone
-        if (data.tenant_id) {
-          try {
-            const tenantResponse = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${data.tenant_id}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              }
-            );
-            if (tenantResponse.ok) {
-              const tenantData = await tenantResponse.json();
-              console.log("Tenant data for timezone:", tenantData);
-              setTenantCountry(tenantData.country || "");
-            } else {
-              console.error("Failed to fetch tenant - status:", tenantResponse.status);
-            }
-          } catch (error) {
-            console.error("Failed to fetch tenant details:", error);
-          }
-        } else {
-          console.warn("No tenant_id found in event data");
-        }
       } else {
         console.error('Failed to fetch event details - status:', response.status);
         if (response.status === 401) {
@@ -166,6 +141,28 @@ export default function EventAgenda({
       console.error("Failed to fetch event details:", error);
     }
   }, [eventId, accessToken]);
+
+  const fetchTenantData = useCallback(async () => {
+    try {
+      const tenantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      if (tenantResponse.ok) {
+        const tenantData = await tenantResponse.json();
+        console.log("Tenant data for timezone:", tenantData);
+        setTenantCountry(tenantData.country || "");
+      } else {
+        console.error("Failed to fetch tenant - status:", tenantResponse.status);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tenant details:", error);
+    }
+  }, [tenantSlug, accessToken]);
 
   // Load CKEditor on client side only
   useEffect(() => {
@@ -228,7 +225,8 @@ export default function EventAgenda({
     fetchEventDetails();
     fetchAgendaItems();
     fetchFacilitators();
-  }, [fetchEventDetails, fetchAgendaItems, fetchFacilitators]);
+    fetchTenantData();
+  }, [fetchEventDetails, fetchAgendaItems, fetchFacilitators, fetchTenantData]);
 
   const isDateWithinEvent = (date: Date) => {
     if (!eventDetails) return false;
