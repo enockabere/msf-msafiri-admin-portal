@@ -439,29 +439,9 @@ export default function EventRegistrationFormPage() {
   };
 
   const nextStep = async () => {
-    if (currentStep === 2) {
-      // Check email registration before proceeding from contact details
-      const emailExists = await checkEmailRegistration(formData.personalEmail, formData.msfEmail);
-      if (emailExists) {
-        toast({
-          title: "Email Already Registered",
-          description: "This email is already registered for this event. Please use a different email.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-    
-    if (isStepValid(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, steps.length));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      toast({
-        title: "Required Fields Missing",
-        description: "Please complete all required fields before proceeding",
-        variant: "destructive",
-      });
-    }
+    // Admin preview mode - no validation
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const prevStep = () => {
@@ -1707,45 +1687,19 @@ export default function EventRegistrationFormPage() {
                 {currentStep < steps.length ? (
                   <Button
                     onClick={nextStep}
-                    disabled={emailError !== "" || checkingEmail}
-                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-400"
+                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700"
                   >
-                    {checkingEmail ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Checking...
-                      </>
-                    ) : (
-                      <>
-                        Next
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </>
-                    )}
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 ) : (
                   <Button
-                    onClick={handleSubmit}
-                    disabled={
-                      submitting ||
-                      !isStepValid(currentStep) ||
-                      Boolean(
-                        event?.registration_deadline &&
-                          new Date() > new Date(event.registration_deadline)
-                      )
-                    }
-                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+                    disabled
+                    className="w-full sm:w-auto bg-gray-400 cursor-not-allowed"
+                    title="This is a preview form for admins only. Participants must use the public registration link."
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Submit Registration
-                      </>
-                    )}
+                    <Check className="w-4 h-4 mr-2" />
+                    Submit Registration (Preview Only)
                   </Button>
                 )}
               </div>
