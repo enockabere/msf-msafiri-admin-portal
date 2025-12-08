@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,8 +37,19 @@ import {
   Save,
 } from "lucide-react";
 import { format, isWithinInterval, parseISO, isSameDay } from "date-fns";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+
+// Dynamically import CKEditor to avoid SSR issues
+const CustomEditor = dynamic(
+  () => import("../../../components/CustomEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="border border-gray-300 rounded-md p-4 text-sm text-gray-500">
+        Loading editor...
+      </div>
+    ),
+  }
+);
 
 // Simple timezone mapping based on common MSF countries
 const getTimezoneByCountry = (country?: string): string => {
@@ -827,24 +839,15 @@ export default function EventAgenda({
                 Description
               </label>
               <div className="border border-gray-300 rounded-md overflow-hidden">
-                <CKEditor
-                  editor={ClassicEditor}
+                <CustomEditor
                   data={formData.description}
-                  onChange={(_event, editor) => {
-                    const data = editor.getData();
+                  onChange={(data) => {
                     setFormData((prev) => ({
                       ...prev,
                       description: data,
                     }));
                   }}
-                  config={{
-                    toolbar: [
-                      'heading', '|',
-                      'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                      'blockQuote', 'undo', 'redo'
-                    ],
-                    placeholder: "Enter description (optional)",
-                  }}
+                  placeholder="Enter description (optional)"
                 />
               </div>
             </div>

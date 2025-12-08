@@ -32,6 +32,7 @@ interface Event {
   status: string;
   start_date: string;
   end_date: string;
+  registration_deadline?: string;
   location?: string;
   address?: string;
   latitude?: number;
@@ -63,6 +64,30 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublish, onViewDetails, onRegistrationForm }: EventCardProps) {
+  // Check if registration is still open
+  const isRegistrationOpen = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if event has started
+    const startDate = new Date(event.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    if (today >= startDate) {
+      return false; // Event has started
+    }
+
+    // Check if registration deadline has passed
+    if (event.registration_deadline) {
+      const deadline = new Date(event.registration_deadline);
+      deadline.setHours(0, 0, 0, 0);
+      if (today > deadline) {
+        return false; // Registration deadline passed
+      }
+    }
+
+    return true;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return 'from-blue-50 to-blue-100';
@@ -144,7 +169,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
-                  {onRegistrationForm && (
+                  {onRegistrationForm && isRegistrationOpen() && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();

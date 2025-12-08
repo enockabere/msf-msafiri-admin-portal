@@ -114,3 +114,12 @@
     background: linear-gradient(to bottom, rgba(220, 38, 38, 0.7), rgba(220, 38, 38, 0.5));
   }
 }
+
+/* Ensure Sonner toasts always appear above dialogs */
+[data-sonner-toaster] {
+  z-index: 9999 !important;
+}
+
+[data-sonner-toast] {
+  z-index: 9999 !important;
+}

@@ -20,7 +20,13 @@
       "Bash(alembic upgrade:*)",
       "Bash(source:*)",
       "Bash(./venv/Scripts/activate)",
-      "Bash(python -m alembic:*)"
+      "Bash(python -m alembic:*)",
+      "Bash(alembic revision:*)",
+      "Bash(alembic heads:*)",
+      "Bash(git rm:*)",
+      "Bash(xargs:*)",
+      "Bash(python -c:*)",
+      "Bash(git status:*)"
     ],
     "deny": [],
     "ask": []

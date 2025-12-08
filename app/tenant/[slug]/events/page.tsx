@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   Select,
   SelectContent,
@@ -21,8 +21,10 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import dynamic from "next/dynamic";
+
+// Dynamically import CKEditor with SSR disabled
+const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
 import {
   Calendar,
   Plus,
@@ -40,7 +42,7 @@ import {
 import EventDetailsModal from "./EventDetailsModal";
 import { EventCard } from "./components/EventCard";
 import { EventTable } from "./components/EventTable";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { LoadingScreen } from "@/components/ui/loading";
 
 interface Event {
@@ -133,6 +135,8 @@ export default function TenantEventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof Event | string>('start_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [editorLoaded, setEditorLoaded] = useState(false);
+  const editorRef = useRef<any>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -160,6 +164,20 @@ export default function TenantEventsPage() {
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const tenantSlug = params.slug as string;
+
+  // Load CKEditor on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('@ckeditor/ckeditor5-build-classic')
+        .then((module) => {
+          editorRef.current = module.default;
+          setEditorLoaded(true);
+        })
+        .catch((error) => {
+          console.error('Error loading CKEditor:', error);
+        });
+    }
+  }, []);
 
   const fetchVendorHotels = useCallback(async () => {
     try {
@@ -263,11 +281,7 @@ export default function TenantEventsPage() {
       setEvents(eventsWithCounts);
     } catch (error) {
       console.error("Fetch events error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch events",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch events");
     } finally {
       setLoading(false);
     }
@@ -304,11 +318,7 @@ export default function TenantEventsPage() {
       await Promise.all([fetchEvents(), fetchVendorHotels()]);
     } catch (error) {
       console.error("Access check error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load events",
-        variant: "destructive",
-      });
+      toast.error("Failed to load events");
     }
   }, [user?.id, user?.role, user?.email, apiClient, fetchEvents, tenantSlug]);
 
@@ -376,16 +386,13 @@ export default function TenantEventsPage() {
       !formData.event_type.trim() ||
       !formData.start_date ||
       !formData.end_date ||
+      !formData.registration_deadline ||
       !formData.vendor_accommodation_id ||
       !formData.expected_participants ||
       !formData.single_rooms ||
       !formData.double_rooms
     ) {
-      toast({
-        title: "Error",
-        description: "All fields including accommodation details are required",
-        variant: "destructive",
-      });
+      toast.error("All fields including registration deadline and accommodation details are required");
       return;
     }
 
@@ -397,29 +404,17 @@ export default function TenantEventsPage() {
     const registrationDeadline = formData.registration_deadline ? new Date(formData.registration_deadline) : null;
 
     if (startDate < today) {
-      toast({
-        title: "Error",
-        description: "Start date cannot be in the past",
-        variant: "destructive",
-      });
+      toast.error("Start date cannot be in the past");
       return;
     }
 
     if (endDate < startDate) {
-      toast({
-        title: "Error",
-        description: "End date cannot be before start date",
-        variant: "destructive",
-      });
+      toast.error("End date cannot be before start date");
       return;
     }
 
     if (registrationDeadline && registrationDeadline > startDate) {
-      toast({
-        title: "Error",
-        description: "Registration deadline cannot be after the event start date",
-        variant: "destructive",
-      });
+      toast.error("Registration deadline cannot be after the event start date");
       return;
     }
 
@@ -433,11 +428,11 @@ export default function TenantEventsPage() {
         perdiem_rate: formData.perdiem_rate
           ? parseFloat(formData.perdiem_rate)
           : null,
-        latitude: formData.latitude && formData.latitude.trim() 
-          ? parseFloat(formData.latitude) 
+        latitude: formData.latitude && formData.latitude.trim()
+          ? parseFloat(formData.latitude)
           : null,
-        longitude: formData.longitude && formData.longitude.trim() 
-          ? parseFloat(formData.longitude) 
+        longitude: formData.longitude && formData.longitude.trim()
+          ? parseFloat(formData.longitude)
           : null,
       };
 
@@ -476,22 +471,15 @@ export default function TenantEventsPage() {
 
       await fetchEvents();
 
+      // Show success toast and open modal
+      toast.success("Event created successfully!");
       setDetailsEvent(newEvent);
       setShowDetailsModal(true);
-
-      toast({
-        title: "Success",
-        description: "Event created successfully",
-      });
     } catch (error) {
       console.error("Create event error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to create event";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -507,11 +495,7 @@ export default function TenantEventsPage() {
       !formData.single_rooms ||
       !formData.double_rooms
     ) {
-      toast({
-        title: "Error",
-        description: "All fields including accommodation details are required",
-        variant: "destructive",
-      });
+      toast.error("All fields including accommodation details are required");
       return;
     }
 
@@ -522,20 +506,12 @@ export default function TenantEventsPage() {
     const endDate = new Date(formData.end_date);
 
     if (startDate < today) {
-      toast({
-        title: "Error",
-        description: "Start date cannot be in the past",
-        variant: "destructive",
-      });
+      toast.error("Start date cannot be in the past");
       return;
     }
 
     if (endDate < startDate) {
-      toast({
-        title: "Error",
-        description: "End date cannot be before start date",
-        variant: "destructive",
-      });
+      toast.error("End date cannot be before start date");
       return;
     }
 
@@ -569,19 +545,12 @@ export default function TenantEventsPage() {
       setSelectedEvent(null);
       await fetchEvents();
 
-      toast({
-        title: "Success",
-        description: "Event updated successfully",
-      });
+      toast.success("Event updated successfully");
     } catch (error) {
       console.error("Update event error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update event";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -613,19 +582,12 @@ export default function TenantEventsPage() {
 
       await fetchEvents();
 
-      toast({
-        title: "Success",
-        description: "Event unpublished successfully",
-      });
+      toast.success("Event unpublished successfully");
     } catch (error) {
       console.error("Unpublish event error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to unpublish event";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -656,19 +618,12 @@ export default function TenantEventsPage() {
 
       await fetchEvents();
 
-      toast({
-        title: "Success",
-        description: "Event deleted successfully",
-      });
+      toast.success("Event deleted successfully");
     } catch (error) {
       console.error("Delete event error:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to delete event";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -1088,24 +1043,30 @@ export default function TenantEventsPage() {
                     <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2 block">
                       Description
                     </Label>
-                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[150px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
-                      <CKEditor
-                        editor={ClassicEditor}
-                        data={formData.description}
-                        onChange={(event, editor) => {
-                          const data = editor.getData();
-                          setFormData({ ...formData, description: data });
-                        }}
-                        config={{
-                          placeholder: "Describe the event, its purpose, and what participants can expect...",
-                          toolbar: [
-                            'heading', '|',
-                            'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                            'outdent', 'indent', '|',
-                            'blockQuote', 'undo', 'redo'
-                          ]
-                        }}
-                      />
+                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[250px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
+                      {editorLoaded && editorRef.current ? (
+                        <CKEditor
+                          editor={editorRef.current}
+                          data={formData.description}
+                          onChange={(event: any, editor: any) => {
+                            const data = editor.getData();
+                            setFormData({ ...formData, description: data });
+                          }}
+                          config={{
+                            placeholder: "Describe the event, its purpose, and what participants can expect...",
+                            toolbar: [
+                              'heading', '|',
+                              'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                              'outdent', 'indent', '|',
+                              'blockQuote', 'undo', 'redo'
+                            ]
+                          }}
+                        />
+                      ) : (
+                        <div className="min-h-[250px] flex items-center justify-center text-gray-400">
+                          Loading editor...
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
                   </div>
@@ -1344,16 +1305,16 @@ export default function TenantEventsPage() {
         </Dialog>
 
         <Dialog open={showEditModal} onOpenChange={closeModals}>
-          <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col rounded-2xl">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-red-600 to-red-700 p-6">
+          <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+            {/* Header without gradient - matching vendor hotels */}
+            <div className="p-6 pb-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-bold text-white">Edit Event</DialogTitle>
-                  <p className="text-red-100 text-xs mt-1">Update the event details below</p>
+                  <DialogTitle className="text-xl font-bold text-gray-900">Edit Event</DialogTitle>
+                  <p className="text-gray-600 text-sm mt-1">Update the event details below</p>
                 </div>
               </div>
             </div>
@@ -1362,33 +1323,30 @@ export default function TenantEventsPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Event Title - Takes 2 columns */}
-                    <div className="md:col-span-2">
-                      <Label htmlFor="edit_title" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Event Title
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor="edit_title" className="text-sm font-medium text-gray-700">
+                        Event Title <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit_title"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="Enter event title"
-                        className="h-11 text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all"
+                        required
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       />
                     </div>
 
                     {/* Event Type - 1 column */}
-                    <div>
-                      <Label htmlFor="edit_event_type" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Event Type
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_event_type" className="text-sm font-medium text-gray-700">
+                        Event Type <span className="text-red-500">*</span>
                       </Label>
                       <Select
                         value={formData.event_type}
                         onValueChange={(value) => setFormData({ ...formData, event_type: value })}
                       >
-                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1404,36 +1362,52 @@ export default function TenantEventsPage() {
                     </div>
                   </div>
 
-                  {/* Description - Full width */}
+                  {/* Description - Full width with CKEditor */}
                   <div>
-                    <Label htmlFor="edit_description" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                    <Label htmlFor="edit_description" className="text-sm font-medium text-gray-700 mb-2 block">
                       Description
                     </Label>
-                    <Textarea
-                      id="edit_description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Describe the event, its purpose, and what participants can expect..."
-                      className="min-h-[80px] text-sm border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg transition-all resize-none"
-                    />
+                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[250px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
+                      {editorLoaded && editorRef.current ? (
+                        <CKEditor
+                          editor={editorRef.current}
+                          data={formData.description}
+                          onChange={(event: any, editor: any) => {
+                            const data = editor.getData();
+                            setFormData({ ...formData, description: data });
+                          }}
+                          config={{
+                            placeholder: "Describe the event, its purpose, and what participants can expect...",
+                            toolbar: [
+                              'heading', '|',
+                              'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                              'outdent', 'indent', '|',
+                              'blockQuote', 'undo', 'redo'
+                            ]
+                          }}
+                        />
+                      ) : (
+                        <div className="min-h-[250px] flex items-center justify-center text-gray-400">
+                          Loading editor...
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
                   </div>
 
                   {/* Venue and Accommodation Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <Label htmlFor="edit_vendor_accommodation_id" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Venue (Hotel)
-                        <span className="text-red-500 ml-1">*</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_vendor_accommodation_id" className="text-sm font-medium text-gray-700">
+                        Venue (Hotel) <span className="text-red-500">*</span>
                       </Label>
                       <Select
                         value={formData.vendor_accommodation_id}
                         onValueChange={(value) => {
                           const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
                           setSelectedVendorId(value);
-                          setFormData({ 
-                            ...formData, 
+                          setFormData({
+                            ...formData,
                             vendor_accommodation_id: value,
                             location: selectedHotel?.location || "",
                             latitude: selectedHotel?.latitude || "",
@@ -1441,7 +1415,7 @@ export default function TenantEventsPage() {
                           });
                         }}
                       >
-                        <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                           <SelectValue placeholder="Select venue hotel" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1453,11 +1427,9 @@ export default function TenantEventsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label htmlFor="edit_expected_participants" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Expected Participants
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_expected_participants" className="text-sm font-medium text-gray-700">
+                        Expected Participants <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit_expected_participants"
@@ -1465,7 +1437,8 @@ export default function TenantEventsPage() {
                         value={formData.expected_participants}
                         onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
                         placeholder="Enter expected number of participants"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        required
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="1"
                       />
                     </div>
@@ -1473,11 +1446,9 @@ export default function TenantEventsPage() {
 
                   {/* Room Configuration */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <Label htmlFor="edit_single_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Single Rooms
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_single_rooms" className="text-sm font-medium text-gray-700">
+                        Single Rooms <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit_single_rooms"
@@ -1485,15 +1456,13 @@ export default function TenantEventsPage() {
                         value={formData.single_rooms}
                         onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
                         placeholder="Number of single rooms needed"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="0"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="edit_double_rooms" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                        <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                        Double Rooms
-                        <span className="text-red-500 ml-1">*</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit_double_rooms" className="text-sm font-medium text-gray-700">
+                        Double Rooms <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="edit_double_rooms"
@@ -1501,18 +1470,16 @@ export default function TenantEventsPage() {
                         value={formData.double_rooms}
                         onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
                         placeholder="Number of double rooms needed"
-                        className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                         min="0"
                       />
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-                  <div>
-                    <Label htmlFor="edit_start_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      Start Date
-                      <span className="text-red-500 ml-1">*</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_start_date" className="text-sm font-medium text-gray-700">
+                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="edit_start_date"
@@ -1520,14 +1487,12 @@ export default function TenantEventsPage() {
                       value={formData.start_date}
                       min={new Date().toISOString().split('T')[0]}
                       onChange={(e) => handleDateChange("start_date", e.target.value)}
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="edit_end_date" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
-                      End Date
-                      <span className="text-red-500 ml-1">*</span>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_end_date" className="text-sm font-medium text-gray-700">
+                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       id="edit_end_date"
@@ -1535,12 +1500,11 @@ export default function TenantEventsPage() {
                       value={formData.end_date}
                       min={formData.start_date || new Date().toISOString().split('T')[0]}
                       onChange={(e) => handleDateChange("end_date", e.target.value)}
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="edit_registration_deadline" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_registration_deadline" className="text-sm font-medium text-gray-700">
                       Registration Deadline
                     </Label>
                     <Input
@@ -1549,28 +1513,26 @@ export default function TenantEventsPage() {
                       value={formData.registration_deadline}
                       max={formData.start_date}
                       onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
-                      className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="edit_duration_days" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit_duration_days" className="text-sm font-medium text-gray-700">
                       Duration (Days)
                     </Label>
                     <Input
                       id="edit_duration_days"
                       value={formData.duration_days}
                       readOnly
-                      className="h-11 bg-gray-50 border-gray-300 rounded-lg"
+                      className="bg-gray-50 border-gray-300"
                       placeholder="Auto-calculated"
                     />
                   </div>
                 </div>
 
                 {formData.vendor_accommodation_id && (
-                  <div className="bg-gray-50 p-4 rounded-lg mt-6">
-                    <Label className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                      <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                  <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
+                    <Label className="text-sm font-medium text-gray-700 mb-3 block">
                       Selected Configuration
                     </Label>
                     <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1585,9 +1547,9 @@ export default function TenantEventsPage() {
                     </div>
                   </div>
                 )}
-                <div className="mt-6">
-                  <Label htmlFor="edit_banner_image" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="edit_banner_image" className="text-sm font-medium text-gray-700">
                     Banner Image URL
                   </Label>
                   <Input
@@ -1595,20 +1557,19 @@ export default function TenantEventsPage() {
                     value={formData.banner_image}
                     onChange={(e) => setFormData({ ...formData, banner_image: e.target.value })}
                     placeholder="https://example.com/banner.jpg"
-                    className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg"
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
-                <div className="mt-6">
-                  <Label htmlFor="edit_status" className="text-xs font-medium text-gray-700 flex items-center mb-2">
-                    <div className="w-1 h-3 bg-red-600 rounded-full mr-2"></div>
+                <div className="mt-6 space-y-2">
+                  <Label htmlFor="edit_status" className="text-sm font-medium text-gray-700">
                     Status
                   </Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value) => setFormData({ ...formData, status: value })}
                   >
-                    <SelectTrigger className="h-11 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-lg">
+                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>

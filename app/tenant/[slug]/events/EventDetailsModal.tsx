@@ -652,19 +652,9 @@ export default function EventDetailsModal({
                       Detailed information about this event
                     </p>
                   </div>
-                  {event.status === "Draft" && !editMode && canManageEvents && !eventHasStarted && (
-                    <Button
-                      onClick={() => setEditMode(true)}
-                      size="sm"
-                      className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto text-xs px-3 py-2 h-8"
-                    >
-                      <Edit3 className="h-3 w-3 mr-1" />
-                      Edit Event
-                    </Button>
-                  )}
                 </div>
 
-                {editMode ? (
+                {false ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -804,6 +794,16 @@ export default function EventDetailsModal({
                             {new Date(event.end_date).toLocaleDateString('en-US', {
                               month: 'short', day: 'numeric', year: 'numeric'
                             })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                          <span className="text-xs font-normal text-gray-600">Registration Deadline:</span>
+                          <span className="text-xs text-gray-900 font-medium">
+                            {event.registration_deadline
+                              ? new Date(event.registration_deadline).toLocaleDateString('en-US', {
+                                  month: 'short', day: 'numeric', year: 'numeric'
+                                })
+                              : "Not set"}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2">
@@ -1061,11 +1061,10 @@ export default function EventDetailsModal({
                     <h3 className="font-bold text-sm mb-4 text-gray-800">
                       Description
                     </h3>
-                    <div className="prose prose-sm max-w-none">
-                      <p className="text-gray-700 leading-relaxed text-xs sm:text-sm">
-                        {event.description}
-                      </p>
-                    </div>
+                    <div
+                      className="prose prose-sm max-w-none text-gray-700 leading-relaxed text-xs sm:text-sm"
+                      dangerouslySetInnerHTML={{ __html: event.description }}
+                    />
                   </div>
                 )}
 

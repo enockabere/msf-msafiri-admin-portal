@@ -40,15 +40,16 @@ export default function RootLayout({
                 <NavigationLoader />
                 {children}
                 <ToastContainer />
-                <Toaster
-                  position="top-right"
-                  richColors
-                  closeButton
-                />
               </SidebarProvider>
             </TenantProvider>
           </SessionProvider>
         </div>
+        {/* Toaster outside of stacking context to appear above portaled dialogs */}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+        />
       </body>
     </html>
   );
