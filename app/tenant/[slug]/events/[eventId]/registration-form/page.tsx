@@ -439,7 +439,8 @@ export default function EventRegistrationFormPage() {
   };
 
   const nextStep = async () => {
-    // Admin preview mode - no validation
+    // Admin preview mode - no validation required
+    // Allow navigation through all steps without checking required fields
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -654,6 +655,21 @@ export default function EventRegistrationFormPage() {
               </div>
             </CardHeader>
           </Card>
+
+          {/* Admin Preview Banner */}
+          <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                <Eye className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-900">Admin Preview Mode</h3>
+                <p className="text-sm text-blue-700">
+                  You can navigate through all form steps without filling required fields. This form cannot be submitted.
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* Progress Bar */}
           <Card className="border-0 shadow-md">
