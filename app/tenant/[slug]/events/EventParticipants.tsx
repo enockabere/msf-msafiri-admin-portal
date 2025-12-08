@@ -1348,7 +1348,11 @@ export default function EventParticipants({
             </div>
 
             {/* Event Services - Show for selected, confirmed, attended, and registered participants */}
-            {["selected", "confirmed", "attended", "registered"].includes(participant.status?.toLowerCase()) && (
+            {["selected", "confirmed", "attended", "registered"].includes(participant.status?.toLowerCase()) &&
+             (loading || (flightItineraries && flightItineraries.length > 0) ||
+              (transportData && transportData.length > 0) ||
+              (accommodationData && accommodationData.length > 0) ||
+              voucherData) && (
               <div className="mt-8">
                 <h4 className="font-semibold text-gray-900 mb-6 text-xl border-b border-gray-300 pb-3">
                   Event Services
@@ -1361,7 +1365,8 @@ export default function EventParticipants({
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Flight Itineraries */}
+                    {/* Flight Itineraries - Only show if has data */}
+                    {flightItineraries && flightItineraries.length > 0 && (
                     <div className="bg-gradient-to-br from-sky-50 to-blue-50 p-6 rounded-xl border-2 border-sky-200">
                       <h5 className="font-semibold text-sky-900 mb-4 flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1456,20 +1461,11 @@ export default function EventParticipants({
                             )
                           )}
                         </div>
-                      ) : (
-                        <div className="bg-white p-6 rounded-lg border-2 border-dashed border-sky-200 text-center">
-                          <svg className="w-12 h-12 text-sky-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                          <p className="text-sm font-medium text-gray-700">No flight itineraries</p>
-                          <p className="text-xs mt-1 text-gray-500">
-                            Flight details will appear once uploaded by the participant
-                          </p>
-                        </div>
-                      )}
                     </div>
+                    )}
 
-                    {/* Transport */}
+                    {/* Transport - Only show if has data */}
+                    {transportData && transportData.length > 0 && (
                     <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
                       <h5 className="font-semibold text-purple-900 mb-4">
                         Transport Bookings
@@ -1502,18 +1498,11 @@ export default function EventParticipants({
                             )
                           )}
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-600">
-                          <p>No transport bookings assigned</p>
-                          <p className="text-xs mt-1 text-gray-500">
-                            Transport services will be arranged closer to the
-                            event date
-                          </p>
-                        </div>
-                      )}
                     </div>
+                    )}
 
-                    {/* Accommodation */}
+                    {/* Accommodation - Only show if has data */}
+                    {accommodationData && accommodationData.length > 0 && (
                     <div className="bg-gradient-to-br from-orange-50 to-pink-50 p-6 rounded-xl border-2 border-orange-200">
                       <h5 className="font-semibold text-orange-900 mb-4 flex items-center gap-2">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1651,20 +1640,11 @@ export default function EventParticipants({
                             );
                           })}
                         </div>
-                      ) : (
-                        <div className="bg-white p-6 rounded-lg border-2 border-dashed border-orange-200 text-center">
-                          <svg className="w-12 h-12 text-orange-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                          </svg>
-                          <p className="text-sm font-medium text-gray-700">No accommodation assigned</p>
-                          <p className="text-xs mt-1 text-gray-500">
-                            Accommodation will be arranged closer to the event date
-                          </p>
-                        </div>
-                      )}
                     </div>
+                    )}
 
-                    {/* Drink Vouchers */}
+                    {/* Drink Vouchers - Only show if has data */}
+                    {voucherData && (
                     <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                       <h5 className="font-semibold text-blue-900 mb-4">
                         Drink Vouchers
@@ -1732,16 +1712,8 @@ export default function EventParticipants({
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        <div className="text-sm text-gray-600">
-                          <p>No drink vouchers assigned</p>
-                          <p className="text-xs mt-1 text-gray-500">
-                            Vouchers will be available once event allocations
-                            are configured
-                          </p>
-                        </div>
-                      )}
                     </div>
+                    )}
                   </div>
                 )}
               </div>
