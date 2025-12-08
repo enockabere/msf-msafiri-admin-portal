@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import Select from "react-select";
+import { toast as sonnerToast } from "sonner";
 
 const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
 
@@ -207,7 +208,6 @@ export default function PublicEventRegistrationPage() {
       }
     } catch (error) {
       console.error("Error fetching event:", error);
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.error("Error", {
         description: "Failed to fetch event details",
       });
@@ -390,7 +390,6 @@ export default function PublicEventRegistrationPage() {
       formData.accommodationType === "Travelling daily" &&
       formData.dailyMeals.length === 0
     ) {
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.error("Required Field Missing", {
         description: "Please select at least one meal option",
       });
@@ -399,7 +398,6 @@ export default function PublicEventRegistrationPage() {
 
     for (const field of required) {
       if (!formData[field as keyof FormData]) {
-        const { toast: sonnerToast } = await import("sonner");
         sonnerToast.error("Required Field Missing", {
           description: "Please fill in all required fields",
         });
@@ -417,7 +415,6 @@ export default function PublicEventRegistrationPage() {
       event?.registration_deadline &&
       new Date() > new Date(event.registration_deadline)
     ) {
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.error("Registration Closed", {
         description: "The registration deadline has passed.",
       });
@@ -452,7 +449,6 @@ export default function PublicEventRegistrationPage() {
         throw new Error(errorData.message || "Registration failed");
       }
 
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.success("Registration Successful", {
         description: "Thank you for registering! You will be contacted with further details.",
       });
@@ -462,7 +458,6 @@ export default function PublicEventRegistrationPage() {
       window.location.href = `${baseUrl}/public/event-registration/${eventId}/success`;
     } catch (error) {
       console.error("Registration error:", error);
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.error("Registration Failed", {
         description: "Please try again or contact support",
       });
@@ -476,7 +471,6 @@ export default function PublicEventRegistrationPage() {
       // Check email registration before proceeding from contact details
       const emailExists = await checkEmailRegistration(formData.personalEmail, formData.msfEmail);
       if (emailExists) {
-        const { toast: sonnerToast } = await import("sonner");
         sonnerToast.error("Email Already Registered", {
           description: "This email is already registered for this event. Please use a different email.",
         });
@@ -488,7 +482,6 @@ export default function PublicEventRegistrationPage() {
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      const { toast: sonnerToast } = await import("sonner");
       sonnerToast.error("Required Fields Missing", {
         description: "Please complete all required fields before proceeding",
       });
