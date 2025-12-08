@@ -154,7 +154,6 @@ export default function EventAgenda({
       );
       if (tenantResponse.ok) {
         const tenantData = await tenantResponse.json();
-        console.log("Tenant data for timezone:", tenantData);
         setTenantCountry(tenantData.country || "");
       } else {
         console.error("Failed to fetch tenant - status:", tenantResponse.status);
@@ -311,9 +310,6 @@ export default function EventAgenda({
         speaker: formData.speaker,
         session_number: editingId ? undefined : generateSessionNumber(),
       };
-
-      console.log("Agenda payload:", payload);
-      console.log("Form data times:", { start_time: formData.start_time, end_time: formData.end_time });
 
       const url = editingId
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda/${editingId}`
