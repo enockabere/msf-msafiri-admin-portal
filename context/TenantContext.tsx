@@ -9,6 +9,7 @@ import React, {
   useRef,
   ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import apiClient, { Tenant } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -30,6 +31,40 @@ interface TenantProviderProps {
 }
 
 export function TenantProvider({ children }: TenantProviderProps) {
+  const pathname = usePathname();
+
+  // Skip authentication for public routes
+  const isPublicRoute = pathname?.startsWith('/public') || pathname === '/login' || pathname === '/';
+
+  if (isPublicRoute) {
+    return <TenantProviderSimple>{children}</TenantProviderSimple>;
+  }
+
+  return <TenantProviderWithAuth>{children}</TenantProviderWithAuth>;
+}
+
+// Simple provider for public routes without authentication
+function TenantProviderSimple({ children }: TenantProviderProps) {
+  const contextValue: TenantContextType = {
+    selectedTenant: null,
+    tenants: [],
+    loading: false,
+    error: null,
+    isAllTenantsSelected: false,
+    setSelectedTenant: () => {},
+    setAllTenantsSelected: () => {},
+    refreshTenants: async () => {},
+  };
+
+  return (
+    <TenantContext.Provider value={contextValue}>
+      {children}
+    </TenantContext.Provider>
+  );
+}
+
+// Full provider with authentication for protected routes
+function TenantProviderWithAuth({ children }: TenantProviderProps) {
   const {
     user,
     isAuthenticated,
