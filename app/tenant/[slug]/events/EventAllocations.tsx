@@ -47,6 +47,7 @@ import {
   AlertCircle,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ItemAllocation {
   id: number;
@@ -121,7 +122,6 @@ export default function EventAllocations({
   const [activeTab, setActiveTab] = useState("items");
   const [itemViewMode, setItemViewMode] = useState<"card" | "table">("table");
   const [, setEditingItemId] = useState<number | null>(null);
-  const [, setEditingVoucherId] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Helper function to show feedback message
@@ -141,6 +141,7 @@ export default function EventAllocations({
 
   // Voucher allocation form
   const [showVoucherForm, setShowVoucherForm] = useState(false);
+  const [editingVoucherId, setEditingVoucherId] = useState<number | null>(null);
   const [voucherFormData, setVoucherFormData] = useState({
     drink_vouchers_per_participant: "",
     notes: "",
@@ -159,11 +160,34 @@ export default function EventAllocations({
     total_redeemed_vouchers: number;
   } | null>(null);
 
-  const categories = [
-    { value: "stationary", label: "Stationery", icon: FileText },
-    { value: "ict_equipment", label: "ICT Equipment", icon: Laptop },
-    { value: "equipment", label: "Equipment", icon: Wrench },
-  ];
+  const [categories, setCategories] = useState<{ value: string; label: string; icon: any }[]>([]);
+
+  // Fetch categories from inventory
+  const fetchCategories = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/inventory/categories?tenant=${tenantSlug}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // Map categories to include default icon - keep original format as value
+        const mappedCategories = (data.categories || []).map((cat: string) => ({
+          value: cat, // Use original category name as value
+          label: cat,
+          icon: Package, // Default icon for all categories
+        }));
+        setCategories(mappedCategories);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, [tenantSlug]);
 
   const fetchItemAllocations = useCallback(async () => {
     try {
@@ -294,8 +318,6 @@ export default function EventAllocations({
 
   const fetchScanners = useCallback(async () => {
     try {
-      console.log('🔍 Fetching scanners for event:', eventId, 'tenant:', tenantSlug);
-      
       const tenantResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/slug/${tenantSlug}`,
         {
@@ -306,30 +328,23 @@ export default function EventAllocations({
       );
 
       if (!tenantResponse.ok) {
-        console.error('❌ Tenant fetch failed:', tenantResponse.status);
         return;
       }
 
       const tenantData = await tenantResponse.json();
-      console.log('✅ Tenant data:', tenantData.id);
-      
-      const scannerUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/event/${eventId}?tenant_id=${tenantData.id}`;
-      console.log('🔗 Scanner URL:', scannerUrl);
-      
-      const response = await fetch(scannerUrl, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
 
-      console.log('📡 Scanner response:', response.status);
-      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/event/${eventId}?tenant_id=${tenantData.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Scanner data:', data);
         setScanners(data);
-      } else {
-        console.error('❌ Scanner fetch failed:', response.status, await response.text());
       }
     } catch (error) {
       console.error("Failed to fetch scanners:", error);
@@ -372,6 +387,7 @@ export default function EventAllocations({
   }, [eventId, tenantSlug]);
 
   useEffect(() => {
+    fetchCategories();
     fetchItemAllocations();
     fetchVoucherAllocations();
     fetchInventoryItems();
@@ -379,6 +395,7 @@ export default function EventAllocations({
     fetchScanners();
     fetchParticipantRedemptions();
   }, [
+    fetchCategories,
     fetchItemAllocations,
     fetchVoucherAllocations,
     fetchInventoryItems,
@@ -467,18 +484,20 @@ export default function EventAllocations({
 
   const handleSubmitVoucherAllocation = async () => {
     if (!voucherFormData.drink_vouchers_per_participant) {
-      showFeedback('error', 'Please enter number of vouchers per participant.');
+      toast.error('Please enter number of vouchers per participant');
       return;
     }
 
-    // Check if voucher allocation already exists for THIS EVENT
-    const existingVoucherForEvent = voucherAllocations.find(alloc =>
-      alloc.id && alloc.drink_vouchers_per_participant > 0
-    );
+    // Only check for existing allocation when creating (not editing)
+    if (!editingVoucherId) {
+      const existingVoucherForEvent = voucherAllocations.find(alloc =>
+        alloc.id && alloc.drink_vouchers_per_participant > 0
+      );
 
-    if (existingVoucherForEvent) {
-      showFeedback('error', 'Voucher allocation already exists for this event. You can edit or delete the existing one.');
-      return;
+      if (existingVoucherForEvent) {
+        toast.error('Voucher allocation already exists for this event. You can edit or delete the existing one.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -497,43 +516,41 @@ export default function EventAllocations({
       const tenantData = await tenantResponse.json();
       const createdBy = localStorage.getItem("userEmail") || "admin";
 
-      const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL
-        }/api/v1/allocations/vouchers?tenant_id=${
-          tenantData.id
-        }&created_by=${encodeURIComponent(createdBy)}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            event_id: eventId,
-            drink_vouchers_per_participant: parseInt(
-              voucherFormData.drink_vouchers_per_participant
-            ),
-            notes: voucherFormData.notes,
-          }),
-        }
-      );
+      const url = editingVoucherId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/vouchers/${editingVoucherId}?tenant_id=${tenantData.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/allocations/vouchers?tenant_id=${tenantData.id}&created_by=${encodeURIComponent(createdBy)}`;
+
+      const response = await fetch(url, {
+        method: editingVoucherId ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          event_id: eventId,
+          drink_vouchers_per_participant: parseInt(
+            voucherFormData.drink_vouchers_per_participant
+          ),
+          notes: voucherFormData.notes,
+        }),
+      });
 
       if (response.ok) {
         await fetchVoucherAllocations();
         await fetchVoucherStats();
         setShowVoucherForm(false);
+        setEditingVoucherId(null);
         setVoucherFormData({
           drink_vouchers_per_participant: "",
           notes: "",
         });
 
-        showFeedback('success', 'Voucher allocation created successfully.');
+        toast.success(editingVoucherId ? 'Voucher allocation updated successfully!' : 'Voucher allocation created successfully!');
       } else {
-        showFeedback('error', 'Failed to create voucher allocation.');
+        toast.error(editingVoucherId ? 'Failed to update voucher allocation' : 'Failed to create voucher allocation');
       }
     } catch {
-      showFeedback('error', 'Failed to create voucher allocation.');
+      toast.error(editingVoucherId ? 'Failed to update voucher allocation' : 'Failed to create voucher allocation');
     } finally {
       setLoading(false);
     }
@@ -565,6 +582,10 @@ export default function EventAllocations({
   };
 
   const handleDeleteVoucherAllocation = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this voucher allocation?")) {
+      return;
+    }
+
     setFeedbackMessage(null);
 
     try {
@@ -581,12 +602,12 @@ export default function EventAllocations({
       if (response.ok) {
         await fetchVoucherAllocations();
         await fetchVoucherStats();
-        showFeedback('success', 'Voucher allocation deleted successfully.');
+        toast.success('Voucher allocation deleted successfully!');
       } else {
-        showFeedback('error', 'Failed to delete voucher allocation.');
+        toast.error('Failed to delete voucher allocation');
       }
     } catch {
-      showFeedback('error', 'Failed to delete voucher allocation.');
+      toast.error('Failed to delete voucher allocation');
     }
   };
 
@@ -1333,7 +1354,14 @@ export default function EventAllocations({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setEditingVoucherId(allocation.id)}
+                            onClick={() => {
+                              setEditingVoucherId(allocation.id);
+                              setVoucherFormData({
+                                drink_vouchers_per_participant: allocation.drink_vouchers_per_participant.toString(),
+                                notes: allocation.notes || "",
+                              });
+                              setShowVoucherForm(true);
+                            }}
                             disabled={eventHasEnded}
                           >
                             <Edit className="h-4 w-4" />
@@ -1383,17 +1411,27 @@ export default function EventAllocations({
 
       {/* Item Request Form Dialog */}
       <Dialog open={showItemForm} onOpenChange={setShowItemForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gray-50">
-          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
-            <DialogTitle className="text-xl font-semibold text-gray-900">Request Items</DialogTitle>
-            <DialogDescription className="text-sm text-gray-600">
-              Request items from inventory for this event. An email will be sent to the assigned person.
-            </DialogDescription>
+        {showItemForm && (
+          <div className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm pointer-events-none" />
+        )}
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
+          <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Package className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">Request Items</DialogTitle>
+                <DialogDescription className="text-sm text-gray-600 mt-1">
+                  Request items from inventory. Assigned person will receive email notification.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 px-1">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Category *
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Category <span className="text-red-500">*</span>
               </label>
               <Select
                 value={itemFormData.category}
@@ -1401,7 +1439,7 @@ export default function EventAllocations({
                   setItemFormData((prev) => ({ ...prev, category: value }))
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1417,9 +1455,9 @@ export default function EventAllocations({
               </Select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Assign to Email (Optional)
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">
+                Assign to Email
               </label>
               <Input
                 type="email"
@@ -1430,85 +1468,104 @@ export default function EventAllocations({
                     requested_email: e.target.value,
                   }))
                 }
-                placeholder="Enter email address of person responsible (optional)"
+                placeholder="email@example.com (optional)"
+                className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
+              <p className="text-xs text-gray-500 mt-1">Person responsible will receive notification email</p>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium">Items *</label>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm font-semibold text-gray-900">
+                  Items <span className="text-red-500">*</span>
+                </label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={addItemToForm}
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Add Item
+                  <Plus className="w-4 h-4 mr-1" /> Add Item
                 </Button>
               </div>
 
-              {itemFormData.items.map((item, index) => (
-                <div
-                  key={`item-form-${index}`}
-                  className="grid grid-cols-2 gap-4 p-3 border rounded-md mb-2"
-                >
-                  <Select
-                    value={item.inventory_item_id}
-                    onValueChange={(value) =>
-                      updateItemInForm(index, "inventory_item_id", value)
-                    }
+              <div className="space-y-3">
+                {itemFormData.items.map((item, index) => (
+                  <div
+                    key={`item-form-${index}`}
+                    className="bg-white p-3 border border-gray-300 rounded-lg shadow-sm"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select item" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {inventoryItems
-                        .filter(
-                          (invItem) =>
-                            !itemFormData.category ||
-                            invItem.category === itemFormData.category
-                        )
-                        .map((invItem) => (
-                          <SelectItem
-                            key={`inv-${invItem.id}-${index}`}
-                            value={invItem.id.toString()}
-                          >
-                            {invItem.name} ({invItem.quantity} available)
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity_per_event}
-                      onChange={(e) =>
-                        updateItemInForm(
-                          index,
-                          "quantity_per_event",
-                          e.target.value
-                        )
-                      }
-                      placeholder="Quantity"
-                    />
-                    {itemFormData.items.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeItemFromForm(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+                        <Select
+                          value={item.inventory_item_id}
+                          onValueChange={(value) =>
+                            updateItemInForm(index, "inventory_item_id", value)
+                          }
+                        >
+                          <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                            <SelectValue placeholder="Select item" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {inventoryItems
+                              .filter(
+                                (invItem) =>
+                                  !itemFormData.category ||
+                                  invItem.category === itemFormData.category
+                              )
+                              .map((invItem) => (
+                                <SelectItem
+                                  key={`inv-${invItem.id}-${index}`}
+                                  value={invItem.id.toString()}
+                                >
+                                  {invItem.name} ({invItem.quantity} available)
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Quantity</label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity_per_event}
+                            onChange={(e) =>
+                              updateItemInForm(
+                                index,
+                                "quantity_per_event",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Qty"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+                        {itemFormData.items.length > 1 && (
+                          <div className="flex items-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeItemFromForm(index)}
+                              className="border-red-300 text-red-600 hover:bg-red-50 h-10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Notes</label>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Notes</label>
               <Input
                 value={itemFormData.notes}
                 onChange={(e) =>
@@ -1517,24 +1574,36 @@ export default function EventAllocations({
                     notes: e.target.value,
                   }))
                 }
-                placeholder="Additional notes"
+                placeholder="Add any additional notes or instructions..."
+                className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
           </div>
-          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
-            <Button 
-              variant="outline" 
+          <DialogFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-row justify-end gap-3">
+            <Button
+              variant="outline"
               onClick={() => setShowItemForm(false)}
-              className="border-gray-300 hover:bg-gray-50"
+              className="border-gray-300 hover:bg-gray-100 text-gray-700 px-6"
             >
+              <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmitItemAllocation} 
+            <Button
+              onClick={handleSubmitItemAllocation}
               disabled={loading}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 shadow-sm"
             >
-              {loading ? "Sending..." : "Send Request"}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Request
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1542,100 +1611,159 @@ export default function EventAllocations({
 
       {/* Scanner Form Dialog */}
       <Dialog open={showScannerForm} onOpenChange={setShowScannerForm}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
-          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
-            <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Scanner</DialogTitle>
-            <DialogDescription className="text-sm text-gray-600">
-              Create a scanner account for voucher redemption. If the email doesn't exist, a new user will be created.
-            </DialogDescription>
+        {showScannerForm && (
+          <div className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm pointer-events-none" />
+        )}
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
+          <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-gradient-to-br from-purple-50 to-indigo-50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <User className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">Add Voucher Scanner</DialogTitle>
+                <DialogDescription className="text-sm text-gray-600 mt-1">
+                  Create scanner accounts for voucher redemption at this event.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 px-1">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium">
-                  Scanner Emails *
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <label className="text-sm font-semibold text-gray-900">
+                  Scanner Emails <span className="text-red-500">*</span>
                 </label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setScannerFormData(prev => ({ emails: [...prev.emails, ""] }))}
+                  className="border-purple-300 text-purple-600 hover:bg-purple-50"
                 >
-                  <Plus className="w-4 h-4 mr-2" /> Add Email
+                  <Plus className="w-4 h-4 mr-1" /> Add Email
                 </Button>
               </div>
-              {scannerFormData.emails.map((email, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      const newEmails = [...scannerFormData.emails];
-                      newEmails[index] = e.target.value;
-                      setScannerFormData({ emails: newEmails });
-                    }}
-                    placeholder="Enter email address"
-                    className="flex-1"
-                  />
-                  {scannerFormData.emails.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const newEmails = scannerFormData.emails.filter((_, i) => i !== index);
-                        setScannerFormData({ emails: newEmails });
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+              <div className="space-y-3">
+                {scannerFormData.emails.map((email, index) => (
+                  <div key={index} className="bg-white p-3 border border-gray-300 rounded-lg shadow-sm">
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          const newEmails = [...scannerFormData.emails];
+                          newEmails[index] = e.target.value;
+                          setScannerFormData({ emails: newEmails });
+                        }}
+                        placeholder="scanner@example.com"
+                        className="flex-1 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      />
+                      {scannerFormData.emails.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newEmails = scannerFormData.emails.filter((_, i) => i !== index);
+                            setScannerFormData({ emails: newEmails });
+                          }}
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <h6 className="font-medium text-blue-900 mb-2">Scanner Information</h6>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Existing users will get scanner role added to their account</li>
-                <li>• New users will be created with temporary password</li>
-                <li>• All scanners receive email with access instructions</li>
-                <li>• Can scan and redeem participant vouchers</li>
-                <li>• Access limited to this event only</li>
-              </ul>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h6 className="font-semibold text-blue-900 mb-2">Scanner Information</h6>
+                  <ul className="text-sm text-blue-800 space-y-1.5">
+                    <li>• Existing users get scanner role added</li>
+                    <li>• New users created with temporary password</li>
+                    <li>• Email sent with access instructions</li>
+                    <li>• Can scan and redeem participant vouchers</li>
+                    <li>• Access limited to this event only</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
-          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
-            <Button 
-              variant="outline" 
+          <DialogFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-row justify-end gap-3">
+            <Button
+              variant="outline"
               onClick={() => setShowScannerForm(false)}
-              className="border-gray-300 hover:bg-gray-50"
+              className="border-gray-300 hover:bg-gray-100 text-gray-700 px-6"
             >
+              <X className="w-4 h-4 mr-2" />
               Cancel
             </Button>
-            <Button 
-              onClick={handleSubmitScanner} 
+            <Button
+              onClick={handleSubmitScanner}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 shadow-sm"
             >
-              {loading ? "Creating..." : "Create Scanner"}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <User className="w-4 h-4 mr-2" />
+                  Create Scanner
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Voucher Form Dialog */}
-      <Dialog open={showVoucherForm} onOpenChange={setShowVoucherForm}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto bg-gray-50">
-          <DialogHeader className="bg-white p-6 -m-6 mb-4 rounded-t-lg border-b">
-            <DialogTitle className="text-xl font-semibold text-gray-900">Add Voucher Allocation</DialogTitle>
-            <DialogDescription className="text-sm text-gray-600">
-              Set the number of drink vouchers each participant will receive for this event.
-            </DialogDescription>
+      <Dialog
+        open={showVoucherForm}
+        onOpenChange={(open) => {
+          setShowVoucherForm(open);
+          if (!open) {
+            setEditingVoucherId(null);
+            setVoucherFormData({
+              drink_vouchers_per_participant: "",
+              notes: "",
+            });
+          }
+        }}
+      >
+        {showVoucherForm && (
+          <div className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm pointer-events-none" />
+        )}
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
+          <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-gradient-to-br from-amber-50 to-orange-50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                <Wine className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  {editingVoucherId ? "Edit Voucher Allocation" : "Add Voucher Allocation"}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600 mt-1">
+                  Set the number of drink vouchers each participant will receive.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 px-1">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Vouchers per Participant *
+
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                Vouchers per Participant
+                <span className="text-red-500">*</span>
               </label>
               <Input
                 type="number"
@@ -1648,10 +1776,12 @@ export default function EventAllocations({
                   }))
                 }
                 placeholder="Enter number of vouchers"
+                className="border-gray-300 focus:border-amber-500 focus:ring-amber-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Notes</label>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Notes</label>
               <Input
                 value={voucherFormData.notes}
                 onChange={(e) =>
@@ -1660,25 +1790,50 @@ export default function EventAllocations({
                     notes: e.target.value,
                   }))
                 }
-                placeholder="Additional notes"
+                placeholder="Additional notes (optional)"
+                className="border-gray-300 focus:border-amber-500 focus:ring-amber-500"
               />
             </div>
+
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  This allocation will apply to all selected participants for this event.
+                </p>
+              </div>
+            </div>
           </div>
-          <DialogFooter className="bg-white p-6 -m-6 mt-4 rounded-b-lg border-t">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowVoucherForm(false)}
-              className="border-gray-300 hover:bg-gray-50"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmitVoucherAllocation} 
-              disabled={loading}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {loading ? "Creating..." : "Create Allocation"}
-            </Button>
+
+          <DialogFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowVoucherForm(false);
+                  setEditingVoucherId(null);
+                  setVoucherFormData({
+                    drink_vouchers_per_participant: "",
+                    notes: "",
+                  });
+                }}
+                className="flex-1 sm:flex-none border-gray-300 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitVoucherAllocation}
+                disabled={loading}
+                className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Wine className="w-4 h-4 mr-2" />
+                {loading
+                  ? (editingVoucherId ? "Updating..." : "Creating...")
+                  : (editingVoucherId ? "Update Allocation" : "Create Allocation")
+                }
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
