@@ -1338,7 +1338,7 @@ export default function EventRegistrationFormPage() {
                   {formData.travellingInternationally === "Yes" && (
                     <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 space-y-3">
                       <Label className="text-sm font-medium flex items-center gap-1">
-                        Which country are you travelling from? <span className="text-red-500">*</span>
+                        What is your nationality? <span className="text-red-500">*</span>
                       </Label>
                       {loadingCountries ? (
                         <div className="flex items-center gap-2 p-3 bg-white border-2 rounded-lg">
