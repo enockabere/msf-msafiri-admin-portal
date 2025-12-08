@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ToastContainer } from "@/components/ui/toast";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -18,7 +17,6 @@ export default function PublicLayout({
   return (
     <>
       {children}
-      <ToastContainer />
       <Toaster
         position="top-right"
         richColors

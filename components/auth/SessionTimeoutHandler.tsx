@@ -6,6 +6,19 @@ import { useRouter, usePathname } from "next/navigation";
 import { toast } from "@/components/ui/toast";
 
 export default function SessionTimeoutHandler() {
+  const pathname = usePathname();
+
+  // Don't render on public pages
+  const isPublicRoute = pathname?.startsWith('/public') || pathname === '/login' || pathname === '/';
+
+  if (isPublicRoute) {
+    return null;
+  }
+
+  return <SessionTimeoutHandlerInner />;
+}
+
+function SessionTimeoutHandlerInner() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -13,10 +26,6 @@ export default function SessionTimeoutHandler() {
   const warningShownRef = useRef(false);
 
   useEffect(() => {
-    // Don't handle session timeout on public pages
-    if (pathname?.startsWith('/public') || pathname === '/login' || pathname === '/') {
-      return;
-    }
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -53,7 +62,7 @@ export default function SessionTimeoutHandler() {
 
   // Handle session errors
   useEffect(() => {
-    if (status === 'unauthenticated' && !pathname?.startsWith('/public') && pathname !== '/login' && pathname !== '/') {
+    if (status === 'unauthenticated' && pathname !== '/login' && pathname !== '/') {
       router.push('/login?message=session_expired');
     }
   }, [status, pathname, router]);
