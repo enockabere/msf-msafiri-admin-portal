@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, AlertCircle, Calendar, MapPin, User, Mail, Building } from "lucide-react";
-import { toast } from "@/components/ui/toast";
+import { toast as sonnerToast } from "sonner";
 
 interface RecommendationData {
   id: number;
@@ -52,10 +52,8 @@ export default function LineManagerRecommendationPage() {
       }
     } catch (error) {
       console.error("Error fetching recommendation data:", error);
-      toast({
-        title: "Error",
+      sonnerToast.error("Error", {
         description: "Failed to load recommendation request",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -65,7 +63,7 @@ export default function LineManagerRecommendationPage() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
-      
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/${token}`,
         {
@@ -79,18 +77,15 @@ export default function LineManagerRecommendationPage() {
         throw new Error("Failed to submit recommendation");
       }
 
-      toast({
-        title: "Success",
+      sonnerToast.success("Success", {
         description: "Your recommendation has been submitted successfully",
       });
 
       await fetchRecommendationData();
     } catch (error) {
       console.error("Error submitting recommendation:", error);
-      toast({
-        title: "Error",
+      sonnerToast.error("Error", {
         description: "Failed to submit recommendation. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
