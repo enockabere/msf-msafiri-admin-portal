@@ -312,6 +312,9 @@ export default function EventAgenda({
         session_number: editingId ? undefined : generateSessionNumber(),
       };
 
+      console.log("Agenda payload:", payload);
+      console.log("Form data times:", { start_time: formData.start_time, end_time: formData.end_time });
+
       const url = editingId
         ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda/${editingId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/agenda`;
@@ -729,7 +732,6 @@ export default function EventAgenda({
                 <TableHead>Session</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Date & Time</TableHead>
-                <TableHead>Location</TableHead>
                 <TableHead>Presenter</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -755,9 +757,12 @@ export default function EventAgenda({
                       <div>
                         <div className="font-medium">{item.title}</div>
                         {item.description && (
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {item.description}
-                          </div>
+                          <div
+                            className="text-sm text-gray-500 truncate max-w-xs"
+                            dangerouslySetInnerHTML={{
+                              __html: item.description.replace(/<[^>]*>/g, '').substring(0, 100)
+                            }}
+                          />
                         )}
                       </div>
                     </TableCell>
@@ -775,7 +780,6 @@ export default function EventAgenda({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{item.location || "-"}</TableCell>
                     <TableCell>{item.presenter || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
