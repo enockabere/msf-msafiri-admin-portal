@@ -144,11 +144,16 @@ export default function EventAgenda({
             );
             if (tenantResponse.ok) {
               const tenantData = await tenantResponse.json();
+              console.log("Tenant data for timezone:", tenantData);
               setTenantCountry(tenantData.country || "");
+            } else {
+              console.error("Failed to fetch tenant - status:", tenantResponse.status);
             }
           } catch (error) {
             console.error("Failed to fetch tenant details:", error);
           }
+        } else {
+          console.warn("No tenant_id found in event data");
         }
       } else {
         console.error('Failed to fetch event details - status:', response.status);
@@ -908,7 +913,7 @@ export default function EventAgenda({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-                  Start Time {tenantCountry && `(${getTimezoneByCountry(tenantCountry)})`}
+                  Start Time ({getTimezoneByCountry(tenantCountry)})
                   <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -925,7 +930,7 @@ export default function EventAgenda({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-                  End Time {tenantCountry && `(${getTimezoneByCountry(tenantCountry)})`}
+                  End Time ({getTimezoneByCountry(tenantCountry)})
                   <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -969,7 +974,7 @@ export default function EventAgenda({
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-800">
-                  All times are in {tenantCountry ? getTimezoneByCountry(tenantCountry) : 'local time'}. Make sure to verify the timezone is correct for your event location.
+                  All times are in <strong>{getTimezoneByCountry(tenantCountry)}</strong>{tenantCountry ? ` based on tenant country: ${tenantCountry}` : ''}. Make sure to verify the timezone is correct for your event location.
                 </p>
               </div>
             </div>
