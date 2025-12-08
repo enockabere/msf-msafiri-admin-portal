@@ -1045,22 +1045,24 @@ export default function EventParticipants({
                       Dietary Requirements:
                     </span>
                     <br />
-                    <span className="text-gray-900">
-                      {participant.dietary_requirements ||
-                        participant.dietaryRequirements ||
-                        "-"}
-                    </span>
+                    <div
+                      className="text-gray-900"
+                      dangerouslySetInnerHTML={{
+                        __html: participant.dietary_requirements || participant.dietaryRequirements || "-"
+                      }}
+                    />
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">
                       Accommodation Needs:
                     </span>
                     <br />
-                    <span className="text-gray-900">
-                      {participant.accommodation_needs ||
-                        participant.accommodationNeeds ||
-                        "-"}
-                    </span>
+                    <div
+                      className="text-gray-900"
+                      dangerouslySetInnerHTML={{
+                        __html: participant.accommodation_needs || participant.accommodationNeeds || "-"
+                      }}
+                    />
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">
@@ -1098,35 +1100,59 @@ export default function EventParticipants({
                       Motivation Letter:
                     </span>
                     <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
-                      <span className="text-gray-900 text-sm whitespace-pre-wrap">
-                        {participant.motivation_letter ||
-                          participant.motivationLetter ||
-                          "No motivation letter provided"}
-                      </span>
+                      <div
+                        className="text-gray-900 text-sm prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: participant.motivation_letter || participant.motivationLetter || "No motivation letter provided"
+                        }}
+                      />
                     </div>
                   </div>
                   <div>
                     <span className="font-medium text-gray-700 block mb-2">
                       Line Manager Recommendation:
                     </span>
-                    <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                    <div className="bg-white p-4 rounded-lg border">
                       {recommendationData ? (
                         <div className="space-y-2">
                           <div className="text-xs text-gray-500">
                             From: {recommendationData.line_manager_email}
                           </div>
                           <div className="text-xs text-gray-500">
-                            Submitted: {recommendationData.submitted_at ? 
-                              new Date(recommendationData.submitted_at).toLocaleDateString() : 
+                            Submitted: {recommendationData.submitted_at ?
+                              new Date(recommendationData.submitted_at).toLocaleDateString() :
                               'Pending'}
                           </div>
-                          <div className="text-gray-900 text-sm whitespace-pre-wrap">
-                            {recommendationData.recommendation_text || "Recommendation pending"}
+                          <div className="mt-2">
+                            {recommendationData.submitted_at ? (
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">Recommendation:</span>
+                                {recommendationData.is_recommended ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                                    </svg>
+                                    Yes, Recommended
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                    </svg>
+                                    Not Recommended
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-gray-500 text-sm italic">
+                                Recommendation pending
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (
                         <span className="text-gray-500 text-sm">
-                          No recommendation available
+                          No recommendation requested
                         </span>
                       )}
                     </div>
