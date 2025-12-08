@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,18 +38,8 @@ import {
 } from "lucide-react";
 import { format, isWithinInterval, parseISO, isSameDay } from "date-fns";
 
-// Dynamically import CKEditor to avoid SSR issues
-const CustomEditor = dynamic(
-  () => import("../../../components/CustomEditor"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="border border-gray-300 rounded-md p-4 text-sm text-gray-500">
-        Loading editor...
-      </div>
-    ),
-  }
-);
+// Dynamically import CKEditor with SSR disabled
+const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
 
 // Simple timezone mapping based on common MSF countries
 const getTimezoneByCountry = (country?: string): string => {
@@ -110,6 +100,8 @@ export default function EventAgenda({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
+  const [editorLoaded, setEditorLoaded] = useState(false);
+  const editorRef = useRef<any>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -169,6 +161,20 @@ export default function EventAgenda({
       console.error("Failed to fetch event details:", error);
     }
   }, [eventId, accessToken]);
+
+  // Load CKEditor on client side only
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('@ckeditor/ckeditor5-build-classic')
+        .then((module) => {
+          editorRef.current = module.default;
+          setEditorLoaded(true);
+        })
+        .catch((error) => {
+          console.error('Error loading CKEditor:', error);
+        });
+    }
+  }, []);
 
   const fetchFacilitators = useCallback(async () => {
     try {
@@ -839,16 +845,29 @@ export default function EventAgenda({
                 Description
               </label>
               <div className="border border-gray-300 rounded-md overflow-hidden">
-                <CustomEditor
-                  data={formData.description}
-                  onChange={(data) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: data,
-                    }));
-                  }}
-                  placeholder="Enter description (optional)"
-                />
+                {editorLoaded && editorRef.current ? (
+                  <CKEditor
+                    editor={editorRef.current}
+                    data={formData.description}
+                    onChange={(_event: any, editor: any) => {
+                      const data = editor.getData();
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: data,
+                      }));
+                    }}
+                    config={{
+                      toolbar: [
+                        'heading', '|',
+                        'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                        'blockQuote', 'undo', 'redo'
+                      ],
+                      placeholder: "Enter description (optional)",
+                    }}
+                  />
+                ) : (
+                  <div className="p-4 text-sm text-gray-500">Loading editor...</div>
+                )}
               </div>
             </div>
 
