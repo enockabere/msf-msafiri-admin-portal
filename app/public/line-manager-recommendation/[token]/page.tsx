@@ -16,7 +16,7 @@ interface RecommendationData {
   event_title: string;
   event_dates: string;
   event_location: string;
-  recommendation_text?: string;
+  is_recommended?: boolean;
   submitted_at?: string;
   registration_deadline?: string;
   already_submitted: boolean;
@@ -27,7 +27,7 @@ export default function LineManagerRecommendationPage() {
   const [data, setData] = useState<RecommendationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [recommendationText, setRecommendationText] = useState("");
+  const [isRecommended, setIsRecommended] = useState(false);
   const token = params.token as string;
 
   useEffect(() => {
@@ -47,8 +47,8 @@ export default function LineManagerRecommendationPage() {
       const recommendationData = await response.json();
       setData(recommendationData);
       
-      if (recommendationData.recommendation_text) {
-        setRecommendationText(recommendationData.recommendation_text);
+      if (recommendationData.is_recommended) {
+        setIsRecommended(recommendationData.is_recommended);
       }
     } catch (error) {
       console.error("Error fetching recommendation data:", error);
@@ -63,15 +63,6 @@ export default function LineManagerRecommendationPage() {
   };
 
   const handleSubmit = async () => {
-    if (!recommendationText.trim()) {
-      toast({
-        title: "Required Field",
-        description: "Please provide your recommendation",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setSubmitting(true);
       
@@ -80,7 +71,7 @@ export default function LineManagerRecommendationPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recommendation_text: recommendationText }),
+          body: JSON.stringify({ is_recommended: isRecommended }),
         }
       );
 
@@ -222,26 +213,27 @@ export default function LineManagerRecommendationPage() {
               <CardHeader>
                 <CardTitle className="text-xl">Your Recommendation</CardTitle>
                 <p className="text-gray-600">
-                  Please provide your recommendation for this participant's attendance at the event.
+                  Please confirm whether you recommend this participant's attendance at the event.
                 </p>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <Label className="text-sm font-medium mb-2 block">
-                    Recommendation <span className="text-red-500">*</span>
-                  </Label>
-                  <textarea
-                    value={recommendationText}
-                    onChange={(e) => setRecommendationText(e.target.value)}
-                    placeholder="Please provide your detailed recommendation..."
-                    className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-red-500 h-40 resize-none"
+                <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="recommend"
+                    checked={isRecommended}
+                    onChange={(e) => setIsRecommended(e.target.checked)}
+                    className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
                   />
+                  <Label htmlFor="recommend" className="text-base font-medium cursor-pointer">
+                    I recommend this participant to attend the event
+                  </Label>
                 </div>
 
                 <div className="flex justify-end">
                   <Button
                     onClick={handleSubmit}
-                    disabled={submitting || !recommendationText.trim()}
+                    disabled={submitting}
                     className="bg-red-600 hover:bg-red-700 text-white px-8"
                   >
                     {submitting ? (
