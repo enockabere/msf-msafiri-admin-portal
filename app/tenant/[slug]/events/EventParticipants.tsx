@@ -1374,9 +1374,8 @@ export default function EventParticipants({
                         </svg>
                         Flight Itineraries
                       </h5>
-                      {flightItineraries && flightItineraries.length > 0 ? (
-                        <div className="space-y-4">
-                          {flightItineraries.map((flight, index) => (
+                      <div className="space-y-4">
+                        {flightItineraries.map((flight, index) => (
                             <div
                               key={flight.id || index}
                               className="bg-white p-4 rounded-xl border-2 border-sky-100 shadow-sm hover:shadow-md transition-shadow"
@@ -1470,9 +1469,8 @@ export default function EventParticipants({
                       <h5 className="font-semibold text-purple-900 mb-4">
                         Transport Bookings
                       </h5>
-                      {transportData && transportData.length > 0 ? (
-                        <div className="space-y-3">
-                          {transportData.map(
+                      <div className="space-y-3">
+                        {transportData.map(
                             (booking: TransportBooking, index) => (
                               <div
                                 key={index}
@@ -1510,9 +1508,8 @@ export default function EventParticipants({
                         </svg>
                         Accommodation
                       </h5>
-                      {accommodationData && accommodationData.length > 0 ? (
-                        <div className="space-y-4">
-                          {accommodationData.map((accommodation, ) => {
+                      <div className="space-y-4">
+                        {accommodationData.map((accommodation, ) => {
                             const isGuesthouse = accommodation.accommodation_type === 'guesthouse';
                             const isShared = isGuesthouse
                               ? (accommodation.room?.capacity || 0) > 1
@@ -1649,8 +1646,7 @@ export default function EventParticipants({
                       <h5 className="font-semibold text-blue-900 mb-4">
                         Drink Vouchers
                       </h5>
-                      {voucherData ? (
-                        <div className="bg-white p-4 rounded border">
+                      <div className="bg-white p-4 rounded border">
                           <div className="text-center mb-4">
                             {voucherData.qr_data_url ? (
                               <div className="inline-block p-4 bg-white rounded-lg shadow-sm border">
