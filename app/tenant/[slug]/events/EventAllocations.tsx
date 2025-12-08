@@ -712,7 +712,7 @@ export default function EventAllocations({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/voucher-scanners/${scannerId}?event_id=${eventId}`,
         {
           method: "DELETE",
           headers: {
@@ -723,12 +723,12 @@ export default function EventAllocations({
 
       if (response.ok) {
         await fetchScanners();
-        showFeedback('success', 'Scanner account deleted successfully.');
+        toast.success('Scanner deleted successfully!');
       } else {
-        showFeedback('error', 'Failed to delete scanner account.');
+        toast.error('Failed to delete scanner.');
       }
     } catch {
-      showFeedback('error', 'Failed to delete scanner account.');
+      toast.error('Failed to delete scanner.');
     }
   };
 
