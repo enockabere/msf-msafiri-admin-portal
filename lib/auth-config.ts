@@ -63,7 +63,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const authOptions: NextAuthOptions = {
-  debug: true, // Enable debug for troubleshooting
+  debug: false, // Disable debug to reduce console noise
   providers: [
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
@@ -261,19 +261,19 @@ export const authOptions: NextAuthOptions = {
       return await refreshAccessToken(token);
     },
     async session({ session, token }) {
-      // If token has error, return null to force logout
+      // If token has error, throw to force logout
       if (token.error === 'RefreshAccessTokenError') {
-        return null;
+        throw new Error('Session expired');
       }
 
-      if (token) {
-        session.user.id = token.sub!;
-        session.user.role = token.role as string;
-        session.user.tenantId = token.tenantId as string;
-        session.user.isActive = token.isActive as boolean;
-        session.user.accessToken = token.accessToken as string;
-        session.user.firstLogin = token.firstLogin as boolean;
-        session.user.mustChangePassword = token.mustChangePassword as boolean;
+      if (token && session?.user) {
+        session.user.id = token.sub || '';
+        session.user.role = (token.role as string) || '';
+        session.user.tenantId = (token.tenantId as string) || '';
+        session.user.isActive = (token.isActive as boolean) || false;
+        session.user.accessToken = (token.accessToken as string) || '';
+        session.user.firstLogin = (token.firstLogin as boolean) || false;
+        session.user.mustChangePassword = (token.mustChangePassword as boolean) || false;
       }
       return session;
     },
@@ -302,6 +302,11 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 60, // 30 minutes
     updateAge: 5 * 60, // Update session every 5 minutes
+  },
+  logger: {
+    error: () => {}, // Suppress error logs
+    warn: () => {},  // Suppress warning logs
+    debug: () => {}, // Suppress debug logs
   },
   events: {
     async signOut() {
