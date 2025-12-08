@@ -545,6 +545,8 @@ export default function EventRegistrationFormPage() {
     window.open(publicUrl, "_blank");
   };
 
+  const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
+
   return (
     <ProtectedRoute>
       <DashboardLayout>
@@ -590,7 +592,9 @@ export default function EventRegistrationFormPage() {
                     variant="outline"
                     size="sm"
                     onClick={handlePreview}
-                    className="flex items-center gap-2 bg-white"
+                    disabled={isDeadlinePassed}
+                    className="flex items-center gap-2 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={isDeadlinePassed ? "Registration deadline has passed" : "Preview registration form"}
                   >
                     <Eye className="w-4 h-4" />
                     Preview
@@ -599,7 +603,9 @@ export default function EventRegistrationFormPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowShareModal(true)}
-                    className="flex items-center gap-2 bg-white"
+                    disabled={isDeadlinePassed}
+                    className="flex items-center gap-2 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={isDeadlinePassed ? "Registration deadline has passed" : "Share registration form"}
                   >
                     <Share2 className="w-4 h-4" />
                     Share
