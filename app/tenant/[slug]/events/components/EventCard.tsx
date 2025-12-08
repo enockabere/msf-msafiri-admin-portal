@@ -169,7 +169,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
-                  {onRegistrationForm && isRegistrationOpen() && (
+                  {onRegistrationForm && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
