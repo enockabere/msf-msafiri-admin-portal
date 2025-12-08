@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -30,8 +31,33 @@ import {
   MapPin,
   User,
   FileText,
+  AlertCircle,
+  X,
+  Save,
 } from "lucide-react";
 import { format, isWithinInterval, parseISO, isSameDay } from "date-fns";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+
+// Simple timezone mapping based on common MSF countries
+const getTimezoneByCountry = (country?: string): string => {
+  const timezoneMap: Record<string, string> = {
+    'Kenya': 'EAT (UTC+3)',
+    'Uganda': 'EAT (UTC+3)',
+    'Tanzania': 'EAT (UTC+3)',
+    'South Africa': 'SAST (UTC+2)',
+    'Nigeria': 'WAT (UTC+1)',
+    'Ghana': 'GMT (UTC+0)',
+    'Switzerland': 'CET (UTC+1)',
+    'Belgium': 'CET (UTC+1)',
+    'France': 'CET (UTC+1)',
+    'Spain': 'CET (UTC+1)',
+    'UK': 'GMT (UTC+0)',
+    'United Kingdom': 'GMT (UTC+0)',
+  };
+
+  return timezoneMap[country || ''] || 'Local Time';
+};
 
 interface AgendaItem {
   id: number;
@@ -59,11 +85,13 @@ interface EventDetails {
 
 export default function EventAgenda({
   eventId,
+  tenantSlug,
   eventHasEnded = false,
 }: EventAgendaProps) {
   const { accessToken } = useAuth();
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
+  const [tenantCountry, setTenantCountry] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -83,7 +111,6 @@ export default function EventAgenda({
 
   const fetchEventDetails = useCallback(async () => {
     try {
-      console.log('Fetching event details for eventId:', eventId);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}`,
         {
@@ -93,14 +120,32 @@ export default function EventAgenda({
         }
       );
 
-      console.log('Event details response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('Event details data:', data);
         setEventDetails({
           start_date: data.start_date,
           end_date: data.end_date,
         });
+
+        // Fetch tenant data to get country for timezone
+        if (data.tenant_id) {
+          try {
+            const tenantResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${data.tenant_id}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                },
+              }
+            );
+            if (tenantResponse.ok) {
+              const tenantData = await tenantResponse.json();
+              setTenantCountry(tenantData.country || "");
+            }
+          } catch (error) {
+            console.error("Failed to fetch tenant details:", error);
+          }
+        }
       } else {
         console.error('Failed to fetch event details - status:', response.status);
         if (response.status === 401) {
@@ -111,7 +156,7 @@ export default function EventAgenda({
     } catch (error) {
       console.error("Failed to fetch event details:", error);
     }
-  }, [eventId]);
+  }, [eventId, accessToken]);
 
   const fetchFacilitators = useCallback(async () => {
     try {
@@ -187,14 +232,11 @@ export default function EventAgenda({
   };
 
   const handleSubmit = async () => {
-    console.log('Submit clicked, form data:', formData);
-    
     if (
       !formData.title ||
       !formData.start_time ||
       !formData.end_time
     ) {
-      console.log('Validation failed - missing required fields');
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -207,9 +249,8 @@ export default function EventAgenda({
     // Validate that end time is after start time
     const startTimeMinutes = parseInt(formData.start_time.split(':')[0]) * 60 + parseInt(formData.start_time.split(':')[1]);
     const endTimeMinutes = parseInt(formData.end_time.split(':')[0]) * 60 + parseInt(formData.end_time.split(':')[1]);
-    
+
     if (endTimeMinutes <= startTimeMinutes) {
-      console.log('Validation failed - end time before start time');
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -220,7 +261,6 @@ export default function EventAgenda({
     }
 
     if (!eventDetails) {
-      console.log('No event details available');
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Error!",
@@ -236,7 +276,7 @@ export default function EventAgenda({
       const eventStartDate = new Date(eventDetails.start_date);
       const agendaDate = new Date(eventStartDate);
       agendaDate.setDate(eventStartDate.getDate() + (formData.day_number - 1));
-      
+
       const dateStr = agendaDate.toISOString().split('T')[0];
       const startDateTime = `${dateStr}T${formData.start_time}:00`;
       const endDateTime = `${dateStr}T${formData.end_time}:00`;
@@ -257,8 +297,6 @@ export default function EventAgenda({
 
       const method = editingId ? "PUT" : "POST";
 
-      console.log('Making API request:', { method, url, payload });
-
       const response = await fetch(url, {
         method,
         headers: {
@@ -268,10 +306,7 @@ export default function EventAgenda({
         body: JSON.stringify(payload),
       });
 
-      console.log('API response status:', response.status);
-
       if (response.ok) {
-        console.log('Agenda item saved successfully');
         await fetchAgendaItems();
         handleCloseForm();
 
@@ -751,60 +786,89 @@ export default function EventAgenda({
 
       {/* Add/Edit Form Dialog */}
       <Dialog open={showForm} onOpenChange={handleCloseForm}>
-        <DialogContent className="max-w-2xl bg-white border shadow-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Edit Agenda Item" : "Add Agenda Item"}
-            </DialogTitle>
+        {showForm && (
+          <div className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm pointer-events-none" />
+        )}
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
+          <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <CalendarIcon className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  {editingId ? "Edit Agenda Item" : "Add Agenda Item"}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600 mt-1">
+                  Schedule a session or activity for this event
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Title *</label>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                Title
+                <span className="text-red-500">*</span>
+              </label>
               <Input
                 value={formData.title}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, title: e.target.value }))
                 }
                 placeholder="Enter agenda item title"
+                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
                 Description
               </label>
-              <Input
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                placeholder="Enter description (optional)"
-              />
+              <div className="border border-gray-300 rounded-md overflow-hidden">
+                <CKEditor
+                  editor={ClassicEditor}
+                  data={formData.description}
+                  onChange={(_event, editor) => {
+                    const data = editor.getData();
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: data,
+                    }));
+                  }}
+                  config={{
+                    toolbar: [
+                      'heading', '|',
+                      'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
+                      'blockQuote', 'undo', 'redo'
+                    ],
+                    placeholder: "Enter description (optional)",
+                  }}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Day *</label>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  Day
+                  <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.day_number}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, day_number: parseInt(e.target.value) }))
                   }
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
                 >
                   {eventDetails ? (
                     (() => {
                       const startDate = new Date(eventDetails.start_date);
                       const endDate = new Date(eventDetails.end_date);
-                      console.log('Start date:', startDate, 'End date:', endDate);
                       const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
                       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                      console.log('Calculated days:', diffDays);
-                      
+
                       return Array.from({ length: diffDays }, (_, i) => {
                         const dayDate = new Date(startDate);
                         dayDate.setDate(startDate.getDate() + i);
@@ -820,9 +884,10 @@ export default function EventAgenda({
                   )}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Start Time *
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  Start Time {tenantCountry && `(${getTimezoneByCountry(tenantCountry)})`}
+                  <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="time"
@@ -833,11 +898,13 @@ export default function EventAgenda({
                       start_time: e.target.value,
                     }))
                   }
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  End Time *
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                  End Time {tenantCountry && `(${getTimezoneByCountry(tenantCountry)})`}
+                  <span className="text-red-500">*</span>
                 </label>
                 <Input
                   type="time"
@@ -848,12 +915,13 @@ export default function EventAgenda({
                       end_time: e.target.value,
                     }))
                   }
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
                 Speaker
               </label>
               <select
@@ -864,7 +932,7 @@ export default function EventAgenda({
                     speaker: e.target.value,
                   }))
                 }
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2 border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">Select a speaker (optional)</option>
                 {facilitators.map((facilitator) => (
@@ -874,23 +942,48 @@ export default function EventAgenda({
                 ))}
               </select>
             </div>
+
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800">
+                  All times are in {tenantCountry ? getTimezoneByCountry(tenantCountry) : 'local time'}. Make sure to verify the timezone is correct for your event location.
+                </p>
+              </div>
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseForm} className="border-gray-300 text-gray-700 hover:bg-gray-50">
-              Cancel
-            </Button>
-            <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                console.log('Create button clicked');
-                handleSubmit();
-              }} 
-              disabled={loading} 
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {loading ? "Saving..." : editingId ? "Update" : "Create"}
-            </Button>
+          <DialogFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={handleCloseForm}
+                className="flex-1 sm:flex-none border-gray-300 hover:bg-gray-100"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+                disabled={loading}
+                className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 text-white"
+              >
+                {editingId ? (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    {loading ? "Updating..." : "Update"}
+                  </>
+                ) : (
+                  <>
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {loading ? "Creating..." : "Create"}
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
