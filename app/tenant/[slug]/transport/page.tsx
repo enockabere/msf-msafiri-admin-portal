@@ -41,6 +41,9 @@ interface TransportRequest {
   driver_phone?: string;
   vehicle_number?: string;
   vehicle_color?: string;
+  auto_booked?: boolean;
+  pooled_with_request_ids?: string;
+  is_pool_leader?: boolean;
   created_at: string;
   updated_at: string;
   event?: {
@@ -566,9 +569,21 @@ export default function TransportPage() {
       : statusConfig[status as keyof typeof statusConfig] || statusConfig.created;
 
     return (
-      <Badge className={`${config.color} px-2.5 py-0.5 font-medium text-xs`}>
-        {config.label}
-      </Badge>
+      <div className="flex gap-1.5 flex-wrap">
+        <Badge className={`${config.color} px-2.5 py-0.5 font-medium text-xs`}>
+          {config.label}
+        </Badge>
+        {request?.auto_booked && (
+          <Badge className="bg-blue-100 text-blue-700 border border-blue-300 px-2.5 py-0.5 font-medium text-xs flex items-center gap-1">
+            <span className="text-[10px]">⚡</span> AUTO
+          </Badge>
+        )}
+        {request?.pooled_with_request_ids && (
+          <Badge className="bg-purple-100 text-purple-700 border border-purple-300 px-2.5 py-0.5 font-medium text-xs flex items-center gap-1">
+            <Users className="h-2.5 w-2.5" /> SHARED
+          </Badge>
+        )}
+      </div>
     );
   };
 

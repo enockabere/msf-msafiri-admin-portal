@@ -127,8 +127,9 @@ export default function EventDetailsModal({
   const [accommodationStats, setAccommodationStats] = useState<{
     bookedRooms: number;
     checkedInVisitors: number;
+    checkedOutVisitors: number;
     totalBookings: number;
-  }>({ bookedRooms: 0, checkedInVisitors: 0, totalBookings: 0 });
+  }>({ bookedRooms: 0, checkedInVisitors: 0, checkedOutVisitors: 0, totalBookings: 0 });
   
   const [roomStats, setRoomStats] = useState<{
     single_rooms: { occupied: number; total: number; guests: number };
@@ -216,11 +217,12 @@ export default function EventDetailsModal({
         setAccommodationStats({
           bookedRooms: data.booked_rooms || 0,
           checkedInVisitors: data.checked_in_visitors || 0,
+          checkedOutVisitors: data.checked_out_visitors || 0,
           totalBookings: data.total_bookings || 0,
         });
       }
     } catch {
-      setAccommodationStats({ bookedRooms: 0, checkedInVisitors: 0, totalBookings: 0 });
+      setAccommodationStats({ bookedRooms: 0, checkedInVisitors: 0, checkedOutVisitors: 0, totalBookings: 0 });
     }
   }, [event, accessToken]);
 
@@ -967,6 +969,10 @@ export default function EventDetailsModal({
                         <div className="flex justify-between items-center py-2 border-b border-blue-200">
                           <span className="text-xs font-normal text-gray-600">Checked In:</span>
                           <span className="text-xs text-green-600 font-semibold">{accommodationStats.checkedInVisitors} visitors</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b border-blue-200">
+                          <span className="text-xs font-normal text-gray-600">Checked Out:</span>
+                          <span className="text-xs text-orange-600 font-semibold">{accommodationStats.checkedOutVisitors} visitors</span>
                         </div>
                         <div className="flex justify-between items-center py-2">
                           <span className="text-xs font-normal text-gray-600">Occupancy:</span>

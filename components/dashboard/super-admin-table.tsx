@@ -32,6 +32,7 @@ import {
   ChevronDown,
   Filter,
   Shield,
+  Trash2,
 } from "lucide-react";
 import { User } from "@/lib/api";
 import { format } from "date-fns";
@@ -44,6 +45,7 @@ interface SuperAdminTableProps {
   onActivate: (user: User) => void;
   onDeactivate: (user: User) => void;
   onResendInvite?: (user: User) => void;
+  onRemove?: (user: User) => void;
 }
 
 export function SuperAdminTable({
@@ -53,6 +55,7 @@ export function SuperAdminTable({
   onActivate,
   onDeactivate,
   onResendInvite,
+  onRemove,
 }: SuperAdminTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof User>("full_name");
@@ -61,7 +64,7 @@ export function SuperAdminTable({
     "all" | "active" | "inactive"
   >("all");
   const [confirmAction, setConfirmAction] = useState<{
-    type: "activate" | "deactivate";
+    type: "activate" | "deactivate" | "remove";
     user: User;
   } | null>(null);
 
@@ -142,8 +145,10 @@ export function SuperAdminTable({
 
     if (confirmAction.type === "activate") {
       onActivate(confirmAction.user);
-    } else {
+    } else if (confirmAction.type === "deactivate") {
       onDeactivate(confirmAction.user);
+    } else if (confirmAction.type === "remove" && onRemove) {
+      onRemove(confirmAction.user);
     }
     setConfirmAction(null);
   };
@@ -431,6 +436,20 @@ export function SuperAdminTable({
                                 Activate
                               </DropdownMenuItem>
                             )}
+                            {onRemove && !isLastActiveAdmin(user) && (
+                              <>
+                                <div className="border-t border-gray-100 my-1"></div>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setConfirmAction({ type: "remove", user })
+                                  }
+                                  className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Remove Super Admin
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -482,6 +501,8 @@ export function SuperAdminTable({
               >
                 {confirmAction?.type === "activate" ? (
                   <Power className="w-5 h-5 text-green-600" />
+                ) : confirmAction?.type === "remove" ? (
+                  <Trash2 className="w-5 h-5 text-red-600" />
                 ) : (
                   <PowerOff className="w-5 h-5 text-red-600" />
                 )}
@@ -489,27 +510,51 @@ export function SuperAdminTable({
               <div>
                 <AlertDialogTitle className="text-lg font-semibold">
                   {confirmAction?.type === "activate"
-                    ? "Activate"
-                    : "Deactivate"}{" "}
-                  Super Admin
+                    ? "Activate Super Admin"
+                    : confirmAction?.type === "remove"
+                    ? "Remove Super Admin Role"
+                    : "Deactivate Super Admin"}
                 </AlertDialogTitle>
               </div>
             </div>
-            <AlertDialogDescription className="text-sm text-gray-600">
-              Are you sure you want to {confirmAction?.type}{" "}
-              <span className="font-medium text-gray-900">
-                &ldquo;{confirmAction?.user.full_name}&rdquo;
-              </span>
-              ?
+            <div className="space-y-3">
+              <AlertDialogDescription className="text-sm text-gray-600">
+                {confirmAction?.type === "remove" ? (
+                  <>
+                    Are you sure you want to remove super admin role from{" "}
+                    <span className="font-medium text-gray-900">
+                      &ldquo;{confirmAction?.user.full_name}&rdquo;
+                    </span>
+                    ?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to {confirmAction?.type}{" "}
+                    <span className="font-medium text-gray-900">
+                      &ldquo;{confirmAction?.user.full_name}&rdquo;
+                    </span>
+                    ?
+                  </>
+                )}
+              </AlertDialogDescription>
+
+              {confirmAction?.type === "remove" && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs text-red-800">
+                    This will permanently remove their super admin privileges. They will be downgraded to a visitor role and can be re-invited later if needed.
+                  </p>
+                </div>
+              )}
+
               {confirmAction?.type === "deactivate" && (
-                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-xs text-amber-800">
                     This will prevent them from accessing the admin portal and
                     all system functions.
                   </p>
                 </div>
               )}
-            </AlertDialogDescription>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel className="text-sm">Cancel</AlertDialogCancel>
@@ -523,6 +568,8 @@ export function SuperAdminTable({
             >
               {confirmAction?.type === "activate"
                 ? "Activate Admin"
+                : confirmAction?.type === "remove"
+                ? "Remove Super Admin"
                 : "Deactivate Admin"}
             </AlertDialogAction>
           </AlertDialogFooter>

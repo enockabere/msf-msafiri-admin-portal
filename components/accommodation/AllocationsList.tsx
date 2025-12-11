@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { Trash2, User, Eye, Building, Hotel, Loader2, UserCheck, Filter, Download, Printer, Users, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, User, Eye, Building, Hotel, Loader2, UserCheck, Filter, Download, Printer, Users, Search, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, LogOut, XCircle } from "lucide-react";
 import Swal from "sweetalert2";
 
 interface Allocation {
@@ -57,6 +57,10 @@ interface AllocationsListProps {
   deleting: number | null;
   onCheckIn?: (id: number) => void;
   checkingIn?: number | null;
+  onCheckOut?: (id: number) => void;
+  checkingOut?: number | null;
+  onCancelCheckIn?: (id: number) => void;
+  cancelling?: number | null;
   events?: Array<{ id: number; title: string }>;
   onBulkCheckIn?: (ids: number[]) => void;
   bulkCheckingIn?: boolean;
@@ -65,7 +69,7 @@ interface AllocationsListProps {
 type SortField = 'guest_name' | 'accommodation_type' | 'event' | 'days' | 'status';
 type SortDirection = 'asc' | 'desc' | null;
 
-export default function AllocationsList({ allocations, onDelete, deleting, onCheckIn, checkingIn, events = [], onBulkCheckIn, bulkCheckingIn }: AllocationsListProps) {
+export default function AllocationsList({ allocations, onDelete, deleting, onCheckIn, checkingIn, onCheckOut, checkingOut, onCancelCheckIn, cancelling, events = [], onBulkCheckIn, bulkCheckingIn }: AllocationsListProps) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -902,6 +906,96 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               <UserCheck className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        {allocation.status === 'checked_in' && onCheckOut && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 w-9 p-0 hover:bg-blue-100 text-blue-600 rounded-lg"
+                            onClick={async () => {
+                              const result = await Swal.fire({
+                                title: 'Check Out Guest?',
+                                text: `Check out ${allocation.guest_name}?`,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#2563eb',
+                                cancelButtonColor: '#6b7280',
+                                confirmButtonText: 'Yes, check out!',
+                                cancelButtonText: 'Cancel'
+                              });
+                              if (result.isConfirmed) {
+                                onCheckOut(allocation.id);
+                              }
+                            }}
+                            disabled={checkingOut === allocation.id}
+                            title="Check Out"
+                          >
+                            {checkingOut === allocation.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <LogOut className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        {allocation.status === 'checked_in' && onCancelCheckIn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 w-9 p-0 hover:bg-orange-100 text-orange-600 rounded-lg"
+                            onClick={async () => {
+                              const result = await Swal.fire({
+                                title: 'Cancel Check-In?',
+                                text: `Cancel check-in for ${allocation.guest_name}? Status will return to booked.`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#ea580c',
+                                cancelButtonColor: '#6b7280',
+                                confirmButtonText: 'Yes, cancel it!',
+                                cancelButtonText: 'No'
+                              });
+                              if (result.isConfirmed) {
+                                onCancelCheckIn(allocation.id);
+                              }
+                            }}
+                            disabled={cancelling === allocation.id}
+                            title="Cancel Check-In"
+                          >
+                            {cancelling === allocation.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                        {allocation.status === 'released' && onCancelCheckIn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 w-9 p-0 hover:bg-orange-100 text-orange-600 rounded-lg"
+                            onClick={async () => {
+                              const result = await Swal.fire({
+                                title: 'Cancel Check-Out?',
+                                text: `Cancel check-out for ${allocation.guest_name}? Status will return to booked.`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#ea580c',
+                                cancelButtonColor: '#6b7280',
+                                confirmButtonText: 'Yes, cancel it!',
+                                cancelButtonText: 'No'
+                              });
+                              if (result.isConfirmed) {
+                                onCancelCheckIn(allocation.id);
+                              }
+                            }}
+                            disabled={cancelling === allocation.id}
+                            title="Cancel Check-Out"
+                          >
+                            {cancelling === allocation.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
                             )}
                           </Button>
                         )}

@@ -362,6 +362,32 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
           {config.is_enabled && (
             <div className="space-y-4">
+              {/* Auto-Booking Information */}
+              <Alert className="border-blue-200 bg-blue-50/50">
+                <div className="flex gap-3">
+                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
+                    <Car className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Automatic Transport Booking Enabled</h4>
+                    <AlertDescription className="text-xs text-blue-800 space-y-1">
+                      <p>
+                        When enabled, transport is <strong>automatically booked</strong> when users confirm their flight itineraries on the mobile app.
+                      </p>
+                      <ul className="list-disc list-inside mt-2 space-y-0.5 ml-1">
+                        <li>Creates transport requests for both arrival and departure flights</li>
+                        <li>Automatically books with {TRANSPORT_PROVIDERS.find(p => p.value === selectedProvider)?.label} if configured</li>
+                        <li>Intelligently pools similar requests to optimize costs</li>
+                        <li>Falls back to manual booking if auto-booking fails</li>
+                      </ul>
+                      <p className="mt-2 text-blue-700">
+                        💡 <strong>Tip:</strong> When disabled, transport requests are still created but require manual driver assignment from the Transport Management page.
+                      </p>
+                    </AlertDescription>
+                  </div>
+                </div>
+              </Alert>
+
               {/* API Credentials Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

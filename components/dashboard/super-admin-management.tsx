@@ -113,6 +113,38 @@ export default function SuperAdminManagement() {
     }
   };
 
+  const handleRemove = async (user: User) => {
+    setActionLoading(user.id);
+    try {
+      await apiClient.removeSuperAdmin(user.id);
+
+      toast({
+        title: "Success",
+        description: `Super admin role removed from ${user.full_name}. They can now be re-invited if needed.`,
+      });
+
+      // Trigger notification event for dashboard
+      window.dispatchEvent(new CustomEvent('showNotification', {
+        detail: { type: 'success', message: `Super admin role removed from ${user.full_name}` }
+      }));
+
+      fetchSuperAdmins();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove super admin role",
+        variant: "destructive",
+      });
+
+      // Trigger error notification for dashboard
+      window.dispatchEvent(new CustomEvent('showNotification', {
+        detail: { type: 'error', message: 'Failed to remove super admin role' }
+      }));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const activeCount = superAdmins.filter((admin) => admin.is_active).length;
   const totalCount = superAdmins.length;
 
@@ -167,6 +199,7 @@ export default function SuperAdminManagement() {
           onActivate={() => {}}
           onDeactivate={() => {}}
           onResendInvite={() => {}}
+          onRemove={handleRemove}
         />
       </div>
 

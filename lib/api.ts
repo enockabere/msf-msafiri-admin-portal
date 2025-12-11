@@ -647,6 +647,12 @@ class ApiClient {
     });
   }
 
+  async removeSuperAdmin(userId: number): Promise<{ message: string }> {
+    return await this.request(`/super-admin/remove-super-admin/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
   async getPendingInvitations(): Promise<
     Array<{ id: number; email: string; full_name: string; created_at: string }>
   > {

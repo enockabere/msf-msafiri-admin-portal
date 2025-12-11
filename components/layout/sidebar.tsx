@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
   Calendar,
-  MessageSquare,
   Bell,
   Shield,
   Home,
@@ -34,7 +33,7 @@ import {
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useChatUnreadCount } from "@/hooks/useChatUnreadCount";
+
 // import { useWebSocketNotifications } from "@/hooks/useWebSocketNotifications";
 
 import { useEffect, useState } from "react";
@@ -264,7 +263,7 @@ export default function Sidebar({
             try {
               // Try to get the specific tenant by slug instead of all tenants
               const currentTenant = await apiClient.request(`/tenants/slug/${currentTenantSlug}`);
-              setIsTenantAdmin(currentTenant?.admin_email === user.email);
+              setIsTenantAdmin((currentTenant as any)?.admin_email === user.email);
             } catch (error) {
               console.error('Error checking tenant admin status:', error);
               setIsTenantAdmin(false);
@@ -390,7 +389,7 @@ export default function Sidebar({
                 item.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                 item.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
                 item.href,
-          children: item.children ? item.children.map(child => ({
+          children: (item as any).children ? (item as any).children.map((child: any) => ({
             ...child,
             href: child.href === '/inventory' ? `/tenant/${tenantSlug}/inventory` :
                   child.href === '/vendor-hotels' ? `/tenant/${tenantSlug}/vendor-hotels` :
@@ -416,8 +415,8 @@ export default function Sidebar({
 
     navItems.forEach(section => {
       section.items.forEach(item => {
-        if (item.isNested && item.children) {
-          const hasActiveChild = item.children.some(child => {
+        if ((item as any).isNested && (item as any).children) {
+          const hasActiveChild = (item as any).children.some((child: any) => {
             const normalizedPathname = pathname?.replace('/portal', '') || '';
             const normalizedChildHref = child.href.replace('/portal', '');
             return normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
@@ -664,7 +663,7 @@ export default function Sidebar({
 
               <div className="space-y-2 px-2 lg:px-3">
                 {section.items.map((item, index) => {
-                  const hasActiveChild = item.children && item.children.some(child => {
+                  const hasActiveChild = (item as any).children && (item as any).children.some((child: any) => {
                     const normalizedPathname = pathname?.replace('/portal', '') || '';
                     const normalizedChildHref = child.href.replace('/portal', '');
                     return normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
@@ -672,7 +671,7 @@ export default function Sidebar({
                   // Both parent and child should be active - parent is active if any child is active
                   const normalizedPathname = pathname?.replace('/portal', '') || '';
                   const normalizedItemHref = item.href.replace('/portal', '');
-                  const isActive = item.isNested
+                  const isActive = (item as any).isNested
                     ? hasActiveChild  // Parent menu is active if any child is active
                     : (normalizedPathname === normalizedItemHref || normalizedPathname?.startsWith(normalizedItemHref + '/'));
                   const badgeCount = getBadgeCount(item.badge, item.href);
@@ -681,7 +680,7 @@ export default function Sidebar({
                   return (
                     <div key={index}>
                       {/* Main menu item */}
-                      {item.isNested ? (
+                      {(item as any).isNested ? (
                         <div>
                           <button
                             onClick={() => {
@@ -740,9 +739,9 @@ export default function Sidebar({
                           </button>
 
                           {/* Nested items */}
-                          {(!collapsed || isMobile) && isExpanded && item.children && (
+                          {(!collapsed || isMobile) && isExpanded && (item as any).children && (
                             <div className="ml-6 mt-1.5 space-y-1 border-l-2 border-white/20 pl-3">
-                              {item.children.map((child, childIndex) => {
+                              {(item as any).children.map((child: any, childIndex: number) => {
                                 const normalizedPathname = pathname?.replace('/portal', '') || '';
                                 const normalizedChildHref = child.href.replace('/portal', '');
                                 const childIsActive = normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');

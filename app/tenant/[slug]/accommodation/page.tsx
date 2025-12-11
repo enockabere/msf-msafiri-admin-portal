@@ -60,6 +60,8 @@ export default function AccommodationPage() {
   const [deleting, setDeleting] = useState<number | null>(null);
   const [checkingIn, setCheckingIn] = useState<number | null>(null);
   const [bulkCheckingIn, setBulkCheckingIn] = useState(false);
+  const [checkingOut, setCheckingOut] = useState<number | null>(null);
+  const [cancelling, setCancelling] = useState<number | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -215,6 +217,66 @@ export default function AccommodationPage() {
     }
   };
 
+  const handleCheckOut = async (id: number) => {
+    setCheckingOut(id);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/status`,
+        {
+          method: "PATCH",
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: 'released' })
+        }
+      );
+
+      if (response.ok) {
+        fetchData();
+        toast({ title: "Success", description: "Guest checked out successfully" });
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    } finally {
+      setCheckingOut(null);
+    }
+  };
+
+  const handleCancelCheckIn = async (id: number) => {
+    setCancelling(id);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/allocations/${id}/status`,
+        {
+          method: "PATCH",
+          headers: { 
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: 'booked' })
+        }
+      );
+
+      if (response.ok) {
+        fetchData();
+        toast({ title: "Success", description: "Check-in cancelled successfully" });
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    } finally {
+      setCancelling(null);
+    }
+  };
+
   const handleRefreshAccommodations = async () => {
     setRefreshing(true);
     try {
@@ -343,6 +405,10 @@ export default function AccommodationPage() {
             deleting={deleting}
             onCheckIn={handleCheckIn}
             checkingIn={checkingIn}
+            onCheckOut={handleCheckOut}
+            checkingOut={checkingOut}
+            onCancelCheckIn={handleCancelCheckIn}
+            cancelling={cancelling}
             events={events}
             onBulkCheckIn={handleBulkCheckIn}
             bulkCheckingIn={bulkCheckingIn}
