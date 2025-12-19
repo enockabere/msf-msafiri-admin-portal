@@ -64,35 +64,23 @@ export default function DashboardPage() {
   const { selectedTenant, isAllTenantsSelected } = useTenant();
   const router = useRouter();
 
-
-
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      // Redirect non-super-admin users to their tenant dashboard
+      // Immediate redirect for non-super-admin users
       if (user.role !== "super_admin" && user.tenantId) {
-
-        router.push(`/tenant/${user.tenantId}/dashboard`);
+        router.replace(`/tenant/${user.tenantId}/dashboard`);
         return;
       }
     }
   }, [loading, isAuthenticated, user, router]);
 
-  if (loading) {
+  if (loading || !isAuthenticated) {
     return <DashboardLoading />;
   }
 
-  if (!isAuthenticated) {
+  // Show loading for non-super-admin users while redirecting
+  if (user?.role !== "super_admin") {
     return <DashboardLoading />;
-  }
-
-  // Only show unauthorized for non-admin users, but allow tenant admins to be redirected
-  if (!isAdmin && user?.role !== "hr_admin" && user?.role !== "mt_admin" && user?.role !== "event_admin") {
-    return <UnauthorizedAccess />;
-  }
-
-  // If user is a tenant admin but not super admin, they should be redirected (handled in useEffect)
-  if (user?.role !== "super_admin" && user?.tenantId) {
-    return <DashboardLoading />; // Show loading while redirecting
   }
 
   // Check if user is super admin

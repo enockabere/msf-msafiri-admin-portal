@@ -17,18 +17,20 @@ interface SessionUser {
 }
 
 // Use actual API role strings instead of enum
-type ValidRole = "super_admin" | "mt_admin" | "hr_admin" | "event_admin" | "staff" | "visitor" | "guest";
+type ValidRole = "super_admin" | "mt_admin" | "hr_admin" | "event_admin" | "vetting_committee" | "vetting_approver" | "staff" | "visitor" | "guest";
 
 // Main authentication hook
 export function useAuth() {
   const { data: session, status } = useSession();
 
-  // Use actual API role strings
-  const adminRoles: ValidRole[] = [
+  // Use actual API role strings - include vetting roles as they can access portal
+  const allowedRoles: ValidRole[] = [
     "super_admin",
     "mt_admin", 
     "hr_admin",
     "event_admin",
+    "vetting_committee",
+    "vetting_approver",
   ];
 
   return {
@@ -41,8 +43,8 @@ export function useAuth() {
 
     // Role-based permissions - handle both uppercase and lowercase
     isAdmin: session?.user?.role
-      ? adminRoles.includes(session.user.role.toLowerCase() as ValidRole) ||
-        ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'].includes(session.user.role.toUpperCase())
+      ? allowedRoles.includes(session.user.role.toLowerCase() as ValidRole) ||
+        ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN', 'VETTING_COMMITTEE', 'VETTING_APPROVER'].includes(session.user.role.toUpperCase())
       : false,
 
     // Super admin check using actual API role - handle both cases
@@ -95,16 +97,18 @@ export function useAuthenticatedApi() {
 
 // Utility functions for role-based access using actual API roles
 export const AuthUtils = {
-  // Check if role is admin - handle both uppercase and lowercase
+  // Check if role has portal access - handle both uppercase and lowercase
   isAdminRole: (role: string): boolean => {
-    const adminRoles: ValidRole[] = [
+    const allowedRoles: ValidRole[] = [
       "super_admin",
       "mt_admin", 
       "hr_admin",
       "event_admin",
+      "vetting_committee",
+      "vetting_approver",
     ];
-    const upperAdminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
-    return adminRoles.includes(role.toLowerCase() as ValidRole) || upperAdminRoles.includes(role.toUpperCase());
+    const upperAllowedRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN', 'VETTING_COMMITTEE', 'VETTING_APPROVER'];
+    return allowedRoles.includes(role.toLowerCase() as ValidRole) || upperAllowedRoles.includes(role.toUpperCase());
   },
 
   // Check if role is super admin - handle both cases
@@ -127,6 +131,10 @@ export const AuthUtils = {
         return "Staff";
       case "visitor":
         return "Visitor";
+      case "vetting_committee":
+        return "Vetting Committee";
+      case "vetting_approver":
+        return "Vetting Approver";
       case "guest":
         return "Guest";
       default:
@@ -149,6 +157,10 @@ export const AuthUtils = {
         return "bg-green-100 text-green-800";
       case "visitor":
         return "bg-purple-100 text-purple-800";
+      case "vetting_committee":
+        return "bg-indigo-100 text-indigo-800";
+      case "vetting_approver":
+        return "bg-cyan-100 text-cyan-800";
       case "guest":
         return "bg-gray-100 text-gray-800";
       default:

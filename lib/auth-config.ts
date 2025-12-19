@@ -3,8 +3,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import AzureADProvider from "next-auth/providers/azure-ad";
 import { JWT } from "next-auth/jwt";
 
-// Admin roles that can access the portal (using actual API role strings)
-const ADMIN_ROLES = ['super_admin', 'mt_admin', 'hr_admin', 'event_admin'];
+// Roles that can access the portal (using actual API role strings)
+const ALLOWED_ROLES = ['super_admin', 'mt_admin', 'hr_admin', 'event_admin', 'vetting_committee', 'vetting_approver'];
 
 // Token refresh function with rate limiting
 let refreshInProgress = false;
@@ -147,10 +147,10 @@ export const authOptions: NextAuthOptions = {
             hasToken: !!data.access_token
           });
           
-          // Check if user has admin role
-          if (!data.role || !ADMIN_ROLES.includes(data.role)) {
+          // Check if user has allowed role
+          if (!data.role || !ALLOWED_ROLES.includes(data.role)) {
             console.error('❌ Access denied - insufficient role:', data.role);
-            console.error('🔑 Required roles:', ADMIN_ROLES);
+            console.error('🔑 Required roles:', ALLOWED_ROLES);
             // Return null instead of throwing error
             return null;
           }
@@ -208,9 +208,9 @@ export const authOptions: NextAuthOptions = {
 
           const data = await response.json();
           
-          // Check if user has admin role
-          if (!data.role || !ADMIN_ROLES.includes(data.role)) {
-            console.error('❌ Access denied: User does not have admin role:', data.role);
+          // Check if user has allowed role
+          if (!data.role || !ALLOWED_ROLES.includes(data.role)) {
+            console.error('❌ Access denied: User does not have allowed role:', data.role);
             console.error('📋 Available roles in response:', Object.keys(data));
             // Redirect to error page with specific message
             throw new Error('insufficient_role');
@@ -261,9 +261,9 @@ export const authOptions: NextAuthOptions = {
       return await refreshAccessToken(token);
     },
     async session({ session, token }) {
-      // If token has error, throw to force logout
+      // If token has error, return null to force logout gracefully
       if (token.error === 'RefreshAccessTokenError') {
-        throw new Error('Session expired');
+        return null;
       }
 
       if (token && session?.user) {
@@ -278,8 +278,13 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
+      // Handle session expiration redirects
+      if (url.includes('session_expired') || url.includes('SessionRequired')) {
+        return `${baseUrl}/login`;
+      }
+      
       if (url.includes('/auth/error') || url.includes('error=')) {
-        return `${baseUrl}/login?error=access_denied`;
+        return `${baseUrl}/login`;
       }
       
       if (url.startsWith('/')) {
@@ -290,8 +295,8 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
       
-      // Default redirect to dashboard
-      return `${baseUrl}/dashboard`;
+      // Default redirect to login for unauthenticated users
+      return `${baseUrl}/login`;
     },
   },
   pages: {

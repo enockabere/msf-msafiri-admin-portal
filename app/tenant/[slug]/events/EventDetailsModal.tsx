@@ -26,6 +26,7 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthenticatedApi } from "@/lib/auth";
 import EventParticipants from "./EventParticipants";
 import EventAttachments from "./EventAttachments";
 import EventAllocations from "./EventAllocations";
@@ -89,6 +90,8 @@ interface EventDetailsModalProps {
   onClose: () => void;
   tenantSlug: string;
   canManageEvents?: boolean;
+  isVettingCommitteeOnly?: boolean;
+  isApproverOnly?: boolean;
 }
 
 export default function EventDetailsModal({
@@ -97,8 +100,13 @@ export default function EventDetailsModal({
   onClose,
   tenantSlug,
   canManageEvents = true,
+  isVettingCommitteeOnly = false,
+  isApproverOnly = false,
 }: EventDetailsModalProps) {
-  const { accessToken, isAuthenticated } = useAuth();
+  const { accessToken, isAuthenticated, user } = useAuth();
+  const { apiClient } = useAuthenticatedApi();
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [vettingStatus, setVettingStatus] = useState<string>('pending');
   const [activeTab, setActiveTab] = useState("overview");
   const [tabLoading, setTabLoading] = useState(false);
 
@@ -349,6 +357,47 @@ export default function EventDetailsModal({
   useEffect(() => {
     if (event && isOpen) {
       const loadData = async () => {
+        // Fetch user roles
+        if (user?.id) {
+          try {
+            const roles = await apiClient.request<{role: string}[]>(`/user-roles/user/${user.id}`);
+            const roleNames = roles.map(r => r.role);
+            if (user.role) roleNames.push(user.role);
+            setUserRoles([...new Set(roleNames)]);
+          } catch {
+            setUserRoles(user.role ? [user.role] : []);
+          }
+        }
+        
+        // Fetch vetting status
+        try {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-participants/permissions?event_id=${event.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            const apiStatus = data.vetting_status;
+            // Map API enum values to frontend expected values
+            let mappedStatus = 'pending';
+            if (apiStatus === 'SUBMITTED_FOR_APPROVAL') {
+              mappedStatus = 'submitted';
+            } else if (apiStatus === 'APPROVED') {
+              mappedStatus = 'approved';
+            } else if (apiStatus === 'REJECTED') {
+              mappedStatus = 'rejected';
+            }
+            setVettingStatus(mappedStatus);
+          }
+        } catch {
+          setVettingStatus('pending');
+        }
+        
         await Promise.all([
           fetchFeedbackStats(),
           fetchFeedback(),
@@ -366,6 +415,9 @@ export default function EventDetailsModal({
   }, [
     event,
     isOpen,
+    user?.id,
+    user?.role,
+    apiClient,
     fetchFeedbackStats,
     fetchFeedback,
     fetchStatusSuggestions,
@@ -588,48 +640,52 @@ export default function EventDetailsModal({
                 </span>
               </TabsTrigger>
 
-              <TabsTrigger
-                value="attachments"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
-              >
-                <Paperclip className="h-4 w-4" />
-                <span className="hidden sm:inline">Files</span>
-                <span className="sm:hidden">F</span>
-                <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
-                  {attachmentsCount}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="allocations"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50 hidden sm:inline-flex"
-              >
-                <Settings className="h-4 w-4" />
-                <span className="hidden lg:inline">Allocations</span>
-                <span className="lg:hidden">Alloc</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="agenda"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">Agenda</span>
-                <span className="sm:hidden">A</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="food"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
-              >
-                <UtensilsCrossed className="h-4 w-4" />
-                <span className="hidden sm:inline">Food</span>
-                <span className="sm:hidden">F</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="feedback"
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
-              >
-                <Star className="h-4 w-4" />
-                <span className="whitespace-nowrap">Feedback</span>
-              </TabsTrigger>
+              {!isVettingCommitteeOnly && !isApproverOnly && (
+                <>
+                  <TabsTrigger
+                    value="attachments"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    <span className="hidden sm:inline">Files</span>
+                    <span className="sm:hidden">F</span>
+                    <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 data-[state=active]:bg-white/20 data-[state=active]:text-white">
+                      {attachmentsCount}
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="allocations"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50 hidden sm:inline-flex"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden lg:inline">Allocations</span>
+                    <span className="lg:hidden">Alloc</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="agenda"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span className="hidden sm:inline">Agenda</span>
+                    <span className="sm:hidden">A</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="food"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
+                  >
+                    <UtensilsCrossed className="h-4 w-4" />
+                    <span className="hidden sm:inline">Food</span>
+                    <span className="sm:hidden">F</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="feedback"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
+                  >
+                    <Star className="h-4 w-4" />
+                    <span className="whitespace-nowrap">Feedback</span>
+                  </TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             <div className="flex-1 overflow-y-auto relative">
@@ -798,15 +854,30 @@ export default function EventDetailsModal({
                             })}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-xs font-normal text-gray-600">Registration Deadline:</span>
-                          <span className="text-xs text-gray-900 font-medium">
-                            {event.registration_deadline
-                              ? new Date(event.registration_deadline).toLocaleDateString('en-US', {
-                                  month: 'short', day: 'numeric', year: 'numeric'
-                                })
-                              : "Not set"}
-                          </span>
+                        <div className="py-2 border-b border-gray-100">
+                          <div className="flex justify-between items-start">
+                            <span className="text-xs font-normal text-gray-600">Registration Deadline:</span>
+                            <div className="text-right">
+                              {event.registration_deadline ? (
+                                <>
+                                  <div className="text-xs text-gray-900 font-medium">
+                                    {new Date(event.registration_deadline + 'T09:00').toLocaleDateString('en-US', {
+                                      month: 'short', day: 'numeric', year: 'numeric'
+                                    })}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {new Date(event.registration_deadline + 'T09:00').toLocaleTimeString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    })} {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-xs text-gray-900 font-medium">Not set</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                         <div className="flex justify-between items-center py-2">
                           <span className="text-xs font-normal text-gray-600">Duration:</span>
@@ -1097,12 +1168,29 @@ export default function EventDetailsModal({
                 value="participants"
                 className="mt-4 bg-white mx-4 sm:mx-6 p-4 sm:p-6 rounded-lg border shadow-sm"
               >
+
                 <EventParticipants
                   eventId={event.id}
                   tenantSlug={tenantSlug}
                   onParticipantsChange={handleParticipantsChange}
                   eventHasEnded={eventHasEnded}
                   canManageEvents={canManageEvents}
+                  vettingMode={(() => {
+                    const isVettingCommittee = userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role));
+                    const isVettingApprover = userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role));
+
+                    // Committee can only edit when no submission exists (status is not submitted/pending/approved/rejected)
+                    const committeeCanEdit = isVettingCommittee && vettingStatus !== 'submitted' && vettingStatus !== 'pending' && vettingStatus !== 'approved' && vettingStatus !== 'rejected';
+                    // Approver can only edit when submission is pending approval
+                    const approverCanEdit = isVettingApprover && (vettingStatus === 'submitted' || vettingStatus === 'pending');
+
+                    return {
+                      isVettingCommittee,
+                      isVettingApprover,
+                      canEdit: committeeCanEdit || approverCanEdit,
+                      submissionStatus: vettingStatus === 'submitted' ? 'pending' : vettingStatus
+                    };
+                  })()}
                 />
               </TabsContent>
 

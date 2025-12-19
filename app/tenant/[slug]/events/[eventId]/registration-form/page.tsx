@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmailTemplateEditor } from "@/components/ui/email-template-editor";
 import {
   Loader2,
   Calendar,
@@ -30,10 +31,13 @@ import {
   Check,
   AlertCircle,
   X,
+  ArrowUp,
 } from "lucide-react";
 import { toast as sonnerToast } from "sonner";
 import { LoadingScreen } from "@/components/ui/loading";
 import { Progress } from "@/components/ui/progress";
+import FormBuilder from "@/components/forms/FormBuilder";
+import DynamicFormPreview from "@/components/forms/DynamicFormPreview";
 
 interface Event {
   id: number;
@@ -89,6 +93,7 @@ export default function EventRegistrationFormPage() {
   const [emailBody, setEmailBody] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [ccEmails, setCcEmails] = useState("");
+  const [bccEmails, setBccEmails] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -129,6 +134,7 @@ export default function EventRegistrationFormPage() {
   const [hasDietaryRequirements, setHasDietaryRequirements] = useState(false);
   const [countries, setCountries] = useState<string[]>([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const tenantSlug = params.slug as string;
   const eventId = params.eventId as string;
@@ -201,18 +207,26 @@ export default function EventRegistrationFormPage() {
   }, [apiClient]);
 
   const fetchEvent = useCallback(async () => {
+    console.log("🔵 Fetching event...");
+    console.log("  Event ID:", eventId);
+    console.log("  Tenant:", tenantSlug);
     try {
       const eventData = await apiClient.request<Event>(`/events/${eventId}?tenant=${tenantSlug}`);
+      console.log("✅ Event fetched successfully:", eventData.title);
       setEvent(eventData);
       setEmailSubject(`Registration: ${eventData.title}`);
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
-      setEmailBody(
-        `Please register for ${eventData.title} using this link: <a href="${baseUrl}/public/event-registration/${eventId}" target="_blank">${baseUrl}/public/event-registration/${eventId}</a>`
-      );
-    } catch (error) {
-      console.error("Error fetching event:", error);
+      setEmailBody("");
+    } catch (error: any) {
+      console.error("🔴 Error fetching event:", error);
+      console.error("🔴 Error status:", error?.status);
+      console.error("🔴 Error message:", error?.message);
+      console.error("🔴 Error response:", error?.response);
+      console.error("🔴 Full error object:", JSON.stringify(error, null, 2));
+
+      const errorMessage = error?.message || error?.detail || "Failed to fetch event details";
       sonnerToast.error("Error", {
-        description: "Failed to fetch event details",
+        description: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -222,7 +236,7 @@ export default function EventRegistrationFormPage() {
   useEffect(() => {
     fetchEvent();
     fetchCountries();
-    
+
     // Clear form data on page unload for privacy
     const handleBeforeUnload = () => {
       setFormData({
@@ -235,10 +249,74 @@ export default function EventRegistrationFormPage() {
         codeOfConductConfirm: "", travelRequirementsConfirm: ""
       });
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [fetchEvent, fetchCountries]);
+
+  // Scroll-to-top button visibility - Find the actual scrolling element
+  useEffect(() => {
+    console.log('🔵 Setting up scroll listener');
+
+    // DashboardLayout likely has the scrolling container, not window
+    const findScrollContainer = () => {
+      // Try to find main content area that scrolls
+      const main = document.querySelector('main');
+      const scrollableDiv = document.querySelector('[style*="overflow"]');
+      console.log('🔍 Found main:', !!main, 'Found scrollable:', !!scrollableDiv);
+      return main || scrollableDiv || window;
+    };
+
+    let scrollContainer: any = null;
+
+    const handleScroll = (e?: Event) => {
+      // Get scroll position from the correct element
+      let scrollY = 0;
+      if (scrollContainer === window) {
+        scrollY = window.scrollY || window.pageYOffset;
+      } else if (scrollContainer) {
+        scrollY = scrollContainer.scrollTop;
+      }
+
+      const shouldShow = scrollY > 400;
+      console.log('📜 Scroll Event - Y:', scrollY, 'Show Button:', shouldShow, 'Container:', scrollContainer === window ? 'window' : 'element');
+      setShowScrollTop(shouldShow);
+    };
+
+    // Setup with delay to ensure DOM is ready
+    setTimeout(() => {
+      scrollContainer = findScrollContainer();
+      console.log('📍 Initial scroll check on:', scrollContainer);
+      handleScroll();
+
+      if (scrollContainer) {
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        console.log('✅ Scroll listener added to:', scrollContainer === window ? 'window' : 'DOM element');
+      }
+    }, 100);
+
+    return () => {
+      if (scrollContainer) {
+        console.log('🔴 Removing scroll listener');
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    console.log('⬆️ Scroll to top clicked!');
+    // Scroll both window and any scrollable container
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const main = document.querySelector('main');
+    if (main) {
+      main.scrollTop = 0;
+    }
+  };
+
+  // Log whenever showScrollTop changes
+  useEffect(() => {
+    console.log('🎯 showScrollTop state changed to:', showScrollTop);
+  }, [showScrollTop]);
 
   const handleInputChange = (
     field: keyof FormData,
@@ -472,9 +550,8 @@ export default function EventRegistrationFormPage() {
 
   const handleEmailShare = async () => {
     const subject = emailSubject || `Registration: ${event?.title}`;
-    const body =
-      emailBody ||
-      `Please register for ${event?.title} using this link: ${publicUrl}`;
+    const registrationLinkHtml = `<div style="margin: 20px 0; padding: 15px; background: #f3f4f6; border-left: 4px solid #dc2626; border-radius: 4px;"><p style="margin: 0;">Please register using this link:</p><p style="margin: 8px 0 0 0;"><a href="${publicUrl}" target="_blank" style="color: #ffffff; background-color: #dc2626; padding: 10px 20px; text-decoration: none; font-weight: 500; border-radius: 4px; display: inline-block;">Register Now</a></p><p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">Or copy and paste this link: ${publicUrl}</p></div>`;
+    const body = emailBody + registrationLinkHtml;
 
     if (!recipientEmail) {
       sonnerToast.error("Email Required", {
@@ -485,6 +562,7 @@ export default function EventRegistrationFormPage() {
     
     const toEmails = recipientEmail.split(',').map(email => email.trim()).filter(email => email);
     const ccEmailsList = ccEmails ? ccEmails.split(',').map(email => email.trim()).filter(email => email) : [];
+    const bccEmailsList = bccEmails ? bccEmails.split(',').map(email => email.trim()).filter(email => email) : [];
     
     try {
       setSendingEmail(true);
@@ -494,6 +572,7 @@ export default function EventRegistrationFormPage() {
         body: JSON.stringify({
           to_email: toEmails[0], // Primary recipient
           cc_emails: [...toEmails.slice(1), ...ccEmailsList], // Additional recipients as CC
+          bcc_emails: bccEmailsList, // BCC recipients
           subject,
           message: body,
           registration_url: publicUrl,
@@ -501,17 +580,19 @@ export default function EventRegistrationFormPage() {
         })
       });
 
-      const totalRecipients = toEmails.length + ccEmailsList.length;
+      const totalRecipients = toEmails.length + ccEmailsList.length + bccEmailsList.length;
       sonnerToast.success("Email Sent", {
         description: `Registration link sent to ${totalRecipients} recipient(s)`,
       });
     } catch {
       // Fallback to mailto
       const allCcEmails = [...toEmails.slice(1), ...ccEmailsList].join(',');
+      const allBccEmails = bccEmailsList.join(',');
       const ccParam = allCcEmails ? `&cc=${encodeURIComponent(allCcEmails)}` : '';
+      const bccParam = allBccEmails ? `&bcc=${encodeURIComponent(allBccEmails)}` : '';
       const mailtoUrl = `mailto:${encodeURIComponent(toEmails[0])}?subject=${encodeURIComponent(
         subject
-      )}&body=${encodeURIComponent(body)}${ccParam}`;
+      )}&body=${encodeURIComponent(body)}${ccParam}${bccParam}`;
       window.open(mailtoUrl);
 
       sonnerToast.success("Email Client Opened", {
@@ -653,62 +734,13 @@ export default function EventRegistrationFormPage() {
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <Card className="border-0 shadow-md">
-            <CardContent className="pt-6">
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-medium text-gray-700">
-                    Step {currentStep} of {steps.length}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {Math.round(progress)}% Complete
-                  </span>
-                </div>
-                <Progress value={progress} className="h-2" />
-              </div>
 
-              <div className="flex justify-between">
-                {steps.map((step) => (
-                  <div
-                    key={step.number}
-                    className="flex flex-col items-center flex-1"
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-                        step.number < currentStep
-                          ? "bg-green-500 text-white"
-                          : step.number === currentStep
-                          ? "bg-red-600 text-white ring-4 ring-red-100"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      {step.number < currentStep ? (
-                        <Check className="w-5 h-5" />
-                      ) : (
-                        step.number
-                      )}
-                    </div>
-                    <span
-                      className={`text-xs mt-2 text-center hidden sm:block ${
-                        step.number === currentStep
-                          ? "text-red-600 font-semibold"
-                          : "text-gray-600"
-                      }`}
-                    >
-                      {step.title}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Share Modal */}
           <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-            <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col bg-white p-0 gap-0">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col bg-white p-0 gap-0">
               <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                <DialogTitle className="text-xl font-semibold">Share Registration Form</DialogTitle>
+                <DialogTitle className="text-xl font-semibold">Share Application Form</DialogTitle>
               </DialogHeader>
 
               {/* Scrollable Content */}
@@ -724,7 +756,7 @@ export default function EventRegistrationFormPage() {
 
                 <Button
                   onClick={handleCopyLink}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white h-10"
                 >
                   <Copy className="w-4 h-4 mr-2" />
                   Copy Link
@@ -765,6 +797,22 @@ export default function EventRegistrationFormPage() {
                   </div>
                   <div>
                     <Label
+                      htmlFor="bccEmails"
+                      className="text-sm font-medium text-gray-700"
+                    >
+                      BCC (Optional)
+                    </Label>
+                    <Input
+                      id="bccEmails"
+                      value={bccEmails}
+                      onChange={(e) => setBccEmails(e.target.value)}
+                      placeholder="bcc1@example.com, bcc2@example.com"
+                      className="mt-1.5 h-10 border-gray-300 focus:border-blue-500 text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Separate multiple emails with commas</p>
+                  </div>
+                  <div>
+                    <Label
                       htmlFor="emailSubject"
                       className="text-sm font-medium text-gray-700"
                     >
@@ -779,16 +827,17 @@ export default function EventRegistrationFormPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="emailBody" className="text-sm font-medium text-gray-700">
-                      Email Message
+                    <Label htmlFor="emailBody" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Email Template
                     </Label>
-                    <textarea
-                      id="emailBody"
+                    <EmailTemplateEditor
                       value={emailBody}
-                      onChange={(e) => setEmailBody(e.target.value)}
+                      onChange={setEmailBody}
+                      registrationUrl={publicUrl}
+                      eventTitle={event?.title || ''}
                       placeholder={`Please register for ${event?.title} using the link provided.`}
-                      rows={3}
-                      className="w-full p-2.5 border border-gray-300 rounded-lg resize-none mt-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      height={350}
+                      protectedContent={`<a href="${publicUrl}" target="_blank" style="color: #dc2626; text-decoration: underline;">${publicUrl}</a>`}
                     />
                   </div>
                 </div>
@@ -826,889 +875,53 @@ export default function EventRegistrationFormPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Form Content */}
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-6 sm:p-8">
-              {/* Step 1: Personal Information */}
-              {currentStep === 1 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Personal Information
-                    </h2>
-                    <p className="text-gray-600">
-                      Please provide your basic personal details
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="firstName"
-                        className="text-sm font-medium flex items-center gap-1"
-                      >
-                        First Name <span className="text-red-500">*</span>
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        As stated in passport
-                      </p>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          handleInputChange("firstName", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="Enter your first name"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="lastName"
-                        className="text-sm font-medium flex items-center gap-1"
-                      >
-                        Last Name <span className="text-red-500">*</span>
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        As stated in passport
-                      </p>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          handleInputChange("lastName", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="Enter your last name"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      What is your OC? <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={formData.oc}
-                      onValueChange={(value) => handleInputChange("oc", value)}
-                      className="grid grid-cols-2 sm:grid-cols-3 gap-3"
-                    >
-                      {["OCA", "OCB", "OCBA", "OCG", "OCP", "WACA"].map(
-                        (oc) => (
-                          <div
-                            key={oc}
-                            className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                            onClick={() => handleInputChange("oc", oc)}
-                          >
-                            <RadioGroupItem value={oc} id={oc} className="pointer-events-none" />
-                            <Label
-                              htmlFor={oc}
-                              className="font-medium cursor-pointer flex-1 pointer-events-none text-sm"
-                            >
-                              {oc}
-                            </Label>
-                          </div>
-                        )
-                      )}
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      Contract Status <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={formData.contractStatus}
-                      onValueChange={(value) =>
-                        handleInputChange("contractStatus", value)
-                      }
-                      className="space-y-3"
-                    >
-                      {["On contract", "Between contracts"].map((status) => (
-                        <div
-                          key={status}
-                          className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                          onClick={() => handleInputChange("contractStatus", status)}
-                        >
-                          <RadioGroupItem value={status} id={status} className="pointer-events-none" />
-                          <Label
-                            htmlFor={status}
-                            className="cursor-pointer flex-1 pointer-events-none text-sm"
-                          >
-                            {status}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      Type of Contract <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      HQ = Headquarters Contract | IMS = International Mobile
-                      Staff | LRS = Locally Recruited Staff
-                    </p>
-                    <RadioGroup
-                      value={formData.contractType}
-                      onValueChange={(value) =>
-                        handleInputChange("contractType", value)
-                      }
-                      className="grid grid-cols-2 gap-3"
-                    >
-                      {["HQ", "IMS", "LRS", "Other"].map((type) => (
-                        <div
-                          key={type}
-                          className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                          onClick={() => handleInputChange("contractType", type)}
-                        >
-                          <RadioGroupItem value={type} id={type} className="pointer-events-none" />
-                          <Label htmlFor={type} className="cursor-pointer pointer-events-none text-sm">
-                            {type}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium flex items-center gap-1">
-                        Gender Identity <span className="text-red-500">*</span>
-                      </Label>
-                      <RadioGroup
-                        value={formData.genderIdentity}
-                        onValueChange={(value) =>
-                          handleInputChange("genderIdentity", value)
-                        }
-                        className="space-y-2"
-                      >
-                        {[
-                          "Man",
-                          "Woman",
-                          "Non-binary",
-                          "Prefer to self-describe",
-                          "Prefer not to disclose",
-                        ].map((gender) => (
-                          <div
-                            key={gender}
-                            className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                            onClick={() => handleInputChange("genderIdentity", gender)}
-                          >
-                            <RadioGroupItem value={gender} id={gender} className="pointer-events-none" />
-                            <Label
-                              htmlFor={gender}
-                              className="cursor-pointer pointer-events-none flex-1 text-sm"
-                            >
-                              {gender}
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium flex items-center gap-1">
-                        Sex <span className="text-red-500">*</span>
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        As indicated in your passport
-                      </p>
-                      <RadioGroup
-                        value={formData.sex}
-                        onValueChange={(value) =>
-                          handleInputChange("sex", value)
-                        }
-                        className="space-y-2"
-                      >
-                        {["Female", "Male", "Other"].map((sex) => (
-                          <div
-                            key={sex}
-                            className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                            onClick={() => handleInputChange("sex", sex)}
-                          >
-                            <RadioGroupItem value={sex} id={sex} className="pointer-events-none" />
-                            <Label
-                              htmlFor={sex}
-                              className="cursor-pointer pointer-events-none flex-1 text-sm"
-                            >
-                              {sex}
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium flex items-center gap-1">
-                        Pronouns <span className="text-red-500">*</span>
-                      </Label>
-                      <RadioGroup
-                        value={formData.pronouns}
-                        onValueChange={(value) =>
-                          handleInputChange("pronouns", value)
-                        }
-                        className="space-y-2"
-                      >
-                        {["He / him", "She / her", "They / Them", "Other"].map(
-                          (pronoun) => (
-                            <div
-                              key={pronoun}
-                              className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                              onClick={() => handleInputChange("pronouns", pronoun)}
-                            >
-                              <RadioGroupItem value={pronoun} id={pronoun} className="pointer-events-none" />
-                              <Label
-                                htmlFor={pronoun}
-                                className="cursor-pointer pointer-events-none flex-1 text-sm"
-                              >
-                                {pronoun}
-                              </Label>
-                            </div>
-                          )
-                        )}
-                      </RadioGroup>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="currentPosition"
-                      className="text-sm font-medium flex items-center gap-1"
-                    >
-                      Current (or most recent) Position{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="currentPosition"
-                      value={formData.currentPosition}
-                      onChange={(e) =>
-                        handleInputChange("currentPosition", e.target.value)
-                      }
-                      className="h-10 border-2 focus:border-red-500 text-sm"
-                      placeholder="e.g., Project Coordinator"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="countryOfWork"
-                        className="text-sm font-medium"
-                      >
-                        Country of Work
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        Leave blank if between programs
-                      </p>
-                      <Input
-                        id="countryOfWork"
-                        value={formData.countryOfWork}
-                        onChange={(e) =>
-                          handleInputChange("countryOfWork", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="e.g., Kenya"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="projectOfWork"
-                        className="text-sm font-medium"
-                      >
-                        Project of Work
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        Leave blank if not applicable
-                      </p>
-                      <Input
-                        id="projectOfWork"
-                        value={formData.projectOfWork}
-                        onChange={(e) =>
-                          handleInputChange("projectOfWork", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="e.g., Nairobi Project"
-                      />
-                    </div>
-                  </div>
+          {/* Form Builder */}
+          <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+            <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                 </div>
-              )}
-
-              {/* Step 2: Contact Details */}
-              {currentStep === 2 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Contact Details
-                    </h2>
-                    <p className="text-gray-600">
-                      Provide your email addresses and phone number
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="personalEmail"
-                      className="text-sm font-medium flex items-center gap-1"
-                    >
-                      Personal/Tembo Email Address{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      This will be used for all communication. If on Tembo, use
-                      that email.
-                    </p>
-                    <Input
-                      id="personalEmail"
-                      type="email"
-                      value={formData.personalEmail}
-                      onChange={(e) =>
-                        handleInputChange("personalEmail", e.target.value)
-                      }
-                      className={`h-10 border-2 focus:border-red-500 text-sm ${emailError ? 'border-red-500' : ''}`}
-                      placeholder="your.email@example.com"
-                    />
-                    {emailError && (
-                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
-                    )}
-                    {checkingEmail && (
-                      <p className="text-blue-500 text-sm mt-1 flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Checking email...
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="msfEmail" className="text-sm font-medium">
-                        MSF Email
-                      </Label>
-                      <Input
-                        id="msfEmail"
-                        type="email"
-                        value={formData.msfEmail}
-                        onChange={(e) =>
-                          handleInputChange("msfEmail", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="your.name@msf.org"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="hrcoEmail"
-                        className="text-sm font-medium"
-                      >
-                        HRCo Email
-                      </Label>
-                      <Input
-                        id="hrcoEmail"
-                        type="email"
-                        value={formData.hrcoEmail}
-                        onChange={(e) =>
-                          handleInputChange("hrcoEmail", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="hrco@example.com"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="careerManagerEmail"
-                        className="text-sm font-medium"
-                      >
-                        Career Manager Email
-                      </Label>
-                      <Input
-                        id="careerManagerEmail"
-                        type="email"
-                        value={formData.careerManagerEmail}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "careerManagerEmail",
-                            e.target.value
-                          )
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="manager@example.com"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="lineManagerEmail"
-                        className="text-sm font-medium"
-                      >
-                        Line Manager Email
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        If not OCA, add hosting OC email
-                      </p>
-                      <Input
-                        id="lineManagerEmail"
-                        type="email"
-                        value={formData.lineManagerEmail}
-                        onChange={(e) =>
-                          handleInputChange("lineManagerEmail", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="line.manager@example.com"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="phoneNumber"
-                        className="text-sm font-medium flex items-center gap-1"
-                      >
-                        Phone Number <span className="text-red-500">*</span>
-                      </Label>
-                      <p className="text-xs text-gray-500">
-                        Include country code (e.g., 00 30 123456789)
-                      </p>
-                      <Input
-                        id="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={(e) =>
-                          handleInputChange("phoneNumber", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-red-500 text-sm"
-                        placeholder="00 XX XXXXXXXXX"
-                      />
-                    </div>
-                  </div>
+                <div className="flex-1">
+                  <CardTitle className="text-xl text-gray-900">Form Builder</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Customize your event registration form by adding, editing, or removing fields
+                  </p>
                 </div>
-              )}
-
-              {/* Step 3: Travel & Accommodation */}
-              {currentStep === 3 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Travel & Accommodation
-                    </h2>
-                    <p className="text-gray-600">
-                      Tell us about your travel and accommodation needs
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      Will you be travelling internationally for this event?{" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={formData.travellingInternationally}
-                      onValueChange={(value) =>
-                        handleInputChange("travellingInternationally", value)
-                      }
-                      className="space-y-3"
-                    >
-                      {["Yes", "No"].map((option) => (
-                        <div
-                          key={option}
-                          className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                          onClick={() => handleInputChange("travellingInternationally", option)}
-                        >
-                          <RadioGroupItem
-                            value={option}
-                            id={`travel-${option}`}
-                            className="pointer-events-none"
-                          />
-                          <Label
-                            htmlFor={`travel-${option}`}
-                            className="cursor-pointer flex-1 pointer-events-none text-sm"
-                          >
-                            {option}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-
-                  {formData.travellingInternationally === "Yes" && (
-                    <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 space-y-3">
-                      <Label className="text-sm font-medium flex items-center gap-1">
-                        What is your nationality? <span className="text-red-500">*</span>
-                      </Label>
-                      {loadingCountries ? (
-                        <div className="flex items-center gap-2 p-3 bg-white border-2 rounded-lg">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span className="text-sm text-gray-600">Loading countries...</span>
-                        </div>
-                      ) : (
-                        <select
-                          value={formData.travellingFromCountry}
-                          onChange={(e) => handleInputChange("travellingFromCountry", e.target.value)}
-                          className="w-full p-3 border-2 focus:border-blue-500 bg-white rounded-lg text-sm"
-                        >
-                          <option value="">Select a country</option>
-                          {countries.map((country) => (
-                            <option key={country} value={country}>
-                              {country}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      Accommodation Type <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-gray-500 mb-2">
-                      {tenantSlug.toUpperCase()} provides free accommodation for all participants
-                    </p>
-                    <RadioGroup
-                      value={formData.accommodationType}
-                      onValueChange={(value) =>
-                        handleInputChange("accommodationType", value)
-                      }
-                      className="space-y-3"
-                    >
-                      <div
-                        className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                        onClick={() => handleInputChange("accommodationType", "Staying at accommodation")}
-                      >
-                        <RadioGroupItem
-                          value="Staying at accommodation"
-                          id="staying"
-                          className="pointer-events-none"
-                        />
-                        <Label
-                          htmlFor="staying"
-                          className="cursor-pointer flex-1 pointer-events-none"
-                        >
-                          <span className="font-medium text-sm">
-                            Staying at {tenantSlug.toUpperCase()} accommodation overnight
-                          </span>
-                        </Label>
-                      </div>
-                      <div
-                        className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11"
-                        onClick={() => handleInputChange("accommodationType", "Travelling daily")}
-                      >
-                        <RadioGroupItem
-                          value="Travelling daily"
-                          id="travelling"
-                          className="pointer-events-none"
-                        />
-                        <Label
-                          htmlFor="travelling"
-                          className="cursor-pointer flex-1 pointer-events-none"
-                        >
-                          <span className="font-medium text-sm">
-                            Travelling daily and staying elsewhere
-                          </span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {formData.accommodationType === "Travelling daily" && (
-                    <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-4">
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium flex items-center gap-1">
-                          Which meals would you like at the venue?{" "}
-                          <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="space-y-2">
-                          {["Breakfast", "Lunch", "Dinner", "Other"].map(
-                            (meal) => (
-                              <div
-                                key={meal}
-                                className="flex items-center space-x-3 p-3 bg-white border-2 rounded-lg hover:bg-red-50 hover:border-red-500 transition-all h-11"
-                              >
-                                <input
-                                  type="checkbox"
-                                  id={meal}
-                                  checked={formData.dailyMeals.includes(meal)}
-                                  onChange={(e) =>
-                                    handleMealChange(meal, e.target.checked)
-                                  }
-                                  className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                                />
-                                <Label
-                                  htmlFor={meal}
-                                  className="cursor-pointer flex-1 text-sm"
-                                >
-                                  {meal}
-                                </Label>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3 p-3 border-2 rounded-lg hover:border-red-500 hover:bg-red-50 transition-all cursor-pointer h-11">
-                      <input
-                        type="checkbox"
-                        id="hasDietaryRequirements"
-                        checked={hasDietaryRequirements}
-                        onChange={(e) => {
-                          setHasDietaryRequirements(e.target.checked);
-                          if (!e.target.checked) {
-                            handleInputChange("dietaryRequirements", "");
-                          }
-                        }}
-                        className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
-                      />
-                      <Label
-                        htmlFor="hasDietaryRequirements"
-                        className="cursor-pointer flex-1 font-medium text-sm"
-                      >
-                        I have special dietary requirements
-                      </Label>
-                    </div>
-
-                    {hasDietaryRequirements && (
-                      <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-2">
-                        <Label
-                          htmlFor="dietaryRequirements"
-                          className="text-sm font-medium"
-                        >
-                          Please specify your dietary requirements
-                        </Label>
-                        <p className="text-xs text-gray-600">
-                          Include religious, cultural, or medical requirements
-                          (e.g., Halal, vegetarian, allergies)
-                        </p>
-                        <textarea
-                          id="dietaryRequirements"
-                          value={formData.dietaryRequirements}
-                          onChange={(e) =>
-                            handleInputChange("dietaryRequirements", e.target.value)
-                          }
-                          className="w-full p-2.5 border-2 rounded-lg focus:border-red-500 resize-none bg-white text-sm min-h-[5rem]"
-                          placeholder="e.g., Vegetarian, no nuts, Halal food only"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="accommodationNeeds"
-                      className="text-sm font-medium"
-                    >
-                      Accommodation Needs or Requirements
-                    </Label>
-                    <p className="text-xs text-gray-500">
-                      Any special requirements we should know about? Note:
-                      Single rooms are not available.
-                    </p>
-                    <textarea
-                      id="accommodationNeeds"
-                      value={formData.accommodationNeeds}
-                      onChange={(e) =>
-                        handleInputChange("accommodationNeeds", e.target.value)
-                      }
-                      className="w-full p-2.5 border-2 rounded-lg focus:border-red-500 resize-none text-sm min-h-[5rem]"
-                      placeholder="Any special requirements..."
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4: Final Details */}
-              {currentStep === 4 && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      Final Details
-                    </h2>
-                    <p className="text-gray-600">
-                      Just a few more details to complete your registration
-                    </p>
-                  </div>
-
-                  <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-purple-900 mb-2">
-                        Certificate Name
-                      </h3>
-                      <p className="text-sm text-purple-800 mb-3">
-                        If a certificate is awarded, how would you like your name to appear?
-                      </p>
-                      <Input
-                        id="certificateName"
-                        value={formData.certificateName}
-                        onChange={(e) =>
-                          handleInputChange("certificateName", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-purple-500 bg-white text-sm"
-                        placeholder="e.g., Dr. Jane Elizabeth Smith"
-                      />
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold text-purple-900 mb-2">
-                        Badge Name
-                      </h3>
-                      <p className="text-sm text-purple-800 mb-3">
-                        How would you like your name to appear on your event badge?
-                      </p>
-                      <Input
-                        id="badgeName"
-                        value={formData.badgeName}
-                        onChange={(e) =>
-                          handleInputChange("badgeName", e.target.value)
-                        }
-                        className="h-10 border-2 focus:border-purple-500 bg-white text-sm"
-                        placeholder="e.g., Jane Smith"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h3 className="font-semibold text-blue-900 mb-2">
-                      Motivation Letter
-                    </h3>
-                    <p className="text-sm text-blue-800 mb-3">
-                      Please explain your motivation for attending this event and how it aligns with your role and development goals.
-                    </p>
-                    <textarea
-                      id="motivationLetter"
-                      value={formData.motivationLetter}
-                      onChange={(e) =>
-                        handleInputChange("motivationLetter", e.target.value)
-                      }
-                      className="w-full p-2.5 border-2 border-blue-300 rounded-lg focus:border-blue-500 bg-white resize-none text-sm min-h-[6rem]"
-                      placeholder="Please describe your motivation for attending this event..."
-                    />
-                  </div>
-
-                  <div className="bg-amber-50 p-4 rounded-lg border-l-4 border-amber-500 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-amber-900 mb-2">
-                        MSF Code of Conduct
-                      </h3>
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium flex items-center gap-1">
-                          I confirm that I have read and will abide by the MSF
-                          code of conduct{" "}
-                          <span className="text-red-500">*</span>
-                        </Label>
-                        <RadioGroup
-                          value={formData.codeOfConductConfirm}
-                          onValueChange={(value) =>
-                            handleInputChange("codeOfConductConfirm", value)
-                          }
-                        >
-                          <div
-                            className="flex items-center space-x-3 p-3 bg-white border-2 rounded-lg hover:border-amber-500 transition-all cursor-pointer h-11"
-                            onClick={() => handleInputChange("codeOfConductConfirm", "Yes")}
-                          >
-                            <RadioGroupItem value="Yes" id="conduct-yes" className="pointer-events-none" />
-                            <Label
-                              htmlFor="conduct-yes"
-                              className="cursor-pointer pointer-events-none flex-1 text-sm"
-                            >
-                              Yes, I confirm
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-red-50 p-4 rounded-lg border-l-4 border-red-500 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-red-900 mb-2">
-                        Important Travel Information
-                      </h3>
-                      <div className="text-sm text-red-800 space-y-2 mb-4">
-                        <p>
-                          • Check vaccination and travel requirements for the
-                          host country
-                        </p>
-                        <p>
-                          • Verify re-entry requirements for your home/work
-                          country
-                        </p>
-                        <p>• HRCOs book travel for country program staff</p>
-                      </div>
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium flex items-center gap-1">
-                          I confirm I have read and understood the above{" "}
-                          <span className="text-red-500">*</span>
-                        </Label>
-                        <RadioGroup
-                          value={formData.travelRequirementsConfirm}
-                          onValueChange={(value) =>
-                            handleInputChange(
-                              "travelRequirementsConfirm",
-                              value
-                            )
-                          }
-                        >
-                          <div
-                            className="flex items-center space-x-3 p-3 bg-white border-2 rounded-lg hover:border-red-500 transition-all cursor-pointer h-11"
-                            onClick={() => handleInputChange("travelRequirementsConfirm", "Yes")}
-                          >
-                            <RadioGroupItem
-                              value="Yes"
-                              id="travel-confirm-yes"
-                              className="pointer-events-none"
-                            />
-                            <Label
-                              htmlFor="travel-confirm-yes"
-                              className="cursor-pointer pointer-events-none flex-1 text-sm"
-                            >
-                              Yes, I confirm
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Navigation Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-between pt-8 border-t mt-8">
-                <Button
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1}
-                  className="w-full sm:w-auto"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </Button>
-
-                {currentStep < steps.length ? (
-                  <Button
-                    onClick={nextStep}
-                    className="w-full sm:w-auto bg-red-600 text-white hover:bg-red-700"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                ) : (
-                  <Button
-                    disabled
-                    className="w-full sm:w-auto bg-gray-400 cursor-not-allowed"
-                    title="This is a preview form for admins only. Participants must use the public registration link."
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Submit Registration (Preview Only)
-                  </Button>
-                )}
               </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              <FormBuilder eventId={parseInt(eventId)} onSave={() => window.location.reload()} />
             </CardContent>
           </Card>
+
+        </div>
+
+        {/* Floating Scroll-to-Top Button */}
+        {console.log('🖼️ Rendering button - showScrollTop:', showScrollTop)}
+        <Button
+          onClick={scrollToTop}
+          className={`fixed bottom-8 right-8 z-[9999] w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-2xl transition-all duration-300 hover:scale-110 ${showScrollTop ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          size="icon"
+          aria-label="Scroll to top"
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            right: '2rem',
+            zIndex: 9999,
+          }}
+        >
+          <ArrowUp className="h-6 w-6" />
+        </Button>
+
+        {/* Debug Indicator - Remove this after testing */}
+        <div className="fixed bottom-24 right-8 bg-black text-white px-3 py-2 rounded text-xs z-[9999] font-mono">
+          <div>Window Y: {typeof window !== 'undefined' ? Math.round(window.scrollY) : 0}</div>
+          <div>Main Y: {typeof window !== 'undefined' && document.querySelector('main') ? Math.round((document.querySelector('main') as HTMLElement).scrollTop) : 0}</div>
+          <div>Show: {showScrollTop ? 'YES ✅' : 'NO ❌'}</div>
+          <div className="text-yellow-300 mt-1">Open Console (F12)</div>
         </div>
       </DashboardLayout>
     </ProtectedRoute>

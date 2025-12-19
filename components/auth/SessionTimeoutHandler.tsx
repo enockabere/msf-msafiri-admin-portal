@@ -47,7 +47,7 @@ function SessionTimeoutHandlerInner() {
           
           // Auto logout after 5 more minutes
           setTimeout(() => {
-            signOut({ callbackUrl: '/login?message=session_expired' });
+            signOut({ callbackUrl: '/login' });
           }, 5 * 60 * 1000);
         }
       }, timeoutDuration);
@@ -62,8 +62,13 @@ function SessionTimeoutHandlerInner() {
 
   // Handle session errors
   useEffect(() => {
-    if (status === 'unauthenticated' && pathname !== '/login' && pathname !== '/') {
-      router.push('/login?message=session_expired');
+    if (status === 'unauthenticated' && pathname !== '/login' && pathname !== '/' && !pathname?.startsWith('/public')) {
+      // Clear any existing timeouts
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      // Redirect to login
+      router.replace('/login');
     }
   }, [status, pathname, router]);
 

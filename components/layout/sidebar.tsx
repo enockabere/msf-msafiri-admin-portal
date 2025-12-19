@@ -100,8 +100,50 @@ function Tooltip({ children, content, side = "right" }: TooltipProps) {
 
 const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin: boolean, isSuperAdmin: boolean) => {
   const sections = [];
+  
+  // Check if user has ONLY vetting/approver roles (no admin roles)
+  const hasRealAdminRoles = isTenantAdmin || isSuperAdmin || 
+    userRoles.some(role => ['SUPER_ADMIN', 'super_admin', 'MT_ADMIN', 'mt_admin', 'HR_ADMIN', 'hr_admin', 'EVENT_ADMIN', 'event_admin'].includes(role));
+  
+  const isVettingCommitteeOnly = userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && !hasRealAdminRoles;
+  const isApproverOnly = userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && !hasRealAdminRoles;
 
-  // Overview - All roles
+  // For vetting users only (no admin roles), show limited menu
+  if (isVettingCommitteeOnly || isApproverOnly) {
+    sections.push({
+      title: "Operations",
+      items: [
+        {
+          icon: Calendar,
+          label: "Event Management",
+          href: "/events",
+          badge: null,
+        },
+      ],
+    });
+
+    sections.push({
+      title: "Communication",
+      items: [
+        {
+          icon: Bell,
+          label: "Notifications",
+          href: "/notifications",
+          badge: "notifications",
+        },
+        {
+          icon: User,
+          label: "Useful Contacts",
+          href: "/useful-contacts",
+          badge: null,
+        },
+      ],
+    });
+
+    return sections;
+  }
+
+  // Overview - All non-vetting roles
   sections.push({
     title: "Overview",
     items: [
@@ -109,7 +151,7 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
     ],
   });
 
-  // Operations - Show to all users for now (moved up after Dashboard)
+  // Operations - Show to all other users
   const operationsItems = [
     {
       icon: Settings,
@@ -146,6 +188,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           icon: Car,
           label: "Transport Setup",
           href: "/transport-setup",
+          badge: null,
+        },
+        {
+          icon: Newspaper,
+          label: "Code of Conduct",
+          href: "/code-of-conduct",
           badge: null,
         },
       ],
@@ -396,6 +444,7 @@ export default function Sidebar({
                   child.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                   child.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                   child.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
+                  child.href === '/code-of-conduct' ? `/tenant/${tenantSlug}/code-of-conduct` :
                   child.href
           })) : undefined
         }))

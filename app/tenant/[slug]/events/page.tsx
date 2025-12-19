@@ -20,6 +20,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import dynamic from "next/dynamic";
 
@@ -243,9 +244,19 @@ export default function TenantEventsPage() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const eventsData = await apiClient.request<Event[]>(
+      // Fetch all events
+      let eventsData = await apiClient.request<Event[]>(
         `/events/?tenant=${tenantSlug}`
       );
+      
+      // Filter events for vetting-only users
+      const isVettingOnlyUser = userRoles.length > 0 && 
+        userRoles.every(role => ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(role)) &&
+        !isTenantAdmin;
+      
+      if (isVettingOnlyUser) {
+        eventsData = eventsData.filter(event => event.status === 'Published');
+      }
 
       const eventsWithCounts = await Promise.all(
         eventsData.map(async (event) => {
@@ -315,12 +326,19 @@ export default function TenantEventsPage() {
         setTenantData(null);
       }
 
-      await Promise.all([fetchEvents(), fetchVendorHotels()]);
+      await fetchEvents();
+      
+      // Only fetch vendor hotels for users who can manage events
+      if (isTenantAdmin || roleNames.some(role => 
+        ["SUPER_ADMIN", "super_admin", "MT_ADMIN", "mt_admin", "HR_ADMIN", "hr_admin", "EVENT_ADMIN", "event_admin"].includes(role)
+      )) {
+        await fetchVendorHotels();
+      }
     } catch (error) {
       console.error("Access check error:", error);
       toast.error("Failed to load events");
     }
-  }, [user?.id, user?.role, user?.email, apiClient, fetchEvents, tenantSlug]);
+  }, [user?.id, user?.email, apiClient, fetchEvents, tenantSlug, fetchVendorHotels]);
 
   useEffect(() => {
     if (!authLoading && user?.email) {
@@ -335,22 +353,20 @@ export default function TenantEventsPage() {
   }, [selectedVendorId, fetchAccommodationSetups]);
 
   const canManageEvents = () => {
-    // Tenant admins can only view, not manage
-    if (isTenantAdmin && !userRoles.some(role => ["SUPER_ADMIN", "super_admin"].includes(role))) {
-      return false;
-    }
-    return userRoles.some((role) =>
+    return isTenantAdmin || userRoles.some((role) =>
       [
-        "SUPER_ADMIN",
-        "super_admin",
-        "MT_ADMIN",
-        "mt_admin",
-        "HR_ADMIN",
-        "hr_admin",
-        "EVENT_ADMIN",
-        "event_admin",
+        "SUPER_ADMIN", "super_admin",
+        "MT_ADMIN", "mt_admin", 
+        "HR_ADMIN", "hr_admin",
+        "EVENT_ADMIN", "event_admin"
       ].includes(role)
     );
+  };
+  
+  const isVettingOnly = () => {
+    return userRoles.length > 0 && 
+      userRoles.every(role => ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(role)) &&
+      !isTenantAdmin;
   };
 
   const calculateDuration = (startDate: string, endDate: string) => {
@@ -373,7 +389,7 @@ export default function TenantEventsPage() {
         newFormData.end_date
       );
       // Reset registration deadline if it's past the new start date
-      if (field === "start_date" && newFormData.registration_deadline && new Date(newFormData.registration_deadline) > new Date(value)) {
+      if (field === "start_date" && newFormData.registration_deadline && new Date(newFormData.registration_deadline) > new Date(`${value}T23:59:59`)) {
         newFormData.registration_deadline = "";
       }
     }
@@ -413,7 +429,7 @@ export default function TenantEventsPage() {
       return;
     }
 
-    if (registrationDeadline && registrationDeadline > startDate) {
+    if (registrationDeadline && registrationDeadline > new Date(`${formData.start_date}T23:59:59`)) {
       toast.error("Registration deadline cannot be after the event start date");
       return;
     }
@@ -433,6 +449,9 @@ export default function TenantEventsPage() {
           : null,
         longitude: formData.longitude && formData.longitude.trim()
           ? parseFloat(formData.longitude)
+          : null,
+        registration_deadline: formData.registration_deadline
+          ? formData.registration_deadline.split('T')[0]
           : null,
       };
 
@@ -504,6 +523,7 @@ export default function TenantEventsPage() {
     today.setHours(0, 0, 0, 0);
     const startDate = new Date(formData.start_date);
     const endDate = new Date(formData.end_date);
+    const registrationDeadline = formData.registration_deadline ? new Date(formData.registration_deadline) : null;
 
     if (startDate < today) {
       toast.error("Start date cannot be in the past");
@@ -512,6 +532,11 @@ export default function TenantEventsPage() {
 
     if (endDate < startDate) {
       toast.error("End date cannot be before start date");
+      return;
+    }
+
+    if (registrationDeadline && registrationDeadline > new Date(`${formData.start_date}T23:59:59`)) {
+      toast.error("Registration deadline cannot be after the event start date");
       return;
     }
 
@@ -530,6 +555,9 @@ export default function TenantEventsPage() {
           : null,
         longitude: formData.longitude && formData.longitude.trim() 
           ? parseFloat(formData.longitude) 
+          : null,
+        registration_deadline: formData.registration_deadline
+          ? formData.registration_deadline.split('T')[0]
           : null,
       };
 
@@ -655,7 +683,7 @@ export default function TenantEventsPage() {
       duration_days: duration,
       perdiem_rate: event.perdiem_rate?.toString() || "",
       perdiem_currency: event.perdiem_currency || "",
-      registration_deadline: event.registration_deadline || "",
+      registration_deadline: event.registration_deadline ? `${event.registration_deadline}T09:00` : "",
     });
     setShowEditModal(true);
   };
@@ -813,7 +841,7 @@ export default function TenantEventsPage() {
                   <List className="w-4 h-4" />
                 </Button>
               </div>
-              {canManageEvents() && (
+              {canManageEvents() && !isVettingOnly() && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
                   className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-xs font-medium"
@@ -896,11 +924,13 @@ export default function TenantEventsPage() {
                       key={event.id} 
                       event={event} 
                       canManageEvents={canManageEvents()} 
+                      isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
+                      isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
                       onEdit={(e) => openEditModal(e)} 
                       onDelete={(e) => handleDeleteEvent(e)} 
                       onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
                       onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
-                      onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
+                      onRegistrationForm={(e) => handleRegistrationForm(e)}
                     />
                   ))}
                 </div>
@@ -912,7 +942,7 @@ export default function TenantEventsPage() {
                   onDelete={(e) => handleDeleteEvent(e)}
                   onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
                   onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
-                  onRegistrationForm={canManageEvents() ? (e) => handleRegistrationForm(e) : undefined}
+                  onRegistrationForm={canManageEvents() && !isVettingOnly() ? (e) => handleRegistrationForm(e) : undefined}
                   sortField={sortField as any}
                   sortDirection={sortDirection}
                   onSort={(field) => {
@@ -990,7 +1020,9 @@ export default function TenantEventsPage() {
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-bold text-gray-900">Create New Event</DialogTitle>
-                  <p className="text-gray-600 text-sm mt-1">Set up a new event for your organization</p>
+                  <DialogDescription className="text-gray-600 text-sm mt-1">
+                    Set up a new event for your organization
+                  </DialogDescription>
                 </div>
               </div>
             </div>
@@ -1153,7 +1185,7 @@ export default function TenantEventsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                   <div className="space-y-2">
                     <Label htmlFor="start_date" className="text-sm font-medium text-gray-700">
                       Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
@@ -1186,32 +1218,25 @@ export default function TenantEventsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="registration_deadline" className="text-sm font-medium text-gray-700">
-                      Registration Deadline
+                      Registration Deadline {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
                     </Label>
                     <Input
                       id="registration_deadline"
-                      type="date"
+                      type="datetime-local"
                       value={formData.registration_deadline}
-                      max={formData.start_date}
+                      max={formData.start_date ? `${formData.start_date}T23:59` : undefined}
                       onChange={(e) =>
                         setFormData({ ...formData, registration_deadline: e.target.value })
                       }
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="duration_days" className="text-sm font-medium text-gray-700">
-                      Duration (Days)
-                    </Label>
-                    <Input
-                      id="duration_days"
-                      value={formData.duration_days}
-                      readOnly
-                      className="bg-gray-50 border-gray-300"
-                      placeholder="Auto-calculated"
-                    />
-                  </div>
                 </div>
+                {formData.duration_days && (
+                  <div className="mt-3 text-sm text-gray-700">
+                    <span className="font-medium">Event Duration:</span> <span className="font-semibold text-red-600">{formData.duration_days} {parseInt(formData.duration_days) === 1 ? 'day' : 'days'}</span>
+                  </div>
+                )}
 
                 {formData.vendor_accommodation_id && (
                   <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
@@ -1314,7 +1339,9 @@ export default function TenantEventsPage() {
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-bold text-gray-900">Edit Event</DialogTitle>
-                  <p className="text-gray-600 text-sm mt-1">Update the event details below</p>
+                  <DialogDescription className="text-gray-600 text-sm mt-1">
+                    Update the event details below
+                  </DialogDescription>
                 </div>
               </div>
             </div>
@@ -1476,7 +1503,7 @@ export default function TenantEventsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                   <div className="space-y-2">
                     <Label htmlFor="edit_start_date" className="text-sm font-medium text-gray-700">
                       Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
@@ -1505,30 +1532,23 @@ export default function TenantEventsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="edit_registration_deadline" className="text-sm font-medium text-gray-700">
-                      Registration Deadline
+                      Registration Deadline {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
                     </Label>
                     <Input
                       id="edit_registration_deadline"
-                      type="date"
+                      type="datetime-local"
                       value={formData.registration_deadline}
-                      max={formData.start_date}
+                      max={formData.start_date ? `${formData.start_date}T23:59` : undefined}
                       onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
                       className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_duration_days" className="text-sm font-medium text-gray-700">
-                      Duration (Days)
-                    </Label>
-                    <Input
-                      id="edit_duration_days"
-                      value={formData.duration_days}
-                      readOnly
-                      className="bg-gray-50 border-gray-300"
-                      placeholder="Auto-calculated"
-                    />
-                  </div>
                 </div>
+                {formData.duration_days && (
+                  <div className="mt-3 text-sm text-gray-700">
+                    <span className="font-medium">Event Duration:</span> <span className="font-semibold text-red-600">{formData.duration_days} {parseInt(formData.duration_days) === 1 ? 'day' : 'days'}</span>
+                  </div>
+                )}
 
                 {formData.vendor_accommodation_id && (
                   <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
@@ -1626,6 +1646,8 @@ export default function TenantEventsPage() {
           }}
           tenantSlug={tenantSlug}
           canManageEvents={canManageEvents()}
+          isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
+          isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
         />
       </div>
     </DashboardLayout>

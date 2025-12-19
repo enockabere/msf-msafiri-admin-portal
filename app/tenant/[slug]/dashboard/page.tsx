@@ -50,6 +50,14 @@ export default function TenantDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const tenantSlug = params.slug as string;
+  const isVettingUser = user?.role === "vetting_committee" || user?.role === "vetting_approver";
+
+  // Redirect vetting users to events page (they can only access vetting)
+  useEffect(() => {
+    if (isVettingUser && !loading) {
+      router.replace(`/tenant/${tenantSlug}/events`);
+    }
+  }, [isVettingUser, loading, router, tenantSlug]);
 
   const fetchRecentActivities = useCallback(async () => {
     try {
@@ -296,8 +304,8 @@ export default function TenantDashboardPage() {
     }
   };
 
-  if (loading) {
-    return <LoadingScreen message="Loading tenant dashboard..." />;
+  if (loading || isVettingUser) {
+    return <LoadingScreen message={isVettingUser ? "Redirecting to events..." : "Loading tenant dashboard..."} />;
   }
 
   if (cardNavigating) {

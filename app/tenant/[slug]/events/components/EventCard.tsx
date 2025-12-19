@@ -23,6 +23,7 @@ import {
   FileText,
 } from "lucide-react";
 import { LazyImage } from "@/components/ui/lazy-image";
+import { useRouter } from "next/navigation";
 
 interface Event {
   id: number;
@@ -56,6 +57,8 @@ interface Event {
 interface EventCardProps {
   event: Event;
   canManageEvents: boolean;
+  isVettingCommitteeOnly?: boolean;
+  isApproverOnly?: boolean;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onUnpublish?: (event: Event) => void;
@@ -63,7 +66,9 @@ interface EventCardProps {
   onRegistrationForm?: (event: Event) => void;
 }
 
-export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublish, onViewDetails, onRegistrationForm }: EventCardProps) {
+export function EventCard({ event, canManageEvents, isVettingCommitteeOnly = false, isApproverOnly = false, onEdit, onDelete, onUnpublish, onViewDetails, onRegistrationForm }: EventCardProps) {
+  const router = useRouter();
+  
   // Check if registration is still open
   const isRegistrationOpen = () => {
     const today = new Date();
@@ -143,7 +148,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                 </p>
               )}
             </div>
-            {canManageEvents && (
+            {(canManageEvents || isVettingCommitteeOnly || isApproverOnly) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -169,7 +174,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
-                  {onRegistrationForm && (
+                  {(!isVettingCommitteeOnly || isApproverOnly) && onRegistrationForm && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
@@ -181,7 +186,21 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                       Registration Form
                     </DropdownMenuItem>
                   )}
-                  {event.status === 'Draft' && event.event_status !== 'ended' && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const currentPath = window.location.pathname;
+                      const pathParts = currentPath.split('/');
+                      const tenantIndex = pathParts.indexOf('tenant');
+                      const tenantSlug = pathParts[tenantIndex + 1];
+                      router.push(`/tenant/${tenantSlug}/events/${event.id}/vetting-committee`);
+                    }}
+                    className="hover:bg-red-50 focus:bg-red-50"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Vetting Committee
+                  </DropdownMenuItem>
+                  {!isVettingCommitteeOnly && !isApproverOnly && event.event_status !== 'ended' && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
@@ -193,7 +212,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                       Edit
                     </DropdownMenuItem>
                   )}
-                  {event.status === 'Published' && event.event_status === 'upcoming' && onUnpublish && (
+                  {!isVettingCommitteeOnly && !isApproverOnly && event.status === 'Published' && event.event_status === 'upcoming' && onUnpublish && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
@@ -205,7 +224,7 @@ export function EventCard({ event, canManageEvents, onEdit, onDelete, onUnpublis
                       Unpublish
                     </DropdownMenuItem>
                   )}
-                  {event.status === 'Draft' && event.event_status !== 'ended' && (
+                  {!isVettingCommitteeOnly && !isApproverOnly && event.status === 'Draft' && event.event_status !== 'ended' && (
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();

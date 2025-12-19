@@ -9,10 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { AccommodationTemplateEditor } from "@/components/ui/accommodation-template-editor";
 import { LocationSelect } from "@/components/ui/location-select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, Save, X, Search, Download, Printer, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Loader2, Save, X, Search, Download, Printer, Edit, Trash2, ChevronLeft, ChevronRight, FileText, FileEdit } from "lucide-react";
 
 import EditVendorModal from "@/components/accommodation/EditVendorModal";
 import { Hotel } from "lucide-react";
@@ -43,6 +44,9 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   const [editVendorModalOpen, setEditVendorModalOpen] = useState(false);
   const [selectedVendorForEdit, setSelectedVendorForEdit] = useState<VendorAccommodation | null>(null);
   const [addVendorModalOpen, setAddVendorModalOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [selectedVendorForTemplate, setSelectedVendorForTemplate] = useState<VendorAccommodation | null>(null);
+  const [templateContent, setTemplateContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [vendorForm, setVendorForm] = useState({
@@ -51,6 +55,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     latitude: "",
     longitude: "",
     description: "",
+    accommodation_template: "",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,6 +147,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
           latitude: "",
           longitude: "",
           description: "",
+          accommodation_template: "",
         });
         toast({ title: "Success", description: "Vendor hotel created successfully" });
         if (onVendorAdded) {
@@ -187,6 +193,188 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     a.download = "vendor-hotels.csv";
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const handleGenerateProof = async (vendor: VendorAccommodation) => {
+    const { default: Swal } = await import("sweetalert2");
+
+    // First, get list of events using this vendor
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events?vendor_accommodation_id=${vendor.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (!response.ok) {
+        toast({ title: "Error", description: "Failed to load events", variant: "destructive" });
+        return;
+      }
+
+      const events = await response.json();
+
+      if (!events || events.length === 0) {
+        await Swal.fire({
+          title: "No Events Found",
+          text: `No events are currently using "${vendor.vendor_name}". Please assign this vendor to an event first.`,
+          icon: "info",
+          confirmButtonColor: "#3b82f6",
+        });
+        return;
+      }
+
+      // Create options for event selection
+      const eventOptions: { [key: string]: string } = {};
+      events.forEach((event: any) => {
+        eventOptions[event.id] = `${event.title} (${new Date(event.start_date).toLocaleDateString()})`;
+      });
+
+      const { value: selectedEventId } = await Swal.fire({
+        title: "Select Event",
+        text: `Choose an event to generate proof of accommodation documents for "${vendor.vendor_name}"`,
+        input: "select",
+        inputOptions: eventOptions,
+        inputPlaceholder: "Select an event",
+        showCancelButton: true,
+        confirmButtonText: "Generate Proofs",
+        confirmButtonColor: "#8b5cf6",
+        cancelButtonColor: "#6b7280",
+        inputValidator: (value) => {
+          if (!value) {
+            return "You need to select an event!";
+          }
+        }
+      });
+
+      if (!selectedEventId) return;
+
+      // Show loading
+      Swal.fire({
+        title: "Generating Proofs...",
+        text: "Please wait while we generate proof of accommodation documents",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Call API to generate proofs
+      const generateResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vendor-hotels/${vendor.id}/events/${selectedEventId}/generate-proofs`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      const result = await generateResponse.json();
+
+      Swal.close();
+
+      if (generateResponse.ok) {
+        await Swal.fire({
+          title: "Success!",
+          html: `
+            <div class="text-left space-y-2">
+              <p><strong>Total Participants:</strong> ${result.total_participants}</p>
+              <p class="text-green-600"><strong>Successfully Generated:</strong> ${result.successful}</p>
+              ${result.failed > 0 ? `<p class="text-red-600"><strong>Failed:</strong> ${result.failed}</p>` : ''}
+              ${result.errors ? `<p class="text-xs text-gray-500 mt-2">Check console for error details</p>` : ''}
+            </div>
+          `,
+          icon: "success",
+          confirmButtonColor: "#10b981",
+        });
+
+        if (result.errors) {
+          console.error("Proof generation errors:", result.errors);
+        }
+      } else {
+        await Swal.fire({
+          title: "Error",
+          text: result.detail || "Failed to generate proof documents",
+          icon: "error",
+          confirmButtonColor: "#dc2626",
+        });
+      }
+
+    } catch (error) {
+      console.error("Generate proof error:", error);
+      Swal.close();
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    }
+  };
+
+  const handleDesignTemplate = async (vendor: VendorAccommodation) => {
+    setSelectedVendorForTemplate(vendor);
+
+    // Fetch current template
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${vendor.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setTemplateContent(data.accommodation_template || "");
+      }
+    } catch (error) {
+      console.error("Error fetching template:", error);
+    }
+
+    setTemplateModalOpen(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!selectedVendorForTemplate) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${selectedVendorForTemplate.id}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            "Content-Type": "application/json",
+            'X-Tenant-ID': tenantSlug
+          },
+          body: JSON.stringify({
+            accommodation_template: templateContent,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        await fetchData();
+        setTemplateModalOpen(false);
+        toast({
+          title: "Success",
+          description: "Proof of Accommodation template saved successfully"
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Save template error:", error);
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDeleteVendor = async (vendor: VendorAccommodation) => {
@@ -441,7 +629,26 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleDesignTemplate(vendor)}
+                              className="text-blue-600 hover:text-blue-700"
+                              title="Design POA Template"
+                            >
+                              <FileEdit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGenerateProof(vendor)}
+                              className="text-purple-600 hover:text-purple-700"
+                              title="Generate Proof of Accommodation"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleEditVendor(vendor)}
+                              title="Edit Hotel Details"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -450,6 +657,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               size="sm"
                               onClick={() => handleDeleteVendor(vendor)}
                               className="text-red-600 hover:text-red-700"
+                              title="Delete Hotel"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -511,6 +719,90 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
         tenantSlug={tenantSlug}
         onEditComplete={fetchData}
       />
+
+      {/* POA Template Design Modal */}
+      <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
+        <DialogContent className="sm:max-w-[1000px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+          {/* Header */}
+          <button
+            onClick={() => setTemplateModalOpen(false)}
+            className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+            <span className="sr-only">Close</span>
+          </button>
+
+          <div className="p-6 pb-4 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <FileEdit className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Design Proof of Accommodation Template
+                </DialogTitle>
+                <p className="text-gray-600 text-sm mt-1">
+                  {selectedVendorForTemplate?.vendor_name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Template Design
+                </Label>
+                <p className="text-xs text-gray-500 mb-4">
+                  Use template variables like {`{{participantName}}`}, {`{{hotelName}}`}, {`{{checkInDate}}`}, etc.
+                  This template will be used to generate personalized proof documents for participants.
+                </p>
+                <AccommodationTemplateEditor
+                  value={templateContent}
+                  onChange={setTemplateContent}
+                  hotelName={selectedVendorForTemplate?.vendor_name || ""}
+                  placeholder="Design the proof of accommodation document template..."
+                  height={450}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTemplateModalOpen(false)}
+              disabled={submitting}
+              className="px-6"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveTemplate}
+              disabled={submitting}
+              className="px-6 bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Template
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

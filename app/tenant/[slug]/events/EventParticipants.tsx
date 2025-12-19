@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,11 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { EmailTemplateEditor } from "@/components/ui/email-template-editor";
 import {
   Plus,
   Send,
   Search,
-  Printer,
   Download,
   Trash2,
   ChevronLeft,
@@ -26,6 +27,7 @@ import {
   CheckCircle,
   AlertCircle,
   X,
+  Mail,
 } from "lucide-react";
 
 interface Participant {
@@ -86,6 +88,20 @@ interface Participant {
   // Decline fields
   decline_reason?: string;
   declined_at?: string;
+  // Proof of Accommodation
+  proof_of_accommodation_url?: string;
+  proof_generated_at?: string;
+  // Vetting comments
+  vetting_comments?: string;
+}
+
+interface VettingMode {
+  isVettingCommittee: boolean;
+  isVettingApprover: boolean;
+  canEdit: boolean;
+  submissionStatus?: 'open' | 'pending_approval' | 'approved';
+  onRegisteredCountChange?: (count: number) => void;
+  onStatusChange?: (status: string) => void;
 }
 
 interface EventParticipantsProps {
@@ -94,6 +110,7 @@ interface EventParticipantsProps {
   allowAdminAdd?: boolean;
   onParticipantsChange?: (count: number) => void;
   eventHasEnded?: boolean;
+  vettingMode?: VettingMode;
 }
 
 // LOI Quick Access Component for table
@@ -263,6 +280,7 @@ export default function EventParticipants({
   allowAdminAdd = false,
   onParticipantsChange,
   eventHasEnded = false,
+  vettingMode,
 }: EventParticipantsProps) {
   const { apiClient } = useAuthenticatedApi();
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -293,8 +311,192 @@ export default function EventParticipants({
   const [processingBulkRole, setProcessingBulkRole] = useState(false);
   const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [participantComments, setParticipantComments] = useState<Record<number, string>>({});
+  const [submittingVetting, setSubmittingVetting] = useState(false);
+  const [vettingSubmitted, setVettingSubmitted] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    name: true,
+    email: true,
+    oc: true,
+    position: true,
+    country: true,
+    role: true,
+    status: true,
+    confirmed: true,
+    documents: true,
+    comments: true,
+    actions: true
+  });
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
+  const [showEmailTemplate, setShowEmailTemplate] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('Event Selection Results - {{EVENT_TITLE}}');
+  const [emailBody, setEmailBody] = useState(`Dear {{PARTICIPANT_NAME}},
 
-  // Helper function to show feedback message
+
+
+We have completed the selection process for {{EVENT_TITLE}}.
+
+{{#if_selected}}
+🎉 <strong>Congratulations! You have been selected to participate.</strong>
+
+Event Details:
+• Event: {{EVENT_TITLE}}
+• Location: {{EVENT_LOCATION}}
+• Date: {{EVENT_DATE_RANGE}}
+
+Next Steps:
+1. Download the Msafiri mobile app
+2. Login using your work email ({{PARTICIPANT_EMAIL}})
+3. Accept the invitation from the app notifications
+4. Submit required documents through the mobile app
+
+Important: Please use the Msafiri mobile application to accept your invitation and access all event details.
+
+We look forward to your participation!
+{{/if_selected}}
+
+{{#if_not_selected}}
+Thank you for your interest in participating in {{EVENT_TITLE}}.
+
+After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.
+
+We encourage you to apply for future events and appreciate your continued engagement with our programs.
+{{/if_not_selected}}
+
+Best regards,
+The Event Organization Team`);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [vettingApproved, setVettingApproved] = useState(false);
+  const [committeeStatus, setCommitteeStatus] = useState<string | null>(null);
+  
+  // Update vetting mode based on committee status
+  const normalizeStatus = (status: string | undefined) => {
+    if (status === 'pending') return 'pending_approval';
+    return status;
+  };
+  
+  const actualStatus = normalizeStatus(committeeStatus || vettingMode?.submissionStatus);
+  
+  const effectiveVettingMode = vettingMode ? {
+    ...vettingMode,
+    canEdit: vettingMode.isVettingCommittee 
+      ? actualStatus === 'open'
+      : vettingMode.isVettingApprover 
+      ? actualStatus === 'pending_approval'
+      : vettingMode.canEdit,
+    submissionStatus: actualStatus as 'open' | 'pending_approval' | 'approved'
+  } : undefined;
+  
+  console.log('effectiveVettingMode DEBUG:', {
+    vettingMode,
+    committeeStatus,
+    actualStatus,
+    effectiveVettingMode
+  });
+
+  // Load email template on mount
+  useEffect(() => {
+    if (effectiveVettingMode?.isVettingApprover) {
+      loadEmailTemplate();
+    }
+  }, [effectiveVettingMode?.isVettingApprover]);
+
+  const loadEmailTemplate = async () => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const tenantSlug = pathParts[2]; // Should be the tenant slug from /tenant/[slug]/...
+      
+      // Validate tenant slug exists and is not empty
+      if (!tenantSlug || tenantSlug === 'tenant') {
+        return; // Use default template
+      }
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${tenantSlug}/vetting-notification`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const template = await response.json();
+        setEmailSubject(template.subject);
+        setEmailBody(template.body);
+      }
+      // If no custom template exists, the default prefilled template will be used
+    } catch (error) {
+      // Use default prefilled template if loading fails
+    }
+  };
+
+  const saveEmailTemplate = async () => {
+    setSavingTemplate(true);
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const tenantSlug = pathParts[2]; // Should be the tenant slug from /tenant/[slug]/...
+      
+      // Validate tenant slug exists and is not empty
+      if (!tenantSlug || tenantSlug === 'tenant') {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Invalid tenant context.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${tenantSlug}/vetting-notification`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            subject: emailSubject,
+            body: emailBody
+          })
+        }
+      );
+      
+      if (response.ok) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Success!",
+          description: "Email template saved successfully!",
+        });
+      } else {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Error!",
+          description: "Failed to save email template.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Error!",
+        description: "Failed to save email template.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+  
+
+  
+
+
+  
+
+
+// Helper function to show feedback message
   const showFeedback = (type: 'success' | 'error', message: string) => {
     setFeedbackMessage({ type, message });
     setTimeout(() => setFeedbackMessage(null), 5000);
@@ -768,39 +970,43 @@ export default function EventParticipants({
               
               <div className="flex items-center gap-3">
                 {/* Action Buttons */}
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={participant.status}
-                    onValueChange={(value) => onStatusChange(participant.id, value)}
-                  >
-                    <SelectTrigger className="w-32 h-8 bg-white">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="selected">Selected</SelectItem>
-                      <SelectItem value="not_selected">Not Selected</SelectItem>
-                      <SelectItem value="waiting">Waiting</SelectItem>
-                      <SelectItem value="canceled">Canceled</SelectItem>
-                      <SelectItem value="attended">Attended</SelectItem>
-                      <SelectItem value="declined">Declined</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select
-                    value={participant.participant_role || participant.role || "visitor"}
-                    onValueChange={(value) => onRoleChange(participant.id, value)}
-                  >
-                    <SelectTrigger className="w-32 h-8 bg-white">
-                      <SelectValue placeholder="Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="visitor">Visitor</SelectItem>
-                      <SelectItem value="facilitator">Facilitator</SelectItem>
-                      <SelectItem value="organizer">Organizer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {(!effectiveVettingMode || effectiveVettingMode.canEdit) && (
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={participant.status}
+                      onValueChange={(value) => onStatusChange(participant.id, value)}
+                      disabled={effectiveVettingMode && !effectiveVettingMode.canEdit}
+                    >
+                      <SelectTrigger className="w-32 h-8 bg-white">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="selected">Selected</SelectItem>
+                        <SelectItem value="not_selected">Not Selected</SelectItem>
+                        <SelectItem value="waiting">Waiting</SelectItem>
+                        <SelectItem value="canceled">Canceled</SelectItem>
+                        <SelectItem value="declined">Declined</SelectItem>
+                        <SelectItem value="attended">Attended</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select
+                      value={participant.participant_role || participant.role || "visitor"}
+                      onValueChange={(value) => onRoleChange(participant.id, value)}
+                      disabled={effectiveVettingMode && !effectiveVettingMode.canEdit}
+                    >
+                      <SelectTrigger className="w-32 h-8 bg-white">
+                        <SelectValue placeholder="Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="visitor">Visitor</SelectItem>
+                        <SelectItem value="facilitator">Facilitator</SelectItem>
+                        <SelectItem value="organizer">Organizer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 
                 <Button
                   variant="outline"
@@ -1343,6 +1549,18 @@ export default function EventParticipants({
                       </div>
                     </div>
                   )}
+                  {participant.vetting_comments && (
+                    <div>
+                      <span className="font-medium text-gray-700 block mb-2">
+                        Vetting Comments:
+                      </span>
+                      <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                        <div className="text-gray-900 text-sm whitespace-pre-wrap">
+                          {participant.vetting_comments}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1640,6 +1858,98 @@ export default function EventParticipants({
                     </div>
                     )}
 
+                    {/* Proof of Accommodation - Only show if has proof */}
+                    {(participant.proof_of_accommodation_url || accommodationData.length > 0) && (
+                    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl border-2 border-purple-200 mt-6">
+                      <h5 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Proof of Accommodation
+                      </h5>
+
+                      {participant.proof_of_accommodation_url ? (
+                        <div className="bg-white p-5 rounded-xl border-2 border-purple-100 shadow-sm">
+                          {/* Status Badge */}
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Document Generated
+                            </span>
+                            {participant.proof_generated_at && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(participant.proof_generated_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Document Info */}
+                          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-100 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-purple-100 p-3 rounded-lg">
+                                <svg className="w-6 h-6 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900">Accommodation Confirmation</p>
+                                <p className="text-sm text-gray-600">Official proof document for visa and travel purposes</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3">
+                            <a
+                              href={participant.proof_of_accommodation_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow-md"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Document
+                            </a>
+                            <a
+                              href={participant.proof_of_accommodation_url}
+                              download
+                              className="flex-1 bg-white hover:bg-gray-50 text-purple-700 border-2 border-purple-200 px-4 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors shadow-sm hover:shadow-md"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              Download PDF
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white p-5 rounded-xl border-2 border-gray-200">
+                          <div className="flex items-center gap-3 text-gray-500">
+                            <div className="bg-gray-100 p-3 rounded-lg">
+                              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-700">Proof document pending</p>
+                              <p className="text-sm text-gray-500">Will be generated automatically once accommodation is confirmed</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    )}
+
                     {/* Drink Vouchers - Only show if has data */}
                     {voucherData && (
                     <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
@@ -1721,7 +2031,7 @@ export default function EventParticipants({
     );
   }
 
-  const fetchParticipants = useCallback(async () => {
+  const fetchParticipants = useCallback(async (preserveOrder = false) => {
     try {
       setFetchLoading(true);
       const url = new URL(
@@ -1746,9 +2056,41 @@ export default function EventParticipants({
             )
           : data; // Show all participants when no role filter is applied
 
-        setParticipants(filteredData);
+        // Preserve original order if requested
+        if (preserveOrder && participants.length > 0) {
+          setParticipants(prevParticipants => {
+            const orderedData = [...prevParticipants];
+            filteredData.forEach((newP: Participant) => {
+              const existingIndex = orderedData.findIndex(p => p.id === newP.id);
+              if (existingIndex >= 0) {
+                orderedData[existingIndex] = newP;
+              } else {
+                orderedData.push(newP);
+              }
+            });
+            return orderedData.filter(p => filteredData.some((fp: Participant) => fp.id === p.id));
+          });
+        } else {
+          setParticipants(filteredData);
+        }
+        
         const countForCallback = roleFilter ? filteredData.length : data.length; // Count all participants when no role filter
         onParticipantsChange?.(countForCallback);
+        
+        // Load existing comments into state
+        const comments: Record<number, string> = {};
+        data.forEach((p: Participant) => {
+          if (p.vetting_comments) {
+            comments[p.id] = p.vetting_comments;
+          }
+        });
+        setParticipantComments(comments);
+        
+        // Count registered participants for vetting mode
+        if (vettingMode?.onRegisteredCountChange) {
+          const registeredCount = data.filter((p: Participant) => p.status === 'registered').length;
+          vettingMode.onRegisteredCountChange(registeredCount);
+        }
 
 
       }
@@ -1757,11 +2099,73 @@ export default function EventParticipants({
     } finally {
       setFetchLoading(false);
     }
-  }, [eventId, statusFilter, roleFilter, onParticipantsChange]);
+  }, [eventId, statusFilter, roleFilter]);
 
   useEffect(() => {
     fetchParticipants();
-  }, [fetchParticipants]);
+  }, [eventId, statusFilter, roleFilter]);
+  
+  // Close column selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showColumnSelector && !(event.target as Element).closest('.column-selector')) {
+        setShowColumnSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnSelector]);
+  
+  useEffect(() => {
+    // Check committee status if in vetting mode
+    if (vettingMode && (vettingMode.isVettingCommittee || vettingMode.isVettingApprover)) {
+      fetchCommitteeStatus();
+    }
+  }, [eventId, vettingMode?.isVettingCommittee, vettingMode?.isVettingApprover]);
+  
+  const checkVettingStatus = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/status`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.status === 'submitted') {
+          setVettingSubmitted(true);
+        } else if (data.status === 'approved') {
+          setVettingApproved(true);
+        }
+      }
+    } catch (error) {
+      // Silently handle error - vetting status check is not critical
+    }
+  };
+
+  const fetchCommitteeStatus = useCallback(async () => {
+    try {
+      const response = await apiClient.request(`/vetting-committee/event/${eventId}`);
+      setCommitteeStatus(response.status);
+    } catch (error) {
+      // Committee not found or access denied
+      setCommitteeStatus(null);
+    }
+  }, [eventId, apiClient]);
+
+  const getCommitteeStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'open': return { text: 'Open', color: 'bg-blue-100 text-blue-800' };
+      case 'pending_approval': return { text: 'Pending Approval', color: 'bg-orange-100 text-orange-800' };
+      case 'approved': return { text: 'Approved', color: 'bg-green-100 text-green-800' };
+      default: return { text: status, color: 'bg-gray-100 text-gray-800' };
+    }
+  };
 
   const handleAddParticipant = async () => {
     if (!newParticipant.full_name.trim() || !newParticipant.email.trim())
@@ -1830,7 +2234,31 @@ export default function EventParticipants({
   ) => {
     setFeedbackMessage(null);
 
+    // Check if user can edit during vetting
+    if (effectiveVettingMode && !effectiveVettingMode.canEdit) {
+      showFeedback('error', 'Cannot edit participants during this vetting phase');
+      return;
+    }
+
     try {
+      const requestBody: any = { status: newStatus };
+
+      // For declined/canceled status, only add comments if they exist
+      // Otherwise, user can add them later via the dropdown
+      const comments = participantComments[participantId];
+      if (comments && comments.trim()) {
+        requestBody.comments = comments.trim();
+      }
+
+      // In vetting mode, prevent emails until approved
+      if (effectiveVettingMode && (effectiveVettingMode.isVettingCommittee || effectiveVettingMode.isVettingApprover)) {
+        requestBody.suppress_email = true;
+      }
+
+      console.log('Updating participant status:', { participantId, newStatus, requestBody });
+      console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`);
+      console.log('Token available:', !!apiClient.getToken());
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
         {
@@ -1839,21 +2267,88 @@ export default function EventParticipants({
             Authorization: `Bearer ${apiClient.getToken()}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: newStatus }),
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      console.log('Status update response:', { status: response.status, ok: response.ok, statusText: response.statusText });
+
+      if (response.ok) {
+        // Only clear comments if they were actually sent (not for declined/canceled without comments)
+        if (comments && comments.trim()) {
+          setParticipantComments(prev => ({ ...prev, [participantId]: '' }));
+        }
+        
+        // Update participant in place without refetching
+        setParticipants(prev => prev.map(p => 
+          p.id === participantId 
+            ? { ...p, status: newStatus, vetting_comments: comments || p.vetting_comments }
+            : p
+        ));
+        
+        const emailNote = effectiveVettingMode && effectiveVettingMode.submissionStatus !== 'approved' 
+          ? " (No email sent - awaiting vetting approval)"
+          : newStatus === "selected" ? " Invitation email sent." : "";
+        const message = `Participant status updated to ${newStatus}.${emailNote}`;
+        showFeedback('success', message);
+      } else {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { detail: errorText || `HTTP ${response.status}` };
+        }
+        console.error('Status update failed:', { status: response.status, errorData });
+        showFeedback('error', `Failed to update participant status: ${errorData.detail || errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Status update error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      showFeedback('error', `${errorMessage}. Please try again.`);
+    }
+  };
+
+  const handleCommentChange = async (participantId: number, comment: string) => {
+    if (!comment || !comment.trim()) return;
+
+    try {
+      // Get current participant to include current status
+      const currentParticipant = participants.find(p => p.id === participantId);
+      if (!currentParticipant) return;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiClient.getToken()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            status: currentParticipant.status, // Include current status
+            comments: comment.trim(),
+            suppress_email: true // Don't send emails when just updating comments
+          }),
         }
       );
 
       if (response.ok) {
-        fetchParticipants(); // Refresh the list
-        const message = `Participant status updated to ${newStatus}.${
-          newStatus === "selected" ? " Invitation email sent." : ""
-        }`;
-        showFeedback('success', message);
+        // Update participant comments in place without refetching
+        setParticipants(prev => prev.map(p => 
+          p.id === participantId 
+            ? { ...p, vetting_comments: comment.trim() }
+            : p
+        ));
+        showFeedback('success', 'Comment saved successfully');
       } else {
-        showFeedback('error', 'Failed to update participant status.');
+        const errorText = await response.text();
+        console.error('Comment save failed:', errorText);
+        showFeedback('error', 'Failed to save comment');
       }
     } catch (error) {
-      showFeedback('error', 'Network error. Please try again.');
+      console.error('Comment save error:', error);
+      showFeedback('error', 'Failed to save comment');
     }
   };
 
@@ -1939,58 +2434,34 @@ export default function EventParticipants({
     return matchesSearch;
   });
 
-  const handlePrint = () => {
-    window.print();
-  };
+
 
   const handleExport = () => {
     const csvContent = [
       [
         "Name",
-        "Email",
         "OC",
         "Position",
         "Country",
         "Contract Status",
         "Contract Type",
-        "Gender Identity",
-        "Sex",
-        "Pronouns",
         "Project",
-        "Personal Email",
-        "MSF Email",
-        "HRCO Email",
-        "Career Manager",
-        "Line Manager",
-        "Phone",
-        "Certificate Name",
         "Badge Name",
-        "Motivation Letter",
         "Status",
+        "Role",
       ].join(","),
       ...filteredParticipants.map((p) =>
         [
           p.full_name,
-          p.email,
           p.oc || "",
           p.position || "",
           p.country || "",
           p.contract_status || "",
           p.contract_type || "",
-          p.gender_identity || "",
-          p.sex || "",
-          p.pronouns || "",
           p.project_of_work || "",
-          p.personal_email || "",
-          p.msf_email || "",
-          p.hrco_email || "",
-          p.career_manager_email || "",
-          p.line_manager_email || "",
-          p.phone_number || "",
-          p.certificate_name || "",
           p.badge_name || "",
-          (p.motivation_letter || "").replace(/\n/g, ' ').substring(0, 100) + (p.motivation_letter && p.motivation_letter.length > 100 ? '...' : ''),
           p.status,
+          p.participant_role || p.role || "visitor",
         ].join(",")
       ),
     ].join("\n");
@@ -2075,6 +2546,13 @@ export default function EventParticipants({
     setUpdatingRoleId(participantId);
     setFeedbackMessage(null);
 
+    // Check if user can edit during vetting
+    if (vettingMode && !vettingMode.canEdit) {
+      showFeedback('error', 'Cannot edit participants during this vetting phase');
+      setUpdatingRoleId(null);
+      return;
+    }
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participantId}/role`,
@@ -2120,16 +2598,32 @@ export default function EventParticipants({
     setFeedbackMessage(null);
 
     const count = selectedParticipants.length;
+    let successCount = 0;
+    
     try {
       for (const participantId of selectedParticipants) {
-        await handleStatusChange(participantId, bulkStatus);
-        await new Promise((resolve) => setTimeout(resolve, 100)); // Queue emails
+        try {
+          await handleStatusChange(participantId, bulkStatus);
+          successCount++;
+          await new Promise((resolve) => setTimeout(resolve, 100)); // Queue emails
+        } catch (error) {
+          console.error(`Failed to update participant ${participantId}:`, error);
+        }
       }
+      
+      // Force refresh the participants list
+      await fetchParticipants();
+      
       setSelectedParticipants([]);
       setBulkStatus("");
-      showFeedback('success', `Updated ${count} participants to ${bulkStatus}`);
+      
+      if (successCount === count) {
+        showFeedback('success', `Updated ${count} participants to ${bulkStatus}`);
+      } else {
+        showFeedback('error', `Updated ${successCount} of ${count} participants. Some updates failed.`);
+      }
     } catch {
-      showFeedback('error', 'Failed to update some participants');
+      showFeedback('error', 'Failed to update participants');
     } finally {
       setProcessingBulk(false);
     }
@@ -2215,10 +2709,55 @@ export default function EventParticipants({
         </div>
       )}
 
+      {/* Vetting Mode Read-Only Indicator */}
+      {effectiveVettingMode && !effectiveVettingMode.canEdit && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-800">
+                {(() => {
+                  console.log('READ-only message DEBUG:', {
+                    submissionStatus: effectiveVettingMode.submissionStatus,
+                    isVettingCommittee: effectiveVettingMode.isVettingCommittee,
+                    isVettingApprover: effectiveVettingMode.isVettingApprover
+                  });
+                  
+                  const getStatusDisplay = (status: string) => {
+                    console.log('getStatusDisplay called with:', status);
+                    if (status === 'pending_approval') return 'Pending Approval';
+                    if (status === 'approved') return 'Approved';
+                    return 'Open';
+                  };
+                  
+                  if (effectiveVettingMode.submissionStatus === 'approved') {
+                    return 'Vetting approved - View only mode';
+                  } else if (effectiveVettingMode.isVettingCommittee) {
+                    return `Read-only: Committee members can only edit when status is Open (current: ${getStatusDisplay(effectiveVettingMode.submissionStatus || 'open')})`;
+                  } else if (effectiveVettingMode.isVettingApprover) {
+                    return `Read-only: Approvers can only edit when status is Pending Approval (current: ${getStatusDisplay(effectiveVettingMode.submissionStatus || 'open')})`;
+                  } else {
+                    return 'Read-only: Cannot edit participants during this phase';
+                  }
+                })()}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900">
             {roleFilter ? `Event ${roleFilter}s` : "Event Participants"}
+            {effectiveVettingMode && (
+              <Badge className="ml-2 bg-blue-100 text-blue-800">
+                {effectiveVettingMode.isVettingCommittee ? "Vetting Committee" : "Vetting Approver"}
+              </Badge>
+            )}
+
           </h3>
           <p className="text-sm text-gray-600 mt-1">
             {filteredParticipants.length} {roleFilter || "participants"}{" "}
@@ -2226,6 +2765,25 @@ export default function EventParticipants({
               ? `(${statusFilter.replace("_", " ")})`
               : "total"}{" "}
             • Page {currentPage} of {totalPages || 1}
+            {(() => {
+              const showReadOnly = effectiveVettingMode && !effectiveVettingMode.canEdit;
+              console.log('READ-ONLY DEBUG:', {
+                effectiveVettingMode,
+                canEdit: effectiveVettingMode?.canEdit,
+                showReadOnly
+              });
+              return showReadOnly ? (
+                <span className="text-orange-600 font-medium"> • Read-only mode</span>
+              ) : null;
+            })()}
+            {committeeStatus && (
+              <span className="ml-2">
+                • Vetting Status: 
+                <Badge className={`ml-1 text-xs ${getCommitteeStatusDisplay(committeeStatus).color}`}>
+                  {getCommitteeStatusDisplay(committeeStatus).text}
+                </Badge>
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -2293,7 +2851,7 @@ export default function EventParticipants({
               </SelectItem>
             </SelectContent>
           </Select>
-          {selectedParticipants.length > 0 && (
+          {selectedParticipants.length > 0 && (!effectiveVettingMode || effectiveVettingMode.canEdit) && (
             <div className="flex items-center gap-2 bg-blue-50 px-3 py-2 rounded-lg border">
               <span className="text-sm text-blue-700">
                 {selectedParticipants.length} selected
@@ -2307,13 +2865,13 @@ export default function EventParticipants({
                   <SelectItem value="not_selected">Not Selected</SelectItem>
                   <SelectItem value="waiting">Waiting</SelectItem>
                   <SelectItem value="canceled">Canceled</SelectItem>
-                  <SelectItem value="attended">Attended</SelectItem>
                   <SelectItem value="declined">Declined</SelectItem>
+                  <SelectItem value="attended">Attended</SelectItem>
                 </SelectContent>
               </Select>
               <Button
                 onClick={handleBulkStatusChange}
-                disabled={!bulkStatus || processingBulk}
+                disabled={!bulkStatus || processingBulk || (effectiveVettingMode && !effectiveVettingMode.canEdit)}
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white h-8"
               >
@@ -2331,7 +2889,7 @@ export default function EventParticipants({
               </Select>
               <Button
                 onClick={handleBulkRoleChange}
-                disabled={!bulkRole || processingBulkRole}
+                disabled={!bulkRole || processingBulkRole || (effectiveVettingMode && !effectiveVettingMode.canEdit)}
                 size="sm"
                 className="bg-purple-600 hover:bg-purple-700 text-white h-8"
               >
@@ -2339,14 +2897,50 @@ export default function EventParticipants({
               </Button>
             </div>
           )}
-          <Button
-            onClick={handlePrint}
-            variant="outline"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
+
+          <div className="relative column-selector">
+            <Button
+              onClick={() => setShowColumnSelector(!showColumnSelector)}
+              variant="outline"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Column Filter
+            </Button>
+            {showColumnSelector && (
+              <div className="absolute right-0 top-10 bg-white border rounded-lg shadow-lg p-3 z-10 min-w-48">
+                <div className="text-sm font-medium mb-2">Show/Hide Columns</div>
+                {Object.entries({
+                  name: 'Name',
+                  email: 'Email', 
+                  oc: 'OC',
+                  position: 'Position',
+                  country: 'Country',
+                  role: 'Role',
+                  status: 'Status',
+                  confirmed: 'Confirmed',
+                  documents: 'Documents',
+                  comments: 'Comments',
+                  actions: 'Actions'
+                }).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 py-1 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[key as keyof typeof visibleColumns]}
+                      onChange={(e) => setVisibleColumns(prev => ({
+                        ...prev,
+                        [key]: e.target.checked
+                      }))}
+                      className="rounded"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <Button
             onClick={handleExport}
             variant="outline"
@@ -2458,36 +3052,61 @@ export default function EventParticipants({
                   className="rounded border-gray-300"
                 />
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                OC
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Position
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Country
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Confirmed
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Documents
-              </th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+              {visibleColumns.name && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+              )}
+              {visibleColumns.email && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+              )}
+              {visibleColumns.oc && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  OC
+                </th>
+              )}
+              {visibleColumns.position && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Position
+                </th>
+              )}
+              {visibleColumns.country && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Country
+                </th>
+              )}
+              {visibleColumns.role && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+              )}
+              {visibleColumns.status && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              )}
+              {visibleColumns.confirmed && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Confirmed
+                </th>
+              )}
+              {visibleColumns.documents && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Documents
+                </th>
+              )}
+              {visibleColumns.comments && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Comments
+                </th>
+              )}
+              {visibleColumns.actions && (
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -2501,124 +3120,231 @@ export default function EventParticipants({
                     className="rounded border-gray-300"
                   />
                 </td>
-                <td
-                  className="px-3 py-4 whitespace-nowrap cursor-pointer"
-                  onClick={() => handleViewParticipant(participant)}
-                >
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
-                      {participant.full_name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </div>
-                    <div className="text-sm font-medium text-blue-600 hover:text-blue-800 underline">
-                      {participant.full_name}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.email}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.oc || "-"}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.position || "-"}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {participant.country || "-"}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <Select
-                    value={
-                      participant.participant_role ||
-                      participant.role ||
-                      "visitor"
-                    }
-                    onValueChange={(value) =>
-                      handleRoleChange(participant.id, value)
-                    }
-                    disabled={
-                      eventHasEnded || updatingRoleId === participant.id
-                    }
+                {visibleColumns.name && (
+                  <td
+                    className="px-3 py-4 whitespace-nowrap cursor-pointer"
+                    onClick={() => handleViewParticipant(participant)}
                   >
-                    <SelectTrigger className="w-24 h-7 text-xs">
-                      {updatingRoleId === participant.id ? (
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
+                        {participant.full_name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()}
+                      </div>
+                      <div className="text-sm font-medium text-blue-600 hover:text-blue-800 underline">
+                        {participant.full_name}
+                      </div>
+                    </div>
+                  </td>
+                )}
+                {visibleColumns.email && (
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {participant.email}
+                  </td>
+                )}
+                {visibleColumns.oc && (
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {participant.oc || "-"}
+                  </td>
+                )}
+                {visibleColumns.position && (
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {participant.position || "-"}
+                  </td>
+                )}
+                {visibleColumns.country && (
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {participant.country || "-"}
+                  </td>
+                )}
+                {visibleColumns.role && (
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {effectiveVettingMode && !effectiveVettingMode.canEdit ? (
+                      <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700">
+                        {(participant.participant_role || participant.role || "visitor").toUpperCase()}
+                      </Badge>
+                    ) : (
+                      <Select
+                        value={
+                          participant.participant_role ||
+                          participant.role ||
+                          "visitor"
+                        }
+                        onValueChange={(value) =>
+                          handleRoleChange(participant.id, value)
+                        }
+                        disabled={
+                          eventHasEnded || updatingRoleId === participant.id
+                        }
+                      >
+                        <SelectTrigger className="w-24 h-7 text-xs">
+                          {updatingRoleId === participant.id ? (
+                            <div className="flex items-center gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                              <span className="text-xs">Updating...</span>
+                            </div>
+                          ) : (
+                            <SelectValue />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="visitor">Visitor</SelectItem>
+                          <SelectItem value="facilitator">Facilitator</SelectItem>
+                          <SelectItem value="organizer">Organizer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </td>
+                )}
+                {visibleColumns.status && (
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <Badge
+                      className={`text-xs px-2 py-0.5 ${getStatusColor(
+                        participant.status
+                      )}`}
+                    >
+                      {participant.status.replace("_", " ").toUpperCase()}
+                    </Badge>
+                  </td>
+                )}
+                {visibleColumns.confirmed && (
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {participant.status === 'confirmed' ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-xs text-green-700 font-medium">Yes</span>
+                      </div>
+                    ) : participant.status === 'selected' || participant.status === 'approved' ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <span className="text-xs text-orange-700 font-medium">Pending</span>
+                      </div>
+                    ) : participant.status === 'declined' ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span className="text-xs text-red-700 font-medium">No</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span className="text-xs text-gray-500 font-medium">N/A</span>
+                      </div>
+                    )}
+                  </td>
+                )}
+                {visibleColumns.documents && (
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
+                      (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) ? (
+                      <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                          <span className="text-xs">Updating...</span>
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span className="text-xs font-medium text-green-700">P</span>
                         </div>
-                      ) : (
-                        <SelectValue />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="visitor">Visitor</SelectItem>
-                      <SelectItem value="facilitator">Facilitator</SelectItem>
-                      <SelectItem value="organizer">Organizer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <Badge
-                    className={`text-xs px-2 py-0.5 ${getStatusColor(
-                      participant.status
-                    )}`}
-                  >
-                    {participant.status.replace("_", " ").toUpperCase()}
-                  </Badge>
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  {participant.status === 'confirmed' ? (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-xs text-green-700 font-medium">Yes</span>
-                    </div>
-                  ) : participant.status === 'selected' || participant.status === 'approved' ? (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                      <span className="text-xs text-orange-700 font-medium">Pending</span>
-                    </div>
-                  ) : participant.status === 'declined' ? (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="text-xs text-red-700 font-medium">No</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <span className="text-xs text-gray-500 font-medium">N/A</span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap">
-                  {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
-                    (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span className="text-xs font-medium text-green-700">P</span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span className="text-xs font-medium text-green-700">T</span>
+                        </div>
                       </div>
+                    ) : (
                       <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span className="text-xs font-medium text-green-700">T</span>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span className="text-xs text-gray-500 font-medium">N/A</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                      <span className="text-xs text-gray-500 font-medium">N/A</span>
-                    </div>
-                  )}
-                </td>
-                <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                    )}
+                  </td>
+                )}
+                {visibleColumns.comments && (
+                  <td className="px-3 py-4">
+                    {effectiveVettingMode && effectiveVettingMode.canEdit && 
+                     (participant.status === 'declined' || participant.status === 'canceled') ? (
+                      <Select
+                        value={participantComments[participant.id] || participant.vetting_comments || ''}
+                        onValueChange={(value) => {
+                          setParticipantComments(prev => ({ 
+                            ...prev, 
+                            [participant.id]: value 
+                          }));
+                          // Save comment immediately when selected
+                          handleCommentChange(participant.id, value);
+                        }}
+                      >
+                        <SelectTrigger className="w-40 h-8 text-xs">
+                          <SelectValue placeholder="Select reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {participant.status === 'declined' ? (
+                            <>
+                              <SelectItem value="Declined - Operational / Work Reasons">Declined - Operational / Work Reasons</SelectItem>
+                              <SelectItem value="Declined - Personal Reasons">Declined - Personal Reasons</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="Cancelled - Operational Reasons">Cancelled - Operational Reasons</SelectItem>
+                              <SelectItem value="Cancelled - Personal Reasons">Cancelled - Personal Reasons</SelectItem>
+                              <SelectItem value="Cancelled - Prioritising Other Training">Cancelled - Prioritising Other Training</SelectItem>
+                              <SelectItem value="Cancelled - Visa Rejected">Cancelled - Visa Rejected</SelectItem>
+                              <SelectItem value="Cancelled - Visa Appointment Not Available">Cancelled - Visa Appointment Not Available</SelectItem>
+                              <SelectItem value="Cancelled - Visa Issuing Took Too Long">Cancelled - Visa Issuing Took Too Long</SelectItem>
+                              <SelectItem value="Cancelled - Visa Process Unfeasible">Cancelled - Visa Process Unfeasible</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    ) : effectiveVettingMode && effectiveVettingMode.canEdit ? (
+                      <textarea
+                        value={participantComments[participant.id] || ''}
+                        onChange={(e) => setParticipantComments(prev => ({ 
+                          ...prev, 
+                          [participant.id]: e.target.value 
+                        }))}
+                        placeholder="Add comments..."
+                        className="w-full h-16 text-xs border border-gray-300 rounded px-2 py-1 resize-none focus:border-blue-500 focus:outline-none"
+                        maxLength={500}
+                      />
+                    ) : participant.vetting_comments ? (
+                      <div className="text-xs text-gray-700 max-w-40 truncate" title={participant.vetting_comments}>
+                        {participant.vetting_comments}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                  </td>
+                )}
+                {visibleColumns.actions && (
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex items-center gap-1">
                     <LOIQuickAccess participant={participant} eventId={eventId} />
-                    {participant.status === "selected" &&
+                    {/* Show email status for vetting approvers after approval */}
+                    {effectiveVettingMode && effectiveVettingMode.isVettingApprover && vettingApproved && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Email sent"></div>
+                        {!eventHasEnded && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResendInvitation(participant.id)}
+                            disabled={resendingId === participant.id}
+                            className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+                            title="Resend notification email"
+                          >
+                            {resendingId === participant.id ? (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                            ) : (
+                              <Mail className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {/* Show email button for approvers and non-vetting users */}
+                    {(!effectiveVettingMode || effectiveVettingMode.isVettingApprover) &&
+                      participant.status === "selected" &&
                       participant.email &&
-                      participant.email.trim() && (
+                      participant.email.trim() &&
+                      !vettingApproved && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -2635,21 +3361,25 @@ export default function EventParticipants({
                           )}
                         </Button>
                       )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteParticipant(participant.id)}
-                      disabled={deletingId === participant.id || eventHasEnded}
-                      className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deletingId === participant.id ? (
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700"></div>
-                      ) : (
-                        <Trash2 className="h-3 w-3" />
-                      )}
-                    </Button>
+                    {/* Show delete button only for non-vetting users */}
+                    {!effectiveVettingMode && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteParticipant(participant.id)}
+                        disabled={deletingId === participant.id || eventHasEnded}
+                        className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingId === participant.id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700"></div>
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
                   </div>
-                </td>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -2723,6 +3453,401 @@ export default function EventParticipants({
           </div>
         ) : null}
       </div>
+
+      {/* Vetting Committee Submit Button */}
+      {vettingMode && vettingMode.isVettingCommittee && filteredParticipants.length > 0 && 
+       effectiveVettingMode?.submissionStatus === 'open' && (
+        <div className="mt-6 p-4 border-2 rounded-lg bg-blue-50 border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold mb-1 text-blue-900">
+                Vetting Complete
+              </h4>
+              <p className="text-xs text-blue-700">
+                Review all participants and submit for approval when ready.
+              </p>
+            </div>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+              disabled={submittingVetting}
+              onClick={async () => {
+                setSubmittingVetting(true);
+                try {
+                  // Submit vetting for approval
+                  const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/submit`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${apiClient.getToken()}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        event_id: eventId,
+                        submitted_by: 'vetting_committee'
+                      })
+                    }
+                  );
+                  
+                  if (response.ok) {
+                    // Update committee status immediately
+                    setCommitteeStatus('pending_approval');
+                    
+                    // Notify parent component about status change
+                    if (vettingMode?.onStatusChange) {
+                      vettingMode.onStatusChange('pending_approval');
+                    }
+                    showFeedback('success', 'Vetting submitted for approval! Approver has been notified.');
+                  } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    showFeedback('error', errorData.detail || 'Failed to submit vetting. Please try again.');
+                  }
+                } catch (error) {
+                  showFeedback('error', 'Network error. Please try again.');
+                } finally {
+                  setSubmittingVetting(false);
+                }
+              }}
+            >
+              {submittingVetting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Submitting...
+                </>
+              ) : (
+                'Submit for Approval'
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Vetting Approver Email Template Section */}
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && (
+        <div className="mt-6 space-y-4">
+          <div className="p-4 border-2 rounded-lg bg-blue-50 border-blue-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5 text-blue-600" />
+                <h4 className="text-sm font-semibold text-blue-900">
+                  Notification Email Template
+                </h4>
+              </div>
+              <Button
+                onClick={() => setShowEmailTemplate(!showEmailTemplate)}
+                variant="outline"
+                size="sm"
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                {showEmailTemplate ? 'Hide Template' : 'Customize Template'}
+              </Button>
+            </div>
+            
+            {showEmailTemplate && (
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="emailSubject" className="text-sm font-medium text-gray-700">
+                    Email Subject
+                  </Label>
+                  <Input
+                    id="emailSubject"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="You have been selected for the event"
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="emailBody" className="text-sm font-medium text-gray-700">
+                    Email Body
+                  </Label>
+                  <EmailTemplateEditor
+                    value={emailBody}
+                    onChange={setEmailBody}
+                    eventTitle=""
+                    placeholder="Dear participant, you have been selected..."
+                    height={300}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={saveEmailTemplate}
+                    disabled={savingTemplate}
+                    variant="outline"
+                    size="sm"
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  >
+                    {savingTemplate ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700 mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Template'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {!showEmailTemplate && (
+              <p className="text-xs text-blue-700 mt-2">
+                All tenants have access to this template. Click 'Customize Template' to personalize and save for your tenant's future events.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Vetting Committee Submitted Status */}
+      {vettingMode && vettingMode.isVettingCommittee && 
+       effectiveVettingMode?.submissionStatus === 'pending_approval' && (
+        <div className="mt-6 p-4 border-2 rounded-lg bg-orange-50 border-orange-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h4 className="text-sm font-semibold text-orange-900">
+                  Vetting Submitted
+                </h4>
+                <p className="text-xs text-orange-700">
+                  Vetting has been submitted and is awaiting approver review.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-300 text-red-700 hover:bg-red-50"
+              disabled={submittingVetting}
+              onClick={async () => {
+                setSubmittingVetting(true);
+                try {
+                  // Get the committee ID first
+                  const committeeResponse = await apiClient.request(`/vetting-committee/event/${eventId}`);
+                  if (!committeeResponse?.id) {
+                    throw new Error('Committee not found');
+                  }
+                  
+                  // Call the backend API to cancel submission
+                  const response = await apiClient.request(`/vetting-committee/${committeeResponse.id}/cancel-submission`, {
+                    method: 'POST'
+                  });
+                  
+                  // Update committee status immediately
+                  setCommitteeStatus('open');
+                  
+                  // Notify parent component about status change
+                  if (vettingMode?.onStatusChange) {
+                    vettingMode.onStatusChange('open');
+                  }
+                  showFeedback('success', 'Submission cancelled. You can now edit participants again.');
+                } catch (error: any) {
+                  showFeedback('error', error.message || 'Failed to cancel submission.');
+                } finally {
+                  setSubmittingVetting(false);
+                }
+              }}
+            >
+              {submittingVetting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-700 mr-2"></div>
+                  Cancelling...
+                </>
+              ) : (
+                'Cancel Submission'
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Vetting Committee Approved Status */}
+      {vettingMode && vettingMode.isVettingCommittee && 
+       effectiveVettingMode?.submissionStatus === 'approved' && (
+        <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-6 h-6 text-green-600" />
+            <div>
+              <h4 className="text-sm font-semibold text-green-900">
+                Vetting Approved
+              </h4>
+              <p className="text-xs text-green-700">
+                Vetting has been approved and participant notifications have been sent.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vetting Approved Status */}
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && (effectiveVettingMode.submissionStatus === 'approved' || vettingApproved) && (
+        <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              <div>
+                <h4 className="text-sm font-semibold text-green-900">
+                  Vetting Approved
+                </h4>
+                <p className="text-xs text-green-700">
+                  Participant notifications have been sent successfully.
+                </p>
+              </div>
+            </div>
+            {!eventHasEnded && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                disabled={submittingVetting}
+                onClick={async () => {
+                setSubmittingVetting(true);
+                try {
+                  const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/cancel-approval`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${apiClient.getToken()}`,
+                        'Content-Type': 'application/json'
+                      }
+                    }
+                  );
+                  
+                  if (response.ok) {
+                    const { toast } = await import("@/hooks/use-toast");
+                    toast({
+                      title: "Success!",
+                      description: "Vetting approval cancelled. You can now approve again.",
+                    });
+                    
+                    // Update committee status immediately
+                    setCommitteeStatus('pending_approval');
+                    
+                    // Notify parent component about status change
+                    if (vettingMode?.onStatusChange) {
+                      vettingMode.onStatusChange('pending_approval');
+                    }
+                    
+                    setVettingApproved(false);
+                  } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    const { toast } = await import("@/hooks/use-toast");
+                    toast({
+                      title: "Error!",
+                      description: errorData.detail || 'Failed to cancel approval.',
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  const { toast } = await import("@/hooks/use-toast");
+                  toast({
+                    title: "Error!",
+                    description: "Network error. Please try again.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setSubmittingVetting(false);
+                }
+              }}
+            >
+              {submittingVetting ? "Cancelling..." : "Cancel Approval"}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Vetting Approver Approve Button */}
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && !vettingApproved && (
+        <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold mb-1 text-green-900">
+                Vetting Approval Required
+              </h4>
+              <p className="text-xs text-green-700">
+                Review participant selections and approve to send notification emails.
+              </p>
+            </div>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+              disabled={submittingVetting}
+              onClick={async () => {
+                setSubmittingVetting(true);
+                try {
+                  // Approve vetting with optional custom email template
+                  const requestBody: any = {};
+                  if (emailSubject || emailBody) {
+                    requestBody.email_subject = emailSubject || undefined;
+                    requestBody.email_body = emailBody || undefined;
+                  }
+
+                  const hasBody = Object.keys(requestBody).length > 0;
+                  const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/approve`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${apiClient.getToken()}`,
+                        ...(hasBody && { 'Content-Type': 'application/json' })
+                      },
+                      ...(hasBody && { body: JSON.stringify(requestBody) })
+                    }
+                  );
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    const { toast } = await import("@/hooks/use-toast");
+                    toast({
+                      title: "Success!",
+                      description: `Vetting approved! Notification emails sent to ${data.participants_notified || 0} participants.`,
+                    });
+                    
+                    // Update committee status immediately
+                    setCommitteeStatus('approved');
+                    
+                    // Notify parent component about status change
+                    if (vettingMode?.onStatusChange) {
+                      vettingMode.onStatusChange('approved');
+                    }
+                    
+                    // Update vetting status to approved
+                    setVettingApproved(true);
+                  } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    const { toast } = await import("@/hooks/use-toast");
+                    toast({
+                      title: "Error!",
+                      description: errorData.detail || 'Failed to approve vetting. Please try again.',
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  showFeedback('error', 'Network error. Please try again.');
+                } finally {
+                  setSubmittingVetting(false);
+                }
+              }}
+            >
+              {submittingVetting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve Vetting
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Participant Details Modal */}
       {viewingParticipant && (

@@ -64,32 +64,38 @@ export default function ProtectedRoute({
       return;
     }
 
-    if (requireSuperAdmin && !isSuperAdmin) {
-      setAccessDenied(true);
-      setRedirecting(true);
-      setTimeout(() => {
-        router.push(redirectTo);
-      }, 2000);
-      return;
-    }
+    // Add a small delay before showing access denied to allow session to fully load
+    const checkAccess = () => {
+      if (requireSuperAdmin && !isSuperAdmin) {
+        setAccessDenied(true);
+        setRedirecting(true);
+        setTimeout(() => {
+          router.push(redirectTo);
+        }, 2000);
+        return;
+      }
 
-    if (requireTenantAdmin && !isSuperAdmin && !isTenantAdmin) {
-      setAccessDenied(true);
-      setRedirecting(true);
-      setTimeout(() => {
-        router.push(redirectTo);
-      }, 2000);
-      return;
-    }
+      if (requireTenantAdmin && !isSuperAdmin && !isTenantAdmin) {
+        setAccessDenied(true);
+        setRedirecting(true);
+        setTimeout(() => {
+          router.push(redirectTo);
+        }, 2000);
+        return;
+      }
 
-    if (requireAdmin && !isAdmin) {
-      setAccessDenied(true);
-      setRedirecting(true);
-      setTimeout(() => {
-        router.push(redirectTo);
-      }, 2000);
-      return;
-    }
+      if (requireAdmin && !isAdmin) {
+        setAccessDenied(true);
+        setRedirecting(true);
+        setTimeout(() => {
+          router.push(redirectTo);
+        }, 2000);
+        return;
+      }
+    };
+
+    // Small delay to prevent flash of access denied during auth
+    setTimeout(checkAccess, 100);
   }, [user, isAdmin, isSuperAdmin, isTenantAdmin, loading, router, requireAdmin, requireSuperAdmin, requireTenantAdmin, redirectTo]);
 
   if (loading) {
@@ -130,7 +136,15 @@ export default function ProtectedRoute({
         </div>
       );
     }
-    return null;
+    // Show loader instead of null during auth check
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Checking permissions...</p>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

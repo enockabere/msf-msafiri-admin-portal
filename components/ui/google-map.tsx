@@ -41,31 +41,28 @@ export function GoogleMap({
     const lat = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
     const lng = typeof longitude === 'string' ? parseFloat(longitude) : longitude;
     
-
-    
     // Validate coordinates
     if (!lat || !lng || 
         typeof lat !== 'number' || typeof lng !== 'number' ||
         !isFinite(lat) || !isFinite(lng) ||
         lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-
       setError("Invalid coordinates");
       return;
     }
     
-
+    // Check if Google Maps API key is available
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      setError("Google Maps API key not configured");
+      return;
+    }
 
     const loadGoogleMaps = () => {
-
-      
       if (window.google && window.google.maps) {
-
         initializeMap();
         return;
       }
 
       if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-
         // Script is already loading, wait for it
         const checkGoogle = setInterval(() => {
           if (window.google && window.google.maps) {
@@ -73,9 +70,16 @@ export function GoogleMap({
             initializeMap();
           }
         }, 100);
+        
+        // Clear interval after 10 seconds to prevent infinite waiting
+        setTimeout(() => {
+          clearInterval(checkGoogle);
+          if (!window.google || !window.google.maps) {
+            setError("Google Maps failed to load");
+          }
+        }, 10000);
         return;
       }
-
 
       // Load Google Maps script
       const script = document.createElement('script');
@@ -83,21 +87,16 @@ export function GoogleMap({
       script.async = true;
       script.defer = true;
       script.onload = () => {
-
         initializeMap();
       };
       script.onerror = () => {
-
         setError("Failed to load Google Maps");
       };
       document.head.appendChild(script);
     };
 
     const initializeMap = () => {
-
-      
       if (!mapRef.current) {
-
         return;
       }
 
@@ -105,7 +104,6 @@ export function GoogleMap({
         const lat = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
         const lng = typeof longitude === 'string' ? parseFloat(longitude) : longitude;
         
-
         const map = new window.google.maps.Map(mapRef.current, {
           center: { lat, lng },
           zoom: zoom,
@@ -114,17 +112,14 @@ export function GoogleMap({
           fullscreenControl: false,
         });
         
-
         new window.google.maps.Marker({
           position: { lat, lng },
           map: map,
           title: markerTitle,
         });
         
-
         setIsLoaded(true);
       } catch (err) {
-
         setError("Failed to initialize map");
       }
     };

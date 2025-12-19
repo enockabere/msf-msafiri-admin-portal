@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { AccommodationTemplateEditor } from "@/components/ui/accommodation-template-editor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LocationSelect } from "@/components/ui/location-select";
 import { Loader2, Save, X, Hotel } from "lucide-react";
@@ -20,6 +21,7 @@ interface VendorAccommodation {
   latitude?: string;
   longitude?: string;
   description?: string;
+  accommodation_template?: string;
 }
 
 interface EditVendorForm {
@@ -28,6 +30,7 @@ interface EditVendorForm {
   latitude?: string;
   longitude?: string;
   description: string;
+  accommodation_template: string;
 }
 
 interface EditVendorModalProps {
@@ -55,6 +58,7 @@ export default function EditVendorModal({
     latitude: "",
     longitude: "",
     description: "",
+    accommodation_template: "",
   });
 
   useEffect(() => {
@@ -89,6 +93,7 @@ export default function EditVendorModal({
         latitude: vendor.latitude || "",
         longitude: vendor.longitude || "",
         description: vendor.description || "",
+        accommodation_template: vendor.accommodation_template || "",
       });
     }
   }, [vendor]);
@@ -205,6 +210,23 @@ export default function EditVendorModal({
               />
               <p className="text-xs text-gray-500">
                 Provide details about the accommodation facilities and services
+              </p>
+            </div>
+
+            {/* Proof of Accommodation Template */}
+            <div className="space-y-2">
+              <Label htmlFor="accommodation_template" className="text-sm font-medium text-gray-700">
+                Proof of Accommodation Template
+              </Label>
+              <AccommodationTemplateEditor
+                value={form.accommodation_template}
+                onChange={(value) => setForm({ ...form, accommodation_template: value })}
+                hotelName={form.vendor_name}
+                placeholder="Design the proof of accommodation document template..."
+                height={400}
+              />
+              <p className="text-xs text-gray-500">
+                This template will be used to generate proof of accommodation documents for participants
               </p>
             </div>
           </div>

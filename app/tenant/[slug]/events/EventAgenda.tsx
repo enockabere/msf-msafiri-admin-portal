@@ -35,6 +35,7 @@ import {
   AlertCircle,
   X,
   Save,
+  Download,
 } from "lucide-react";
 import { format, isWithinInterval, parseISO, isSameDay } from "date-fns";
 
@@ -81,6 +82,8 @@ interface EventAgendaProps {
 }
 
 interface EventDetails {
+  id: number;
+  title: string;
   start_date: string;
   end_date: string;
 }
@@ -127,6 +130,8 @@ export default function EventAgenda({
       if (response.ok) {
         const data = await response.json();
         setEventDetails({
+          id: data.id,
+          title: data.title,
           start_date: data.start_date,
           end_date: data.end_date,
         });
@@ -475,6 +480,39 @@ export default function EventAgenda({
     setShowForm(true);
   };
 
+  const downloadCSV = () => {
+    if (agendaItems.length === 0) {
+      return;
+    }
+
+    const headers = ['Session', 'Title', 'Description', 'Date', 'Start Time', 'End Time', 'Presenter'];
+    const csvData = agendaItems
+      .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime())
+      .map(item => [
+        item.session_number,
+        item.title,
+        item.description ? item.description.replace(/<[^>]*>/g, '').replace(/,/g, ';') : '',
+        format(parseISO(item.start_datetime), "MMM dd, yyyy"),
+        format(parseISO(item.start_datetime), "HH:mm"),
+        format(parseISO(item.end_datetime), "HH:mm"),
+        item.presenter || ''
+      ]);
+
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `agenda-${eventDetails?.title?.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'event'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -720,13 +758,25 @@ export default function EventAgenda({
       {agendaItems.length > 0 && (
         <div className="bg-white border rounded-lg">
           <div className="p-4 border-b">
-            <h4 className="font-semibold">All Agenda Items</h4>
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold">All Agenda Items</h4>
+              <Button
+                onClick={downloadCSV}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download CSV
+              </Button>
+            </div>
           </div>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Session</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Date & Time</TableHead>
                 <TableHead>Presenter</TableHead>
                 <TableHead>Actions</TableHead>
@@ -750,17 +800,21 @@ export default function EventAgenda({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{item.title}</div>
-                        {item.description && (
-                          <div
-                            className="text-sm text-gray-500 truncate max-w-xs"
-                            dangerouslySetInnerHTML={{
-                              __html: item.description.replace(/<[^>]*>/g, '').substring(0, 100)
-                            }}
-                          />
-                        )}
-                      </div>
+                      <div className="font-medium">{item.title}</div>
+                    </TableCell>
+                    <TableCell>
+                      {item.description ? (
+                        <div
+                          className="text-sm text-gray-600 max-w-xs"
+                          dangerouslySetInnerHTML={{
+                            __html: item.description.length > 150 
+                              ? item.description.substring(0, 150) + '...' 
+                              : item.description
+                          }}
+                        />
+                      ) : (
+                        <span className="text-sm text-gray-400">No description</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
