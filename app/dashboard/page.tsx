@@ -11,6 +11,7 @@ import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 import { TenantSelector } from "@/components/TenantSelector";
 import { useTenant } from "@/context/TenantContext";
 import SuperAdminDashboard from "@/components/layout/SuperAdminDashboard";
+import { VersionInfo } from "@/components/ui/version-info";
 
 import { LoadingScreen } from "@/components/ui/loading";
 
@@ -148,6 +149,7 @@ export default function DashboardPage() {
                     First Login
                   </span>
                 )}
+                <VersionInfo />
               </div>
             </div>
           </div>
