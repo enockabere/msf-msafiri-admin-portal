@@ -2,7 +2,7 @@
 
 All notable changes to the MSF Admin Portal will be documented in this file.
 
-## [1.2.0 "Harmony"] - 2024-12-23
+## [1.2.0] - 2024-12-23
 
 ### Added
 - **Multi-Role Authentication**: Enhanced authentication system to support users with multiple roles
@@ -34,7 +34,7 @@ All notable changes to the MSF Admin Portal will be documented in this file.
 - Better error handling and user feedback
 - Optimized authentication flow and session management
 
-## [1.1.0 "Foundation"] - 2024-12-22
+## [1.1.0] - 2024-12-22
 
 ### Added
 - **Vetting Committee Management**: Complete vetting committee system for event participant selection
@@ -47,7 +47,7 @@ All notable changes to the MSF Admin Portal will be documented in this file.
 - **Role Permissions**: Fixed certificate template editing permissions for super admins
 - **User Management**: Improved user role assignment and tenant associations
 
-## [1.0.0 "Genesis"] - 2024-12-01
+## [1.0.0] - 2024-12-01
 
 ### Added
 - Initial release of MSF Admin Portal
