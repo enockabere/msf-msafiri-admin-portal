@@ -510,6 +510,7 @@ export default function BadgeDesignPage() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
     </DashboardLayout>
   )
 }
