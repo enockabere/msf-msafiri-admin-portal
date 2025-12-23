@@ -342,7 +342,12 @@ export default function LoginComponent() {
           if (mustChangePassword) {
             router.push("/change-password?required=true");
           } else {
-            router.push(redirectTo);
+            // Super admin should go to main dashboard, others to tenant dashboard
+            if (loginData.user?.role === "SUPER_ADMIN" || loginData.user?.role === "super_admin") {
+              router.push("/dashboard");
+            } else {
+              router.push(redirectTo);
+            }
           }
         }, 1000);
       }
