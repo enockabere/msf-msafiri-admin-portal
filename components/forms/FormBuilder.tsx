@@ -505,6 +505,9 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
             <Plus className="w-4 h-4 mr-2" />
             Add Field
           </Button>
+          <Button onClick={restoreMissingFields} size="sm" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+            Restore Missing Fields
+          </Button>
           <Button onClick={removeDuplicates} size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50">
             <Trash2 className="w-4 h-4 mr-2" />
             Remove Duplicates
