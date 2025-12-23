@@ -12,8 +12,9 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Trash2, Edit, Plus, Upload, Eye } from 'lucide-react'
+import { Trash2, Edit, Plus, Upload, Eye, Award } from 'lucide-react'
 import { toast } from 'sonner'
+import DashboardLayout from '@/components/layout/dashboard-layout'
 
 interface BadgeTemplate {
   id: number
@@ -233,10 +234,25 @@ export default function BadgeDesignPage() {
   `.trim()
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Award className="w-8 h-8 text-blue-600 animate-pulse" />
+              </div>
+            </div>
+            <p className="text-xs font-medium text-gray-600">Loading badge templates...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
   }
 
   return (
+    <DashboardLayout>
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -494,6 +510,6 @@ export default function BadgeDesignPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardLayout>
   )
 }
