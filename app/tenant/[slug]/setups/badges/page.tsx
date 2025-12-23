@@ -447,7 +447,7 @@ export default function BadgeDesignPage() {
                     className="font-mono text-sm"
                   />
                   <p className="text-sm text-gray-600 mt-2">
-                    Available variables: {{`{participantName}`}}, {{`{eventName}`}}, {{`{eventDates}`}}, {{`{eventLocation}`}}, {{`{participantRole}`}}, {{`{participantOrganization}`}}, {{`{logo}`}}, {{`{background_image}`}}, {{`{qr_code}`}}
+                    Available variables: {'{'}participantName{'}'}, {'{'}eventName{'}'}, {'{'}eventDates{'}'}, {'{'}eventLocation{'}'}, {'{'}participantRole{'}'}, {'{'}participantOrganization{'}'}, {'{'}logo{'}'}, {'{'}background_image{'}'}, {'{'}qr_code{'}'}
                   </p>
                 </div>
 
