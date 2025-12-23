@@ -82,6 +82,9 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
       } else {
         console.log("✅ Setting fields to state");
         setFields(response);
+        
+        // Auto-fix duplicates and missing fields
+        await autoFixFormIssues();
       }
 
       console.log("✅ ============ FORM FIELDS LOAD COMPLETE ============");
@@ -94,6 +97,43 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
       console.error("🔴 ============ END ERROR ============");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const autoFixFormIssues = async () => {
+    try {
+      console.log("🔧 Auto-fixing form issues...");
+      
+      // Remove duplicates first
+      try {
+        const duplicateResponse = await apiClient.request(`/form-fields/events/${eventId}/remove-duplicates`, {
+          method: "POST",
+        });
+        if (duplicateResponse.deleted_count > 0) {
+          console.log(`✅ Auto-removed ${duplicateResponse.deleted_count} duplicate fields`);
+        }
+      } catch (error) {
+        console.log("ℹ️ No duplicates to remove or endpoint not available");
+      }
+      
+      // Restore missing fields
+      try {
+        const restoreResponse = await apiClient.request(`/form-fields/events/${eventId}/restore-complete-fields`, {
+          method: "POST",
+        });
+        if (restoreResponse.created_count > 0) {
+          console.log(`✅ Auto-restored ${restoreResponse.created_count} missing fields`);
+        }
+      } catch (error) {
+        console.log("ℹ️ No missing fields to restore or endpoint not available");
+      }
+      
+      // Reload fields if any changes were made
+      const updatedResponse = await apiClient.request<FormField[]>(`/form-fields/events/${eventId}/form-fields`);
+      setFields(updatedResponse);
+      
+    } catch (error) {
+      console.log("ℹ️ Auto-fix completed with some issues:", error);
     }
   };
 
@@ -419,15 +459,20 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
     console.log('💾 ============ SAVING FORM FIELDS ============');
     console.log('💾 Event ID:', eventId);
     console.log('💾 Total fields to save:', fields.length);
-    console.log('💾 Fields:', JSON.stringify(fields, null, 2));
 
     setSaving(true);
     try {
+      // First, normalize order_index values to ensure proper sequencing
+      const normalizedFields = [...fields];
+      refreshQuestionNumbers(normalizedFields);
+      
+      console.log('💾 Normalized fields:', JSON.stringify(normalizedFields, null, 2));
+
       let savedCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
 
-      for (const field of fields) {
+      for (const field of normalizedFields) {
         if (field.id) {
           console.log(`💾 Updating field #${field.id}: ${field.field_label}`);
           await apiClient.request(`/form-fields/form-fields/${field.id}`, {
@@ -454,6 +499,9 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
         }
         savedCount++;
       }
+
+      // Update local state with normalized fields
+      setFields(normalizedFields);
 
       console.log('✅ ============ SAVE COMPLETE ============');
       console.log(`✅ Total saved: ${savedCount}`);
@@ -504,16 +552,6 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
           <Button onClick={addField} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Add Field
-          </Button>
-          <Button onClick={restoreMissingFields} size="sm" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-            Restore Missing Fields
-          </Button>
-          <Button onClick={removeDuplicates} size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50">
-            <Trash2 className="w-4 h-4 mr-2" />
-            Remove Duplicates
-          </Button>
-          <Button onClick={updateCountryFields} size="sm" variant="outline" className="border-green-600 text-green-600 hover:bg-green-50">
-            Update Country Fields
           </Button>
         </div>
       </div>

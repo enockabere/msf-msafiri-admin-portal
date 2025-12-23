@@ -717,7 +717,7 @@ export default function LoginComponent() {
         {/* Version info at bottom */}
         <div className="text-center mt-4">
           <p className="text-xs text-gray-400">
-            MSF Admin Portal v{APP_VERSION} • {new Date().getFullYear()}
+            v{APP_VERSION}
           </p>
         </div>
         </div>

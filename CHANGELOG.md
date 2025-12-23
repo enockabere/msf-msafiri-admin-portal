@@ -2,6 +2,42 @@
 
 All notable changes to the MSF Admin Portal will be documented in this file.
 
+## [1.3.0] - 2024-12-23
+
+### Added
+- **Vetting-Only User Interface**: Specialized interface for users with only vetting roles
+  - Clean layout with topbar, footer, and no sidebar for focused experience
+  - MSafiri logo display in navbar when sidebar is hidden
+  - Tenant-specific branding in footer instead of generic MSF
+  - Automatic layout detection based on user roles
+- **Enhanced Role Management**: Improved role display and permission handling
+  - Fixed role display to handle both uppercase and lowercase role names
+  - Hidden profile settings for vetting-only users
+  - Removed debug information from user dropdown menu
+  - Proper role-based access control for different user types
+- **Event Filtering for Vetting Users**: Restricted event access for vetting-only users
+  - Vetting committee and approver users only see events they are assigned to review
+  - Dedicated API endpoint for fetching user-assigned vetting events
+  - Improved event access control based on user roles
+- **Form Builder Improvements**: Enhanced registration form management
+  - Automatic duplicate field removal on form load
+  - Automatic missing field restoration without manual intervention
+  - Fixed question numbering consistency in form preview
+  - Removed manual maintenance buttons for seamless experience
+
+### Fixed
+- **Navbar Layout**: Improved spacing and logo positioning when sidebar is hidden
+- **Footer Branding**: Dynamic tenant name display instead of static MSF abbreviation
+- **Form Question Numbering**: Fixed inconsistent and duplicate question numbers in registration forms
+- **Role Display**: Resolved "Unknown Role" display issue for vetting users
+- **UI Consistency**: Better visual balance and professional appearance across all layouts
+
+### Technical Improvements
+- Enhanced layout system with conditional rendering based on user roles
+- Improved form field normalization and sequential numbering
+- Better error handling and automatic issue resolution in form builder
+- Optimized user experience with reduced manual maintenance requirements
+
 ## [1.2.0] - 2024-12-23
 
 ### Added

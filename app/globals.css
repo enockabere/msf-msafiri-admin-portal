@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "ckeditor5/ckeditor5.css";
 
 :root {
   --color-msf-red: #ee0000;

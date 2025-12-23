@@ -1528,103 +1528,151 @@ interface LOISectionProps {
 }
 
 function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) {
-  const [loiStatus, setLoiStatus] = useState<{
-    available: boolean;
-    slug?: string;
-    message: string;
-    loading: boolean;
-  }>({ available: false, message: '', loading: true });
+  const [activeTemplate, setActiveTemplate] = useState<any>(null);
+  const [participantData, setParticipantData] = useState<any>(null);
+  const [eventData, setEventData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [loiSlug, setLoiSlug] = useState<string | null>(null);
 
   const { apiClient } = useAuthenticatedApi();
 
   useEffect(() => {
-    const checkLOIAvailability = async () => {
+    const loadLOIData = async () => {
       try {
-        const response = await apiClient.request(
-          `/loi/participant/${participantEmail}/event/${eventId}/check`,
+        // Load active invitation template
+        const templatesResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/invitation-templates`, {
+          headers: { 'Authorization': `Bearer ${apiClient.getToken()}` }
+        });
+        
+        if (templatesResponse.ok) {
+          const templatesData = await templatesResponse.json();
+          const activeTemplate = templatesData.templates?.find((t: any) => t.is_active);
+          setActiveTemplate(activeTemplate);
+        }
+
+        // Load participant data
+        const participantResponse = await apiClient.request(
+          `/event-registration/participant-by-email/${participantEmail}?event_id=${eventId}`,
           { headers: { 'X-Tenant-ID': tenantSlug } }
         );
-        
-        setLoiStatus({
-          available: response.available,
-          slug: response.slug,
-          message: response.message,
-          loading: false
-        });
+        setParticipantData(participantResponse);
+
+        // Load event data
+        const eventResponse = await apiClient.request(
+          `/events/${eventId}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        setEventData(eventResponse);
+
+        // Generate unique slug for this LOI
+        const slug = `${tenantSlug}-${eventId}-${participantEmail.replace('@', '-').replace('.', '-')}-${Date.now()}`;
+        setLoiSlug(slug);
+
       } catch (error) {
-        setLoiStatus({
-          available: false,
-          message: 'Failed to check LOI availability',
-          loading: false
-        });
+        console.error('Failed to load LOI data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkLOIAvailability();
+    loadLOIData();
   }, [participantEmail, eventId, tenantSlug, apiClient]);
 
+  const generateLOIContent = () => {
+    if (!activeTemplate || !participantData || !eventData) return '';
+
+    const data = {
+      participant_name: participantData.full_name || participantData.name || 'N/A',
+      passport_number: participantData.passport_number || 'N/A',
+      nationality: participantData.nationality || 'N/A',
+      date_of_birth: participantData.date_of_birth || 'N/A',
+      passport_issue_date: participantData.passport_issue_date || 'N/A',
+      passport_expiry_date: participantData.passport_expiry_date || 'N/A',
+      event_name: eventData.title || eventData.name || 'N/A',
+      event_start_date: eventData.start_date ? new Date(eventData.start_date).toLocaleDateString() : 'N/A',
+      event_end_date: eventData.end_date ? new Date(eventData.end_date).toLocaleDateString() : 'N/A',
+      event_location: eventData.location || 'N/A',
+      accommodation_details: 'TBD',
+      organization_name: 'Médecins Sans Frontières',
+      organization_address: activeTemplate.address_fields?.filter((f: string) => f.trim()).join('<br>') || 'Médecins Sans Frontières<br>Nairobi, Kenya',
+      organizer_name: eventData.organizer_name || 'Event Organizer',
+      organizer_title: eventData.organizer_title || 'Event Coordinator',
+      logo: activeTemplate.logo_url 
+        ? `<img src="${activeTemplate.logo_url}" alt="Organization Logo" style="max-height: 60px; max-width: 100px; display: block;" />` 
+        : '',
+      signature: activeTemplate.signature_url 
+        ? `<img src="${activeTemplate.signature_url}" alt="Signature" style="max-height: 40px; max-width: 150px; display: block;" />` 
+        : '',
+      qr_code: activeTemplate.enable_qr_code && loiSlug
+        ? `<img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(`${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiSlug}`)}" alt="QR Code" style="width: 58px; height: 58px;" />`
+        : ''
+    };
+
+    let content = activeTemplate.template_content;
+    Object.entries(data).forEach(([key, value]) => {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      content = content.replace(regex, value || '');
+    });
+
+    return content;
+  };
+
   const handleViewLOI = () => {
-    if (loiStatus.slug) {
-      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
-      window.open(loiUrl, '_blank');
+    if (loiSlug) {
+      window.open(`${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiSlug}`, '_blank');
     }
   };
 
-  if (loiStatus.loading) {
+  if (loading) {
     return (
       <div className="bg-gray-50 rounded-lg p-4 text-center">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600">Checking LOI availability...</p>
+        <p className="text-sm text-gray-600">Loading LOI template...</p>
+      </div>
+    );
+  }
+
+  if (!activeTemplate) {
+    return (
+      <div className="bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200 rounded-lg p-4 border-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-gray-100 p-2 rounded-lg">
+            <FileText className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-900">LOI Document</span>
+              <Badge className="text-xs px-2 py-1 bg-gray-100 text-gray-600 border-gray-300">
+                No Template
+              </Badge>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">No active invitation template found. Please create and activate a template first.</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`rounded-lg p-4 border-2 ${
-      loiStatus.available 
-        ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
-        : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
-    }`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${
-            loiStatus.available ? 'bg-green-100' : 'bg-gray-100'
-          }`}>
-            <FileText className={`h-5 w-5 ${
-              loiStatus.available ? 'text-green-600' : 'text-gray-400'
-            }`} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-900">LOI Document</span>
-              <Badge className={`text-xs px-2 py-1 ${
-                loiStatus.available 
-                  ? 'bg-green-100 text-green-800 border-green-300'
-                  : 'bg-gray-100 text-gray-600 border-gray-300'
-              }`}>
-                {loiStatus.available ? 'Available' : 'Not Available'}
-              </Badge>
+    <div className="space-y-4">
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 rounded-lg p-4 border-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-green-100 p-2 rounded-lg">
+              <FileText className="h-5 w-5 text-green-600" />
             </div>
-            <p className="text-sm text-gray-600 mt-1">{loiStatus.message}</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">LOI Document</span>
+                <Badge className="text-xs px-2 py-1 bg-green-100 text-green-800 border-green-300">
+                  Ready
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">Generated using template: {activeTemplate.name}</p>
+            </div>
           </div>
-        </div>
-        
-        {loiStatus.available && (
+          
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setLoiStatus(prev => ({ ...prev, loading: true }));
-                // Re-check availability
-                setTimeout(() => {
-                  setLoiStatus(prev => ({ ...prev, loading: false }));
-                }, 1000);
-              }}
-              className="bg-white border-2 border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
-            >
-              Check Availability
-            </Button>
             <Button
               size="sm"
               onClick={handleViewLOI}
@@ -1634,7 +1682,24 @@ function LOISection({ participantEmail, eventId, tenantSlug }: LOISectionProps) 
               View LOI
             </Button>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* LOI Preview */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h5 className="font-medium text-gray-900">Letter of Invitation Preview</h5>
+          {loiSlug && (
+            <div className="text-xs text-gray-500">
+              Public URL: /public/loi/{loiSlug}
+            </div>
+          )}
+        </div>
+        <div 
+          className="prose max-w-none text-sm"
+          dangerouslySetInnerHTML={{ __html: generateLOIContent() }}
+          style={{ fontSize: '12px', lineHeight: '1.4' }}
+        />
       </div>
     </div>
   );
