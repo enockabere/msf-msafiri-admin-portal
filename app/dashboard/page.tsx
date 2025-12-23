@@ -66,10 +66,19 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      // Immediate redirect for non-super-admin users
-      if (user.role !== "super_admin" && user.tenantId) {
+      console.log("🔍 DASHBOARD REDIRECT CHECK:", {
+        userRole: user.role,
+        tenantId: user.tenantId,
+        isSuperAdmin: user.role === "super_admin" || user.role === "SUPER_ADMIN"
+      });
+      
+      // Only redirect non-super-admin users
+      if (user.role !== "super_admin" && user.role !== "SUPER_ADMIN" && user.tenantId) {
+        console.log("🔄 Redirecting non-super-admin to tenant dashboard:", `/tenant/${user.tenantId}/dashboard`);
         router.replace(`/tenant/${user.tenantId}/dashboard`);
         return;
+      } else {
+        console.log("✅ Super admin staying on main dashboard");
       }
     }
   }, [loading, isAuthenticated, user, router]);
@@ -79,12 +88,12 @@ export default function DashboardPage() {
   }
 
   // Show loading for non-super-admin users while redirecting
-  if (user?.role !== "super_admin") {
+  if (user?.role !== "super_admin" && user?.role !== "SUPER_ADMIN") {
     return <DashboardLoading />;
   }
 
   // Check if user is super admin
-  const isSuperAdmin = user?.role === "super_admin";
+  const isSuperAdmin = user?.role === "super_admin" || user?.role === "SUPER_ADMIN";
 
   // Super admins get the specialized dashboard
   if (isSuperAdmin) {
