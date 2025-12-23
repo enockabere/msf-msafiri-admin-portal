@@ -171,9 +171,64 @@ export default function BadgeDesignPage() {
                   </div>
 
                   <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                    <div className="text-center py-8">
-                      <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">Badge template editor coming soon...</p>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="name" className="text-sm font-medium text-gray-700">Template Name</Label>
+                        <Input
+                          id="name"
+                          placeholder="Enter template name"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
+                        <Input
+                          id="description"
+                          placeholder="Brief description of the badge template"
+                          className="mt-1"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Badge Size</Label>
+                          <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                            <option value="standard">Standard</option>
+                            <option value="large">Large</option>
+                            <option value="small">Small</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">Orientation</Label>
+                          <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                            <option value="portrait">Portrait</option>
+                            <option value="landscape">Landscape</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="qr_code" className="rounded" defaultChecked />
+                        <Label htmlFor="qr_code" className="text-sm text-gray-700">Include QR Code</Label>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="active" className="rounded" defaultChecked />
+                        <Label htmlFor="active" className="text-sm text-gray-700">Active Template</Label>
+                      </div>
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex justify-end space-x-3">
+                          <Button variant="outline" onClick={() => setModalOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button className="bg-blue-600 hover:bg-blue-700">
+                            <Save className="w-4 h-4 mr-2" />
+                            Create Template
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </DialogContent>
