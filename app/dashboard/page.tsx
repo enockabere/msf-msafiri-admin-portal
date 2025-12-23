@@ -66,10 +66,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
+      // Check if user must change password
+      if (user.mustChangePassword) {
+        console.log("🔐 User must change password, redirecting...");
+        router.replace("/change-password?required=true");
+        return;
+      }
+      
       console.log("🔍 DASHBOARD REDIRECT CHECK:", {
         userRole: user.role,
         tenantId: user.tenantId,
-        isSuperAdmin: user.role === "super_admin" || user.role === "SUPER_ADMIN"
+        isSuperAdmin: user.role === "super_admin" || user.role === "SUPER_ADMIN",
+        mustChangePassword: user.mustChangePassword
       });
       
       // Only redirect non-super-admin users

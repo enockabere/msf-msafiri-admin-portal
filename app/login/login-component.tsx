@@ -311,6 +311,7 @@ export default function LoginComponent() {
         let userRole = null;
         let allRoles = [];
         let userTenants = [];
+        let apiMustChangePassword = false;
         try {
           const loginResponse = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
@@ -335,6 +336,7 @@ export default function LoginComponent() {
             userRole = loginData.role;
             allRoles = loginData.all_roles || [loginData.role];
             userTenants = loginData.user_tenants || [];
+            apiMustChangePassword = loginData.must_change_password;
             
             // Check if user has multiple tenants
             if (userTenants.length > 1) {
@@ -346,13 +348,6 @@ export default function LoginComponent() {
                 redirectTo
               }));
               router.push('/select-tenant');
-              return;
-            }
-            
-            if (loginData.must_change_password) {
-              setTimeout(() => {
-                router.push("/change-password?required=true");
-              }, 1000);
               return;
             }
             
@@ -373,6 +368,14 @@ export default function LoginComponent() {
         } catch (apiError) {
           console.log("API check failed, using default logic", apiError);
           // If API call fails, continue with NextAuth result
+        }
+        
+        // Check if password must be changed (API flag takes precedence)
+        if (apiMustChangePassword || mustChangePassword) {
+          setTimeout(() => {
+            router.push("/change-password?required=true");
+          }, 1000);
+          return;
         }
         
         setTimeout(() => {
