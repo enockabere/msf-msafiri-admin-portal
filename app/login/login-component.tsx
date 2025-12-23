@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { APP_VERSION } from "@/lib/version";
+import { APP_VERSION, VERSION_NAME } from "@/lib/version";
 import {
   ArrowLeft,
   Mail,
@@ -557,7 +557,7 @@ export default function LoginComponent() {
                 Your One-Stop Companion for MSF Traveller
               </p>
               <p className="text-xs text-gray-400">
-                v{APP_VERSION}
+                v{APP_VERSION} "{VERSION_NAME}"
               </p>
               {/* Mobile/Tablet description */}
               <p className="text-xs text-gray-500 xl:hidden px-2">
@@ -703,7 +703,7 @@ export default function LoginComponent() {
         {/* Version info at bottom */}
         <div className="text-center mt-4">
           <p className="text-xs text-gray-400">
-            MSF Admin Portal v{APP_VERSION} • {new Date().getFullYear()}
+            MSF Admin Portal v{APP_VERSION} "{VERSION_NAME}" • {new Date().getFullYear()}
           </p>
         </div>
         </div>

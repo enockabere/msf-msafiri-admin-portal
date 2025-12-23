@@ -16,7 +16,7 @@ export function VersionInfo() {
       <DialogTrigger asChild>
         <Button variant="ghost" size="sm" className="text-xs text-gray-500 hover:text-gray-700">
           <Info className="w-3 h-3 mr-1" />
-          v{versionInfo.version}
+          v{versionInfo.version} "{versionInfo.versionName}"
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -34,7 +34,7 @@ export function VersionInfo() {
                 <span className="text-sm font-medium">Version</span>
               </div>
               <Badge variant="secondary" className="font-mono">
-                {versionInfo.version}
+                {versionInfo.version} "{versionInfo.versionName}"
               </Badge>
             </div>
             <div className="space-y-2">
