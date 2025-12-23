@@ -57,29 +57,45 @@ export default function BadgeDesignPage() {
   })
 
   const fetchTemplates = async () => {
+    console.log('Fetching badge templates for tenant:', tenantSlug)
+    console.log('Session token available:', !!session?.accessToken)
+    
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates`, {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates`
+      console.log('Fetching from URL:', url)
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${session?.accessToken}`,
           'Content-Type': 'application/json',
         },
       })
 
+      console.log('Response status:', response.status)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Badge templates data:', data)
         setTemplates(data.templates || [])
+      } else {
+        const errorText = await response.text()
+        console.error('Failed to fetch badge templates:', response.status, response.statusText, errorText)
+        toast.error('Failed to load badge templates')
       }
     } catch (error) {
       console.error('Error fetching badge templates:', error)
       toast.error('Failed to load badge templates')
     } finally {
+      console.log('Setting loading to false')
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (session?.accessToken) {
+    if (session?.accessToken && tenantSlug) {
       fetchTemplates()
+    } else if (!session?.accessToken) {
+      setLoading(false)
     }
   }, [session, tenantSlug])
 
