@@ -308,6 +308,7 @@ export default function LoginComponent() {
         const mustChangePassword = formData.password === "password@1234";
         
         // Make direct API call to check must_change_password flag
+        let userRole = null;
         try {
           const loginResponse = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
@@ -327,6 +328,8 @@ export default function LoginComponent() {
               must_change_password: loginData.must_change_password
             });
             
+            userRole = loginData.user?.role;
+            
             if (loginData.must_change_password) {
               setTimeout(() => {
                 router.push("/change-password?required=true");
@@ -343,7 +346,7 @@ export default function LoginComponent() {
             router.push("/change-password?required=true");
           } else {
             // Super admin should go to main dashboard, others to tenant dashboard
-            if (loginData.user?.role === "SUPER_ADMIN" || loginData.user?.role === "super_admin") {
+            if (userRole === "SUPER_ADMIN" || userRole === "super_admin") {
               router.push("/dashboard");
             } else {
               router.push(redirectTo);
