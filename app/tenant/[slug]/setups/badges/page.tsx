@@ -145,7 +145,7 @@ export default function BadgeDesignPage() {
                     Create Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[800px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                <DialogContent className="sm:max-w-[1200px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
                   <button
                     onClick={() => setModalOpen(false)}
                     className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
@@ -171,63 +171,156 @@ export default function BadgeDesignPage() {
                   </div>
 
                   <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="name" className="text-sm font-medium text-gray-700">Template Name</Label>
-                        <Input
-                          id="name"
-                          placeholder="Enter template name"
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
-                        <Input
-                          id="description"
-                          placeholder="Brief description of the badge template"
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {/* Form Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Template Settings</h3>
+                        
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">Badge Size</Label>
-                          <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                            <option value="standard">Standard</option>
-                            <option value="large">Large</option>
-                            <option value="small">Small</option>
-                          </select>
+                          <Label htmlFor="name" className="text-sm font-medium text-gray-700">Template Name</Label>
+                          <Input
+                            id="name"
+                            placeholder="Enter template name"
+                            className="mt-1"
+                          />
                         </div>
+                        
                         <div>
-                          <Label className="text-sm font-medium text-gray-700">Orientation</Label>
-                          <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                            <option value="portrait">Portrait</option>
-                            <option value="landscape">Landscape</option>
-                          </select>
+                          <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
+                          <Input
+                            id="description"
+                            placeholder="Brief description of the badge template"
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Badge Size</Label>
+                            <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                              <option value="standard">Standard</option>
+                              <option value="large">Large</option>
+                              <option value="small">Small</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700">Orientation</Label>
+                            <select className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                              <option value="portrait">Portrait</option>
+                              <option value="landscape">Landscape</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" id="qr_code" className="rounded" defaultChecked />
+                          <Label htmlFor="qr_code" className="text-sm text-gray-700">Include QR Code</Label>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" id="active" className="rounded" defaultChecked />
+                          <Label htmlFor="active" className="text-sm text-gray-700">Active Template</Label>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="qr_code" className="rounded" defaultChecked />
-                        <Label htmlFor="qr_code" className="text-sm text-gray-700">Include QR Code</Label>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="active" className="rounded" defaultChecked />
-                        <Label htmlFor="active" className="text-sm text-gray-700">Active Template</Label>
-                      </div>
-                      
-                      <div className="pt-4 border-t">
-                        <div className="flex justify-end space-x-3">
-                          <Button variant="outline" onClick={() => setModalOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button className="bg-blue-600 hover:bg-blue-700">
-                            <Save className="w-4 h-4 mr-2" />
-                            Create Template
-                          </Button>
+                      {/* Preview Section */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Badge Preview</h3>
+                        <div className="bg-gray-50 rounded-lg p-6 flex items-center justify-center min-h-[400px]">
+                          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm">
+                            <div style={{
+                              width: '280px',
+                              height: '360px',
+                              border: '2px solid #e5e7eb',
+                              padding: '20px',
+                              background: 'white',
+                              fontFamily: 'Arial, sans-serif',
+                              position: 'relative',
+                              borderRadius: '8px'
+                            }}>
+                              {/* Logo placeholder */}
+                              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                <div style={{
+                                  width: '80px',
+                                  height: '80px',
+                                  backgroundColor: '#f3f4f6',
+                                  borderRadius: '8px',
+                                  margin: '0 auto',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '12px',
+                                  color: '#6b7280'
+                                }}>
+                                  LOGO
+                                </div>
+                              </div>
+                              
+                              {/* Event info */}
+                              <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                                <h2 style={{ margin: '0', fontSize: '16px', color: '#333', fontWeight: 'bold' }}>MSF Event 2024</h2>
+                                <p style={{ margin: '5px 0', fontSize: '11px', color: '#666' }}>Jan 15-17, 2024</p>
+                                <p style={{ margin: '5px 0', fontSize: '11px', color: '#666' }}>Nairobi, Kenya</p>
+                              </div>
+                              
+                              {/* Participant info */}
+                              <div style={{
+                                textAlign: 'center',
+                                marginBottom: '15px',
+                                padding: '10px',
+                                backgroundColor: '#f9fafb',
+                                borderRadius: '6px'
+                              }}>
+                                <h3 style={{ margin: '0 0 5px 0', fontSize: '14px', color: '#333', fontWeight: 'bold' }}>John Doe</h3>
+                                <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>Participant</p>
+                                <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>MSF</p>
+                              </div>
+                              
+                              {/* QR Code */}
+                              <div style={{ textAlign: 'center', marginTop: '20px' }}>
+                                <div style={{
+                                  width: '60px',
+                                  height: '60px',
+                                  backgroundColor: '#f3f4f6',
+                                  border: '1px solid #d1d5db',
+                                  margin: '0 auto',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '10px',
+                                  color: '#6b7280',
+                                  borderRadius: '4px'
+                                }}>
+                                  QR
+                                </div>
+                              </div>
+                              
+                              {/* Footer */}
+                              <div style={{
+                                position: 'absolute',
+                                bottom: '10px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                fontSize: '9px',
+                                color: '#9ca3af'
+                              }}>
+                                MSF Event Badge
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t">
+                      <div className="flex justify-end space-x-3">
+                        <Button variant="outline" onClick={() => setModalOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button className="bg-blue-600 hover:bg-blue-700">
+                          <Save className="w-4 h-4 mr-2" />
+                          Create Template
+                        </Button>
                       </div>
                     </div>
                   </div>
