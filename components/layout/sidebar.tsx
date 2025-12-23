@@ -210,6 +210,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           href: "/setups/invitations",
           badge: null,
         },
+        {
+          icon: Award,
+          label: "Badge Design",
+          href: "/setups/badges",
+          badge: null,
+        },
       ],
     },
     {
@@ -461,6 +467,7 @@ export default function Sidebar({
                   child.href === '/code-of-conduct' ? `/tenant/${tenantSlug}/code-of-conduct` :
                   child.href === '/setups/certificates' ? `/tenant/${tenantSlug}/setups/certificates` :
                   child.href === '/setups/invitations' ? `/tenant/${tenantSlug}/setups/invitations` :
+                  child.href === '/setups/badges' ? `/tenant/${tenantSlug}/setups/badges` :
                   child.href
           })) : undefined
         }))

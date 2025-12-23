@@ -117,8 +117,9 @@ interface EventParticipantsProps {
 
 // LOI Quick Access Component for table
 function LOIQuickAccess({ participant, eventId }: { participant: Participant; eventId: number }) {
+  const { apiClient } = useAuthenticatedApi();
   const [hasLOI, setHasLOI] = useState<boolean | null>(null);
-  const [loiSlug, setLoiSlug] = useState<string | null>(null);
+  const [loiTemplate, setLoiTemplate] = useState<any>(null);
   const [checking, setChecking] = useState(false);
 
   const checkLOI = async () => {
@@ -126,15 +127,28 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     
     setChecking(true);
     try {
+      // Check for active LOI templates for this event (similar to certificates)
+      const pathParts = window.location.pathname.split('/');
+      const tenantSlug = pathParts[2] || 'msf-oca'; // Fallback to msf-oca if not found
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/invitation-templates`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+          },
+        }
       );
       
       if (response.ok) {
         const data = await response.json();
-        if (data.available && data.slug) {
+        // Handle both array and object responses
+        const templates = data.templates || (Array.isArray(data) ? data : [data]);
+        // Find the first active template
+        const activeTemplate = templates.find((t: any) => t.is_active);
+        
+        if (activeTemplate) {
           setHasLOI(true);
-          setLoiSlug(data.slug);
+          setLoiTemplate(activeTemplate);
         } else {
           setHasLOI(false);
         }
@@ -148,10 +162,11 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     }
   };
 
-  const openLOI = () => {
-    if (loiSlug) {
-      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiSlug}`;
-      window.open(loiUrl, '_blank');
+  const generateLOI = () => {
+    if (loiTemplate) {
+      // Use the correct API endpoint pattern that matches the backend
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/invitation-templates/${loiTemplate.id}/generate/${participant.id}`;
+      window.open(url, '_blank');
     }
   };
 
@@ -168,14 +183,14 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
     );
   }
 
-  if (hasLOI && loiSlug) {
+  if (hasLOI && loiTemplate) {
     return (
       <Button
         size="sm"
         variant="outline"
-        onClick={openLOI}
+        onClick={generateLOI}
         className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
-        title="View Letter of Invitation"
+        title="Generate Letter of Invitation"
       >
         <FileText className="h-3 w-3" />
       </Button>
@@ -187,50 +202,64 @@ function LOIQuickAccess({ participant, eventId }: { participant: Participant; ev
 
 // LOI Component
 function LOISection({ participant, eventId }: { participant: Participant; eventId: number }) {
-  const [loiStatus, setLoiStatus] = useState<{
-    available: boolean;
-    slug?: string;
-    message: string;
-    loading: boolean;
-  }>({ available: false, message: '', loading: false });
+  const { apiClient } = useAuthenticatedApi();
+  const [loiTemplate, setLoiTemplate] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchLOI = async () => {
-    setLoiStatus(prev => ({ ...prev, loading: true }));
+    setLoading(true);
     setError(null);
     try {
+      // Check for active LOI templates for this event
+      const pathParts = window.location.pathname.split('/');
+      const tenantSlug = pathParts[2] || 'msf-oca'; // Fallback to msf-oca if not found
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/loi/participant/${encodeURIComponent(participant.email)}/event/${eventId}/check`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/invitation-templates`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+          },
+        }
       );
       
       if (response.ok) {
         const data = await response.json();
-        setLoiStatus({
-          available: data.available,
-          slug: data.slug,
-          message: data.message,
-          loading: false
-        });
+        // Handle both array and object responses
+        const templates = data.templates || (Array.isArray(data) ? data : [data]);
+        // Find the first active template
+        const activeTemplate = templates.find((t: any) => t.is_active);
+        
+        if (activeTemplate) {
+          setLoiTemplate(activeTemplate);
+        } else {
+          setError('No active LOI templates found for this event');
+        }
       } else {
-        setError('LOI not available for this participant');
-        setLoiStatus(prev => ({ ...prev, loading: false }));
+        setError('No LOI templates found for this event');
       }
     } catch (error) {
-      setError('Failed to fetch LOI data');
-      setLoiStatus(prev => ({ ...prev, loading: false }));
+      setError('Failed to fetch LOI templates');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const openLOIPage = () => {
-    if (loiStatus.slug) {
-      const loiUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/public/loi/${loiStatus.slug}`;
-      window.open(loiUrl, '_blank');
+  const generateLOI = async () => {
+    if (!loiTemplate) return;
+    
+    try {
+      // Use the correct API endpoint pattern that matches the backend
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/invitation-templates/${loiTemplate.id}/generate/${participant.id}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      setError('Failed to generate LOI');
     }
   };
 
   return (
     <div className="space-y-3">
-      {!loiStatus.available && !loiStatus.loading && !error && (
+      {!loiTemplate && !loading && !error && (
         <Button
           onClick={fetchLOI}
           size="sm"
@@ -241,10 +270,10 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
         </Button>
       )}
       
-      {loiStatus.loading && (
+      {loading && (
         <div className="flex items-center gap-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-          <span className="text-sm text-gray-600">Checking LOI...</span>
+          <span className="text-sm text-gray-600">Loading LOI templates...</span>
         </div>
       )}
       
@@ -254,20 +283,20 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
         </div>
       )}
       
-      {loiStatus.available && loiStatus.slug && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+      {loiTemplate && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
             <div>
-              <p className="text-sm font-medium text-green-700">LOI Available</p>
-              <p className="text-xs text-gray-500">Slug: {loiStatus.slug}</p>
+              <p className="text-sm font-medium text-blue-900">LOI Template Available</p>
+              <p className="text-xs text-blue-700">{loiTemplate.name || `Template ID: ${loiTemplate.id}`}</p>
             </div>
             <Button
-              onClick={openLOIPage}
+              onClick={generateLOI}
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              View LOI
+              <Download className="h-4 w-4 mr-2" />
+              Generate
             </Button>
           </div>
         </div>
@@ -3034,7 +3063,7 @@ The Event Organization Team`);
             )}
 
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <div className="text-sm text-gray-600 mt-1">
             {filteredParticipants.length} {roleFilter || "participants"}{" "}
             {statusFilter && statusFilter !== "all"
               ? `(${statusFilter.replace("_", " ")})`
@@ -3051,7 +3080,7 @@ The Event Organization Team`);
                 </Badge>
               </span>
             )}
-          </p>
+          </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
