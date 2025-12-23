@@ -285,17 +285,11 @@ export default function LoginComponent() {
         throw new Error("Please enter both email and password");
       }
 
-      // Determine callback URL based on password
-      const callbackUrl =
-        formData.password === "password@1234"
-          ? "/change-password?required=true&default=true"
-          : redirectTo;
-
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
-        callbackUrl: callbackUrl,
+        callbackUrl: redirectTo,
       });
 
       if (result?.error) {
@@ -310,10 +304,43 @@ export default function LoginComponent() {
       if (result?.ok) {
         setSuccess("Login successful! Redirecting...");
 
-        // Use NextAuth's built-in callback URL mechanism
+        // Check if password must be changed (either default password or API flag)
+        const mustChangePassword = formData.password === "password@1234";
+        
+        // Make direct API call to check must_change_password flag
+        try {
+          const loginResponse = await fetch(`${apiUrl}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              username: formData.email,
+              password: formData.password,
+            }),
+          });
+          
+          if (loginResponse.ok) {
+            const loginData = await loginResponse.json();
+            console.log("🔐 USER LOGIN DATA:", {
+              email: loginData.user?.email,
+              role: loginData.user?.role,
+              tenant_id: loginData.user?.tenant_id,
+              must_change_password: loginData.must_change_password
+            });
+            
+            if (loginData.must_change_password) {
+              setTimeout(() => {
+                router.push("/change-password?required=true");
+              }, 1000);
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.log("API check failed, using default logic");
+        }
+        
         setTimeout(() => {
-          if (formData.password === "password@1234") {
-            router.push("/change-password?required=true&default=true");
+          if (mustChangePassword) {
+            router.push("/change-password?required=true");
           } else {
             router.push(redirectTo);
           }
