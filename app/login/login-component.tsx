@@ -307,8 +307,10 @@ export default function LoginComponent() {
         // Check if password must be changed (either default password or API flag)
         const mustChangePassword = formData.password === "password@1234";
         
-        // Make direct API call to check must_change_password flag
+        // Make direct API call to check must_change_password flag and get all roles
         let userRole = null;
+        let allRoles = [];
+        let userTenants = [];
         try {
           const loginResponse = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
@@ -322,13 +324,30 @@ export default function LoginComponent() {
           if (loginResponse.ok) {
             const loginData = await loginResponse.json();
             console.log("🔐 USER LOGIN DATA:", {
-              email: loginData.user?.email,
-              role: loginData.user?.role,
-              tenant_id: loginData.user?.tenant_id,
+              email: loginData.email,
+              role: loginData.role,
+              all_roles: loginData.all_roles,
+              tenant_id: loginData.tenant_id,
+              user_tenants: loginData.user_tenants,
               must_change_password: loginData.must_change_password
             });
             
-            userRole = loginData.user?.role;
+            userRole = loginData.role;
+            allRoles = loginData.all_roles || [loginData.role];
+            userTenants = loginData.user_tenants || [];
+            
+            // Check if user has multiple tenants
+            if (userTenants.length > 1) {
+              // Store login data and redirect to tenant selection
+              sessionStorage.setItem('pendingLogin', JSON.stringify({
+                email: formData.email,
+                allRoles,
+                userTenants,
+                redirectTo
+              }));
+              router.push('/select-tenant');
+              return;
+            }
             
             if (loginData.must_change_password) {
               setTimeout(() => {
@@ -336,9 +355,24 @@ export default function LoginComponent() {
               }, 1000);
               return;
             }
+            
+            // Check if user has required roles for admin portal
+            const adminRoles = [
+              'SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN',
+              'VETTING_COMMITTEE', 'VETTING_APPROVER'
+            ];
+            
+            const hasAdminAccess = allRoles.some(role => 
+              adminRoles.includes(role) || adminRoles.includes(role.toUpperCase())
+            );
+            
+            if (!hasAdminAccess) {
+              throw new Error(`Access denied - insufficient role: ${userRole}. Required roles: ${adminRoles.join(', ')}`);
+            }
           }
         } catch (apiError) {
-          console.log("API check failed, using default logic");
+          console.log("API check failed, using default logic", apiError);
+          // If API call fails, continue with NextAuth result
         }
         
         setTimeout(() => {
