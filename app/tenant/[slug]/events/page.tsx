@@ -369,6 +369,15 @@ export default function TenantEventsPage() {
       !isTenantAdmin;
   };
 
+  // Simple layout for vetting-only users (no sidebar)
+  const VettingOnlyLayout = ({ children }: { children: React.ReactNode }) => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </div>
+    </div>
+  );
+
   const calculateDuration = (startDate: string, endDate: string) => {
     if (!startDate || !endDate) return "";
     const start = new Date(startDate);
@@ -450,9 +459,7 @@ export default function TenantEventsPage() {
         longitude: formData.longitude && formData.longitude.trim()
           ? parseFloat(formData.longitude)
           : null,
-        registration_deadline: formData.registration_deadline
-          ? formData.registration_deadline.split('T')[0]
-          : null,
+        registration_deadline: formData.registration_deadline ? `${formData.registration_deadline}:00` : null,
       };
 
       const newEvent = await apiClient.request<Event>(
@@ -550,35 +557,79 @@ export default function TenantEventsPage() {
         perdiem_rate: formData.perdiem_rate
           ? parseFloat(formData.perdiem_rate)
           : null,
-        latitude: formData.latitude && formData.latitude.trim() 
-          ? parseFloat(formData.latitude) 
+        latitude: formData.latitude && formData.latitude.trim()
+          ? parseFloat(formData.latitude)
           : null,
-        longitude: formData.longitude && formData.longitude.trim() 
-          ? parseFloat(formData.longitude) 
+        longitude: formData.longitude && formData.longitude.trim()
+          ? parseFloat(formData.longitude)
           : null,
-        registration_deadline: formData.registration_deadline
-          ? formData.registration_deadline.split('T')[0]
-          : null,
+        registration_deadline: formData.registration_deadline || null,
       };
 
-      await apiClient.request(
+      // Send datetime with proper format for API
+      const apiEventData = {
+        ...eventData,
+        registration_deadline: eventData.registration_deadline ? `${eventData.registration_deadline}:00` : null,
+      };
+
+      console.log('🔍 Event update payload:', apiEventData);
+      console.log('🔍 registration_deadline value:', apiEventData.registration_deadline);
+      console.log('🔍 registration_deadline type:', typeof apiEventData.registration_deadline);
+      console.log('🔍 Tenant slug:', tenantSlug);
+      console.log('🔍 Request URL:', `/events/${selectedEvent.id}?tenant=${tenantSlug}`);
+      console.log('🔍 Request body:', JSON.stringify(apiEventData, null, 2));
+      console.log('🔍 API Client token exists:', !!apiClient.getToken());
+      console.log('🔍 API Client base URL:', apiClient.getBaseUrl());
+
+      const response = await apiClient.request(
         `/events/${selectedEvent.id}?tenant=${tenantSlug}`,
         {
           method: "PUT",
-          body: JSON.stringify(eventData),
+          body: JSON.stringify(apiEventData),
         }
       );
+      console.log('✅ Update successful:', response);
 
       setShowEditModal(false);
       setSelectedEvent(null);
       await fetchEvents();
 
       toast.success("Event updated successfully");
-    } catch (error) {
-      console.error("Update event error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to update event";
-      toast.error(errorMessage);
+    } catch (error: any) {
+      console.error("🔴 Update event error:", error);
+      console.error("🔴 Error type:", typeof error);
+      console.error("🔴 Error constructor:", error?.constructor?.name);
+      console.error("🔴 Error message:", error?.message);
+      console.error("🔴 Error stack:", error?.stack);
+      
+      // Try to extract meaningful error message
+      let errorMessage = "Failed to update event";
+      
+      try {
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error && typeof error === 'object') {
+          // Try different properties that might contain the error message
+          if (error.detail) {
+            errorMessage = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail);
+          } else if (error.message) {
+            errorMessage = typeof error.message === 'string' ? error.message : JSON.stringify(error.message);
+          } else if (error.error) {
+            errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+          } else {
+            // Last resort: stringify the entire error object
+            errorMessage = JSON.stringify(error, null, 2);
+          }
+        }
+      } catch (stringifyError) {
+        console.error("🔴 Error stringifying error:", stringifyError);
+        errorMessage = "An unknown error occurred while updating the event";
+      }
+      
+      console.error("🔴 Final error message:", errorMessage);
+      toast.error(errorMessage.length > 200 ? errorMessage.substring(0, 200) + '...' : errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -683,7 +734,11 @@ export default function TenantEventsPage() {
       duration_days: duration,
       perdiem_rate: event.perdiem_rate?.toString() || "",
       perdiem_currency: event.perdiem_currency || "",
-      registration_deadline: event.registration_deadline ? `${event.registration_deadline}T09:00` : "",
+      registration_deadline: event.registration_deadline ? (
+        event.registration_deadline.includes('T') 
+          ? event.registration_deadline.substring(0, 16)
+          : `${event.registration_deadline}T09:00`
+      ) : "",
     });
     setShowEditModal(true);
   };
@@ -811,8 +866,11 @@ export default function TenantEventsPage() {
   const startIndex = (currentPage - 1) * eventsPerPage;
   const paginatedEvents = filteredEvents.slice(startIndex, startIndex + eventsPerPage);
 
+  // Use different layout based on user type
+  const Layout = isVettingOnly() ? VettingOnlyLayout : DashboardLayout;
+
   return (
-    <DashboardLayout>
+    <Layout>
       <div className="space-y-6">
         <div className="w-full space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -1650,6 +1708,6 @@ export default function TenantEventsPage() {
           isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
         />
       </div>
-    </DashboardLayout>
+    </Layout>
   );
 }
