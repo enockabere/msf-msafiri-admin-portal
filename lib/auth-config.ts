@@ -4,7 +4,7 @@ import AzureADProvider from "next-auth/providers/azure-ad";
 import { JWT } from "next-auth/jwt";
 
 // Roles that can access the portal (using actual API role strings)
-const ALLOWED_ROLES = ['super_admin', 'mt_admin', 'hr_admin', 'event_admin', 'vetting_committee', 'vetting_approver'];
+const ALLOWED_ROLES = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN', 'VETTING_COMMITTEE', 'vetting_approver', 'super_admin', 'mt_admin', 'hr_admin', 'event_admin', 'vetting_committee'];
 
 // Token refresh function with rate limiting
 let refreshInProgress = false;

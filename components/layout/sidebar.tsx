@@ -29,6 +29,7 @@ import {
   Car,
   Plane,
   Newspaper,
+  Award,
 } from "lucide-react";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
@@ -194,6 +195,12 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
           icon: Newspaper,
           label: "Code of Conduct",
           href: "/code-of-conduct",
+          badge: null,
+        },
+        {
+          icon: Award,
+          label: "Certificate Design",
+          href: "/setups/certificates",
           badge: null,
         },
       ],
@@ -445,6 +452,7 @@ export default function Sidebar({
                   child.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                   child.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
                   child.href === '/code-of-conduct' ? `/tenant/${tenantSlug}/code-of-conduct` :
+                  child.href === '/setups/certificates' ? `/tenant/${tenantSlug}/setups/certificates` :
                   child.href
           })) : undefined
         }))

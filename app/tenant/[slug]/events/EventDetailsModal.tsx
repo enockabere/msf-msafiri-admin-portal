@@ -24,6 +24,7 @@ import {
   PauseCircle,
   Edit3,
   UtensilsCrossed,
+  Award,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAuthenticatedApi } from "@/lib/auth";
@@ -32,6 +33,7 @@ import EventAttachments from "./EventAttachments";
 import EventAllocations from "./EventAllocations";
 import EventAgenda from "./EventAgenda";
 import EventFood from "./EventFood";
+import EventCertificates from "./EventCertificates";
 import SessionFeedback from "@/components/events/SessionFeedback";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { GoogleMap } from "@/components/ui/google-map";
@@ -107,6 +109,7 @@ export default function EventDetailsModal({
   const { apiClient } = useAuthenticatedApi();
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [vettingStatus, setVettingStatus] = useState<string>('pending');
+  const [vettingCommitteeExists, setVettingCommitteeExists] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [tabLoading, setTabLoading] = useState(false);
 
@@ -369,7 +372,7 @@ export default function EventDetailsModal({
           }
         }
         
-        // Fetch vetting status
+        // Fetch vetting status and check if committee exists
         try {
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-participants/permissions?event_id=${event.id}`,
@@ -396,6 +399,29 @@ export default function EventDetailsModal({
           }
         } catch {
           setVettingStatus('pending');
+        }
+        
+        // Check if vetting committee exists for this event
+        try {
+          const committeeResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vetting-committee/event/${event.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            }
+          );
+          
+          if (committeeResponse.ok) {
+            setVettingCommitteeExists(true);
+            console.log('Vetting committee exists for event', event.id);
+          } else {
+            setVettingCommitteeExists(false);
+            console.log('No vetting committee found for event', event.id);
+          }
+        } catch {
+          setVettingCommitteeExists(false);
+          console.log('Error checking vetting committee for event', event.id);
         }
         
         await Promise.all([
@@ -662,6 +688,14 @@ export default function EventDetailsModal({
                     <span className="lg:hidden">Alloc</span>
                   </TabsTrigger>
                   <TabsTrigger
+                    value="certificates"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
+                  >
+                    <Award className="h-4 w-4" />
+                    <span className="hidden sm:inline">Certs & Badges</span>
+                    <span className="sm:hidden">C&B</span>
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="agenda"
                     className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
                   >
@@ -861,12 +895,12 @@ export default function EventDetailsModal({
                               {event.registration_deadline ? (
                                 <>
                                   <div className="text-xs text-gray-900 font-medium">
-                                    {new Date(event.registration_deadline + 'T09:00').toLocaleDateString('en-US', {
+                                    {new Date(event.registration_deadline).toLocaleDateString('en-US', {
                                       month: 'short', day: 'numeric', year: 'numeric'
                                     })}
                                   </div>
                                   <div className="text-xs text-gray-500 mt-0.5">
-                                    {new Date(event.registration_deadline + 'T09:00').toLocaleTimeString('en-US', {
+                                    {new Date(event.registration_deadline).toLocaleTimeString('en-US', {
                                       hour: '2-digit',
                                       minute: '2-digit',
                                       hour12: false
@@ -1176,6 +1210,11 @@ export default function EventDetailsModal({
                   eventHasEnded={eventHasEnded}
                   canManageEvents={canManageEvents}
                   vettingMode={(() => {
+                    // Only enable vetting mode if a vetting committee actually exists for this event
+                    if (!vettingCommitteeExists) {
+                      return undefined;
+                    }
+                    
                     const isVettingCommittee = userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role));
                     const isVettingApprover = userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role));
 
@@ -1188,7 +1227,7 @@ export default function EventDetailsModal({
                       isVettingCommittee,
                       isVettingApprover,
                       canEdit: committeeCanEdit || approverCanEdit,
-                      submissionStatus: vettingStatus === 'submitted' ? 'pending' : vettingStatus
+                      submissionStatus: vettingStatus === 'submitted' ? 'pending_approval' : vettingStatus === 'pending' ? 'pending_approval' : vettingStatus
                     };
                   })()}
                 />
@@ -1224,6 +1263,17 @@ export default function EventDetailsModal({
                 className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
               >
                 <EventAllocations
+                  eventId={event.id}
+                  tenantSlug={tenantSlug}
+                  eventHasEnded={eventHasEnded}
+                />
+              </TabsContent>
+
+              <TabsContent
+                value="certificates"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+              >
+                <EventCertificates
                   eventId={event.id}
                   tenantSlug={tenantSlug}
                   eventHasEnded={eventHasEnded}

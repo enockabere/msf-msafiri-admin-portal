@@ -473,16 +473,20 @@ class ApiClient {
             throw new Error(`Validation errors: ${errorMessages}`);
           }
 
-          const errorMessage =
-            (errorData && typeof errorData === "object" && "detail" in errorData
-              ? (errorData as { detail: string }).detail
-              : null) ||
-            (errorData &&
-            typeof errorData === "object" &&
-            "message" in errorData
-              ? (errorData as { message: string }).message
-              : null) ||
-            `HTTP ${response.status}: ${response.statusText}`;
+          // Extract error message with better handling
+          let errorMessage: string;
+          if (errorData && typeof errorData === "object") {
+            if ("detail" in errorData && typeof errorData.detail === "string") {
+              errorMessage = errorData.detail;
+            } else if ("message" in errorData && typeof errorData.message === "string") {
+              errorMessage = errorData.message;
+            } else {
+              // If it's an object but no clear message, stringify it properly
+              errorMessage = JSON.stringify(errorData);
+            }
+          } else {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
 
           throw new Error(errorMessage);
         }

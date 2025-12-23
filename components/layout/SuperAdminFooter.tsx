@@ -2,7 +2,11 @@
 
 import { Shield } from "lucide-react";
 
-export function SuperAdminFooter() {
+interface SuperAdminFooterProps {
+  tenantName?: string;
+}
+
+export function SuperAdminFooter({ tenantName }: SuperAdminFooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -10,7 +14,7 @@ export function SuperAdminFooter() {
       <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 py-4">
         <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
           <div className="flex items-center space-x-4 text-sm text-red-200">
-            <span>© {currentYear} Médecins Sans Frontières (MSF)</span>
+            <span>© {currentYear} Médecins Sans Frontières{tenantName ? ` (${tenantName})` : ''}</span>
             <span className="hidden md:inline">•</span>
             <span className="hidden md:inline">All rights reserved</span>
           </div>

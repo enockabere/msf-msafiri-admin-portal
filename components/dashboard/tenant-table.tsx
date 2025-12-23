@@ -81,7 +81,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
   };
 
   const exportToCSV = () => {
-    const headers = ["Name", "Slug", "Contact Email", "Admin Email", "Domain", "Status", "Created"];
+    const headers = ["Name", "Slug", "Contact Email", "Admin Email", "Domain", "Timezone", "Status", "Created"];
     const csvData = [
       headers.join(","),
       ...sortedData.map(tenant => [
@@ -90,6 +90,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
         `"${tenant.contact_email}"`,
         `"${tenant.admin_email || ''}"`,
         `"${tenant.domain || ''}"`,
+        `"${(tenant as any).timezone || ''}"`,
         tenant.is_active ? "Active" : "Inactive",
         format(new Date(tenant.created_at), "MMM dd, yyyy")
       ].join(","))
@@ -164,6 +165,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Domain</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Timezone</th>
                 <th 
                   className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                   onClick={() => handleSort("is_active")}
@@ -189,7 +191,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedData.length === 0 ? (
                 <tr>
-                  <td colSpan={showActions ? 7 : 6} className="px-4 py-12 text-center">
+                  <td colSpan={showActions ? 8 : 7} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                         <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,6 +254,15 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400">No domain</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4">
+                      {(tenant as any).timezone ? (
+                        <div className="text-sm text-gray-900">
+                          {(tenant as any).timezone}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">Not set</span>
                       )}
                     </td>
                     <td className="px-4 py-4">

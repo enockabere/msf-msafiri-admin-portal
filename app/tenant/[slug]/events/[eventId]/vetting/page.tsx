@@ -39,6 +39,7 @@ export default function VettingPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [registeredCount, setRegisteredCount] = useState(0);
+  const [totalParticipantCount, setTotalParticipantCount] = useState<number | null>(null);
 
   const eventId = parseInt(params.eventId as string);
   const tenantSlug = params.slug as string;
@@ -125,9 +126,10 @@ export default function VettingPage() {
   };
 
   const canSubmitForApproval = () => {
-    return isVettingCommittee && 
-           committee?.status === 'open' &&
-           registeredCount === 0;
+    // Need to track total participants separately from registered count
+    // registeredCount = participants with "registered" status (should be 0 to submit)
+    // But we also need to have some participants to submit
+    return false; // Will be handled by the UI condition
   };
 
   const canApproveVetting = () => {
@@ -253,9 +255,9 @@ export default function VettingPage() {
                 </div>
               )}
 
-              {committee && (
+              {committee && totalParticipantCount !== null && totalParticipantCount > 0 && (
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Committee Status</p>
+                  <p className="text-sm text-gray-600">Vetting Status</p>
                   <Badge className={
                     committee.status === 'approved' ? "bg-green-100 text-green-800" :
                     committee.status === 'pending_approval' ? "bg-yellow-100 text-yellow-800" :
@@ -275,77 +277,79 @@ export default function VettingPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6">
-            {canSubmitForApproval() && (
-              <Button
-                onClick={handleSubmitForApproval}
-                disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Submit for Approval
-                  </>
-                )}
-              </Button>
-            )}
+          {totalParticipantCount !== null && totalParticipantCount > 0 && (
+            <div className="flex gap-3 mt-6">
+              {canSubmitForApproval() && (
+                <Button
+                  onClick={handleSubmitForApproval}
+                  disabled={submitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit for Approval
+                    </>
+                  )}
+                </Button>
+              )}
 
-            {canApproveVetting() && (
-              <Button
-                onClick={handleApproveVetting}
-                disabled={submitting}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Approve Vetting
-                  </>
-                )}
-              </Button>
-            )}
+              {canApproveVetting() && (
+                <Button
+                  onClick={handleApproveVetting}
+                  disabled={submitting}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Approve Vetting
+                    </>
+                  )}
+                </Button>
+              )}
 
-            {canCancelApproval() && (
-              <Button
-                onClick={handleCancelApproval}
-                disabled={submitting}
-                variant="outline"
-                className="text-orange-600 border-orange-600 hover:bg-orange-50"
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Cancel Approval
-                  </>
-                )}
-              </Button>
-            )}
+              {canCancelApproval() && (
+                <Button
+                  onClick={handleCancelApproval}
+                  disabled={submitting}
+                  variant="outline"
+                  className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Cancel Approval
+                    </>
+                  )}
+                </Button>
+              )}
 
-            {isVettingApprover && isApproved() && !canCancelApproval() && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 bg-green-50 px-4 py-2 rounded-md border border-green-200">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span>Approved on {committee?.approved_at ? new Date(committee.approved_at).toLocaleDateString() : 'N/A'} (View Only)</span>
-              </div>
-            )}
-          </div>
+              {isVettingApprover && isApproved() && !canCancelApproval() && (
+                <div className="flex items-center gap-2 text-sm text-gray-600 bg-green-50 px-4 py-2 rounded-md border border-green-200">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span>Approved on {committee?.approved_at ? new Date(committee.approved_at).toLocaleDateString() : 'N/A'} (View Only)</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          {committee?.status === 'pending_approval' && isVettingCommittee && (
+          {totalParticipantCount !== null && totalParticipantCount > 0 && committee?.status === 'pending_approval' && isVettingCommittee && (
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-yellow-600" />
@@ -354,7 +358,7 @@ export default function VettingPage() {
             </div>
           )}
           
-          {committee?.status === 'approved' && (
+          {totalParticipantCount !== null && totalParticipantCount > 0 && committee?.status === 'approved' && (
             <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-600" />
@@ -376,13 +380,27 @@ export default function VettingPage() {
           )}
         </div>
 
-        {/* Email Template Manager - only for approver when pending approval */}
-        {isVettingApprover && committee && event && committee.status === 'pending_approval' && (
+        {/* Email Template Manager - only for approver when pending approval and there are participants */}
+        {isVettingApprover && committee && event && committee.status === 'pending_approval' && totalParticipantCount !== null && totalParticipantCount > 0 && (
           <EmailTemplateManager
             committeeId={committee.id}
             eventTitle={event.title}
             isApprover={isVettingApprover}
           />
+        )}
+
+        {/* Show message when no participants exist */}
+        {totalParticipantCount === 0 && (
+          <div className="bg-white rounded-lg border p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No participants yet</h3>
+            <p className="text-gray-600 mb-4">Participants need to register for this event before vetting can begin.</p>
+            <p className="text-sm text-gray-500">Participants can only register themselves for published events</p>
+          </div>
         )}
 
         <div className="bg-white rounded-lg border">
@@ -406,6 +424,7 @@ export default function VettingPage() {
               canEdit: finalCanEdit,
               submissionStatus: committee?.status,
               onRegisteredCountChange: setRegisteredCount,
+        onTotalCountChange: setTotalParticipantCount,
               onStatusChange: (status: string) => {
                 setCommittee(prev => prev ? { ...prev, status } : null);
               }

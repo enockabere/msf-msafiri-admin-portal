@@ -34,7 +34,11 @@ import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationPriority } from "@/lib/api";
 
-export default function Navbar() {
+interface NavbarProps {
+  showLogo?: boolean;
+}
+
+export default function Navbar({ showLogo = false }: NavbarProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
@@ -139,6 +143,9 @@ export default function Navbar() {
   // Get the best available user data (API first, then session fallback)
   const displayName = fullUserData?.full_name || user?.name || user?.email;
 
+  // Check if user is vetting-only
+  const isVettingOnly = user?.role && ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(user.role);
+
   // Get unread count from stats or fallback to counting notifications
   const unreadCount =
     stats?.unread || notifications.filter((n) => !n.is_read).length;
@@ -180,10 +187,21 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={`${showLogo ? 'px-4 sm:px-6 lg:px-8' : 'container mx-auto px-4 sm:px-6 lg:px-8'}`}>
         <div className="flex h-16 items-center justify-between">
-          {/* Left Section - Greeting and Info */}
+          {/* Left Section - Logo and Greeting */}
           <div className="flex items-center space-x-4 min-w-0 flex-1">
+            {showLogo && (
+              <div className="flex-shrink-0">
+                <img
+                  src="/portal/icon/msafiri.jpeg"
+                  alt="MSafiri Logo"
+                  width={70}
+                  height={70}
+                  className="rounded-lg object-cover"
+                />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               {/* Main greeting */}
               <h1 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
@@ -480,18 +498,13 @@ export default function Navbar() {
                 <DropdownMenuSeparator />
 
                 <div className="py-1">
-                  <DropdownMenuItem
-                    onClick={() => router.push("/profile")}
-                    className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
-                  >
-                    <User className="mr-3 h-4 w-4 text-gray-500" />
-                    <span className="text-xs">Profile Settings</span>
-                  </DropdownMenuItem>
-
-                  {/* Debug: Show role info */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <DropdownMenuItem className="px-4 py-2 text-xs text-gray-400">
-                      Role: {user?.role} | Super: {isSuperAdmin ? 'Yes' : 'No'}
+                  {!isVettingOnly && (
+                    <DropdownMenuItem
+                      onClick={() => router.push("/profile")}
+                      className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
+                    >
+                      <User className="mr-3 h-4 w-4 text-gray-500" />
+                      <span className="text-xs">Profile Settings</span>
                     </DropdownMenuItem>
                   )}
 

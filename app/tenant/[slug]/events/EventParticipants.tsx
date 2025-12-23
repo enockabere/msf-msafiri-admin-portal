@@ -28,6 +28,7 @@ import {
   AlertCircle,
   X,
   Mail,
+  Award,
 } from "lucide-react";
 
 interface Participant {
@@ -101,6 +102,7 @@ interface VettingMode {
   canEdit: boolean;
   submissionStatus?: 'open' | 'pending_approval' | 'approved';
   onRegisteredCountChange?: (count: number) => void;
+  onTotalCountChange?: (count: number) => void;
   onStatusChange?: (status: string) => void;
 }
 
@@ -274,6 +276,97 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
   );
 }
 
+// Certificate Component
+function CertificateSection({ participant, eventId }: { participant: Participant; eventId: number }) {
+  const [certificate, setCertificate] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCertificate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates/participant/${participant.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCertificate(data);
+      } else {
+        setError('No certificates found for this participant');
+      }
+    } catch (error) {
+      setError('Failed to fetch certificates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateCertificate = async () => {
+    if (!certificate) return;
+    
+    try {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates/${certificate.event_certificate_id}/generate/${participant.id}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      setError('Failed to generate certificate');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {!certificate && !loading && !error && (
+        <Button
+          onClick={fetchCertificate}
+          size="sm"
+          className="bg-purple-600 hover:bg-purple-700 text-white"
+        >
+          <Award className="h-4 w-4 mr-2" />
+          Check Certificates
+        </Button>
+      )}
+      
+      {loading && (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+          <span className="text-sm text-gray-600">Loading certificates...</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="text-sm text-gray-500">
+          {error}
+        </div>
+      )}
+      
+      {certificate && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-purple-50 p-3 rounded-lg">
+            <div>
+              <p className="text-sm font-medium text-purple-900">Certificate Available</p>
+              <p className="text-xs text-purple-700">ID: {certificate.id}</p>
+            </div>
+            <Button
+              onClick={generateCertificate}
+              size="sm"
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EventParticipants({
   eventId,
   roleFilter,
@@ -314,54 +407,44 @@ export default function EventParticipants({
   const [participantComments, setParticipantComments] = useState<Record<number, string>>({});
   const [submittingVetting, setSubmittingVetting] = useState(false);
   const [vettingSubmitted, setVettingSubmitted] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState({
-    name: true,
-    email: true,
-    oc: true,
-    position: true,
-    country: true,
-    role: true,
-    status: true,
-    confirmed: true,
-    documents: true,
-    comments: true,
-    actions: true
-  });
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
+  const [availableColumns, setAvailableColumns] = useState<Record<string, string>>({});
   const [showColumnSelector, setShowColumnSelector] = useState(false);
   const [showEmailTemplate, setShowEmailTemplate] = useState(false);
   const [emailSubject, setEmailSubject] = useState('Event Selection Results - {{EVENT_TITLE}}');
-  const [emailBody, setEmailBody] = useState(`Dear {{PARTICIPANT_NAME}},
+  const [emailBody, setEmailBody] = useState(`Dear \{\{PARTICIPANT_NAME\}\},
 
 
 
-We have completed the selection process for {{EVENT_TITLE}}.
+We have completed the selection process for \{\{EVENT_TITLE\}\}.
 
-{{#if_selected}}
+\{\{#if_selected\}\}
 🎉 <strong>Congratulations! You have been selected to participate.</strong>
 
 Event Details:
-• Event: {{EVENT_TITLE}}
-• Location: {{EVENT_LOCATION}}
-• Date: {{EVENT_DATE_RANGE}}
+• Event: \{\{EVENT_TITLE\}\}
+• Location: \{\{EVENT_LOCATION\}\}
+• Date: \{\{EVENT_DATE_RANGE\}\}
 
 Next Steps:
-1. Download the Msafiri mobile app
-2. Login using your work email ({{PARTICIPANT_EMAIL}})
-3. Accept the invitation from the app notifications
-4. Submit required documents through the mobile app
+1. Complete your travel and accommodation details: \{\{REGISTRATION_LINK\}\}
+2. Download the Msafiri mobile app
+3. Login using your work email (\{\{PARTICIPANT_EMAIL\}\})
+4. Accept the invitation from the app notifications
+5. Submit required documents through the mobile app
 
-Important: Please use the Msafiri mobile application to accept your invitation and access all event details.
+Important: Please complete your registration using the link above and use the Msafiri mobile application to accept your invitation and access all event details.
 
 We look forward to your participation!
-{{/if_selected}}
+\{\{/if_selected\}\}
 
-{{#if_not_selected}}
-Thank you for your interest in participating in {{EVENT_TITLE}}.
+\{\{#if_not_selected\}\}
+Thank you for your interest in participating in \{\{EVENT_TITLE\}\}.
 
 After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.
 
 We encourage you to apply for future events and appreciate your continued engagement with our programs.
-{{/if_not_selected}}
+\{\{/if_not_selected\}\}
 
 Best regards,
 The Event Organization Team`);
@@ -387,13 +470,6 @@ The Event Organization Team`);
     submissionStatus: actualStatus as 'open' | 'pending_approval' | 'approved'
   } : undefined;
   
-  console.log('effectiveVettingMode DEBUG:', {
-    vettingMode,
-    committeeStatus,
-    actualStatus,
-    effectiveVettingMode
-  });
-
   // Load email template on mount
   useEffect(() => {
     if (effectiveVettingMode?.isVettingApprover) {
@@ -790,7 +866,7 @@ The Event Organization Team`);
             setVoucherData(null);
           }
 
-          // Fetch line manager recommendation
+          // Fetch all recommendations (HRCO, Career Manager, Line Manager)
           try {
             const recommendationResponse = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/api/v1/line-manager-recommendation/participant/${participant.id}?event_id=${eventId}`,
@@ -895,8 +971,8 @@ The Event Organization Team`);
     }, [participant.id, participant.email, participant.status, eventId, apiClient, participant.travelling_internationally, participant.travellingInternationally, participant.travelling_from_country]);
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
-        <div className="bg-white w-full h-full overflow-y-auto">
+      <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl">
           <div className="p-6">
             {/* Feedback Message */}
             {feedbackMessage && (
@@ -1316,49 +1392,106 @@ The Event Organization Team`);
                   </div>
                   <div>
                     <span className="font-medium text-gray-700 block mb-2">
-                      Line Manager Recommendation:
+                      Recommendations:
                     </span>
                     <div className="bg-white p-4 rounded-lg border">
-                      {recommendationData ? (
-                        <div className="space-y-2">
-                          <div className="text-xs text-gray-500">
-                            From: {recommendationData.line_manager_email}
+                      {/* HRCO Recommendation */}
+                      {participant.hrco_email && (
+                        <div className="mb-3 pb-3 border-b border-gray-200 last:border-b-0 last:mb-0 last:pb-0">
+                          <div className="text-xs text-gray-500 mb-1">
+                            HRCO: {participant.hrco_email}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            Submitted: {recommendationData.submitted_at ?
-                              new Date(recommendationData.submitted_at).toLocaleDateString() :
-                              'Pending'}
-                          </div>
-                          <div className="mt-2">
-                            {recommendationData.submitted_at ? (
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-gray-700">Recommendation:</span>
-                                {recommendationData.is_recommended ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                                    </svg>
-                                    Yes, Recommended
-                                  </span>
+                          {(() => {
+                            const hrcoRec = recommendationData?.recommendations?.find(r => r.contact_type === 'HRCO');
+                            return (
+                              <div className="text-xs text-gray-500 mb-2">
+                                Status: {hrcoRec?.submitted_at ? (
+                                  <span className="text-green-600">Submitted</span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
-                                    </svg>
-                                    Not Recommended
-                                  </span>
+                                  <span className="text-orange-600">Pending</span>
+                                )}
+                                {hrcoRec?.submitted_at && (
+                                  <span className="ml-2">({new Date(hrcoRec.submitted_at).toLocaleDateString()})</span>
                                 )}
                               </div>
-                            ) : (
-                              <div className="text-gray-500 text-sm italic">
-                                Recommendation pending
-                              </div>
-                            )}
-                          </div>
+                            );
+                          })()}
                         </div>
-                      ) : (
+                      )}
+                      
+                      {/* Career Manager Recommendation */}
+                      {participant.career_manager_email && (
+                        <div className="mb-3 pb-3 border-b border-gray-200 last:border-b-0 last:mb-0 last:pb-0">
+                          <div className="text-xs text-gray-500 mb-1">
+                            Career Manager: {participant.career_manager_email}
+                          </div>
+                          {(() => {
+                            const careerRec = recommendationData?.recommendations?.find(r => r.contact_type === 'Career Manager');
+                            return (
+                              <div className="text-xs text-gray-500 mb-2">
+                                Status: {careerRec?.submitted_at ? (
+                                  <span className="text-green-600">Submitted</span>
+                                ) : (
+                                  <span className="text-orange-600">Pending</span>
+                                )}
+                                {careerRec?.submitted_at && (
+                                  <span className="ml-2">({new Date(careerRec.submitted_at).toLocaleDateString()})</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
+                      {/* Line Manager Recommendation */}
+                      {participant.line_manager_email && (
+                        <div className="mb-3 pb-3 border-b border-gray-200 last:border-b-0 last:mb-0 last:pb-0">
+                          <div className="text-xs text-gray-500 mb-1">
+                            Line Manager: {participant.line_manager_email}
+                          </div>
+                          {(() => {
+                            const lineRec = recommendationData?.recommendations?.find(r => r.contact_type === 'Line Manager' || !r.contact_type);
+                            return (
+                              <>
+                                <div className="text-xs text-gray-500 mb-2">
+                                  Status: {lineRec?.submitted_at ? (
+                                    <span className="text-green-600">Submitted</span>
+                                  ) : (
+                                    <span className="text-orange-600">Pending</span>
+                                  )}
+                                  {lineRec?.submitted_at && (
+                                    <span className="ml-2">({new Date(lineRec.submitted_at).toLocaleDateString()})</span>
+                                  )}
+                                </div>
+                                {lineRec?.submitted_at && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <span className="font-medium text-gray-700">Recommendation:</span>
+                                    {lineRec.is_recommended ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                                        </svg>
+                                        Yes, Recommended
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 rounded text-sm font-medium">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                                        </svg>
+                                        Not Recommended
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      
+                      {!participant.hrco_email && !participant.career_manager_email && !participant.line_manager_email && (
                         <span className="text-gray-500 text-sm">
-                          No recommendation requested
+                          No recommendation contacts provided
                         </span>
                       )}
                     </div>
@@ -1369,6 +1502,14 @@ The Event Organization Team`);
                     </span>
                     <div className="bg-white p-4 rounded-lg border">
                       <LOISection participant={participant} eventId={eventId} />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2">
+                      Certificates:
+                    </span>
+                    <div className="bg-white p-4 rounded-lg border">
+                      <CertificateSection participant={participant} eventId={eventId} />
                     </div>
                   </div>
                   {/* Travel Requirements & Checklist Status */}
@@ -2056,6 +2197,15 @@ The Event Organization Team`);
             )
           : data; // Show all participants when no role filter is applied
 
+        // Debug: Show database fields and form responses
+        console.log('=== DATABASE FIELDS DEBUG ===');
+        console.log('Total participants:', data.length);
+        if (data.length > 0) {
+          console.log('First participant fields:', Object.keys(data[0]));
+          console.log('First participant data:', JSON.stringify(data[0], null, 2));
+        }
+        console.log('=== END DATABASE FIELDS ===');
+
         // Preserve original order if requested
         if (preserveOrder && participants.length > 0) {
           setParticipants(prevParticipants => {
@@ -2074,8 +2224,145 @@ The Event Organization Team`);
           setParticipants(filteredData);
         }
         
+        // Dynamically detect available columns from participant data
+        if (data.length > 0) {
+          const allFields = new Set<string>();
+          data.forEach((participant: Participant) => {
+            Object.keys(participant).forEach(key => {
+              if (participant[key] !== null && participant[key] !== undefined && participant[key] !== '') {
+                allFields.add(key);
+              }
+            });
+          });
+          
+          // Create column definitions with user-friendly labels
+          const columnDefs: Record<string, string> = {};
+          const defaultVisible: Record<string, boolean> = {};
+          
+          // Core columns (always show by default)
+          const coreColumns = {
+            'full_name': 'Name',
+            'email': 'Email',
+            'status': 'Status',
+            'participant_role': 'Role',
+            'role': 'Role',
+            'oc': 'OC',
+            'position': 'Position',
+            'country_of_work': 'Country of Work'
+          };
+
+          // Add vetting comments to core columns when in vetting mode
+          if (effectiveVettingMode && (effectiveVettingMode.isVettingCommittee || effectiveVettingMode.isVettingApprover)) {
+            coreColumns['vetting_comments'] = 'Vetting Comments';
+            // Ensure vetting_comments is added to allFields
+            allFields.add('vetting_comments');
+          }
+
+          // Add core columns first
+          Object.entries(coreColumns).forEach(([key, label]) => {
+            if (allFields.has(key)) {
+              columnDefs[key] = label;
+              defaultVisible[key] = true;
+            }
+          });
+          
+          // Also fetch form responses to detect dynamic form fields
+          try {
+            const formResponsesUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/form-fields/event/${eventId}/responses`;
+            const formResponse = await fetch(formResponsesUrl, {
+              headers: {
+                Authorization: `Bearer ${apiClient.getToken()}`,
+              },
+            });
+            
+            if (formResponse.ok) {
+              const formData = await formResponse.json();
+              console.log('=== FORM RESPONSES DEBUG ===');
+              console.log('Form responses data:', JSON.stringify(formData, null, 2));
+              console.log('=== END FORM RESPONSES ===');
+              
+              // Add form responses to participant data
+              if (Array.isArray(formData)) {
+                // Group responses by registration_id and create field mapping
+                const responsesByRegistration: Record<number, Record<string, string>> = {};
+                const fieldLabels: Record<string, string> = {};
+                
+                formData.forEach((response: any) => {
+                  if (!responsesByRegistration[response.registration_id]) {
+                    responsesByRegistration[response.registration_id] = {};
+                  }
+                  responsesByRegistration[response.registration_id][response.field_name] = response.field_value;
+                  fieldLabels[response.field_name] = response.field_label;
+                  allFields.add(response.field_name);
+                });
+                
+                // Merge form responses into participant data
+                filteredData.forEach((participant: any) => {
+                  const responses = responsesByRegistration[participant.id];
+                  if (responses) {
+                    Object.assign(participant, responses);
+                  }
+                });
+                
+                // Store field labels for column display
+                Object.entries(fieldLabels).forEach(([fieldName, label]) => {
+                  columnDefs[fieldName] = label;
+                  defaultVisible[fieldName] = false;
+                });
+                
+                console.log('=== DYNAMIC FIELDS MAPPING ===');
+                console.log('Field labels:', fieldLabels);
+                console.log('=== UPDATED PARTICIPANT DATA ===');
+                console.log('First participant with form responses:', JSON.stringify(filteredData[0], null, 2));
+                console.log('=== END UPDATED DATA ===');
+              }
+            } else {
+              console.log('Form responses API error:', formResponse.status, formResponse.statusText);
+            }
+          } catch (error) {
+            console.log('Form responses fetch error:', error);
+          }
+          
+          // Add other fields with formatted labels
+          allFields.forEach(field => {
+            if (!columnDefs[field]) {
+              const label = field
+                .replace(/_/g, ' ')
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+              columnDefs[field] = label;
+              defaultVisible[field] = false; // Hidden by default for non-core fields
+            }
+          });
+          
+          // Always show actions
+          columnDefs['actions'] = 'Actions';
+          defaultVisible['actions'] = true;
+          
+          setAvailableColumns(columnDefs);
+          
+          // Only update visible columns if not already set
+          setVisibleColumns(prev => {
+            if (Object.keys(prev).length === 0) {
+              return defaultVisible;
+            }
+            return prev;
+          });
+        }
+        
         const countForCallback = roleFilter ? filteredData.length : data.length; // Count all participants when no role filter
         onParticipantsChange?.(countForCallback);
+        
+        // Always update vetting mode callbacks, even with 0 participants
+        if (vettingMode?.onTotalCountChange) {
+          vettingMode.onTotalCountChange(data.length);
+        }
+        
+        if (vettingMode?.onRegisteredCountChange) {
+          const registeredCount = data.filter((p: Participant) => p.status === 'registered').length;
+          vettingMode.onRegisteredCountChange(registeredCount);
+        }
         
         // Load existing comments into state
         const comments: Record<number, string> = {};
@@ -2095,7 +2382,13 @@ The Event Organization Team`);
 
       }
     } catch {
-      // Error handled silently
+      // Error handled silently - but still update vetting callbacks
+      if (vettingMode?.onTotalCountChange) {
+        vettingMode.onTotalCountChange(0);
+      }
+      if (vettingMode?.onRegisteredCountChange) {
+        vettingMode.onRegisteredCountChange(0);
+      }
     } finally {
       setFetchLoading(false);
     }
@@ -2255,10 +2548,6 @@ The Event Organization Team`);
         requestBody.suppress_email = true;
       }
 
-      console.log('Updating participant status:', { participantId, newStatus, requestBody });
-      console.log('API URL:', `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`);
-      console.log('Token available:', !!apiClient.getToken());
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
         {
@@ -2270,8 +2559,6 @@ The Event Organization Team`);
           body: JSON.stringify(requestBody),
         }
       );
-
-      console.log('Status update response:', { status: response.status, ok: response.ok, statusText: response.statusText });
 
       if (response.ok) {
         // Only clear comments if they were actually sent (not for declined/canceled without comments)
@@ -2299,11 +2586,9 @@ The Event Organization Team`);
         } catch {
           errorData = { detail: errorText || `HTTP ${response.status}` };
         }
-        console.error('Status update failed:', { status: response.status, errorData });
         showFeedback('error', `Failed to update participant status: ${errorData.detail || errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Status update error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Network error';
       showFeedback('error', `${errorMessage}. Please try again.`);
     }
@@ -2343,11 +2628,9 @@ The Event Organization Team`);
         showFeedback('success', 'Comment saved successfully');
       } else {
         const errorText = await response.text();
-        console.error('Comment save failed:', errorText);
         showFeedback('error', 'Failed to save comment');
       }
     } catch (error) {
-      console.error('Comment save error:', error);
       showFeedback('error', 'Failed to save comment');
     }
   };
@@ -2607,7 +2890,6 @@ The Event Organization Team`);
           successCount++;
           await new Promise((resolve) => setTimeout(resolve, 100)); // Queue emails
         } catch (error) {
-          console.error(`Failed to update participant ${participantId}:`, error);
         }
       }
       
@@ -2719,14 +3001,7 @@ The Event Organization Team`);
             <div className="flex-1">
               <p className="text-sm font-medium text-blue-800">
                 {(() => {
-                  console.log('READ-only message DEBUG:', {
-                    submissionStatus: effectiveVettingMode.submissionStatus,
-                    isVettingCommittee: effectiveVettingMode.isVettingCommittee,
-                    isVettingApprover: effectiveVettingMode.isVettingApprover
-                  });
-                  
                   const getStatusDisplay = (status: string) => {
-                    console.log('getStatusDisplay called with:', status);
                     if (status === 'pending_approval') return 'Pending Approval';
                     if (status === 'approved') return 'Approved';
                     return 'Open';
@@ -2765,18 +3040,10 @@ The Event Organization Team`);
               ? `(${statusFilter.replace("_", " ")})`
               : "total"}{" "}
             • Page {currentPage} of {totalPages || 1}
-            {(() => {
-              const showReadOnly = effectiveVettingMode && !effectiveVettingMode.canEdit;
-              console.log('READ-ONLY DEBUG:', {
-                effectiveVettingMode,
-                canEdit: effectiveVettingMode?.canEdit,
-                showReadOnly
-              });
-              return showReadOnly ? (
-                <span className="text-orange-600 font-medium"> • Read-only mode</span>
-              ) : null;
-            })()}
-            {committeeStatus && (
+            {effectiveVettingMode && !effectiveVettingMode.canEdit && (
+              <span className="text-orange-600 font-medium"> • Read-only mode</span>
+            )}
+            {committeeStatus && filteredParticipants.length > 0 && (
               <span className="ml-2">
                 • Vetting Status: 
                 <Badge className={`ml-1 text-xs ${getCommitteeStatusDisplay(committeeStatus).color}`}>
@@ -2912,32 +3179,22 @@ The Event Organization Team`);
             {showColumnSelector && (
               <div className="absolute right-0 top-10 bg-white border rounded-lg shadow-lg p-3 z-10 min-w-48">
                 <div className="text-sm font-medium mb-2">Show/Hide Columns</div>
-                {Object.entries({
-                  name: 'Name',
-                  email: 'Email', 
-                  oc: 'OC',
-                  position: 'Position',
-                  country: 'Country',
-                  role: 'Role',
-                  status: 'Status',
-                  confirmed: 'Confirmed',
-                  documents: 'Documents',
-                  comments: 'Comments',
-                  actions: 'Actions'
-                }).map(([key, label]) => (
-                  <label key={key} className="flex items-center gap-2 py-1 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={visibleColumns[key as keyof typeof visibleColumns]}
-                      onChange={(e) => setVisibleColumns(prev => ({
-                        ...prev,
-                        [key]: e.target.checked
-                      }))}
-                      className="rounded"
-                    />
-                    {label}
-                  </label>
-                ))}
+                <div className="max-h-64 overflow-y-auto">
+                  {Object.entries(availableColumns).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 py-1 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[key] || false}
+                        onChange={(e) => setVisibleColumns(prev => ({
+                          ...prev,
+                          [key]: e.target.checked
+                        }))}
+                        className="rounded"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -3052,80 +3309,24 @@ The Event Organization Team`);
                   className="rounded border-gray-300"
                 />
               </th>
-              {visibleColumns.name && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-              )}
-              {visibleColumns.email && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-              )}
-              {visibleColumns.oc && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  OC
-                </th>
-              )}
-              {visibleColumns.position && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Position
-                </th>
-              )}
-              {visibleColumns.country && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Country
-                </th>
-              )}
-              {visibleColumns.role && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-              )}
-              {visibleColumns.status && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              )}
-              {visibleColumns.confirmed && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Confirmed
-                </th>
-              )}
-              {visibleColumns.documents && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Documents
-                </th>
-              )}
-              {visibleColumns.comments && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Comments
-                </th>
-              )}
-              {visibleColumns.actions && (
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+              {Object.entries(availableColumns).map(([key, label]) => 
+                visibleColumns[key] && (
+                  <th key={key} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {label}
+                  </th>
+                )
               )}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentParticipants.map((participant) => (
-              <tr key={participant.id} className="hover:bg-gray-50">
-                <td className="px-3 py-4 whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={selectedParticipants.includes(participant.id)}
-                    onChange={() => handleSelectParticipant(participant.id)}
-                    className="rounded border-gray-300"
-                  />
-                </td>
-                {visibleColumns.name && (
-                  <td
-                    className="px-3 py-4 whitespace-nowrap cursor-pointer"
-                    onClick={() => handleViewParticipant(participant)}
-                  >
-                    <div className="flex items-center">
+            {currentParticipants.map((participant) => {
+              const renderCellContent = (key: string) => {
+                const value = participant[key as keyof Participant];
+                
+                // Special handling for specific fields
+                if (key === 'full_name') {
+                  return (
+                    <div className="flex items-center cursor-pointer" onClick={() => handleViewParticipant(participant)}>
                       <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 mr-3">
                         {participant.full_name
                           .split(" ")
@@ -3137,251 +3338,232 @@ The Event Organization Team`);
                         {participant.full_name}
                       </div>
                     </div>
-                  </td>
-                )}
-                {visibleColumns.email && (
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {participant.email}
-                  </td>
-                )}
-                {visibleColumns.oc && (
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {participant.oc || "-"}
-                  </td>
-                )}
-                {visibleColumns.position && (
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {participant.position || "-"}
-                  </td>
-                )}
-                {visibleColumns.country && (
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {participant.country || "-"}
-                  </td>
-                )}
-                {visibleColumns.role && (
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    {effectiveVettingMode && !effectiveVettingMode.canEdit ? (
-                      <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700">
-                        {(participant.participant_role || participant.role || "visitor").toUpperCase()}
-                      </Badge>
-                    ) : (
-                      <Select
-                        value={
-                          participant.participant_role ||
-                          participant.role ||
-                          "visitor"
-                        }
-                        onValueChange={(value) =>
-                          handleRoleChange(participant.id, value)
-                        }
-                        disabled={
-                          eventHasEnded || updatingRoleId === participant.id
-                        }
-                      >
-                        <SelectTrigger className="w-24 h-7 text-xs">
-                          {updatingRoleId === participant.id ? (
-                            <div className="flex items-center gap-1">
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                              <span className="text-xs">Updating...</span>
-                            </div>
-                          ) : (
-                            <SelectValue />
-                          )}
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="visitor">Visitor</SelectItem>
-                          <SelectItem value="facilitator">Facilitator</SelectItem>
-                          <SelectItem value="organizer">Organizer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </td>
-                )}
-                {visibleColumns.status && (
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    <Badge
-                      className={`text-xs px-2 py-0.5 ${getStatusColor(
-                        participant.status
-                      )}`}
-                    >
+                  );
+                }
+                
+                if (key === 'status') {
+                  return (
+                    <Badge className={`text-xs px-2 py-0.5 ${getStatusColor(participant.status)}`}>
                       {participant.status.replace("_", " ").toUpperCase()}
                     </Badge>
-                  </td>
-                )}
-                {visibleColumns.confirmed && (
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    {participant.status === 'confirmed' ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs text-green-700 font-medium">Yes</span>
-                      </div>
-                    ) : participant.status === 'selected' || participant.status === 'approved' ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                        <span className="text-xs text-orange-700 font-medium">Pending</span>
-                      </div>
-                    ) : participant.status === 'declined' ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span className="text-xs text-red-700 font-medium">No</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="text-xs text-gray-500 font-medium">N/A</span>
-                      </div>
-                    )}
-                  </td>
-                )}
-                {visibleColumns.documents && (
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
-                      (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span className="text-xs font-medium text-green-700">P</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span className="text-xs font-medium text-green-700">T</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                        <span className="text-xs text-gray-500 font-medium">N/A</span>
-                      </div>
-                    )}
-                  </td>
-                )}
-                {visibleColumns.comments && (
-                  <td className="px-3 py-4">
-                    {effectiveVettingMode && effectiveVettingMode.canEdit && 
-                     (participant.status === 'declined' || participant.status === 'canceled') ? (
-                      <Select
-                        value={participantComments[participant.id] || participant.vetting_comments || ''}
-                        onValueChange={(value) => {
-                          setParticipantComments(prev => ({ 
-                            ...prev, 
-                            [participant.id]: value 
-                          }));
-                          // Save comment immediately when selected
-                          handleCommentChange(participant.id, value);
-                        }}
-                      >
-                        <SelectTrigger className="w-40 h-8 text-xs">
-                          <SelectValue placeholder="Select reason" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {participant.status === 'declined' ? (
-                            <>
-                              <SelectItem value="Declined - Operational / Work Reasons">Declined - Operational / Work Reasons</SelectItem>
-                              <SelectItem value="Declined - Personal Reasons">Declined - Personal Reasons</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="Cancelled - Operational Reasons">Cancelled - Operational Reasons</SelectItem>
-                              <SelectItem value="Cancelled - Personal Reasons">Cancelled - Personal Reasons</SelectItem>
-                              <SelectItem value="Cancelled - Prioritising Other Training">Cancelled - Prioritising Other Training</SelectItem>
-                              <SelectItem value="Cancelled - Visa Rejected">Cancelled - Visa Rejected</SelectItem>
-                              <SelectItem value="Cancelled - Visa Appointment Not Available">Cancelled - Visa Appointment Not Available</SelectItem>
-                              <SelectItem value="Cancelled - Visa Issuing Took Too Long">Cancelled - Visa Issuing Took Too Long</SelectItem>
-                              <SelectItem value="Cancelled - Visa Process Unfeasible">Cancelled - Visa Process Unfeasible</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    ) : effectiveVettingMode && effectiveVettingMode.canEdit ? (
-                      <textarea
-                        value={participantComments[participant.id] || ''}
-                        onChange={(e) => setParticipantComments(prev => ({ 
+                  );
+                }
+                
+                if (key === 'participant_role' || key === 'role') {
+                  return effectiveVettingMode && !effectiveVettingMode.canEdit ? (
+                    <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700">
+                      {(participant.participant_role || participant.role || "visitor").toUpperCase()}
+                    </Badge>
+                  ) : (
+                    <Select
+                      value={participant.participant_role || participant.role || "visitor"}
+                      onValueChange={(value) => handleRoleChange(participant.id, value)}
+                      disabled={eventHasEnded || updatingRoleId === participant.id}
+                    >
+                      <SelectTrigger className="w-24 h-7 text-xs">
+                        {updatingRoleId === participant.id ? (
+                          <div className="flex items-center gap-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                            <span className="text-xs">Updating...</span>
+                          </div>
+                        ) : (
+                          <SelectValue />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="visitor">Visitor</SelectItem>
+                        <SelectItem value="facilitator">Facilitator</SelectItem>
+                        <SelectItem value="organizer">Organizer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  );
+                }
+                
+                if (key === 'vetting_comments') {
+                  return effectiveVettingMode && effectiveVettingMode.canEdit && 
+                   (participant.status === 'declined' || participant.status === 'canceled') ? (
+                    <Select
+                      value={participantComments[participant.id] || participant.vetting_comments || ''}
+                      onValueChange={(value) => {
+                        setParticipantComments(prev => ({ 
                           ...prev, 
-                          [participant.id]: e.target.value 
-                        }))}
-                        placeholder="Add comments..."
-                        className="w-full h-16 text-xs border border-gray-300 rounded px-2 py-1 resize-none focus:border-blue-500 focus:outline-none"
-                        maxLength={500}
-                      />
-                    ) : participant.vetting_comments ? (
-                      <div className="text-xs text-gray-700 max-w-40 truncate" title={participant.vetting_comments}>
-                        {participant.vetting_comments}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400">-</span>
-                    )}
-                  </td>
-                )}
-                {visibleColumns.actions && (
-                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-1">
-                    <LOIQuickAccess participant={participant} eventId={eventId} />
-                    {/* Show email status for vetting approvers after approval */}
-                    {effectiveVettingMode && effectiveVettingMode.isVettingApprover && vettingApproved && (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full" title="Email sent"></div>
-                        {!eventHasEnded && (
+                          [participant.id]: value 
+                        }));
+                        handleCommentChange(participant.id, value);
+                      }}
+                    >
+                      <SelectTrigger className="w-40 h-8 text-xs">
+                        <SelectValue placeholder="Select reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {participant.status === 'declined' ? (
+                          <>
+                            <SelectItem value="Declined - Operational / Work Reasons">Declined - Operational / Work Reasons</SelectItem>
+                            <SelectItem value="Declined - Personal Reasons">Declined - Personal Reasons</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="Cancelled - Operational Reasons">Cancelled - Operational Reasons</SelectItem>
+                            <SelectItem value="Cancelled - Personal Reasons">Cancelled - Personal Reasons</SelectItem>
+                            <SelectItem value="Cancelled - Prioritising Other Training">Cancelled - Prioritising Other Training</SelectItem>
+                            <SelectItem value="Cancelled - Visa Rejected">Cancelled - Visa Rejected</SelectItem>
+                            <SelectItem value="Cancelled - Visa Appointment Not Available">Cancelled - Visa Appointment Not Available</SelectItem>
+                            <SelectItem value="Cancelled - Visa Issuing Took Too Long">Cancelled - Visa Issuing Took Too Long</SelectItem>
+                            <SelectItem value="Cancelled - Visa Process Unfeasible">Cancelled - Visa Process Unfeasible</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : effectiveVettingMode && effectiveVettingMode.canEdit ? (
+                    <textarea
+                      value={participantComments[participant.id] || ''}
+                      onChange={(e) => setParticipantComments(prev => ({
+                        ...prev,
+                        [participant.id]: e.target.value
+                      }))}
+                      onBlur={(e) => {
+                        const comment = e.target.value.trim();
+                        if (comment && comment !== participant.vetting_comments) {
+                          handleCommentChange(participant.id, comment);
+                        }
+                      }}
+                      placeholder="Add comments..."
+                      className="w-full h-16 text-xs border border-gray-300 rounded px-2 py-1 resize-none focus:border-blue-500 focus:outline-none"
+                      maxLength={500}
+                    />
+                  ) : participant.vetting_comments ? (
+                    <div className="text-xs text-gray-700 max-w-40 truncate" title={participant.vetting_comments}>
+                      {participant.vetting_comments}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">-</span>
+                  );
+                }
+                
+                if (key === 'actions') {
+                  return (
+                    <div className="flex items-center gap-1">
+                      <LOIQuickAccess participant={participant} eventId={eventId} />
+                      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && vettingApproved && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full" title="Email sent"></div>
+                          {!eventHasEnded && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResendInvitation(participant.id)}
+                              disabled={resendingId === participant.id}
+                              className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
+                              title="Resend notification email"
+                            >
+                              {resendingId === participant.id ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                              ) : (
+                                <Mail className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {(!effectiveVettingMode || effectiveVettingMode.isVettingApprover) &&
+                        participant.status === "selected" &&
+                        participant.email &&
+                        participant.email.trim() &&
+                        !vettingApproved && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleResendInvitation(participant.id)}
-                            disabled={resendingId === participant.id}
-                            className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
-                            title="Resend notification email"
+                            disabled={resendingId === participant.id || eventHasEnded}
+                            className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {resendingId === participant.id ? (
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-700"></div>
                             ) : (
-                              <Mail className="h-3 w-3" />
+                              <Send className="h-3 w-3" />
                             )}
                           </Button>
                         )}
-                      </div>
-                    )}
-                    {/* Show email button for approvers and non-vetting users */}
-                    {(!effectiveVettingMode || effectiveVettingMode.isVettingApprover) &&
-                      participant.status === "selected" &&
-                      participant.email &&
-                      participant.email.trim() &&
-                      !vettingApproved && (
+                      {!effectiveVettingMode && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleResendInvitation(participant.id)}
-                          disabled={
-                            resendingId === participant.id || eventHasEnded
-                          }
-                          className="h-7 px-2 text-xs border-orange-300 text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleDeleteParticipant(participant.id)}
+                          disabled={deletingId === participant.id || eventHasEnded}
+                          className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {resendingId === participant.id ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-700"></div>
+                          {deletingId === participant.id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700"></div>
                           ) : (
-                            <Send className="h-3 w-3" />
+                            <Trash2 className="h-3 w-3" />
                           )}
                         </Button>
                       )}
-                    {/* Show delete button only for non-vetting users */}
-                    {!effectiveVettingMode && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteParticipant(participant.id)}
-                        disabled={deletingId === participant.id || eventHasEnded}
-                        className="h-7 px-2 text-xs border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {deletingId === participant.id ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-700"></div>
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
+                    </div>
+                  );
+                }
+                
+                // Handle arrays (like daily_meals)
+                if (Array.isArray(value)) {
+                  return (
+                    <span className="text-xs text-gray-700">
+                      {value.join(', ') || '-'}
+                    </span>
+                  );
+                }
+                
+                // Handle boolean values
+                if (typeof value === 'boolean') {
+                  return (
+                    <span className={`text-xs font-medium ${
+                      value ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {value ? 'Yes' : 'No'}
+                    </span>
+                  );
+                }
+                
+                // Handle dates
+                if (key.includes('date') || key.includes('_at')) {
+                  return (
+                    <span className="text-xs text-gray-700">
+                      {value ? new Date(value as string).toLocaleDateString() : '-'}
+                    </span>
+                  );
+                }
+                
+                // Default text rendering with truncation for long text
+                const textValue = String(value || '-');
+                return (
+                  <span 
+                    className="text-xs text-gray-700 max-w-32 truncate block" 
+                    title={textValue.length > 20 ? textValue : undefined}
+                  >
+                    {textValue}
+                  </span>
+                );
+              };
+              
+              return (
+                <tr key={participant.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedParticipants.includes(participant.id)}
+                      onChange={() => handleSelectParticipant(participant.id)}
+                      className="rounded border-gray-300"
+                    />
                   </td>
-                )}
-              </tr>
-            ))}
+                  {Object.entries(availableColumns).map(([key]) => 
+                    visibleColumns[key] && (
+                      <td key={key} className="px-3 py-4 whitespace-nowrap">
+                        {renderCellContent(key)}
+                      </td>
+                    )
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -3523,7 +3705,7 @@ The Event Organization Team`);
       )}
 
       {/* Vetting Approver Email Template Section */}
-      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && (
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && filteredParticipants.length > 0 && (
         <div className="mt-6 space-y-4">
           <div className="p-4 border-2 rounded-lg bg-blue-50 border-blue-200">
             <div className="flex items-center justify-between mb-3">
@@ -3592,7 +3774,7 @@ The Event Organization Team`);
             
             {!showEmailTemplate && (
               <p className="text-xs text-blue-700 mt-2">
-                All tenants have access to this template. Click 'Customize Template' to personalize and save for your tenant's future events.
+                Available variables: {'{'}{'{'} PARTICIPANT_NAME {'}'}{'}'},  {'{'}{'{'} PARTICIPANT_EMAIL {'}'}{'}'},  {'{'}{'{'} EVENT_TITLE {'}'}{'}'},  {'{'}{'{'} EVENT_LOCATION {'}'}{'}'},  {'{'}{'{'} EVENT_DATE_RANGE {'}'}{'}'},  {'{'}{'{'} REGISTRATION_LINK {'}'}{'}'}  
               </p>
             )}
           </div>
@@ -3601,7 +3783,7 @@ The Event Organization Team`);
 
       {/* Vetting Committee Submitted Status */}
       {vettingMode && vettingMode.isVettingCommittee && 
-       effectiveVettingMode?.submissionStatus === 'pending_approval' && (
+       effectiveVettingMode?.submissionStatus === 'pending_approval' && filteredParticipants.length > 0 && (
         <div className="mt-6 p-4 border-2 rounded-lg bg-orange-50 border-orange-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -3666,7 +3848,7 @@ The Event Organization Team`);
 
       {/* Vetting Committee Approved Status */}
       {vettingMode && vettingMode.isVettingCommittee && 
-       effectiveVettingMode?.submissionStatus === 'approved' && (
+       effectiveVettingMode?.submissionStatus === 'approved' && filteredParticipants.length > 0 && (
         <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-6 h-6 text-green-600" />
@@ -3683,7 +3865,7 @@ The Event Organization Team`);
       )}
 
       {/* Vetting Approved Status */}
-      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && (effectiveVettingMode.submissionStatus === 'approved' || vettingApproved) && (
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && (effectiveVettingMode.submissionStatus === 'approved' || vettingApproved) && filteredParticipants.length > 0 && (
         <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -3762,7 +3944,7 @@ The Event Organization Team`);
       )}
 
       {/* Vetting Approver Approve Button */}
-      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && !vettingApproved && (
+      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && effectiveVettingMode.submissionStatus === 'pending_approval' && !vettingApproved && filteredParticipants.length > 0 && (
         <div className="mt-6 p-4 border-2 rounded-lg bg-green-50 border-green-200">
           <div className="flex items-center justify-between">
             <div>

@@ -118,7 +118,8 @@ export const AuthUtils = {
 
   // Get role display name using actual API roles
   getRoleDisplayName: (role: string): string => {
-    switch (role) {
+    const lowerRole = role.toLowerCase();
+    switch (lowerRole) {
       case "super_admin":
         return "Super Administrator";
       case "mt_admin":
@@ -144,7 +145,8 @@ export const AuthUtils = {
 
   // Get role color classes for UI using actual API roles
   getRoleColor: (role: string): string => {
-    switch (role) {
+    const lowerRole = role.toLowerCase();
+    switch (lowerRole) {
       case "super_admin":
         return "bg-[#fee2e2] text-[#ee0000]";
       case "mt_admin":

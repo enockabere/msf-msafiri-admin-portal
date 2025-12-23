@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { SessionProvider } from "@/components/SessionProvider";
-import { TenantProvider } from "@/context/TenantContext";
-import { SidebarProvider } from "@/contexts/SidebarContext";
-import { ToastContainer } from "@/components/ui/toast";
-import { NavigationLoader } from "@/components/ui/loading";
 import { Toaster } from "sonner";
-import SessionTimeoutHandler from "@/components/auth/SessionTimeoutHandler";
+import { ConditionalProviders } from "@/components/ConditionalProviders";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,21 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiase`}>
-        {/* Content on top */}
         <div className="relative z-10">
-          <SessionProvider>
-            <TenantProvider>
-              <SidebarProvider>
-                <SessionTimeoutHandler />
-                {/* <SessionStatus /> */}
-                <NavigationLoader />
-                {children}
-                <ToastContainer />
-              </SidebarProvider>
-            </TenantProvider>
-          </SessionProvider>
+          <ConditionalProviders>{children}</ConditionalProviders>
         </div>
-        {/* Toaster outside of stacking context to appear above portaled dialogs */}
         <Toaster
           position="top-right"
           richColors

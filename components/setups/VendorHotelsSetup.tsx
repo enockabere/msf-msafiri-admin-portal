@@ -318,7 +318,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     // Fetch current template
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${vendor.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${vendor.id}/template`,
         {
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
@@ -329,7 +329,10 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
       if (response.ok) {
         const data = await response.json();
-        setTemplateContent(data.accommodation_template || "");
+        setTemplateContent(data.template || data.accommodation_template || "");
+      } else {
+        // If template endpoint doesn't exist, set empty template
+        setTemplateContent("");
       }
     } catch (error) {
       console.error("Error fetching template:", error);

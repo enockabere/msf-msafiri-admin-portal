@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import Navbar from "@/components/layout/navbar";
+import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -244,18 +246,28 @@ export default function TenantEventsPage() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      // Fetch all events
-      let eventsData = await apiClient.request<Event[]>(
-        `/events/?tenant=${tenantSlug}`
-      );
-      
-      // Filter events for vetting-only users
+      // Check if user is vetting-only
       const isVettingOnlyUser = userRoles.length > 0 && 
         userRoles.every(role => ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(role)) &&
         !isTenantAdmin;
       
+      let eventsData;
+      
       if (isVettingOnlyUser) {
-        eventsData = eventsData.filter(event => event.status === 'Published');
+        // For vetting-only users, fetch only events they are assigned to vet
+        eventsData = await apiClient.request<Event[]>(
+          `/vetting/user-assigned-events?tenant=${tenantSlug}`
+        );
+      } else {
+        // For admins, fetch all events
+        eventsData = await apiClient.request<Event[]>(
+          `/events/?tenant=${tenantSlug}`
+        );
+        
+        // Filter published events for vetting-only users (fallback)
+        if (isVettingOnlyUser) {
+          eventsData = eventsData.filter(event => event.status === 'Published');
+        }
       }
 
       const eventsWithCounts = await Promise.all(
@@ -369,12 +381,14 @@ export default function TenantEventsPage() {
       !isTenantAdmin;
   };
 
-  // Simple layout for vetting-only users (no sidebar)
+  // Layout for vetting-only users (topbar and footer, no sidebar)
   const VettingOnlyLayout = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="flex flex-col min-h-screen">
+      <Navbar showLogo={true} />
+      <main className="flex-1 bg-gray-50 p-6">
         {children}
-      </div>
+      </main>
+      <SuperAdminFooter tenantName={tenantSlug} />
     </div>
   );
 

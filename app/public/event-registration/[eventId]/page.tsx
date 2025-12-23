@@ -74,17 +74,29 @@ export default function PublicEventRegistrationPage() {
   const [error, setError] = useState<string | null>(null);
   const [codeOfConduct, setCodeOfConduct] = useState<any>(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [countries, setCountries] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchEventData = async () => {
       try {
-        const [eventRes, fieldsRes, registrationRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/public-registration/events/${eventId}/public`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/form-fields`),
+        console.log('🔵 ============ FETCHING PUBLIC EVENT DATA ============');
+        console.log('🔵 Event ID:', eventId);
+        console.log('🔵 API URL:', process.env.NEXT_PUBLIC_API_URL);
+
+        const [eventRes, fieldsRes, registrationRes, countriesRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/public`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/public-registration/events/${eventId}/form-fields`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/public-registration/events/${eventId}/can-register`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/countries`),
         ]);
 
+        console.log('✅ Event response status:', eventRes.status);
+        console.log('✅ Fields response status:', fieldsRes.status);
+        console.log('✅ Registration response status:', registrationRes.status);
+        console.log('✅ Countries response status:', countriesRes.status);
+
         if (!eventRes.ok) {
+          console.error('❌ Event not found - Status:', eventRes.status);
           setError("Event not found");
           setLoading(false);
           return;
@@ -93,11 +105,18 @@ export default function PublicEventRegistrationPage() {
         const eventData = await eventRes.json();
         const fieldsData = await fieldsRes.json();
         const registrationData = await registrationRes.json();
+        const countriesData = countriesRes.ok ? await countriesRes.json() : { countries: [] };
+
+        console.log('✅ Event data:', eventData);
+        console.log('✅ Form fields count:', fieldsData.length);
+        console.log('✅ Form fields:', fieldsData);
+        console.log('✅ Can register:', registrationData.can_register);
 
         setEvent(eventData);
         setFormFields(fieldsData);
         setCanRegister(registrationData.can_register);
         setRegistrationMessage(registrationData.reason || "");
+        setCountries(countriesData.countries || []);
 
         const initialData: FormData = {};
         fieldsData.forEach((field: FormField) => {
@@ -105,19 +124,29 @@ export default function PublicEventRegistrationPage() {
         });
         setFormData(initialData);
 
+        console.log('✅ Initial form data created with', Object.keys(initialData).length, 'fields');
+
         // Fetch code of conduct document
         try {
           const tenant_slug = eventData.tenant_slug || 'msf-oca';
+          console.log('🔵 Fetching code of conduct for tenant:', tenant_slug);
           const codeConductRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/code-of-conduct/public/${tenant_slug}`);
           if (codeConductRes.ok) {
             const codeData = await codeConductRes.json();
             setCodeOfConduct(codeData);
+            console.log('✅ Code of conduct loaded');
+          } else {
+            console.log('⚠️ Code of conduct not found - Status:', codeConductRes.status);
           }
         } catch (err) {
-          console.log("Code of conduct not found");
+          console.log("⚠️ Code of conduct fetch error:", err);
         }
+
+        console.log('✅ ============ PUBLIC EVENT DATA LOADED ============');
       } catch (err) {
-        console.error("Error fetching event data:", err);
+        console.error("🔴 ============ ERROR FETCHING EVENT DATA ============");
+        console.error("🔴 Error:", err);
+        console.error("🔴 ============ END ERROR ============");
         setError("Failed to load event details");
       } finally {
         setLoading(false);
@@ -171,8 +200,17 @@ export default function PublicEventRegistrationPage() {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+    
+    // Check if deadline has passed
+    const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
+    
     formFields.forEach((field) => {
+      // Skip travel section if not available
       if (field.section === 'travel' && !showTravelSection) return;
+      
+      // Skip non-travel fields if deadline has passed
+      if (isDeadlinePassed && field.section !== 'travel') return;
+      
       if (field.is_required) {
         const value = formData[field.field_name];
         if (field.field_type === 'checkbox') {
@@ -194,39 +232,86 @@ export default function PublicEventRegistrationPage() {
     });
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
+      console.log('❌ Validation errors found:', newErrors);
       const firstErrorField = Object.keys(newErrors)[0];
       const element = document.getElementById(`field-${firstErrorField}`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+    } else {
+      console.log('✅ No validation errors found');
     }
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    
+    console.log('🔵 ============ FORM SUBMISSION STARTED ============');
+    console.log('🔵 Form data:', formData);
+    console.log('🔵 Form fields:', formFields);
+    
+    // Check if deadline has passed
+    const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
+    
+    // If deadline passed and not submitting travel section only, prevent submission
+    if (isDeadlinePassed && !showTravelSection) {
+      setError('Registration deadline has passed. New registrations are no longer accepted.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
+    // Set submitting state immediately
     setSubmitting(true);
+    
+    // Validate form
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      setSubmitting(false);
+      return;
+    }
+    
+    console.log('✅ Form validation passed, submitting...');
+    
     try {
       const email = formData.personalEmail || formData.email || formData.msfEmail || '';
+      console.log('🔵 Submitting with email:', email);
+      
+      // Prepare request body with required fields
+      const requestBody = {
+        ...formData,
+        eventId: parseInt(eventId),
+        dailyMeals: Array.isArray(formData.dailyMeals) ? formData.dailyMeals : 
+                   (formData.dailyMeals ? [formData.dailyMeals] : []) // Convert to array
+      };
+      
+      console.log('🔵 Request body:', requestBody);
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/public-registration/events/${eventId}/register`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/public-registration/events/${eventId}/public-register`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, form_data: formData }),
+          body: JSON.stringify(requestBody),
         }
       );
+      
+      console.log('🔵 Response status:', response.status);
+      
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('❌ Registration failed:', errorData);
         throw new Error(errorData.detail || 'Registration failed');
       }
+      
+      console.log('✅ Registration successful!');
       setSubmitSuccess(true);
     } catch (err: any) {
-      console.error("Registration error:", err);
+      console.error("❌ Registration error:", err);
       setError(err.message || 'Failed to submit registration');
     } finally {
       setSubmitting(false);
+      console.log('🔵 ============ FORM SUBMISSION ENDED ============');
     }
   };
 
@@ -334,9 +419,15 @@ export default function PublicEventRegistrationPage() {
           />
         );
       case 'select':
+        // Use countries API for nationality and country fields
+        let selectOptions = field.field_options || [];
+        if ((field.field_name === 'nationality' || field.field_name === 'countryOfWork' || field.field_name.toLowerCase().includes('country')) && countries.length > 0) {
+          selectOptions = countries;
+        }
+        
         // Use searchable dropdown for fields with many options (e.g., countries)
-        if (field.field_options && field.field_options.length > 10) {
-          const options = field.field_options.map(option => ({ value: option, label: option }));
+        if (selectOptions && selectOptions.length > 10) {
+          const options = selectOptions.map(option => ({ value: option, label: option }));
           const selectedOption = value ? { value: value, label: value } : null;
           
           return (
@@ -374,7 +465,7 @@ export default function PublicEventRegistrationPage() {
               <SelectValue placeholder={`Select ${field.field_label.toLowerCase()}...`} />
             </SelectTrigger>
             <SelectContent>
-              {field.field_options?.map((option) => (
+              {selectOptions?.map((option) => (
                 <SelectItem key={option} value={option}>{option}</SelectItem>
               ))}
             </SelectContent>
@@ -444,7 +535,9 @@ export default function PublicEventRegistrationPage() {
     );
   }
 
-  if (!canRegister) {
+  // Only show "Registration Closed" if deadline passed AND user is not selected
+  const isDeadlinePassedCheck = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
+  if (!canRegister && !(isDeadlinePassedCheck && showTravelSection)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <Card className="max-w-md border-0 shadow-xl">
@@ -488,11 +581,11 @@ export default function PublicEventRegistrationPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-gray-600 mb-4">You will receive a confirmation email shortly with further details.</p>
+            <p className="text-gray-600 mb-4">You will receive communication once the selection committee finishes selecting event participants.</p>
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="h-4 w-4 text-blue-600" />
               <AlertDescription className="text-blue-800">
-                Please check your spam folder if you don't see the email within a few minutes.
+                Please check your spam folder if you don't see the email before {event?.start_date ? new Date(event.start_date).toLocaleDateString() : 'the event start date'}.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -502,34 +595,44 @@ export default function PublicEventRegistrationPage() {
   }
 
   const sectionedFields = groupFieldsBySection();
+  const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-2">
+      <div className="w-full space-y-3 px-4">
+        {isDeadlinePassed && !showTravelSection && (
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800 font-medium">
+              Registration deadline has passed. New registrations are no longer accepted. Only selected participants can submit travel information.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-indigo-50">
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">MSF</span>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-sm sm:text-lg">MSF</span>
               </div>
-              <div>
-                <CardTitle className="text-3xl font-bold text-gray-900">{event?.title}</CardTitle>
-                <p className="text-gray-600 mt-1">Event Registration Form</p>
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{event?.title}</CardTitle>
+                <p className="text-gray-600 mt-1 text-sm sm:text-base">Event Registration Form</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm">
-                <Calendar className="w-4 h-4 text-red-600" />
-                <span>{new Date(event!.start_date).toLocaleDateString()} - {new Date(event!.end_date).toLocaleDateString()}</span>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 bg-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm min-w-0">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
+                <span className="truncate">{new Date(event!.start_date).toLocaleDateString()} - {new Date(event!.end_date).toLocaleDateString()}</span>
               </div>
-              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg text-sm">
-                <MapPin className="w-4 h-4 text-red-600" />
-                <span>{event?.location}</span>
+              <div className="flex items-center gap-2 bg-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm min-w-0">
+                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
+                <span className="truncate">{event?.location}</span>
               </div>
               {event?.registration_deadline && (
-                <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg text-sm text-amber-700">
-                  <Clock className="w-4 h-4" />
-                  <span>Deadline: {new Date(event.registration_deadline).toLocaleDateString()}</span>
+                <div className="flex items-center gap-2 bg-amber-50 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-amber-700 min-w-0">
+                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                  <span className="truncate">Deadline: {new Date(event.registration_deadline).toLocaleString()} (Africa/Nairobi)</span>
                 </div>
               )}
             </div>
@@ -543,7 +646,7 @@ export default function PublicEventRegistrationPage() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {sectionedFields.map(({ name, title, icon: Icon, fields }) => {
             if (name === 'travel' && !showTravelSection) {
               return (
@@ -565,16 +668,21 @@ export default function PublicEventRegistrationPage() {
                 </Card>
               );
             }
+            
+            // Hide non-travel sections if deadline passed and user is not selected
+            if (isDeadlinePassed && name !== 'travel' && !showTravelSection) {
+              return null;
+            }
 
             return (
               <Card key={name} className="border-0 shadow-lg">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-6 h-6 text-red-600" />
-                    <CardTitle className="text-2xl">{title}</CardTitle>
+                <CardHeader className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
+                    <CardTitle className="text-lg sm:text-xl lg:text-2xl">{title}</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 p-4 sm:p-6">
                   {fields.map((field) => (
                     <div key={field.id} className="space-y-2">
                       <Label htmlFor={`field-${field.field_name}`} className="text-sm font-medium">
@@ -593,37 +701,40 @@ export default function PublicEventRegistrationPage() {
             );
           })}
 
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-blue-50">
-            <CardContent className="pt-6">
-              <Button type="submit" disabled={submitting} className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-6">
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Submitting Registration...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5 mr-2" />
-                    Submit Registration
-                  </>
-                )}
-              </Button>
-              <p className="text-center text-sm text-gray-600 mt-4">
-                By submitting, you confirm that all information provided is accurate and complete.
-              </p>
-            </CardContent>
-          </Card>
+          {/* Only show submit button if deadline not passed OR if user is selected and can submit travel info */}
+          {(!isDeadlinePassed || showTravelSection) && (
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-blue-50">
+              <CardContent className="p-4 sm:p-6">
+                <Button type="submit" disabled={submitting} className="w-full bg-green-600 hover:bg-green-700 text-white text-base sm:text-lg py-4 sm:py-6">
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Submitting {showTravelSection ? 'Travel Information' : 'Registration'}...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5 mr-2" />
+                      Submit {showTravelSection ? 'Travel Information' : 'Registration'}
+                    </>
+                  )}
+                </Button>
+                <p className="text-center text-sm text-gray-600 mt-4">
+                  By submitting, you confirm that all information provided is accurate and complete.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </form>
 
         {/* Floating Scroll-to-Top Button */}
         {showScrollTop && (
           <Button
             onClick={scrollToTop}
-            className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-2xl transition-all duration-300 hover:scale-110"
+            className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-2xl transition-all duration-300 hover:scale-110"
             size="icon"
             aria-label="Scroll to top"
           >
-            <ArrowUp className="h-6 w-6" />
+            <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
         )}
       </div>

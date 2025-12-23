@@ -5,7 +5,7 @@ import { Button } from './button';
 import {
   Bold, Italic, Underline, List, Link, AlignLeft,
   AlignCenter, AlignRight, Image as ImageIcon, Lock,
-  Type, Palette
+  Type, Palette, Code
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -14,23 +14,41 @@ interface EmailTemplateEditorProps {
   onChange: (content: string) => void;
   registrationUrl: string;
   eventTitle: string;
+  eventData?: any;
+  tenantData?: any;
   placeholder?: string;
   height?: number;
   protectedContent?: string;
 }
+
+// Email template variables that can be used
+const EMAIL_TEMPLATE_VARIABLES = [
+  { variable: '{{eventTitle}}', description: 'Event title/name' },
+  { variable: '{{eventStartDate}}', description: 'Event start date' },
+  { variable: '{{eventEndDate}}', description: 'Event end date' },
+  { variable: '{{eventLocation}}', description: 'Event location' },
+  { variable: '{{registrationDeadline}}', description: 'Registration deadline' },
+  { variable: '{{tenantName}}', description: 'Organization name' },
+  { variable: '{{tenantTimezone}}', description: 'Organization timezone' },
+  { variable: '{{currentDate}}', description: 'Current date' },
+  { variable: '{{registrationUrl}}', description: 'Registration form link' },
+];
 
 export function EmailTemplateEditor({
   value,
   onChange,
   registrationUrl,
   eventTitle,
+  eventData,
+  tenantData,
   placeholder,
   height = 300,
   protectedContent
 }: EmailTemplateEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
 
 
 
@@ -114,25 +132,22 @@ export function EmailTemplateEditor({
 
 
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Prevent deletion of protected URL section
-    if ((e.key === 'Backspace' || e.key === 'Delete') && editorRef.current) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const container = range.commonAncestorContainer;
-
-        // Check if selection contains or is within protected content
-        let node = container instanceof Element ? container : container.parentElement;
-        while (node && node !== editorRef.current) {
-          if (node.classList?.contains('protected-url')) {
-            e.preventDefault();
-            toast.warning('This section is protected and cannot be edited or deleted');
-            return;
-          }
-          node = node.parentElement;
-        }
-      }
+  const insertVariable = (variable: string) => {
+    if (editorRef.current) {
+      const textarea = editorRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue = value.substring(0, start) + variable + ' ' + value.substring(end);
+      onChange(newValue);
+      
+      // Set cursor position after inserted variable
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + variable.length + 1, start + variable.length + 1);
+      }, 0);
+      
+      setShowVariables(false);
+      toast.success(`Inserted ${variable}`);
     }
   };
 
@@ -264,6 +279,43 @@ export function EmailTemplateEditor({
           <ImageIcon className="h-4 w-4" />
         </Button>
 
+        <div className="w-px h-6 bg-gray-300 mx-1" />
+
+        <div className="relative">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowVariables(!showVariables)}
+            className="h-8 px-2"
+            title="Insert Variable"
+          >
+            <Code className="h-4 w-4 mr-1" />
+            <span className="text-xs">Variables</span>
+          </Button>
+
+          {showVariables && (
+            <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="p-2 border-b bg-gray-50">
+                <p className="text-xs font-semibold text-gray-700">Click to insert variable:</p>
+              </div>
+              <div className="p-2 space-y-1">
+                {EMAIL_TEMPLATE_VARIABLES.map(({ variable, description }) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => insertVariable(variable)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded flex flex-col"
+                  >
+                    <span className="text-sm font-mono text-blue-600">{variable}</span>
+                    <span className="text-xs text-gray-500">{description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -292,9 +344,15 @@ export function EmailTemplateEditor({
       />
 
       {/* Helper Text */}
-      <div className="px-4 py-2 bg-blue-50 border-t border-blue-200 text-xs text-blue-800 flex items-center gap-2">
-        <Lock className="h-3 w-3" />
-        <span>The registration link will be automatically added at the bottom of your email content when sent.</span>
+      <div className="px-4 py-2 bg-blue-50 border-t border-blue-200 text-xs text-blue-800">
+        <div className="flex items-center gap-2 mb-1">
+          <Lock className="h-3 w-3" />
+          <span>The registration link will be automatically added at the bottom of your email content when sent.</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Code className="h-3 w-3" />
+          <span>Use variables like <code className="bg-blue-100 px-1 rounded">{'{{eventTitle}}'}</code> to personalize the email. They will be replaced with actual data when sent.</span>
+        </div>
       </div>
     </div>
   );

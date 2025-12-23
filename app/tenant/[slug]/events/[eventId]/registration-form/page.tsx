@@ -51,6 +51,14 @@ interface Event {
   registration_deadline?: string;
 }
 
+interface Tenant {
+  id: number;
+  name: string;
+  slug: string;
+  country?: string;
+  timezone?: string;
+}
+
 interface FormData {
   firstName: string;
   lastName: string;
@@ -86,6 +94,7 @@ export default function EventRegistrationFormPage() {
   const params = useParams();
   const { apiClient } = useAuthenticatedApi();
   const [event, setEvent] = useState<Event | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -138,6 +147,18 @@ export default function EventRegistrationFormPage() {
 
   const tenantSlug = params.slug as string;
   const eventId = params.eventId as string;
+
+  // Email template configuration variables
+  const EMAIL_TEMPLATE_CONFIG = {
+    greeting: "Dear Colleague,",
+    invitationText: "We are pleased to invite you to register for the upcoming event:",
+    sectionTitle: "Event Details:",
+    instructionText: "To complete your registration, please click the link below and fill out the application form. The process takes approximately 8 minutes to complete.",
+    deadlineReminder: "Please ensure you submit your application before the deadline to secure your participation.",
+    supportText: "If you have any questions or need assistance, please don't hesitate to contact us.",
+    closing: "Best regards,",
+    signature: "MSF Event Team"
+  };
 
   const steps = [
     {
@@ -207,23 +228,56 @@ export default function EventRegistrationFormPage() {
   }, [apiClient]);
 
   const fetchEvent = useCallback(async () => {
-    console.log("🔵 Fetching event...");
-    console.log("  Event ID:", eventId);
-    console.log("  Tenant:", tenantSlug);
     try {
-      const eventData = await apiClient.request<Event>(`/events/${eventId}?tenant=${tenantSlug}`);
-      console.log("✅ Event fetched successfully:", eventData.title);
+      const [eventData, tenantData] = await Promise.all([
+        apiClient.request<Event>(`/events/${eventId}?tenant=${tenantSlug}`),
+        apiClient.request<Tenant>(`/tenants/slug/${tenantSlug}`)
+      ]);
+      
       setEvent(eventData);
+      setTenant(tenantData);
       setEmailSubject(`Registration: ${eventData.title}`);
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== "undefined" ? window.location.origin : "");
-      setEmailBody("");
-    } catch (error: any) {
-      console.error("🔴 Error fetching event:", error);
-      console.error("🔴 Error status:", error?.status);
-      console.error("🔴 Error message:", error?.message);
-      console.error("🔴 Error response:", error?.response);
-      console.error("🔴 Full error object:", JSON.stringify(error, null, 2));
+      
+      // Prefill email template with configurable content
+      const defaultEmailBody = `${EMAIL_TEMPLATE_CONFIG.greeting}
 
+${EMAIL_TEMPLATE_CONFIG.invitationText}
+
+<strong>${eventData.title}</strong>
+
+${EMAIL_TEMPLATE_CONFIG.sectionTitle}
+• Date: ${new Date(eventData.start_date).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })} - ${new Date(eventData.end_date).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })}
+• Location: ${eventData.location}
+${eventData.registration_deadline ? `• Registration Deadline: ${new Date(eventData.registration_deadline).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })} at ${new Date(eventData.registration_deadline).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })} (${tenantData?.timezone || 'Local timezone'})` : ''}
+
+${EMAIL_TEMPLATE_CONFIG.instructionText}
+
+${EMAIL_TEMPLATE_CONFIG.deadlineReminder}
+
+${EMAIL_TEMPLATE_CONFIG.supportText}
+
+${EMAIL_TEMPLATE_CONFIG.closing}
+${EMAIL_TEMPLATE_CONFIG.signature}`;
+      
+      setEmailBody(defaultEmailBody);
+    } catch (error: any) {
       const errorMessage = error?.message || error?.detail || "Failed to fetch event details";
       sonnerToast.error("Error", {
         description: errorMessage,
@@ -256,67 +310,55 @@ export default function EventRegistrationFormPage() {
 
   // Scroll-to-top button visibility - Find the actual scrolling element
   useEffect(() => {
-    console.log('🔵 Setting up scroll listener');
-
-    // DashboardLayout likely has the scrolling container, not window
-    const findScrollContainer = () => {
-      // Try to find main content area that scrolls
-      const main = document.querySelector('main');
-      const scrollableDiv = document.querySelector('[style*="overflow"]');
-      console.log('🔍 Found main:', !!main, 'Found scrollable:', !!scrollableDiv);
-      return main || scrollableDiv || window;
-    };
-
     let scrollContainer: any = null;
 
-    const handleScroll = (e?: Event) => {
-      // Get scroll position from the correct element
-      let scrollY = 0;
-      if (scrollContainer === window) {
-        scrollY = window.scrollY || window.pageYOffset;
-      } else if (scrollContainer) {
-        scrollY = scrollContainer.scrollTop;
-      }
+    const handleScroll = () => {
+      // Get scroll position from all possible containers
+      const windowScrollY = window.scrollY || window.pageYOffset;
+      const main = document.querySelector('main');
+      const mainScrollY = main ? (main as HTMLElement).scrollTop : 0;
+      const containerScrollY = (scrollContainer && scrollContainer !== window) ? scrollContainer.scrollTop : 0;
 
-      const shouldShow = scrollY > 400;
-      console.log('📜 Scroll Event - Y:', scrollY, 'Show Button:', shouldShow, 'Container:', scrollContainer === window ? 'window' : 'element');
-      setShowScrollTop(shouldShow);
+      // Use the maximum scroll value
+      const scrollY = Math.max(windowScrollY, mainScrollY, containerScrollY);
+      setShowScrollTop(scrollY > 400);
     };
 
     // Setup with delay to ensure DOM is ready
     setTimeout(() => {
-      scrollContainer = findScrollContainer();
-      console.log('📍 Initial scroll check on:', scrollContainer);
+      const main = document.querySelector('main');
+      scrollContainer = (main && main.scrollHeight > main.clientHeight) ? main : window;
       handleScroll();
 
-      if (scrollContainer) {
+      // Add listeners to multiple potential scroll containers
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      if (scrollContainer && scrollContainer !== window) {
         scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        console.log('✅ Scroll listener added to:', scrollContainer === window ? 'window' : 'DOM element');
       }
-    }, 100);
+      if (main && main !== scrollContainer) {
+        main.addEventListener('scroll', handleScroll, { passive: true });
+      }
+    }, 500);
 
     return () => {
-      if (scrollContainer) {
-        console.log('🔴 Removing scroll listener');
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollContainer && scrollContainer !== window) {
         scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+      const main = document.querySelector('main');
+      if (main && main !== scrollContainer) {
+        main.removeEventListener('scroll', handleScroll);
       }
     };
   }, []);
 
   const scrollToTop = () => {
-    console.log('⬆️ Scroll to top clicked!');
-    // Scroll both window and any scrollable container
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const main = document.querySelector('main');
     if (main) {
-      main.scrollTop = 0;
+      (main as HTMLElement).scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  // Log whenever showScrollTop changes
-  useEffect(() => {
-    console.log('🎯 showScrollTop state changed to:', showScrollTop);
-  }, [showScrollTop]);
 
   const handleInputChange = (
     field: keyof FormData,
@@ -550,8 +592,31 @@ export default function EventRegistrationFormPage() {
 
   const handleEmailShare = async () => {
     const subject = emailSubject || `Registration: ${event?.title}`;
-    const registrationLinkHtml = `<div style="margin: 20px 0; padding: 15px; background: #f3f4f6; border-left: 4px solid #dc2626; border-radius: 4px;"><p style="margin: 0;">Please register using this link:</p><p style="margin: 8px 0 0 0;"><a href="${publicUrl}" target="_blank" style="color: #ffffff; background-color: #dc2626; padding: 10px 20px; text-decoration: none; font-weight: 500; border-radius: 4px; display: inline-block;">Register Now</a></p><p style="margin: 8px 0 0 0; font-size: 12px; color: #666;">Or copy and paste this link: ${publicUrl}</p></div>`;
-    const body = emailBody + registrationLinkHtml;
+    
+    // Format email body with proper HTML structure
+    const formattedEmailBody = emailBody
+      .replace(/\n/g, '<br>')
+      .replace(/• /g, '&bull; ');
+    
+    const registrationLinkHtml = `
+      <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; text-align: center;">
+        <p style="margin: 0 0 15px 0; font-size: 16px; font-weight: 600; color: #333;">Complete Your Registration</p>
+        <a href="${publicUrl}" target="_blank" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: 500; border-radius: 6px; margin: 10px 0;">Register Now</a>
+        <p style="margin: 15px 0 0 0; font-size: 12px; color: #666; word-break: break-all;">Or copy and paste this link: ${publicUrl}</p>
+      </div>
+    `;
+    
+    const body = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto;">
+        <div style="padding: 20px;">
+          ${formattedEmailBody}
+          ${registrationLinkHtml}
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; font-size: 12px; color: #666; text-align: center;">
+            <p>This is an automated message from MSF Event Registration System.</p>
+          </div>
+        </div>
+      </div>
+    `;
 
     if (!recipientEmail) {
       sonnerToast.error("Email Required", {
@@ -573,7 +638,7 @@ export default function EventRegistrationFormPage() {
           to_email: toEmails[0], // Primary recipient
           cc_emails: [...toEmails.slice(1), ...ccEmailsList], // Additional recipients as CC
           bcc_emails: bccEmailsList, // BCC recipients
-          subject,
+          subject: subject.replace(/[🌍🎯📧✉️📩💌📮📬📭📫🔔]/g, ''), // Remove emojis from subject
           message: body,
           registration_url: publicUrl,
           event_id: eventId
@@ -606,7 +671,24 @@ export default function EventRegistrationFormPage() {
   };
 
   const handlePreview = () => {
-    window.open(publicUrl, "_blank");
+    console.log('👁️ ============ PREVIEW BUTTON CLICKED ============');
+    console.log('👁️ Public URL:', publicUrl);
+    console.log('👁️ Base URL:', process.env.NEXT_PUBLIC_BASE_URL || window.location.origin);
+    console.log('👁️ Event ID:', eventId);
+    console.log('👁️ Opening preview in new tab...');
+
+    const newWindow = window.open(publicUrl, "_blank");
+
+    if (!newWindow) {
+      console.error('❌ Failed to open new window (popup blocked?)');
+      sonnerToast.error("Preview Failed", {
+        description: "Popup was blocked. Please allow popups for this site.",
+      });
+    } else {
+      console.log('✅ Preview window opened successfully');
+    }
+
+    console.log('👁️ ============ PREVIEW COMPLETE ============');
   };
 
   const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
@@ -711,7 +793,19 @@ export default function EventRegistrationFormPage() {
                           day: "numeric",
                           year: "numeric",
                         }
-                      )}
+                      )}{" "}
+                      at{" "}
+                      {new Date(event.registration_deadline).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        }
+                      )}{" "}
+                      <span className="text-red-600 font-normal">
+                        ({tenant?.timezone || 'Local timezone'})
+                      </span>
                     </span>
                   </div>
                 )}
@@ -835,6 +929,8 @@ export default function EventRegistrationFormPage() {
                       onChange={setEmailBody}
                       registrationUrl={publicUrl}
                       eventTitle={event?.title || ''}
+                      eventData={event}
+                      tenantData={tenant}
                       placeholder={`Please register for ${event?.title} using the link provided.`}
                       height={350}
                       protectedContent={`<a href="${publicUrl}" target="_blank" style="color: #dc2626; text-decoration: underline;">${publicUrl}</a>`}
@@ -900,7 +996,6 @@ export default function EventRegistrationFormPage() {
         </div>
 
         {/* Floating Scroll-to-Top Button */}
-        {console.log('🖼️ Rendering button - showScrollTop:', showScrollTop)}
         <Button
           onClick={scrollToTop}
           className={`fixed bottom-8 right-8 z-[9999] w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-2xl transition-all duration-300 hover:scale-110 ${showScrollTop ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -915,14 +1010,6 @@ export default function EventRegistrationFormPage() {
         >
           <ArrowUp className="h-6 w-6" />
         </Button>
-
-        {/* Debug Indicator - Remove this after testing */}
-        <div className="fixed bottom-24 right-8 bg-black text-white px-3 py-2 rounded text-xs z-[9999] font-mono">
-          <div>Window Y: {typeof window !== 'undefined' ? Math.round(window.scrollY) : 0}</div>
-          <div>Main Y: {typeof window !== 'undefined' && document.querySelector('main') ? Math.round((document.querySelector('main') as HTMLElement).scrollTop) : 0}</div>
-          <div>Show: {showScrollTop ? 'YES ✅' : 'NO ❌'}</div>
-          <div className="text-yellow-300 mt-1">Open Console (F12)</div>
-        </div>
       </DashboardLayout>
     </ProtectedRoute>
   );
