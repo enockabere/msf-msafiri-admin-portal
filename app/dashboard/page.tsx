@@ -81,7 +81,21 @@ export default function DashboardPage() {
         mustChangePassword: user.mustChangePassword
       });
       
-      // Only redirect non-super-admin users
+      // Check if user only has vetting roles (no other admin roles)
+      const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+      const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+      
+      const hasAdminRole = adminRoles.includes(user.role?.toUpperCase());
+      const hasVettingRole = vettingRoles.includes(user.role?.toUpperCase());
+      
+      if (!hasAdminRole && hasVettingRole && user.tenantId) {
+        // Vetting-only users go to events page
+        console.log("🔄 Redirecting vetting-only user to events:", `/tenant/${user.tenantId}/events`);
+        router.replace(`/tenant/${user.tenantId}/events`);
+        return;
+      }
+      
+      // Only redirect non-super-admin users to tenant dashboard
       if (user.role !== "super_admin" && user.role !== "SUPER_ADMIN" && user.tenantId) {
         console.log("🔄 Redirecting non-super-admin to tenant dashboard:", `/tenant/${user.tenantId}/dashboard`);
         router.replace(`/tenant/${user.tenantId}/dashboard`);

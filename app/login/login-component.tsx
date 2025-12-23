@@ -383,8 +383,22 @@ export default function LoginComponent() {
           if (mustChangePassword) {
             router.push("/change-password?required=true");
           } else {
-            // Super admin should go to main dashboard, others to tenant dashboard
-            if (userRole === "SUPER_ADMIN" || userRole === "super_admin") {
+            // Check if user only has vetting roles (no other admin roles)
+            const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+            const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+            
+            const hasAdminRole = allRoles.some(role => 
+              adminRoles.includes(role) || adminRoles.includes(role.toUpperCase())
+            );
+            const hasVettingRole = allRoles.some(role => 
+              vettingRoles.includes(role) || vettingRoles.includes(role.toUpperCase())
+            );
+            
+            if (!hasAdminRole && hasVettingRole) {
+              // Vetting-only users go to events page
+              const tenantPath = userTenants.length > 0 ? userTenants[0].tenant_slug : 'default';
+              router.push(`/tenant/${tenantPath}/events`);
+            } else if (userRole === "SUPER_ADMIN" || userRole === "super_admin") {
               router.push("/dashboard");
             } else {
               router.push(redirectTo);
