@@ -46,31 +46,172 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
   }, [eventId]);
 
   const loadFormFields = async () => {
-    console.log("🔵 Loading form fields for event:", eventId);
+    console.log("📂 ============ LOADING FORM FIELDS ============");
+    console.log("📂 Event ID:", eventId);
+    console.log("📂 API URL:", `/form-fields/events/${eventId}/form-fields`);
+
     try {
+      console.log("📂 Making API request...");
       const response = await apiClient.request<FormField[]>(`/form-fields/events/${eventId}/form-fields`);
-      console.log("✅ Form fields loaded:", response.length);
-      
+      console.log("✅ Form fields loaded successfully");
+      console.log("✅ Fields count:", response.length);
+      console.log("✅ Fields data:", JSON.stringify(response, null, 2));
+
       // If no fields exist, initialize default fields
       if (response.length === 0) {
+        console.log("⚠️ No fields found, initializing default fields...");
         try {
+          console.log("📂 Calling initialize-default-fields endpoint...");
           await apiClient.request(`/form-fields/events/${eventId}/initialize-default-fields`, {
             method: "POST",
           });
+          console.log("✅ Default fields initialized");
+
           // Reload fields after initialization
+          console.log("📂 Reloading fields after initialization...");
           const newResponse = await apiClient.request<FormField[]>(`/form-fields/events/${eventId}/form-fields`);
+          console.log("✅ Reloaded fields count:", newResponse.length);
+          console.log("✅ Reloaded fields data:", JSON.stringify(newResponse, null, 2));
           setFields(newResponse);
         } catch (initError) {
-          console.error("Error initializing default fields:", initError);
+          console.error("🔴 Error initializing default fields:", initError);
+          console.error("🔴 Init error type:", initError?.constructor?.name);
+          console.error("🔴 Init error message:", initError?.message);
           setFields(response);
         }
       } else {
+        console.log("✅ Setting fields to state");
         setFields(response);
       }
+
+      console.log("✅ ============ FORM FIELDS LOAD COMPLETE ============");
     } catch (error) {
-      console.error("Error loading form fields:", error);
+      console.error("🔴 ============ ERROR LOADING FORM FIELDS ============");
+      console.error("🔴 Error:", error);
+      console.error("🔴 Error type:", error?.constructor?.name);
+      console.error("🔴 Error message:", error?.message);
+      console.error("🔴 Full error:", JSON.stringify(error, null, 2));
+      console.error("🔴 ============ END ERROR ============");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const restoreMissingFields = async () => {
+    try {
+      const result = await Swal.fire({
+        title: 'Restore Missing Fields?',
+        text: 'This will add back any missing important fields like line manager email, HRCO email, etc. without affecting existing fields.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, restore fields!',
+        cancelButtonText: 'Cancel'
+      });
+      
+      if (!result.isConfirmed) return;
+      
+      const response = await apiClient.request(`/form-fields/events/${eventId}/restore-complete-fields`, {
+        method: "POST",
+      });
+      
+      Swal.fire({
+        title: 'Success!',
+        text: `Restored ${response.created_count} missing fields. Total fields: ${response.total_fields}`,
+        icon: 'success',
+        confirmButtonColor: '#16a34a'
+      });
+      
+      // Reload fields
+      loadFormFields();
+    } catch (error) {
+      console.error("Error restoring fields:", error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to restore missing fields. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
+    }
+  };
+
+  const updateCountryFields = async () => {
+    try {
+      const result = await Swal.fire({
+        title: 'Update Country Fields?',
+        text: 'This will update nationality and country of work fields to use dropdown with countries API.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, update fields!',
+        cancelButtonText: 'Cancel'
+      });
+      
+      if (!result.isConfirmed) return;
+      
+      const response = await apiClient.request(`/form-fields/events/${eventId}/update-country-fields`, {
+        method: "POST",
+      });
+      
+      Swal.fire({
+        title: 'Success!',
+        text: `Updated ${response.updated_fields.length} country fields to use countries API.`,
+        icon: 'success',
+        confirmButtonColor: '#16a34a'
+      });
+      
+      // Force a complete reload with a small delay to ensure database changes are committed
+      setTimeout(() => {
+        loadFormFields();
+      }, 500);
+    } catch (error) {
+      console.error("Error updating country fields:", error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to update country fields. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
+    }
+  };
+  const removeDuplicates = async () => {
+    try {
+      const result = await Swal.fire({
+        title: 'Remove Duplicate Fields?',
+        text: 'This will remove duplicate form fields, keeping only the first occurrence of each field. This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, remove duplicates!',
+        cancelButtonText: 'Cancel'
+      });
+      
+      if (!result.isConfirmed) return;
+      
+      const response = await apiClient.request(`/form-fields/events/${eventId}/remove-duplicates`, {
+        method: "POST",
+      });
+      
+      Swal.fire({
+        title: 'Success!',
+        text: `Removed ${response.deleted_count} duplicate fields. ${response.remaining_fields} unique fields remain.`,
+        icon: 'success',
+        confirmButtonColor: '#dc2626'
+      });
+      
+      // Reload fields
+      loadFormFields();
+    } catch (error) {
+      console.error("Error removing duplicates:", error);
+      Swal.fire({
+        title: 'Error',
+        text: 'Failed to remove duplicates. Please try again.',
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
     }
   };
 
@@ -275,10 +416,20 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
   };
 
   const saveFields = async () => {
+    console.log('💾 ============ SAVING FORM FIELDS ============');
+    console.log('💾 Event ID:', eventId);
+    console.log('💾 Total fields to save:', fields.length);
+    console.log('💾 Fields:', JSON.stringify(fields, null, 2));
+
     setSaving(true);
     try {
+      let savedCount = 0;
+      let updatedCount = 0;
+      let createdCount = 0;
+
       for (const field of fields) {
         if (field.id) {
+          console.log(`💾 Updating field #${field.id}: ${field.field_label}`);
           await apiClient.request(`/form-fields/form-fields/${field.id}`, {
             method: "PUT",
             body: JSON.stringify({
@@ -290,13 +441,24 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
               section: field.section,
             }),
           });
+          updatedCount++;
+          console.log(`✅ Updated field #${field.id}`);
         } else {
+          console.log(`💾 Creating new field: ${field.field_label}`);
           await apiClient.request(`/form-fields/events/${eventId}/form-fields`, {
             method: "POST",
             body: JSON.stringify(field),
           });
+          createdCount++;
+          console.log(`✅ Created new field: ${field.field_label}`);
         }
+        savedCount++;
       }
+
+      console.log('✅ ============ SAVE COMPLETE ============');
+      console.log(`✅ Total saved: ${savedCount}`);
+      console.log(`✅ Updated: ${updatedCount}`);
+      console.log(`✅ Created: ${createdCount}`);
 
       // Show success message
       Swal.fire({
@@ -308,9 +470,16 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
         showConfirmButton: false
       });
 
+      console.log('💾 Calling onSave callback...');
       onSave?.();
     } catch (error) {
-      console.error("Error saving form fields:", error);
+      console.error("🔴 ============ ERROR SAVING FORM FIELDS ============");
+      console.error("🔴 Error:", error);
+      console.error("🔴 Error type:", error?.constructor?.name);
+      console.error("🔴 Error message:", error?.message);
+      console.error("🔴 Full error:", JSON.stringify(error, null, 2));
+      console.error("🔴 ============ END ERROR ============");
+
       Swal.fire({
         title: 'Error',
         text: 'Failed to save form configuration. Please try again.',
@@ -331,10 +500,19 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
           <h3 className="text-lg font-semibold text-gray-900">Dynamic Form Fields</h3>
           <p className="text-sm text-gray-600 mt-1">Add, edit, or remove custom fields for your event registration</p>
         </div>
-        <Button onClick={addField} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Field
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={addField} size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Field
+          </Button>
+          <Button onClick={removeDuplicates} size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50">
+            <Trash2 className="w-4 h-4 mr-2" />
+            Remove Duplicates
+          </Button>
+          <Button onClick={updateCountryFields} size="sm" variant="outline" className="border-green-600 text-green-600 hover:bg-green-50">
+            Update Country Fields
+          </Button>
+        </div>
       </div>
 
       {fields.map((field, index) => (
@@ -401,31 +579,36 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                 </div>
                 <div>
                   <Label>Field Type</Label>
-                  <Select
-                    value={field.field_type}
-                    onValueChange={(value) => {
-                      const updates: Partial<FormField> = { field_type: value };
-                      // Initialize with empty option array when changing to select
-                      if (value === 'select' && (!field.field_options || field.field_options.length === 0)) {
-                        updates.field_options = [''];
-                      }
-                      updateField(index, updates);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="text">Text</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="textarea">Textarea</SelectItem>
-                      <SelectItem value="richtext">Rich Text Editor</SelectItem>
-                      <SelectItem value="select">Select Dropdown</SelectItem>
-                      <SelectItem value="checkbox">Checkbox</SelectItem>
-                      <SelectItem value="radio">Radio Buttons</SelectItem>
-                      <SelectItem value="date">Date Picker</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={field.field_type}
+                      onValueChange={(value) => {
+                        const updates: Partial<FormField> = { field_type: value };
+                        // Initialize with empty option array when changing to select
+                        if (value === 'select' && (!field.field_options || field.field_options.length === 0)) {
+                          updates.field_options = [''];
+                        }
+                        updateField(index, updates);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="textarea">Textarea</SelectItem>
+                        <SelectItem value="richtext">Rich Text Editor</SelectItem>
+                        <SelectItem value="select">Select Dropdown</SelectItem>
+                        <SelectItem value="checkbox">Checkbox</SelectItem>
+                        <SelectItem value="radio">Radio Buttons</SelectItem>
+                        <SelectItem value="date">Date Picker</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {field.field_options && field.field_options.includes('API_COUNTRIES') && (
+                      <span className="text-xs text-green-600 font-medium">🌍 Countries API</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
