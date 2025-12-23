@@ -1,20 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { useAuth, useAuthenticatedApi } from '@/lib/auth'
+import { toast } from '@/hooks/use-toast'
+import DashboardLayout from '@/components/layout/dashboard-layout'
+import Swal from 'sweetalert2'
+
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Trash2, Edit, Plus, Upload, Eye, Award } from 'lucide-react'
-import { toast } from 'sonner'
-import DashboardLayout from '@/components/layout/dashboard-layout'
+import { Card, CardContent } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Plus, Loader2, Save, X, Edit, Trash2, Award } from 'lucide-react'
 
 interface BadgeTemplate {
   id: number
@@ -34,220 +33,82 @@ interface BadgeTemplate {
 }
 
 export default function BadgeDesignPage() {
-  const { data: session } = useSession()
   const params = useParams()
   const tenantSlug = params.slug as string
+  const { user, loading: authLoading } = useAuth()
+  const { apiClient } = useAuthenticatedApi()
 
   const [templates, setTemplates] = useState<BadgeTemplate[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedTemplate, setSelectedTemplate] = useState<BadgeTemplate | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<BadgeTemplate | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    template_content: '',
-    logo_url: '',
-    background_url: '',
-    enable_qr_code: true,
-    is_active: true,
-    badge_size: 'standard',
-    orientation: 'portrait'
-  })
+  const canEdit = Boolean(user?.role && ['super_admin', 'SUPER_ADMIN', 'mt_admin', 'hr_admin', 'event_admin'].includes(user.role))
 
-  const fetchTemplates = async () => {
-    console.log('Fetching badge templates for tenant:', tenantSlug)
-    console.log('Session token available:', !!session?.accessToken)
+  const loadTemplates = useCallback(async () => {
+    if (!tenantSlug) return
     
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates`
-      console.log('Fetching from URL:', url)
-      
-      const response = await fetch(url, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/v1/tenants/${tenantSlug}/badge-templates`, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-          'Content-Type': 'application/json',
-        },
+          'Authorization': `Bearer ${apiClient.getToken()}`
+        }
       })
-
-      console.log('Response status:', response.status)
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Badge templates data:', data)
         setTemplates(data.templates || [])
       } else {
-        const errorText = await response.text()
-        console.error('Failed to fetch badge templates:', response.status, response.statusText, errorText)
-        toast.error('Failed to load badge templates')
+        console.error('Failed to load templates:', response.statusText)
       }
     } catch (error) {
-      console.error('Error fetching badge templates:', error)
-      toast.error('Failed to load badge templates')
+      console.error('Failed to load templates:', error)
     } finally {
-      console.log('Setting loading to false')
       setLoading(false)
     }
-  }
+  }, [apiClient, tenantSlug])
 
   useEffect(() => {
-    if (session?.accessToken && tenantSlug) {
-      fetchTemplates()
-    } else if (!session?.accessToken) {
-      setLoading(false)
+    if (!authLoading && tenantSlug) {
+      loadTemplates()
     }
-  }, [session, tenantSlug])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      const url = isEditing && selectedTemplate
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates/${selectedTemplate.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates`
-
-      const method = isEditing ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (response.ok) {
-        toast.success(isEditing ? 'Badge template updated successfully' : 'Badge template created successfully')
-        fetchTemplates()
-        resetForm()
-      } else {
-        const error = await response.json()
-        toast.error(error.detail || 'Failed to save badge template')
-      }
-    } catch (error) {
-      console.error('Error saving badge template:', error)
-      toast.error('Failed to save badge template')
-    }
-  }
+  }, [authLoading, tenantSlug, loadTemplates])
 
   const handleDelete = async (templateId: number) => {
-    if (!confirm('Are you sure you want to delete this badge template?')) return
-
+    const result = await Swal.fire({
+      title: 'Delete Template?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!'
+    })
+    
+    if (!result.isConfirmed) return
+    
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/tenants/${tenantSlug}/badge-templates/${templateId}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/v1/tenants/${tenantSlug}/badge-templates/${templateId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
+          'Authorization': `Bearer ${apiClient.getToken()}`
+        }
       })
-
+      
       if (response.ok) {
-        toast.success('Badge template deleted successfully')
-        fetchTemplates()
+        toast({ title: 'Success', description: 'Template deleted successfully' })
+        loadTemplates()
       } else {
-        toast.error('Failed to delete badge template')
+        throw new Error('Failed to delete template')
       }
     } catch (error) {
-      console.error('Error deleting badge template:', error)
-      toast.error('Failed to delete badge template')
+      console.error('Delete error:', error)
+      toast({ title: 'Error', description: 'Failed to delete template', variant: 'destructive' })
     }
   }
-
-  const handleEdit = (template: BadgeTemplate) => {
-    setSelectedTemplate(template)
-    setFormData({
-      name: template.name,
-      description: template.description || '',
-      template_content: template.template_content || '',
-      logo_url: template.logo_url || '',
-      background_url: template.background_url || '',
-      enable_qr_code: template.enable_qr_code,
-      is_active: template.is_active,
-      badge_size: template.badge_size,
-      orientation: template.orientation
-    })
-    setIsEditing(true)
-  }
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      description: '',
-      template_content: '',
-      logo_url: '',
-      background_url: '',
-      enable_qr_code: true,
-      is_active: true,
-      badge_size: 'standard',
-      orientation: 'portrait'
-    })
-    setSelectedTemplate(null)
-    setIsEditing(false)
-    setShowPreview(false)
-  }
-
-  const handleImageUpload = async (file: File, type: 'logo' | 'background') => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('folder', 'badge-templates')
-
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
-        },
-        body: formData,
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setFormData(prev => ({
-          ...prev,
-          [`${type}_url`]: data.secure_url,
-          [`${type}_public_id`]: data.public_id
-        }))
-        toast.success(`${type} uploaded successfully`)
-      } else {
-        toast.error(`Failed to upload ${type}`)
-      }
-    } catch (error) {
-      console.error(`Error uploading ${type}:`, error)
-      toast.error(`Failed to upload ${type}`)
-    }
-  }
-
-  const defaultBadgeTemplate = `
-<div style="width: 300px; height: 400px; border: 2px solid #ccc; padding: 20px; background: white; font-family: Arial, sans-serif; position: relative;">
-  {{background_image}}
-  
-  <div style="text-align: center; margin-bottom: 20px;">
-    {{logo}}
-  </div>
-  
-  <div style="text-align: center; margin-bottom: 15px;">
-    <h2 style="margin: 0; font-size: 18px; color: #333;">{{eventName}}</h2>
-    <p style="margin: 5px 0; font-size: 12px; color: #666;">{{eventDates}}</p>
-    <p style="margin: 5px 0; font-size: 12px; color: #666;">{{eventLocation}}</p>
-  </div>
-  
-  <div style="text-align: center; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-    <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">{{participantName}}</h3>
-    <p style="margin: 0; font-size: 12px; color: #666;">{{participantRole}}</p>
-    <p style="margin: 0; font-size: 12px; color: #666;">{{participantOrganization}}</p>
-  </div>
-  
-  <div style="text-align: center; margin-top: 20px;">
-    {{qr_code}}
-  </div>
-  
-  <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #999;">
-    MSF Event Badge
-  </div>
-</div>
-  `.trim()
 
   if (loading) {
     return (
@@ -269,264 +130,124 @@ export default function BadgeDesignPage() {
 
   return (
     <DashboardLayout>
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Badge Design Templates</h1>
-          <p className="text-gray-600">Design event badges for participants</p>
+      <div className="space-y-6">
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Badge Design Templates</h1>
+              <p className="text-sm text-gray-600">Design event badges for participants</p>
+            </div>
+            {canEdit && (
+              <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[800px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+                  >
+                    <X className="h-4 w-4 text-gray-500" />
+                    <span className="sr-only">Close</span>
+                  </button>
+
+                  <div className="p-6 pb-4 border-b border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <Award className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-xl font-bold text-gray-900">
+                          {editingTemplate ? 'Edit Badge Template' : 'Create Badge Template'}
+                        </DialogTitle>
+                        <p className="text-gray-600 text-sm mt-1">
+                          Design a reusable badge template for events
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                    <div className="text-center py-8">
+                      <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Badge template editor coming soon...</p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
-        <Button onClick={() => setIsEditing(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Create Template
-        </Button>
+
+        <Card>
+          <CardContent className="p-4">
+            {templates.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <Award className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">No badge templates yet</h3>
+                <p className="text-xs text-gray-500 mb-4">Create your first badge template</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((template) => (
+                    <TableRow key={template.id}>
+                      <TableCell className="font-medium">{template.name}</TableCell>
+                      <TableCell>{new Date(template.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {template.is_active ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Inactive
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingTemplate(template)
+                              setModalOpen(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            onClick={() => handleDelete(template.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      <Tabs defaultValue="templates" className="w-full">
-        <TabsList>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-          {(isEditing || showPreview) && <TabsTrigger value="design">Design</TabsTrigger>}
-          {showPreview && <TabsTrigger value="preview">Preview</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="templates">
-          <Card>
-            <CardHeader>
-              <CardTitle>Badge Templates</CardTitle>
-              <CardDescription>Manage your event badge templates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Created</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {templates.map((template) => (
-                      <tr key={template.id}>
-                        <td className="border border-gray-300 px-4 py-2">{template.name}</td>
-                        <td className="border border-gray-300 px-4 py-2">
-                          {new Date(template.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="border border-gray-300 px-4 py-2">
-                          <Badge variant={template.is_active ? "default" : "secondary"}>
-                            {template.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </td>
-                        <td className="border border-gray-300 px-4 py-2">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(template)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedTemplate(template)
-                                setShowPreview(true)
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(template.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="design">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isEditing && selectedTemplate ? 'Edit Badge Template' : 'Create Badge Template'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Template Name</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="badge_size">Badge Size</Label>
-                        <Select value={formData.badge_size} onValueChange={(value) => setFormData(prev => ({ ...prev, badge_size: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="small">Small</SelectItem>
-                            <SelectItem value="standard">Standard</SelectItem>
-                            <SelectItem value="large">Large</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="orientation">Orientation</Label>
-                        <Select value={formData.orientation} onValueChange={(value) => setFormData(prev => ({ ...prev, orientation: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="portrait">Portrait</SelectItem>
-                            <SelectItem value="landscape">Landscape</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="enable_qr_code"
-                        checked={formData.enable_qr_code}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enable_qr_code: checked }))}
-                      />
-                      <Label htmlFor="enable_qr_code">Enable QR Code</Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="is_active"
-                        checked={formData.is_active}
-                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
-                      />
-                      <Label htmlFor="is_active">Active Template</Label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <Label>Logo Upload</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleImageUpload(file, 'logo')
-                          }}
-                        />
-                        <Upload className="h-4 w-4" />
-                      </div>
-                      {formData.logo_url && (
-                        <img src={formData.logo_url} alt="Logo" className="mt-2 h-16 object-contain" />
-                      )}
-                    </div>
-
-                    <div>
-                      <Label>Background Image Upload</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) handleImageUpload(file, 'background')
-                          }}
-                        />
-                        <Upload className="h-4 w-4" />
-                      </div>
-                      {formData.background_url && (
-                        <img src={formData.background_url} alt="Background" className="mt-2 h-16 object-contain" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="template_content">Badge Template HTML</Label>
-                  <Textarea
-                    id="template_content"
-                    value={formData.template_content || defaultBadgeTemplate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, template_content: e.target.value }))}
-                    rows={15}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-sm text-gray-600 mt-2">
-                    Available variables: {'{'}participantName{'}'}, {'{'}eventName{'}'}, {'{'}eventDates{'}'}, {'{'}eventLocation{'}'}, {'{'}participantRole{'}'}, {'{'}participantOrganization{'}'}, {'{'}logo{'}'}, {'{'}background_image{'}'}, {'{'}qr_code{'}'}
-                  </p>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button type="submit">
-                    {isEditing && selectedTemplate ? 'Update Template' : 'Create Template'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowPreview(true)}>
-                    Preview
-                  </Button>
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="preview">
-          <Card>
-            <CardHeader>
-              <CardTitle>Badge Preview</CardTitle>
-              <CardDescription>Preview of your badge template with sample data</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center">
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: (formData.template_content || defaultBadgeTemplate)
-                      .replace(/\{\{participantName\}\}/g, 'John Doe')
-                      .replace(/\{\{eventName\}\}/g, 'MSF Kenya Strategic Planning Workshop')
-                      .replace(/\{\{eventDates\}\}/g, '2026-01-05 to 2026-01-09')
-                      .replace(/\{\{eventLocation\}\}/g, 'Nairobi')
-                      .replace(/\{\{participantRole\}\}/g, 'Participant')
-                      .replace(/\{\{participantOrganization\}\}/g, 'MSF')
-                      .replace(/\{\{logo\}\}/g, formData.logo_url ? `<img src="${formData.logo_url}" alt="Logo" style="max-width: 100px; height: auto;" />` : 'Organization Logo')
-                      .replace(/\{\{background_image\}\}/g, formData.background_url ? `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('${formData.background_url}'); background-size: cover; background-position: center; opacity: 0.1; z-index: -1;"></div>` : '')
-                      .replace(/\{\{qr_code\}\}/g, formData.enable_qr_code ? '<div style="border: 1px solid #ccc; padding: 10px; display: inline-block;"><div style="font-size: 12px;">QR CODE</div><div style="font-size: 10px;">(Preview Only)</div></div>' : '')
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
     </DashboardLayout>
   )
 }
