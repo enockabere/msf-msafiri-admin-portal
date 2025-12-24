@@ -124,7 +124,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates?tenant_context=${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -149,7 +149,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates?tenant_context=${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
