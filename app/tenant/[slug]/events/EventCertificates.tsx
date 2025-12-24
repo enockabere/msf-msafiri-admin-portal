@@ -148,6 +148,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
     if (!accessToken) return;
 
     try {
+      console.log('🔍 [DEBUG] Fetching badge templates for tenant:', tenantSlug);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates?tenant_context=${tenantSlug}`,
         {
@@ -158,10 +159,13 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
         }
       );
 
+      console.log('🔍 [DEBUG] Badge templates response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 [DEBUG] Badge templates data:', data);
         setBadgeTemplates(Array.isArray(data) ? data : []);
       } else {
+        console.log('🔍 [DEBUG] Badge templates API failed:', response.status, response.statusText);
         setBadgeTemplates([]);
       }
     } catch (error) {
