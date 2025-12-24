@@ -135,7 +135,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
       if (response.ok) {
         const data = await response.json();
-        setTemplates(Array.isArray(data) ? data : []);
+        setTemplates(Array.isArray(data) ? data : (data.templates || []));
       } else {
         setTemplates([]);
       }
@@ -163,7 +163,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 [DEBUG] Badge templates data:', data);
-        setBadgeTemplates(Array.isArray(data) ? data : []);
+        setBadgeTemplates(Array.isArray(data) ? data : (data.templates || []));
       } else {
         console.log('🔍 [DEBUG] Badge templates API failed:', response.status, response.statusText);
         setBadgeTemplates([]);
