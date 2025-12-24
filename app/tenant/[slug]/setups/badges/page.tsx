@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth, useAuthenticatedApi } from '@/lib/auth'
 import { toast } from '@/hooks/use-toast'
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Save, X, Edit, Trash2, Award, Eye, Settings } from 'lucide-react'
+import { Plus, Save, X, Edit, Trash2, Award, Eye, Settings, Upload, Image } from 'lucide-react'
 
 interface BadgeTemplate {
   id: number
@@ -28,6 +28,10 @@ interface BadgeTemplate {
   is_active: boolean
   badge_size: string
   orientation: string
+  contact_phone: string | null
+  website_url: string | null
+  avatar_url: string | null
+  include_avatar: boolean
   created_at: string
   updated_at: string
 }
@@ -41,6 +45,10 @@ interface BadgeFormData {
   enable_qr_code: boolean
   include_avatar: boolean
   is_active: boolean
+  contact_phone: string
+  website_url: string
+  logo_url: string
+  avatar_url: string
 }
 
 // Badge Preview Component with Responsive Design
@@ -48,12 +56,20 @@ function BadgePreview({
   size,
   orientation,
   showQR,
-  showAvatar
+  showAvatar,
+  contactPhone,
+  websiteUrl,
+  logoUrl,
+  avatarUrl
 }: {
   size: 'small' | 'standard' | 'large'
   orientation: 'portrait' | 'landscape'
   showQR: boolean
   showAvatar: boolean
+  contactPhone: string
+  websiteUrl: string
+  logoUrl: string
+  avatarUrl: string
 }) {
   const getDimensions = () => {
     const sizes = {
@@ -151,17 +167,25 @@ function BadgePreview({
                   height: `${spacing.avatarSize}px`
                 }}
               >
-                <svg
-                  className="text-gray-500"
-                  style={{
-                    width: `${spacing.avatarSize * 0.6}px`,
-                    height: `${spacing.avatarSize * 0.6}px`
-                  }}
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg
+                    className="text-gray-500"
+                    style={{
+                      width: `${spacing.avatarSize * 0.6}px`,
+                      height: `${spacing.avatarSize * 0.6}px`
+                    }}
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                )}
               </div>
             </div>
           )}
@@ -171,30 +195,64 @@ function BadgePreview({
             className="relative z-10 flex flex-col items-center justify-center"
             style={{
               height: isLandscape ? '55%' : '65%',
-              padding: `${spacing.padding}px`,
+              paddingLeft: `${spacing.padding}px`,
+              paddingRight: `${spacing.padding}px`,
+              paddingTop: `${(showAvatar ? 16 : 20) * scale}px`,
               paddingBottom: showAvatar ? `${spacing.avatarSize * 0.5}px` : `${spacing.padding}px`
             }}
           >
-            <div className="text-center">
+            <div className="text-center flex flex-col items-center w-full">
+              {/* Logo placeholder */}
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  style={{
+                    maxHeight: `${(showAvatar ? (isLandscape ? 60 : 70) : (isLandscape ? 70 : 80)) * scale}px`,
+                    maxWidth: `${(showAvatar ? (isLandscape ? 80 : 90) : (isLandscape ? 90 : 100)) * scale}px`,
+                    objectFit: 'contain',
+                    marginBottom: `${(showAvatar ? 4 : 6) * scale}px`
+                  }}
+                />
+              ) : (
+                <div
+                  className="bg-white/10 backdrop-blur-sm rounded-lg flex items-center justify-center mb-2 border border-white/20"
+                  style={{
+                    width: `${(showAvatar ? (isLandscape ? 60 : 70) : (isLandscape ? 70 : 80)) * scale}px`,
+                    height: `${(showAvatar ? (isLandscape ? 50 : 60) : (isLandscape ? 60 : 70)) * scale}px`,
+                    marginBottom: `${(showAvatar ? 4 : 6) * scale}px`
+                  }}
+                >
+                  <span
+                    className="font-bold text-white/80"
+                    style={{
+                      fontSize: `${(showAvatar ? (isLandscape ? 8 : 10) : (isLandscape ? 10 : 12)) * scale}px`
+                    }}
+                  >
+                    LOGO
+                  </span>
+                </div>
+              )}
+
               <h2
                 className="font-bold text-white tracking-wide"
                 style={{
-                  fontSize: `${showAvatar ? (isLandscape ? 15 : 18) * scale : (isLandscape ? 18 : 24) * scale}px`,
-                  marginBottom: `${(showAvatar ? 2 : 4) * scale}px`,
+                  fontSize: `${showAvatar ? (isLandscape ? 13 : 15) * scale : (isLandscape ? 15 : 18) * scale}px`,
+                  marginBottom: `${(showAvatar ? 1 : 2) * scale}px`,
                   lineHeight: '1.2',
                   textShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                  {{eventName}}
+                  {"{{eventName}}"}
               </h2>
               <p
                 className="text-white/90 font-medium"
                 style={{
-                  fontSize: `${showAvatar ? (isLandscape ? 8 : 10) * scale : (isLandscape ? 10 : 12) * scale}px`,
+                  fontSize: `${showAvatar ? (isLandscape ? 7 : 9) * scale : (isLandscape ? 9 : 10) * scale}px`,
                   lineHeight: '1.3'
                 }}
               >
-                  {{eventDates}}
+                  {"{{eventDates}}"}
               </p>
             </div>
           </div>
@@ -204,7 +262,8 @@ function BadgePreview({
             className="relative z-10 flex flex-col justify-between bg-white"
             style={{
               height: isLandscape ? '45%' : '35%',
-              padding: `${spacing.padding}px`,
+              paddingLeft: `${spacing.padding}px`,
+              paddingRight: `${spacing.padding}px`,
               paddingTop: showAvatar ? `${spacing.avatarSize * 0.55}px` : `${spacing.padding * 1.5}px`,
               paddingBottom: showAvatar ? `${spacing.padding * 0.8}px` : `${spacing.padding}px`,
               borderBottomLeftRadius: '12px',
@@ -220,7 +279,7 @@ function BadgePreview({
                   lineHeight: '1.2'
                 }}
               >
-                {{participantName}}
+                {"{{participantName}}"}
               </h3>
               <p
                 className="text-gray-600 text-center font-medium"
@@ -230,7 +289,7 @@ function BadgePreview({
                   marginBottom: `${(showAvatar ? 1 : 2) * scale}px`
                 }}
               >
-                {{participantRole}}
+                {"{{participantRole}}"}
               </p>
               <p
                 className="text-gray-500 text-center text-xs"
@@ -239,7 +298,7 @@ function BadgePreview({
                   lineHeight: '1.3'
                 }}
               >
-                {{tagline}}
+                {"{{tagline}}"}
               </p>
             </div>
 
@@ -253,8 +312,8 @@ function BadgePreview({
                     lineHeight: '1.4'
                   }}
                 >
-                  +123 456 789<br />
-                  www.msf.org
+                  {contactPhone || '+123 456 789'}<br />
+                  {websiteUrl || 'www.msf.org'}
                 </p>
               </div>
 
@@ -302,6 +361,9 @@ export default function BadgeDesignPage() {
   const [editingTemplate, setEditingTemplate] = useState<BadgeTemplate | null>(null)
 
   const [submitting, setSubmitting] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   // Form state for live preview
   const [formData, setFormData] = useState<BadgeFormData>({
@@ -311,10 +373,170 @@ export default function BadgeDesignPage() {
     orientation: 'portrait',
     enable_qr_code: true,
     include_avatar: false,
-    is_active: true
+    is_active: true,
+    contact_phone: '',
+    website_url: '',
+    logo_url: '',
+    avatar_url: ''
   })
 
   const canEdit = Boolean(user?.role && ['super_admin', 'SUPER_ADMIN', 'mt_admin', 'hr_admin', 'event_admin'].includes(user.role))
+
+  const uploadToCloudinary = async (file: File): Promise<{ url: string; publicId: string }> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const response = await fetch(`${apiUrl}/api/v1/documents/upload-logo`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiClient.getToken()}`
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error('Upload failed')
+    }
+
+    const data = await response.json()
+    return { url: data.url, publicId: data.public_id }
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' })
+      return
+    }
+
+    setUploading(true)
+    try {
+      const { url } = await uploadToCloudinary(file)
+      setFormData({ ...formData, logo_url: url })
+      toast({ title: 'Success', description: 'Logo uploaded successfully' })
+    } catch (error) {
+      console.error('Logo upload error:', error)
+      toast({ title: 'Error', description: 'Failed to upload logo', variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' })
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/v1/documents/upload-logo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Upload failed')
+      }
+
+      const data = await response.json()
+      setFormData(prev => ({ ...prev, avatar_url: data.url }))
+      toast({ title: 'Success', description: 'Avatar uploaded successfully' })
+    } catch (error) {
+      console.error('Avatar upload error:', error)
+      toast({ title: 'Error', description: 'Failed to upload avatar', variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      toast({ title: 'Error', description: 'Template name is required', variant: 'destructive' })
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        badge_size: formData.badge_size,
+        orientation: formData.orientation,
+        enable_qr_code: formData.enable_qr_code,
+        is_active: formData.is_active,
+        contact_phone: formData.contact_phone,
+        website_url: formData.website_url,
+        logo_url: formData.logo_url,
+        avatar_url: formData.avatar_url,
+        include_avatar: formData.include_avatar
+      }
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      let response
+      
+      if (editingTemplate) {
+        response = await fetch(`${apiUrl}/api/v1/tenants/${tenantSlug}/badge-templates/${editingTemplate.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiClient.getToken()}`
+          },
+          body: JSON.stringify(payload)
+        })
+      } else {
+        response = await fetch(`${apiUrl}/api/v1/tenants/${tenantSlug}/badge-templates`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiClient.getToken()}`
+          },
+          body: JSON.stringify(payload)
+        })
+      }
+
+      if (response.ok) {
+        toast({ 
+          title: 'Success', 
+          description: `Badge template ${editingTemplate ? 'updated' : 'created'} successfully` 
+        })
+        setModalOpen(false)
+        resetForm()
+        loadTemplates()
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Failed to save template')
+      }
+    } catch (error) {
+      console.error('Template save error:', error)
+      toast({ title: 'Error', description: error.message || 'Failed to save template', variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const loadTemplates = useCallback(async () => {
     if (!tenantSlug) return
@@ -388,7 +610,11 @@ export default function BadgeDesignPage() {
       orientation: 'portrait',
       enable_qr_code: true,
       include_avatar: false,
-      is_active: true
+      is_active: true,
+      contact_phone: '',
+      website_url: '',
+      logo_url: '',
+      avatar_url: ''
     })
     setEditingTemplate(null)
   }
@@ -547,6 +773,128 @@ export default function BadgeDesignPage() {
                           />
                           <Label htmlFor="active" className="text-sm text-gray-700">Active Template</Label>
                         </div>
+
+                        <div>
+                          <Label htmlFor="contact_phone" className="text-sm font-medium text-gray-700">Contact Phone</Label>
+                          <Input
+                            id="contact_phone"
+                            placeholder="+123 456 789"
+                            className="mt-1"
+                            value={formData.contact_phone}
+                            onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="website_url" className="text-sm font-medium text-gray-700">Website URL</Label>
+                          <Input
+                            id="website_url"
+                            placeholder="www.msf.org"
+                            className="mt-1"
+                            value={formData.website_url}
+                            onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium text-gray-700">Logo</Label>
+                          {formData.logo_url ? (
+                            <div className="relative">
+                              <img 
+                                src={formData.logo_url} 
+                                alt="Logo"
+                                className="w-full h-24 object-contain bg-gray-50 rounded border"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-24 bg-gray-50 rounded border-2 border-dashed border-gray-200 flex items-center justify-center">
+                              <div className="text-center">
+                                <Image className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                                <p className="text-xs text-gray-400">No logo uploaded</p>
+                              </div>
+                            </div>
+                          )}
+
+                          <input
+                            ref={logoInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoUpload}
+                          />
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => logoInputRef.current?.click()}
+                            disabled={uploading}
+                          >
+                            {uploading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-300 border-t-blue-600 mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-3 h-3 mr-2" />
+                                Upload Logo
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {formData.include_avatar && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-gray-700">Avatar</Label>
+                            {formData.avatar_url ? (
+                              <div className="relative">
+                                <img 
+                                  src={formData.avatar_url} 
+                                  alt="Avatar"
+                                  className="w-24 h-24 object-cover bg-gray-50 rounded-full border mx-auto"
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-24 bg-gray-50 rounded border-2 border-dashed border-gray-200 flex items-center justify-center">
+                                <div className="text-center">
+                                  <Image className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                                  <p className="text-xs text-gray-400">No avatar uploaded</p>
+                                </div>
+                              </div>
+                            )}
+
+                            <input
+                              ref={avatarInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleAvatarUpload}
+                            />
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => avatarInputRef.current?.click()}
+                              disabled={uploading}
+                            >
+                              {uploading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-300 border-t-blue-600 mr-2" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-3 h-3 mr-2" />
+                                  Upload Avatar
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Preview Section */}
@@ -562,15 +910,19 @@ export default function BadgeDesignPage() {
                           orientation={formData.orientation}
                           showQR={formData.enable_qr_code}
                           showAvatar={formData.include_avatar}
+                          contactPhone={formData.contact_phone}
+                          websiteUrl={formData.website_url}
+                          logoUrl={formData.logo_url}
+                          avatarUrl={formData.avatar_url}
                         />
                       </div>
                     </div>
                     
                     <div className="pt-6 border-t mt-6">
                       <div className="flex justify-end">
-                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-2.5">
+                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-2.5" onClick={handleSubmit} disabled={submitting}>
                           <Save className="w-4 h-4 mr-2" />
-                          {editingTemplate ? 'Update Template' : 'Create Template'}
+                          {submitting ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
                         </Button>
                       </div>
                     </div>
@@ -624,6 +976,19 @@ export default function BadgeDesignPage() {
                             size="sm"
                             onClick={() => {
                               setEditingTemplate(template)
+                              setFormData({
+                                name: template.name || '',
+                                description: template.description || '',
+                                badge_size: template.badge_size as 'small' | 'standard' | 'large' || 'standard',
+                                orientation: template.orientation as 'portrait' | 'landscape' || 'portrait',
+                                enable_qr_code: template.enable_qr_code ?? true,
+                                include_avatar: template.include_avatar ?? false,
+                                is_active: template.is_active ?? true,
+                                contact_phone: template.contact_phone || '',
+                                website_url: template.website_url || '',
+                                logo_url: template.logo_url || '',
+                                avatar_url: template.avatar_url || ''
+                              })
                               setModalOpen(true)
                             }}
                           >

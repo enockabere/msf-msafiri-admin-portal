@@ -48,8 +48,11 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
   const { accessToken } = useAuth();
   const [certificates, setCertificates] = useState<EventCertificate[]>([]);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+  const [badgeTemplates, setBadgeTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false)
+  const [typeSelectionOpen, setTypeSelectionOpen] = useState(false)
+  const [selectedType, setSelectedType] = useState<'certificate' | 'badge' | null>(null);
   const [editingCertificate, setEditingCertificate] = useState<EventCertificate | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editorLoaded, setEditorLoaded] = useState(false);
@@ -71,7 +74,8 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
       certificateDate: "",
       courseDescription: "",
       courseObjectives: "",
-      courseContents: ""
+      courseContents: "",
+      badgeTagline: ""
     }
   });
 
@@ -106,7 +110,9 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
       if (response.ok) {
         const data = await response.json();
-        setCertificates(data);
+        setCertificates(Array.isArray(data) ? data : []);
+      } else {
+        setCertificates([]);
       }
     } catch (error) {
       console.error("Error fetching certificates:", error);
@@ -129,21 +135,48 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
       if (response.ok) {
         const data = await response.json();
-        setTemplates(data);
+        setTemplates(Array.isArray(data) ? data : []);
+      } else {
+        setTemplates([]);
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
     }
   }, [accessToken, tenantSlug]);
 
+  const fetchBadgeTemplates = useCallback(async () => {
+    if (!accessToken) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-Tenant-ID': tenantSlug
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setBadgeTemplates(Array.isArray(data) ? data : []);
+      } else {
+        setBadgeTemplates([]);
+      }
+    } catch (error) {
+      console.error("Error fetching badge templates:", error);
+    }
+  }, [accessToken, tenantSlug]);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchCertificates(), fetchTemplates()]);
+      await Promise.all([fetchCertificates(), fetchTemplates(), fetchBadgeTemplates()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchCertificates, fetchTemplates]);
+  }, [fetchCertificates, fetchTemplates, fetchBadgeTemplates]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +215,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
         resetForm();
         toast({ 
           title: "Success", 
-          description: `Certificate ${editingCertificate ? 'updated' : 'created'} successfully. All participants have been assigned certificates.` 
+          description: `${selectedType === 'certificate' ? 'Certificate' : 'Badge'} ${editingCertificate ? 'updated' : 'created'} successfully. All participants have been assigned ${selectedType === 'certificate' ? 'certificates' : 'badges'}.` 
         });
       } else {
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
@@ -197,6 +230,9 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
   const handleEdit = (certificate: EventCertificate) => {
     setEditingCertificate(certificate);
+    // Determine type based on whether badgeTagline exists
+    const type = certificate.template_variables.badgeTagline ? 'badge' : 'certificate';
+    setSelectedType(type);
     setCertificateForm({
       certificate_template_id: certificate.certificate_template_id.toString(),
       template_variables: certificate.template_variables
@@ -208,8 +244,8 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
     const { default: Swal } = await import("sweetalert2");
 
     const result = await Swal.fire({
-      title: "Delete Certificate?",
-      text: "This will remove certificates from all participants. This action cannot be undone.",
+      title: "Delete Certificate/Badge?",
+      text: "This will remove certificates/badges from all participants. This action cannot be undone.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#dc2626",
@@ -234,7 +270,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
       if (response.ok) {
         await fetchCertificates();
-        toast({ title: "Success", description: "Certificate deleted successfully" });
+        toast({ title: "Success", description: "Certificate/Badge deleted successfully" });
       } else {
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
         toast({ title: "Error", description: errorData.detail, variant: "destructive" });
@@ -262,14 +298,17 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
         certificateDate: "",
         courseDescription: "",
         courseObjectives: "",
-        courseContents: ""
+        courseContents: "",
+        badgeTagline: ""
       }
     });
     setEditingCertificate(null);
+    setSelectedType(null);
   };
 
   const handleModalClose = () => {
     setModalOpen(false);
+    setSelectedType(null);
     resetForm();
   };
 
@@ -292,17 +331,52 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
           <p className="text-sm text-gray-600">Manage certificates for event participants</p>
         </div>
         {!eventHasEnded && (
-          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-red-600 hover:bg-red-700 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Certificate
-              </Button>
-            </DialogTrigger>
-            {modalOpen && (
-              <div className="fixed inset-0 z-[45] bg-black/20 backdrop-blur-sm pointer-events-none" />
-            )}
-            <DialogContent className="sm:max-w-[95vw] max-h-[95vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
+          <>
+            <Dialog open={typeSelectionOpen} onOpenChange={setTypeSelectionOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-red-600 hover:bg-red-700 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Certificate and Badge
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md bg-white border border-gray-200 shadow-xl">
+                <DialogHeader className="pb-4">
+                  <DialogTitle className="text-lg font-semibold text-gray-900">Choose Type</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">What would you like to add?</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button
+                      onClick={() => {
+                        setSelectedType('certificate')
+                        setTypeSelectionOpen(false)
+                        setModalOpen(true)
+                      }}
+                      className="h-20 flex flex-col items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200"
+                      variant="outline"
+                    >
+                      <Award className="w-8 h-8 mb-2" />
+                      Certificate
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedType('badge')
+                        setTypeSelectionOpen(false)
+                        setModalOpen(true)
+                      }}
+                      className="h-20 flex flex-col items-center justify-center bg-green-50 hover:bg-green-100 text-green-700 border border-green-200"
+                      variant="outline"
+                    >
+                      <Award className="w-8 h-8 mb-2" />
+                      Badge
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+              <DialogContent className="sm:max-w-[95vw] max-h-[95vh] overflow-hidden bg-white border-0 shadow-2xl p-0 flex flex-col z-50">
               <DialogHeader className="px-6 py-5 border-b border-gray-200 bg-gradient-to-br from-red-50 to-orange-50">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
@@ -310,31 +384,34 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                   </div>
                   <div>
                     <DialogTitle className="text-xl font-bold text-gray-900">
-                      {editingCertificate ? 'Edit Certificate' : 'Add Certificate'}
+                      {editingCertificate ? `Edit ${selectedType === 'certificate' ? 'Certificate' : 'Badge'}` : `Add ${selectedType === 'certificate' ? 'Certificate' : 'Badge'}`}
                     </DialogTitle>
                     <p className="text-sm text-gray-600 mt-1">
-                      Configure certificate template and variables for event participants.
+                      Configure {selectedType} template and variables for event participants.
                     </p>
                   </div>
                 </div>
               </DialogHeader>
 
               <div className="flex-1 overflow-y-auto p-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                {selectedType && (
+                  <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-blue-900 mb-3">Step 1: Select Certificate Design</h3>
+                    <h3 className="text-sm font-semibold text-blue-900 mb-3">Step 1: Select {selectedType === 'certificate' ? 'Certificate' : 'Badge'} Design</h3>
                     <div className="space-y-2">
-                      <Label htmlFor="template" className="text-sm font-semibold text-gray-900">Certificate Template <span className="text-red-500">*</span></Label>
+                      <Label htmlFor="template" className="text-sm font-semibold text-gray-900">{selectedType === 'certificate' ? 'Certificate' : 'Badge'} Template <span className="text-red-500">*</span></Label>
                       <Select
                         value={certificateForm.certificate_template_id}
                         onValueChange={(value) => setCertificateForm({ ...certificateForm, certificate_template_id: value })}
                         required
                       >
                         <SelectTrigger className="border-gray-300 focus:border-red-500 focus:ring-red-500">
-                          <SelectValue placeholder="Choose a certificate design from setups" />
+                          <SelectValue placeholder={`Choose a ${selectedType} design from setups`} />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200 shadow-lg">
-                          {templates.map((template) => (
+                          {(selectedType === 'certificate' ? templates : badgeTemplates)
+                            .filter(template => template && template.id)
+                            .map((template) => (
                             <SelectItem key={template.id} value={template.id.toString()} className="hover:bg-red-50">
                               <div className="flex flex-col">
                                 <span className="font-medium">{template.name}</span>
@@ -566,8 +643,9 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-gray-900 mb-2 block">Course Contents</Label>
+                        {selectedType === 'certificate' ? (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-gray-900 mb-2 block">Course Contents</Label>
                           <div className="border border-gray-300 rounded-lg overflow-hidden">
                             <div className="bg-gray-50 border-b border-gray-300 px-3 py-2">
                               <div className="flex items-center space-x-1">
@@ -663,11 +741,27 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                               style={{ minHeight: '120px' }}
                             />
                           </div>
-                        </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Label htmlFor="badgeTagline" className="text-sm font-semibold text-gray-900">Badge Tagline</Label>
+                            <Input
+                              id="badgeTagline"
+                              value={certificateForm.template_variables.badgeTagline || ''}
+                              onChange={(e) => setCertificateForm({
+                                ...certificateForm,
+                                template_variables: { ...certificateForm.template_variables, badgeTagline: e.target.value }
+                              })}
+                              placeholder="e.g., Excellence in Training"
+                              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </form>
+                )}
               </div>
 
               <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
@@ -695,14 +789,15 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                     ) : (
                       <>
                         <Award className="w-4 h-4 mr-2" />
-                        {editingCertificate ? 'Update Certificate' : 'Create Certificate'}
+                        {editingCertificate ? `Update ${selectedType === 'certificate' ? 'Certificate' : 'Badge'}` : `Create ${selectedType === 'certificate' ? 'Certificate' : 'Badge'}`}
                       </>
                     )}
                   </Button>
                 </div>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </>
         )}
       </div>
 
@@ -716,11 +811,11 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
             <p className="text-sm text-gray-500 mb-4">Create certificates for event participants</p>
             {!eventHasEnded && (
               <Button
-                onClick={() => setModalOpen(true)}
+                onClick={() => setTypeSelectionOpen(true)}
                 className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
               >
                 <Plus className="w-4 h-4 mr-2 text-white" />
-                Add Certificate
+                Add Certificate and Badge
               </Button>
             )}
           </CardContent>
