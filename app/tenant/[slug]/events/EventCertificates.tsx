@@ -462,7 +462,21 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                       )}
                       
                       <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        {selectedType === 'badge' ? (
+                          <div className="space-y-2">
+                            <Label htmlFor="badgeTagline" className="text-sm font-semibold text-gray-900">Badge Tagline</Label>
+                            <Input
+                              id="badgeTagline"
+                              value={certificateForm.template_variables.badgeTagline || ''}
+                              onChange={(e) => setCertificateForm({
+                                ...certificateForm,
+                                template_variables: { ...certificateForm.template_variables, badgeTagline: e.target.value }
+                              })}
+                              placeholder="e.g., Excellence in Training"
+                              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                            />
+                          </div>
+                        ) : (
                           <div className="space-y-2">
                             <Label htmlFor="organizerName" className="text-sm font-semibold text-gray-900">Organizer Name</Label>
                             <Input
@@ -745,20 +759,6 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                               style={{ minHeight: '120px' }}
                             />
                           </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <Label htmlFor="badgeTagline" className="text-sm font-semibold text-gray-900">Badge Tagline</Label>
-                            <Input
-                              id="badgeTagline"
-                              value={certificateForm.template_variables.badgeTagline || ''}
-                              onChange={(e) => setCertificateForm({
-                                ...certificateForm,
-                                template_variables: { ...certificateForm.template_variables, badgeTagline: e.target.value }
-                              })}
-                              placeholder="e.g., Excellence in Training"
-                              className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                            />
                           </div>
                         )}
                       </div>
