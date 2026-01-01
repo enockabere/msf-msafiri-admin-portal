@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -10,11 +10,80 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Award, Plus, Edit, Trash2, Eye, Loader2 } from "lucide-react";
-import dynamic from "next/dynamic";
+import { Award, Plus, Edit, Trash2, Eye, Loader2, Bold, Italic, List, ListOrdered } from "lucide-react";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 
-// Dynamically import CKEditor with SSR disabled
-const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
+
+// Rich Text Editor Component
+const RichTextEditor = ({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) => {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: value,
+    immediatelyRender: false,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+  });
+
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value);
+    }
+  }, [value, editor]);
+
+  if (!editor) {
+    return <div className="p-4 border border-gray-300 rounded-md text-gray-500 text-sm">Loading editor...</div>;
+  }
+
+  return (
+    <div className="border border-gray-300 rounded-md">
+      <div className="flex gap-1 p-2 border-b border-gray-200 bg-gray-50">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          className={editor.isActive('bold') ? 'bg-gray-200' : ''}
+        >
+          <Bold className="w-4 h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          className={editor.isActive('italic') ? 'bg-gray-200' : ''}
+        >
+          <Italic className="w-4 h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={editor.isActive('bulletList') ? 'bg-gray-200' : ''}
+        >
+          <List className="w-4 h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={editor.isActive('orderedList') ? 'bg-gray-200' : ''}
+        >
+          <ListOrdered className="w-4 h-4" />
+        </Button>
+      </div>
+      <EditorContent 
+        editor={editor} 
+        className="p-3 min-h-[100px] prose prose-sm max-w-none focus-within:outline-none [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+};
 
 interface CertificateTemplate {
   id: number;
@@ -55,9 +124,6 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
   const [selectedType, setSelectedType] = useState<'certificate' | 'badge' | null>(null);
   const [editingCertificate, setEditingCertificate] = useState<EventCertificate | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [editorLoaded, setEditorLoaded] = useState(false);
-  const editorRef = useRef<any>(null);
-  const contentsEditorRef = useRef<any>(null);
   const [certificateForm, setCertificateForm] = useState({
     certificate_template_id: "",
     template_variables: {
@@ -79,43 +145,56 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
     }
   });
 
-  // Load CKEditor on client side only
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('@ckeditor/ckeditor5-build-classic')
-        .then((module) => {
-          editorRef.current = module.default;
-          contentsEditorRef.current = module.default;
-          setEditorLoaded(true);
-        })
-        .catch((error) => {
-          console.error('Error loading CKEditor:', error);
-        });
-    }
-  }, []);
+
 
   const fetchCertificates = useCallback(async () => {
     if (!accessToken) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates`,
+      // Fetch certificates
+      const certUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates`;
+      const certResponse = await fetch(
+        certUrl,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'X-Tenant-ID': tenantSlug
+            'x-tenant-id': tenantSlug
           },
         }
       );
 
-      if (response.ok) {
-        const data = await response.json();
-        setCertificates(Array.isArray(data) ? data : []);
-      } else {
-        setCertificates([]);
+      let certificates = [];
+      if (certResponse.ok) {
+        const certData = await certResponse.json();
+        certificates = Array.isArray(certData) ? certData.map(cert => ({ ...cert, type: 'certificate' })) : [];
       }
+
+      // Fetch badges
+      const badgeUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/badges`;
+      const badgeResponse = await fetch(
+        badgeUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'x-tenant-id': tenantSlug
+          },
+        }
+      );
+
+      let badges = [];
+      if (badgeResponse.ok) {
+        const badgeData = await badgeResponse.json();
+        badges = Array.isArray(badgeData) ? badgeData.map(badge => ({ 
+          ...badge, 
+          type: 'badge',
+          certificate_template_id: badge.badge_template_id
+        })) : [];
+      }
+
+      const combined = [...certificates, ...badges];
+      setCertificates(combined);
     } catch (error) {
-      console.error("Error fetching certificates:", error);
+      setCertificates([]);
     }
   }, [eventId, accessToken, tenantSlug]);
 
@@ -128,7 +207,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'X-Tenant-ID': tenantSlug
+            'x-tenant-id': tenantSlug
           },
         }
       );
@@ -148,28 +227,24 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
     if (!accessToken) return;
 
     try {
-      console.log('🔍 [DEBUG] Fetching badge templates for tenant:', tenantSlug);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates?tenant_context=${tenantSlug}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'X-Tenant-ID': tenantSlug
+            'x-tenant-id': tenantSlug
           },
         }
       );
 
-      console.log('🔍 [DEBUG] Badge templates response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 [DEBUG] Badge templates data:', data);
         setBadgeTemplates(Array.isArray(data) ? data : (data.templates || []));
       } else {
-        console.log('🔍 [DEBUG] Badge templates API failed:', response.status, response.statusText);
         setBadgeTemplates([]);
       }
     } catch (error) {
-      console.error("Error fetching badge templates:", error);
+      setBadgeTemplates([]);
     }
   }, [accessToken, tenantSlug]);
 
@@ -187,31 +262,50 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
     setSubmitting(true);
 
     try {
+      // Use different endpoints for badges vs certificates
+      const endpoint = selectedType === 'badge' ? 'badges' : 'certificates';
       const url = editingCertificate 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates/${editingCertificate.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates`;
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/${endpoint}/${editingCertificate.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/${endpoint}`;
       
       const method = editingCertificate ? "PUT" : "POST";
+
+
+
+      // Use different field names for badges vs certificates
+      const requestBody = selectedType === 'badge' ? {
+        badge_template_id: parseInt(certificateForm.certificate_template_id),
+        template_variables: {
+          ...certificateForm.template_variables,
+          // Auto-fill event data
+          eventTitle: eventData?.title || '',
+          eventLocation: eventData?.location || '',
+          startDate: eventData?.start_date || '',
+          endDate: eventData?.end_date || ''
+        }
+      } : {
+        certificate_template_id: parseInt(certificateForm.certificate_template_id),
+        template_variables: {
+          ...certificateForm.template_variables,
+          // Auto-fill event data
+          eventTitle: eventData?.title || '',
+          eventLocation: eventData?.location || '',
+          startDate: eventData?.start_date || '',
+          endDate: eventData?.end_date || ''
+        }
+      };
 
       const response = await fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-          'X-Tenant-ID': tenantSlug
+          'x-tenant-id': tenantSlug
         },
-        body: JSON.stringify({
-          certificate_template_id: parseInt(certificateForm.certificate_template_id),
-          template_variables: {
-            ...certificateForm.template_variables,
-            // Auto-fill event data
-            eventTitle: eventData?.title || '',
-            eventLocation: eventData?.location || '',
-            startDate: eventData?.start_date || '',
-            endDate: eventData?.end_date || ''
-          }
-        }),
+        body: JSON.stringify(requestBody),
       });
+
+
 
       if (response.ok) {
         await fetchCertificates();
@@ -225,7 +319,7 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
         toast({ title: "Error", description: errorData.detail, variant: "destructive" });
       }
-    } catch {
+    } catch (error) {
       toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -234,8 +328,8 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
 
   const handleEdit = (certificate: EventCertificate) => {
     setEditingCertificate(certificate);
-    // Determine type based on whether badgeTagline exists
-    const type = certificate.template_variables.badgeTagline ? 'badge' : 'certificate';
+    // Determine type based on certificate type field or badgeTagline presence
+    const type = certificate.type === 'badge' || certificate.template_variables.badgeTagline ? 'badge' : 'certificate';
     setSelectedType(type);
     setCertificateForm({
       certificate_template_id: certificate.certificate_template_id.toString(),
@@ -245,36 +339,22 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
   };
 
   const handleDelete = async (certificate: EventCertificate) => {
-    const { default: Swal } = await import("sweetalert2");
-
-    const result = await Swal.fire({
-      title: "Delete Certificate/Badge?",
-      text: "This will remove certificates/badges from all participants. This action cannot be undone.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Yes, delete it!",
-      cancelButtonText: "Cancel",
-    });
-
-    if (!result.isConfirmed) return;
-
     try {
+      const endpoint = certificate.type === 'badge' ? 'badges' : 'certificates';
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates/${certificate.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/${endpoint}/${certificate.id}`,
         {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'X-Tenant-ID': tenantSlug
+            'x-tenant-id': tenantSlug
           },
         }
       );
 
       if (response.ok) {
         await fetchCertificates();
-        toast({ title: "Success", description: "Certificate/Badge deleted successfully" });
+        toast({ title: "Success", description: `${certificate.type === 'badge' ? 'Badge' : 'Certificate'} deleted successfully` });
       } else {
         const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
         toast({ title: "Error", description: errorData.detail, variant: "destructive" });
@@ -476,7 +556,146 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
                               className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                             />
                           </div>
-                        ) : null}
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="organizerName" className="text-sm font-semibold text-gray-900">Organizer Name</Label>
+                                <Input
+                                  id="organizerName"
+                                  value={certificateForm.template_variables.organizerName || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, organizerName: e.target.value }
+                                  })}
+                                  placeholder="e.g., John Smith"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="organizerTitle" className="text-sm font-semibold text-gray-900">Organizer Title</Label>
+                                <Input
+                                  id="organizerTitle"
+                                  value={certificateForm.template_variables.organizerTitle || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, organizerTitle: e.target.value }
+                                  })}
+                                  placeholder="e.g., Training Coordinator"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="facilitatorName" className="text-sm font-semibold text-gray-900">Facilitator Name</Label>
+                                <Input
+                                  id="facilitatorName"
+                                  value={certificateForm.template_variables.facilitatorName || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, facilitatorName: e.target.value }
+                                  })}
+                                  placeholder="e.g., Jane Doe"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="facilitatorTitle" className="text-sm font-semibold text-gray-900">Facilitator Title</Label>
+                                <Input
+                                  id="facilitatorTitle"
+                                  value={certificateForm.template_variables.facilitatorTitle || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, facilitatorTitle: e.target.value }
+                                  })}
+                                  placeholder="e.g., Lead Trainer"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="coordinatorName" className="text-sm font-semibold text-gray-900">Coordinator Name</Label>
+                                <Input
+                                  id="coordinatorName"
+                                  value={certificateForm.template_variables.coordinatorName || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, coordinatorName: e.target.value }
+                                  })}
+                                  placeholder="e.g., Sarah Johnson"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="coordinatorTitle" className="text-sm font-semibold text-gray-900">Coordinator Title</Label>
+                                <Input
+                                  id="coordinatorTitle"
+                                  value={certificateForm.template_variables.coordinatorTitle || ''}
+                                  onChange={(e) => setCertificateForm({
+                                    ...certificateForm,
+                                    template_variables: { ...certificateForm.template_variables, coordinatorTitle: e.target.value }
+                                  })}
+                                  placeholder="e.g., Event Coordinator"
+                                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="certificateDate" className="text-sm font-semibold text-gray-900">Certificate Date</Label>
+                              <Input
+                                id="certificateDate"
+                                type="date"
+                                value={certificateForm.template_variables.certificateDate || ''}
+                                onChange={(e) => setCertificateForm({
+                                  ...certificateForm,
+                                  template_variables: { ...certificateForm.template_variables, certificateDate: e.target.value }
+                                })}
+                                className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="courseDescription" className="text-sm font-semibold text-gray-900">Course Description</Label>
+                              <RichTextEditor
+                                value={certificateForm.template_variables.courseDescription || ''}
+                                onChange={(value) => setCertificateForm({
+                                  ...certificateForm,
+                                  template_variables: { ...certificateForm.template_variables, courseDescription: value }
+                                })}
+                                placeholder="Brief description of the course..."
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="courseObjectives" className="text-sm font-semibold text-gray-900">Course Objectives</Label>
+                              <RichTextEditor
+                                value={certificateForm.template_variables.courseObjectives || ''}
+                                onChange={(value) => setCertificateForm({
+                                  ...certificateForm,
+                                  template_variables: { ...certificateForm.template_variables, courseObjectives: value }
+                                })}
+                                placeholder="List the key learning objectives..."
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="courseContents" className="text-sm font-semibold text-gray-900">Course Contents</Label>
+                              <RichTextEditor
+                                value={certificateForm.template_variables.courseContents || ''}
+                                onChange={(value) => setCertificateForm({
+                                  ...certificateForm,
+                                  template_variables: { ...certificateForm.template_variables, courseContents: value }
+                                })}
+                                placeholder="List the topics covered..."
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -543,9 +762,15 @@ export default function EventCertificates({ eventId, tenantSlug, eventHasEnded, 
       ) : (
         <div className="grid gap-4">
           {certificates.map((certificate) => {
-            const template = templates.find(t => t.id === certificate.certificate_template_id);
+            // Determine if this is a badge or certificate
+            const isBadge = certificate.type === 'badge' || certificate.template_variables?.badgeTagline;
+            // Find template from appropriate array
+            const template = isBadge
+              ? badgeTemplates.find(t => t.id === certificate.certificate_template_id)
+              : templates.find(t => t.id === certificate.certificate_template_id);
+
             return (
-              <Card key={certificate.id}>
+              <Card key={`${certificate.type || 'cert'}-${certificate.id}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">

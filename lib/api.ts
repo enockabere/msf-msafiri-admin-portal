@@ -1,5 +1,4 @@
 import { signOut } from "next-auth/react";
-import { tokenManager } from "./token-refresh";
 import { getInternalApiUrl } from "./base-path";
 
 export interface User {
@@ -280,38 +279,17 @@ const getApiUrl = (endpoint: string): string => {
 };
 
 const handleSessionExpiry = async (): Promise<void> => {
+  // Only clear session data, don't aggressively redirect
   try {
-    // Clear any browser storage
-    if (typeof window !== "undefined") {
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // Clear any cached data
-      if ("caches" in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(
-          cacheNames.map((cacheName) => caches.delete(cacheName))
-        );
-      }
-    }
-
-    // Sign out with NextAuth
+    // Sign out with NextAuth gracefully
     await signOut({
-      redirect: false,
-      callbackUrl: "/login",
+      redirect: true,
+      callbackUrl: "/login?sessionExpired=true",
     });
-
-    // Force redirect to login with session expiry flag
-    if (typeof window !== "undefined") {
-      const loginUrl = new URL("/login", window.location.origin);
-      loginUrl.searchParams.set("sessionExpired", "true");
-      loginUrl.searchParams.set("reason", "inactivity");
-      window.location.href = loginUrl.toString();
-    }
   } catch {
-    // Fallback: force page reload to clear any cached state
+    // Fallback: Just redirect to login without clearing all storage
     if (typeof window !== "undefined") {
-      window.location.href = "/login?sessionExpired=true&reason=error";
+      window.location.href = "/login?sessionExpired=true";
     }
   }
 };
@@ -426,7 +404,7 @@ class ApiClient {
           // Handle 401 errors (authentication/authorization issues)
           if (response.status === 401) {
             // Skip auth error handling for login endpoints or when explicitly requested
-            if (options.skipAuthError || endpoint.includes("/auth/login")) {
+            if (options.skipAuthError || endpoint.includes("/auth/login") || endpoint.includes("/auth/refresh")) {
               const errorData = await response.json().catch(() => ({
                 detail: "Invalid credentials",
                 status_code: 401,
@@ -434,13 +412,8 @@ class ApiClient {
               throw new Error(errorData.detail || "Authentication failed");
             }
 
-            // Set flag to prevent concurrent session expiry handling
-            this.isHandlingSessionExpiry = true;
-
-            // Handle session expiry asynchronously to avoid blocking the current request
-            setTimeout(() => handleSessionExpiry(), 100);
-
-            throw new Error("Session expired - please log in again");
+            // For other 401 errors, try to refresh the token and retry once
+            throw new Error("TOKEN_EXPIRED");
           }
 
           // Handle 403 errors (insufficient permissions)
@@ -508,34 +481,51 @@ class ApiClient {
       }
     };
 
+    // Try to make the request
     try {
-      // Use retry mechanism for non-authentication requests
       if (options.skipAuthError || endpoint.includes("/auth/login")) {
         return await makeRequest();
       } else {
-        return await retryRequest(makeRequest, 1, 1000); // Reduced retries for authenticated requests
+        return await retryRequest(makeRequest, 1, 1000);
       }
     } catch (error) {
-      // If it's a token-related error and we haven't tried refreshing yet
-      if (
-        error instanceof Error &&
-        error.message.includes("Session expired") &&
-        !options.skipAuthError &&
-        !endpoint.includes("/auth/")
-      ) {
+      // If we get a TOKEN_EXPIRED error, try to refresh and retry once
+      if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
+        console.log("🔄 Token expired, attempting automatic refresh...");
+
         try {
-          const newToken = await tokenManager.refreshToken();
-          if (newToken) {
-            this.setToken(newToken);
-            return await this.request(endpoint, {
-              ...options,
-              skipAuthError: true,
-            });
+          // Try to refresh the token
+          const refreshResponse = await fetch(
+            getApiUrl("/auth/refresh"),
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${this.token}`,
+              },
+            }
+          );
+
+          if (refreshResponse.ok) {
+            const newTokenData = await refreshResponse.json();
+            console.log("✅ Token auto-refreshed successfully");
+
+            // Update the token
+            this.setToken(newTokenData.access_token);
+
+            // Retry the original request with new token
+            return await this.request(endpoint, options);
+          } else {
+            console.warn("⚠️ Auto-refresh failed, user needs to re-login");
+            throw new Error("Could not validate credentials. Please refresh the page or log in again.");
           }
         } catch (refreshError) {
-          console.error("Final token refresh attempt failed:", refreshError);
+          console.error("❌ Token auto-refresh error:", refreshError);
+          throw new Error("Session expired. Please refresh the page or log in again.");
         }
       }
+
+      // Re-throw other errors
       throw error;
     }
   }

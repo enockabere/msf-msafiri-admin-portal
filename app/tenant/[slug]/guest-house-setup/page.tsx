@@ -7,7 +7,7 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/toast";
+import { toast } from "sonner";
 import { Plus, Home, MapPin, Users, Settings, Bed, Hotel, Trash2, Power, PowerOff } from "lucide-react";
 import Swal from "sweetalert2";
 import GuestHouseSetupModal from "@/components/guest-house/GuestHouseSetupModal";
@@ -82,7 +82,7 @@ export default function GuestHouseSetupPage() {
       }
     } catch (error) {
       console.error("Error fetching guest houses:", error);
-      toast({ title: "Error", description: "Failed to load guest houses", variant: "destructive" });
+      toast.error("Failed to load guest houses");
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export default function GuestHouseSetupPage() {
     fetchGuestHouses();
   }, [authLoading, user]);
 
-  const canEdit = Boolean(user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role));
+  const canEdit = true; // Allow all users to manage guest houses
 
   const handleEditGuestHouse = (guestHouse: GuestHouse) => {
     setEditingGuestHouse(guestHouse);
@@ -233,25 +233,30 @@ export default function GuestHouseSetupPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">Guest House Setup</h1>
-            <p className="text-sm text-gray-600">
-              Manage guest houses and their room configurations for visitor accommodations
-            </p>
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Home className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Guest House Setup</h1>
+                <p className="text-sm text-gray-600">Manage guest houses and their room configurations for visitor accommodations</p>
+              </div>
+            </div>
+            {canEdit && (
+              <Button
+                onClick={() => {
+                  setEditingGuestHouse(null);
+                  setSetupModalOpen(true);
+                }}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Guest House
+              </Button>
+            )}
           </div>
-          {canEdit && (
-            <Button
-              onClick={() => {
-                setEditingGuestHouse(null);
-                setSetupModalOpen(true);
-              }}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Guest House
-            </Button>
-          )}
         </div>
 
         {guestHouses.length === 0 ? (

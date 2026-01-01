@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
@@ -8,30 +8,12 @@ import Navbar from "@/components/layout/navbar";
 import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import dynamic from "next/dynamic";
-
-// Dynamically import CKEditor with SSR disabled
-const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then(mod => ({ default: mod.CKEditor })), { ssr: false });
+import EventFormModal from "./components/EventFormModal";
 import {
   Calendar,
   Plus,
-  Loader2,
   Clock,
   Play,
   CheckCircle,
@@ -39,8 +21,6 @@ import {
   List,
   Search,
   Download,
-  Save,
-  X,
 } from "lucide-react";
 import EventDetailsModal from "./EventDetailsModal";
 import { EventCard } from "./components/EventCard";
@@ -138,8 +118,10 @@ export default function TenantEventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<keyof Event | string>('start_date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [editorLoaded, setEditorLoaded] = useState(false);
-  const editorRef = useRef<any>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
+  const [, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
+  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -161,26 +143,8 @@ export default function TenantEventsPage() {
     perdiem_currency: "",
     registration_deadline: "",
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
-  const [, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
-  const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
   const tenantSlug = params.slug as string;
-
-  // Load CKEditor on client side only
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      import('@ckeditor/ckeditor5-build-classic')
-        .then((module) => {
-          editorRef.current = module.default;
-          setEditorLoaded(true);
-        })
-        .catch((error) => {
-          console.error('Error loading CKEditor:', error);
-        });
-    }
-  }, []);
 
   const fetchVendorHotels = useCallback(async () => {
     try {
@@ -246,28 +210,37 @@ export default function TenantEventsPage() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      // Check if user is vetting-only
-      const isVettingOnlyUser = userRoles.length > 0 && 
-        userRoles.every(role => ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(role)) &&
-        !isTenantAdmin;
+      // Check if user is vetting-only using all_roles from user object
+      const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+      const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+      
+      const hasAdminRole = adminRoles.includes(user?.role || '') ||
+        (user?.all_roles && user.all_roles.some(role => adminRoles.includes(role)));
+      const hasVettingRole = vettingRoles.includes(user?.role || '') ||
+        (user?.all_roles && user.all_roles.some(role => vettingRoles.includes(role)));
+      
+      const isVettingOnlyUser = hasVettingRole && !hasAdminRole && !isTenantAdmin;
       
       let eventsData;
       
       if (isVettingOnlyUser) {
-        // For vetting-only users, fetch only events they are assigned to vet
-        eventsData = await apiClient.request<Event[]>(
-          `/vetting/user-assigned-events?tenant=${tenantSlug}`
-        );
+        // For vetting-only users, try to fetch assigned events, fallback to all events
+        try {
+          eventsData = await apiClient.request<Event[]>(
+            `/vetting/user-assigned-events?tenant=${tenantSlug}`
+          );
+        } catch {
+          console.warn('Vetting assigned events endpoint not available, falling back to all events');
+          // Fallback to all events if vetting endpoint doesn't exist
+          eventsData = await apiClient.request<Event[]>(
+            `/events/?tenant=${tenantSlug}`
+          );
+        }
       } else {
         // For admins, fetch all events
         eventsData = await apiClient.request<Event[]>(
           `/events/?tenant=${tenantSlug}`
         );
-        
-        // Filter published events for vetting-only users (fallback)
-        if (isVettingOnlyUser) {
-          eventsData = eventsData.filter(event => event.status === 'Published');
-        }
       }
 
       const eventsWithCounts = await Promise.all(
@@ -308,7 +281,7 @@ export default function TenantEventsPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiClient, tenantSlug]);
+  }, [apiClient, tenantSlug, isTenantAdmin, user?.role, user?.all_roles]);
 
   const checkAccess = useCallback(async () => {
     if (!user?.id) return;
@@ -350,7 +323,7 @@ export default function TenantEventsPage() {
       console.error("Access check error:", error);
       toast.error("Failed to load events");
     }
-  }, [user?.id, user?.email, apiClient, fetchEvents, tenantSlug, fetchVendorHotels]);
+  }, [user?.id, user?.email, user?.role, apiClient, fetchEvents, tenantSlug, fetchVendorHotels, isTenantAdmin]);
 
   useEffect(() => {
     if (!authLoading && user?.email) {
@@ -402,7 +375,7 @@ export default function TenantEventsPage() {
   };
 
   const handleDateChange = (
-    field: "start_date" | "end_date" | "registration_deadline",
+    field: string,
     value: string
   ) => {
     const newFormData = { ...formData, [field]: value };
@@ -467,12 +440,8 @@ export default function TenantEventsPage() {
         perdiem_rate: formData.perdiem_rate
           ? parseFloat(formData.perdiem_rate)
           : null,
-        latitude: formData.latitude && formData.latitude.trim()
-          ? parseFloat(formData.latitude)
-          : null,
-        longitude: formData.longitude && formData.longitude.trim()
-          ? parseFloat(formData.longitude)
-          : null,
+        latitude: formData.latitude?.trim() ? parseFloat(formData.latitude.trim()) : null,
+        longitude: formData.longitude?.trim() ? parseFloat(formData.longitude.trim()) : null,
         registration_deadline: formData.registration_deadline ? `${formData.registration_deadline}:00` : null,
       };
 
@@ -571,12 +540,8 @@ export default function TenantEventsPage() {
         perdiem_rate: formData.perdiem_rate
           ? parseFloat(formData.perdiem_rate)
           : null,
-        latitude: formData.latitude && formData.latitude.trim()
-          ? parseFloat(formData.latitude)
-          : null,
-        longitude: formData.longitude && formData.longitude.trim()
-          ? parseFloat(formData.longitude)
-          : null,
+        latitude: formData.latitude?.trim() ? parseFloat(formData.latitude.trim()) : null,
+        longitude: formData.longitude?.trim() ? parseFloat(formData.longitude.trim()) : null,
         registration_deadline: formData.registration_deadline || null,
       };
 
@@ -586,55 +551,43 @@ export default function TenantEventsPage() {
         registration_deadline: eventData.registration_deadline ? `${eventData.registration_deadline}:00` : null,
       };
 
-      console.log('🔍 Event update payload:', apiEventData);
-      console.log('🔍 registration_deadline value:', apiEventData.registration_deadline);
-      console.log('🔍 registration_deadline type:', typeof apiEventData.registration_deadline);
-      console.log('🔍 Tenant slug:', tenantSlug);
-      console.log('🔍 Request URL:', `/events/${selectedEvent.id}?tenant=${tenantSlug}`);
-      console.log('🔍 Request body:', JSON.stringify(apiEventData, null, 2));
-      console.log('🔍 API Client token exists:', !!apiClient.getToken());
-      console.log('🔍 API Client base URL:', apiClient.getBaseUrl());
+    
 
-      const response = await apiClient.request(
+      await apiClient.request(
         `/events/${selectedEvent.id}?tenant=${tenantSlug}`,
         {
           method: "PUT",
           body: JSON.stringify(apiEventData),
         }
       );
-      console.log('✅ Update successful:', response);
 
       setShowEditModal(false);
       setSelectedEvent(null);
       await fetchEvents();
 
       toast.success("Event updated successfully");
-    } catch (error: any) {
-      console.error("🔴 Update event error:", error);
-      console.error("🔴 Error type:", typeof error);
-      console.error("🔴 Error constructor:", error?.constructor?.name);
-      console.error("🔴 Error message:", error?.message);
-      console.error("🔴 Error stack:", error?.stack);
+    } catch (updateError: any) {
+     
       
       // Try to extract meaningful error message
       let errorMessage = "Failed to update event";
       
       try {
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        } else if (error && typeof error === 'object') {
+        if (updateError instanceof Error) {
+          errorMessage = updateError.message;
+        } else if (typeof updateError === 'string') {
+          errorMessage = updateError;
+        } else if (updateError && typeof updateError === 'object') {
           // Try different properties that might contain the error message
-          if (error.detail) {
-            errorMessage = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail);
-          } else if (error.message) {
-            errorMessage = typeof error.message === 'string' ? error.message : JSON.stringify(error.message);
-          } else if (error.error) {
-            errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+          if ('detail' in updateError) {
+            errorMessage = typeof updateError.detail === 'string' ? updateError.detail : JSON.stringify(updateError.detail);
+          } else if ('message' in updateError) {
+            errorMessage = typeof updateError.message === 'string' ? updateError.message : JSON.stringify(updateError.message);
+          } else if ('error' in updateError) {
+            errorMessage = typeof updateError.error === 'string' ? updateError.error : JSON.stringify(updateError.error);
           } else {
             // Last resort: stringify the entire error object
-            errorMessage = JSON.stringify(error, null, 2);
+            errorMessage = JSON.stringify(updateError, null, 2);
           }
         }
       } catch (stringifyError) {
@@ -886,13 +839,16 @@ export default function TenantEventsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="w-full space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-sm font-medium text-gray-900 mb-1">Events Management</h1>
-              <p className="text-xs text-gray-600">
-                Manage events for your organization
-              </p>
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Events Management</h1>
+                <p className="text-sm text-gray-600">Manage events for your organization</p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
@@ -900,828 +856,225 @@ export default function TenantEventsPage() {
                   variant={viewMode === 'card' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('card')}
-                  className={viewMode === 'card' ? 'h-8 px-3 bg-white shadow-sm text-xs' : 'h-8 px-3 hover:bg-gray-200 text-xs'}
+                  className={viewMode === 'card' ? 'h-7 px-2 bg-white shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 text-xs'}
                 >
-                  <Grid3X3 className="w-4 h-4" />
+                  <Grid3X3 className="w-3 h-3" />
                 </Button>
                 <Button
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'h-8 px-3 bg-white shadow-sm text-xs' : 'h-8 px-3 hover:bg-gray-200 text-xs'}
+                  className={viewMode === 'list' ? 'h-7 px-2 bg-white shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 text-xs'}
                 >
-                  <List className="w-4 h-4" />
+                  <List className="w-3 h-3" />
                 </Button>
               </div>
               {canManageEvents() && !isVettingOnly() && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="gap-2 bg-red-600 hover:bg-red-700 text-white h-9 px-4 text-xs font-medium"
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-8 px-4 text-xs"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3 h-3 mr-2" />
                   Create Event
                 </Button>
               )}
             </div>
           </div>
-
-          <div className="flex flex-wrap gap-2 mb-6">
-            <button
-              onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
-              className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
-            >
-              <Clock className="w-4 h-4" />
-              <span className="text-xs font-medium">
-                Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
-              </span>
-            </button>
-            <button
-              onClick={() => { setStatusFilter('ongoing'); setCurrentPage(1); }}
-              className={statusFilter === 'ongoing' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-100 text-green-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-50 text-green-700 hover:bg-green-100'}
-            >
-              <Play className="w-4 h-4" />
-              <span className="text-xs font-medium">
-                Ongoing: {events.filter(e => e.event_status === 'ongoing').length}
-              </span>
-            </button>
-            <button
-              onClick={() => { setStatusFilter('ended'); setCurrentPage(1); }}
-              className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
-            >
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-xs font-medium">
-                Ended: {events.filter(e => e.event_status === 'ended').length}
-              </span>
-            </button>
-            <button
-              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-              className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
-            >
-              <Calendar className="w-4 h-4" />
-              <span className="text-xs font-medium">
-                All: {events.length}
-              </span>
-            </button>
-          </div>
-
-          {viewMode === 'list' && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search events..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-9 text-xs border-gray-200"
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => exportEventsToCSV(filteredEvents)} 
-                className="gap-2 text-xs"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </Button>
-            </div>
-          )}
-
-          {filteredEvents.length > 0 ? (
-            <>
-              {viewMode === 'card' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                  {paginatedEvents.map((event) => (
-                    <EventCard 
-                      key={event.id} 
-                      event={event} 
-                      canManageEvents={canManageEvents()} 
-                      isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
-                      isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
-                      onEdit={(e) => openEditModal(e)} 
-                      onDelete={(e) => handleDeleteEvent(e)} 
-                      onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
-                      onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
-                      onRegistrationForm={(e) => handleRegistrationForm(e)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EventTable
-                  data={paginatedEvents}
-                  canManageEvents={canManageEvents()}
-                  onEdit={(e) => openEditModal(e)}
-                  onDelete={(e) => handleDeleteEvent(e)}
-                  onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
-                  onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
-                  onRegistrationForm={canManageEvents() && !isVettingOnly() ? (e) => handleRegistrationForm(e) : undefined}
-                  sortField={sortField as any}
-                  sortDirection={sortDirection}
-                  onSort={(field) => {
-                    if (sortField === field) {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortField(field as keyof Event | string);
-                      setSortDirection('desc');
-                    }
-                  }}
-                />
-              )}
-              
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-8">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  
-                  <div className="flex gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
-                      >
-                        {page}
-                      </Button>
-                    ))}
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xs font-medium text-gray-900 mb-2">
-                No {statusFilter === 'all' ? '' : statusFilter} events found
-              </h3>
-              <p className="text-xs text-gray-600">
-                {statusFilter === 'all' 
-                  ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
-                  : "No " + statusFilter + " events at the moment"
-                }
-              </p>
-            </div>
-          )}
-
-
         </div>
 
-        <Dialog open={showCreateModal} onOpenChange={closeModals}>
-          <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-            {/* Header without gradient - matching vendor hotels */}
-            <div className="p-6 pb-4 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <DialogTitle className="text-xl font-bold text-gray-900">Create New Event</DialogTitle>
-                  <DialogDescription className="text-gray-600 text-sm mt-1">
-                    Set up a new event for your organization
-                  </DialogDescription>
-                </div>
-              </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
+            className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
+          >
+            <Clock className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
+            </span>
+          </button>
+          <button
+            onClick={() => { setStatusFilter('ongoing'); setCurrentPage(1); }}
+            className={statusFilter === 'ongoing' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-100 text-green-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-50 text-green-700 hover:bg-green-100'}
+          >
+            <Play className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              Ongoing: {events.filter(e => e.event_status === 'ongoing').length}
+            </span>
+          </button>
+          <button
+            onClick={() => { setStatusFilter('ended'); setCurrentPage(1); }}
+            className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
+          >
+            <CheckCircle className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              Ended: {events.filter(e => e.event_status === 'ended').length}
+            </span>
+          </button>
+          <button
+            onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
+            className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
+          >
+            <Calendar className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              All: {events.length}
+            </span>
+          </button>
+        </div>
+
+        {viewMode === 'list' && (
+          <div className="flex items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
+              <Input
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-8 text-xs border-gray-200"
+              />
             </div>
-            <div className="flex-1 overflow-y-auto modal-scrollbar">
-              <div className="p-8 pb-0">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Event Title - Takes 2 columns */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="title" className="text-sm font-medium text-gray-700">
-                        Event Title <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="Enter event title"
-                        required
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => exportEventsToCSV(filteredEvents)} 
+              className="h-8 px-3 text-xs"
+            >
+              <Download className="w-3 h-3 mr-1" />
+              Export CSV
+            </Button>
+          </div>
+        )}
 
-                    {/* Event Type - 1 column */}
-                    <div className="space-y-2">
-                      <Label htmlFor="event_type" className="text-sm font-medium text-gray-700">
-                        Event Type <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.event_type}
-                        onValueChange={(value) => setFormData({ ...formData, event_type: value })}
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Conference">Conference</SelectItem>
-                          <SelectItem value="Workshop">Workshop</SelectItem>
-                          <SelectItem value="Training">Training</SelectItem>
-                          <SelectItem value="Meeting">Meeting</SelectItem>
-                          <SelectItem value="Seminar">Seminar</SelectItem>
-                          <SelectItem value="Webinar">Webinar</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Description - Full width with CKEditor */}
-                  <div>
-                    <Label htmlFor="description" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Description
-                    </Label>
-                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[250px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
-                      {editorLoaded && editorRef.current ? (
-                        <CKEditor
-                          editor={editorRef.current}
-                          data={formData.description}
-                          onChange={(event: any, editor: any) => {
-                            const data = editor.getData();
-                            setFormData({ ...formData, description: data });
-                          }}
-                          config={{
-                            placeholder: "Describe the event, its purpose, and what participants can expect...",
-                            toolbar: [
-                              'heading', '|',
-                              'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                              'outdent', 'indent', '|',
-                              'blockQuote', 'undo', 'redo'
-                            ]
-                          }}
-                        />
-                      ) : (
-                        <div className="min-h-[250px] flex items-center justify-center text-gray-400">
-                          Loading editor...
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
-                  </div>
-
-                  {/* Venue and Accommodation Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="vendor_accommodation_id" className="text-sm font-medium text-gray-700">
-                        Venue (Hotel) <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.vendor_accommodation_id}
-                        onValueChange={(value) => {
-                          const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                          setSelectedVendorId(value);
-                          setFormData({
-                            ...formData,
-                            vendor_accommodation_id: value,
-                            location: selectedHotel?.location || "",
-                            latitude: selectedHotel?.latitude || "",
-                            longitude: selectedHotel?.longitude || ""
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select venue hotel" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vendorHotels.map((hotel) => (
-                            <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                              {hotel.vendor_name} - {hotel.location}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="expected_participants" className="text-sm font-medium text-gray-700">
-                        Expected Participants <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="expected_participants"
-                        type="number"
-                        value={formData.expected_participants}
-                        onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
-                        placeholder="Enter expected number of participants"
-                        required
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Room Configuration */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="single_rooms" className="text-sm font-medium text-gray-700">
-                        Single Rooms <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="single_rooms"
-                        type="number"
-                        value={formData.single_rooms}
-                        onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
-                        placeholder="Number of single rooms needed"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="double_rooms" className="text-sm font-medium text-gray-700">
-                        Double Rooms <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="double_rooms"
-                        type="number"
-                        value={formData.double_rooms}
-                        onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
-                        placeholder="Number of double rooms needed"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="start_date" className="text-sm font-medium text-gray-700">
-                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="start_date"
-                      type="date"
-                      value={formData.start_date}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) =>
-                        handleDateChange("start_date", e.target.value)
-                      }
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="end_date" className="text-sm font-medium text-gray-700">
-                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="end_date"
-                      type="date"
-                      value={formData.end_date}
-                      min={formData.start_date || new Date().toISOString().split('T')[0]}
-                      onChange={(e) =>
-                        handleDateChange("end_date", e.target.value)
-                      }
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="registration_deadline" className="text-sm font-medium text-gray-700">
-                      Registration Deadline {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
-                    </Label>
-                    <Input
-                      id="registration_deadline"
-                      type="datetime-local"
-                      value={formData.registration_deadline}
-                      max={formData.start_date ? `${formData.start_date}T23:59` : undefined}
-                      onChange={(e) =>
-                        setFormData({ ...formData, registration_deadline: e.target.value })
-                      }
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                {formData.duration_days && (
-                  <div className="mt-3 text-sm text-gray-700">
-                    <span className="font-medium">Event Duration:</span> <span className="font-semibold text-red-600">{formData.duration_days} {parseInt(formData.duration_days) === 1 ? 'day' : 'days'}</span>
-                  </div>
-                )}
-
-                {formData.vendor_accommodation_id && (
-                  <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
-                    <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                      Selected Configuration
-                    </Label>
-                    <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                        <p><strong>Location:</strong> {formData.location}</p>
-                      </div>
-                      <div>
-                        <p><strong>Expected Participants:</strong> {formData.expected_participants || 'Not set'}</p>
-                        <p><strong>Room Allocation:</strong> {formData.single_rooms || 0} single, {formData.double_rooms || 0} double rooms</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="banner_image" className="text-sm font-medium text-gray-700">
-                    Banner Image URL
-                  </Label>
-                  <Input
-                    id="banner_image"
-                    value={formData.banner_image}
-                    onChange={(e) =>
-                      setFormData({ ...formData, banner_image: e.target.value })
-                    }
-                    placeholder="https://example.com/banner.jpg"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+        {filteredEvents.length > 0 ? (
+          <>
+            {viewMode === 'card' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+                {paginatedEvents.map((event) => (
+                  <EventCard 
+                    key={event.id} 
+                    event={event} 
+                    canManageEvents={canManageEvents()} 
+                    isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
+                    isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
+                    onEdit={(e) => openEditModal(e)} 
+                    onDelete={(e) => handleDeleteEvent(e)} 
+                    onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
+                    onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
+                    onRegistrationForm={(e) => handleRegistrationForm(e)}
                   />
-                </div>
-
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="status" className="text-sm font-medium text-gray-700">
-                    Status
-                  </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Published">Published</SelectItem>
-                      <SelectItem value="Ongoing">Ongoing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                ))}
               </div>
-            </div>
-
-            {/* Action Buttons - Sticky at bottom */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeModals}
-                disabled={submitting}
-                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateEvent}
-                disabled={submitting}
-                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating Event...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Create Event
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showEditModal} onOpenChange={closeModals}>
-          <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-            {/* Header without gradient - matching vendor hotels */}
-            <div className="p-6 pb-4 border-b border-gray-200">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-blue-600" />
+            ) : (
+              <EventTable
+                data={paginatedEvents}
+                canManageEvents={canManageEvents()}
+                onEdit={(e) => openEditModal(e)}
+                onDelete={(e) => handleDeleteEvent(e)}
+                onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
+                onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
+                onRegistrationForm={canManageEvents() && !isVettingOnly() ? (e) => handleRegistrationForm(e) : undefined}
+                sortField={sortField as any}
+                sortDirection={sortDirection}
+                onSort={(field) => {
+                  if (sortField === field) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortField(field as keyof Event | string);
+                    setSortDirection('desc');
+                  }
+                }}
+              />
+            )}
+            
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                
+                <div className="flex gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
+                    >
+                      {page}
+                    </Button>
+                  ))}
                 </div>
-                <div>
-                  <DialogTitle className="text-xl font-bold text-gray-900">Edit Event</DialogTitle>
-                  <DialogDescription className="text-gray-600 text-sm mt-1">
-                    Update the event details below
-                  </DialogDescription>
-                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
               </div>
-            </div>
-            <div className="flex-1 overflow-y-auto modal-scrollbar">
-              <div className="p-8 pb-0">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Event Title - Takes 2 columns */}
-                    <div className="md:col-span-2 space-y-2">
-                      <Label htmlFor="edit_title" className="text-sm font-medium text-gray-700">
-                        Event Title <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="edit_title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="Enter event title"
-                        required
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    {/* Event Type - 1 column */}
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_event_type" className="text-sm font-medium text-gray-700">
-                        Event Type <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.event_type}
-                        onValueChange={(value) => setFormData({ ...formData, event_type: value })}
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Conference">Conference</SelectItem>
-                          <SelectItem value="Workshop">Workshop</SelectItem>
-                          <SelectItem value="Training">Training</SelectItem>
-                          <SelectItem value="Meeting">Meeting</SelectItem>
-                          <SelectItem value="Seminar">Seminar</SelectItem>
-                          <SelectItem value="Webinar">Webinar</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Description - Full width with CKEditor */}
-                  <div>
-                    <Label htmlFor="edit_description" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Description
-                    </Label>
-                    <div className="border border-gray-300 rounded-lg overflow-hidden [&_.ck-editor__editable]:min-h-[250px] [&_.ck-editor__editable]:p-4 [&_.ck-editor__top]:bg-gray-50 [&_.ck-editor__top]:border-b [&_.ck-editor__top]:border-gray-300 [&_.ck.ck-toolbar]:border-none [&_.ck-editor__editable]:focus:border-blue-500 [&_.ck-editor__editable]:focus:ring-1 [&_.ck-editor__editable]:focus:ring-blue-500">
-                      {editorLoaded && editorRef.current ? (
-                        <CKEditor
-                          editor={editorRef.current}
-                          data={formData.description}
-                          onChange={(event: any, editor: any) => {
-                            const data = editor.getData();
-                            setFormData({ ...formData, description: data });
-                          }}
-                          config={{
-                            placeholder: "Describe the event, its purpose, and what participants can expect...",
-                            toolbar: [
-                              'heading', '|',
-                              'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                              'outdent', 'indent', '|',
-                              'blockQuote', 'undo', 'redo'
-                            ]
-                          }}
-                        />
-                      ) : (
-                        <div className="min-h-[250px] flex items-center justify-center text-gray-400">
-                          Loading editor...
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Use rich formatting to make your description more engaging</p>
-                  </div>
-
-                  {/* Venue and Accommodation Details */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_vendor_accommodation_id" className="text-sm font-medium text-gray-700">
-                        Venue (Hotel) <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.vendor_accommodation_id}
-                        onValueChange={(value) => {
-                          const selectedHotel = vendorHotels.find(h => h.id.toString() === value);
-                          setSelectedVendorId(value);
-                          setFormData({
-                            ...formData,
-                            vendor_accommodation_id: value,
-                            location: selectedHotel?.location || "",
-                            latitude: selectedHotel?.latitude || "",
-                            longitude: selectedHotel?.longitude || ""
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                          <SelectValue placeholder="Select venue hotel" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {vendorHotels.map((hotel) => (
-                            <SelectItem key={hotel.id} value={hotel.id.toString()}>
-                              {hotel.vendor_name} - {hotel.location}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_expected_participants" className="text-sm font-medium text-gray-700">
-                        Expected Participants <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="edit_expected_participants"
-                        type="number"
-                        value={formData.expected_participants}
-                        onChange={(e) => setFormData({ ...formData, expected_participants: e.target.value })}
-                        placeholder="Enter expected number of participants"
-                        required
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Room Configuration */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_single_rooms" className="text-sm font-medium text-gray-700">
-                        Single Rooms <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="edit_single_rooms"
-                        type="number"
-                        value={formData.single_rooms}
-                        onChange={(e) => setFormData({ ...formData, single_rooms: e.target.value })}
-                        placeholder="Number of single rooms needed"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="0"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit_double_rooms" className="text-sm font-medium text-gray-700">
-                        Double Rooms <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="edit_double_rooms"
-                        type="number"
-                        value={formData.double_rooms}
-                        onChange={(e) => setFormData({ ...formData, double_rooms: e.target.value })}
-                        placeholder="Number of double rooms needed"
-                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_start_date" className="text-sm font-medium text-gray-700">
-                      Start Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="edit_start_date"
-                      type="date"
-                      value={formData.start_date}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => handleDateChange("start_date", e.target.value)}
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_end_date" className="text-sm font-medium text-gray-700">
-                      End Date {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>} <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="edit_end_date"
-                      type="date"
-                      value={formData.end_date}
-                      min={formData.start_date || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => handleDateChange("end_date", e.target.value)}
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="edit_registration_deadline" className="text-sm font-medium text-gray-700">
-                      Registration Deadline {tenantData?.timezone && <span className="text-gray-500 ml-1">({tenantData.timezone})</span>}
-                    </Label>
-                    <Input
-                      id="edit_registration_deadline"
-                      type="datetime-local"
-                      value={formData.registration_deadline}
-                      max={formData.start_date ? `${formData.start_date}T23:59` : undefined}
-                      onChange={(e) => setFormData({ ...formData, registration_deadline: e.target.value })}
-                      className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                {formData.duration_days && (
-                  <div className="mt-3 text-sm text-gray-700">
-                    <span className="font-medium">Event Duration:</span> <span className="font-semibold text-red-600">{formData.duration_days} {parseInt(formData.duration_days) === 1 ? 'day' : 'days'}</span>
-                  </div>
-                )}
-
-                {formData.vendor_accommodation_id && (
-                  <div className="bg-gray-50 p-4 rounded-lg mt-6 border border-gray-200">
-                    <Label className="text-sm font-medium text-gray-700 mb-3 block">
-                      Selected Configuration
-                    </Label>
-                    <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p><strong>Hotel:</strong> {vendorHotels.find(h => h.id.toString() === formData.vendor_accommodation_id)?.vendor_name}</p>
-                        <p><strong>Location:</strong> {formData.location}</p>
-                      </div>
-                      <div>
-                        <p><strong>Expected Participants:</strong> {formData.expected_participants || 'Not set'}</p>
-                        <p><strong>Room Allocation:</strong> {formData.single_rooms || 0} single, {formData.double_rooms || 0} double rooms</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="edit_banner_image" className="text-sm font-medium text-gray-700">
-                    Banner Image URL
-                  </Label>
-                  <Input
-                    id="edit_banner_image"
-                    value={formData.banner_image}
-                    onChange={(e) => setFormData({ ...formData, banner_image: e.target.value })}
-                    placeholder="https://example.com/banner.jpg"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div className="mt-6 space-y-2">
-                  <Label htmlFor="edit_status" className="text-sm font-medium text-gray-700">
-                    Status
-                  </Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Published">Published</SelectItem>
-                      <SelectItem value="Ongoing">Ongoing</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                      <SelectItem value="Cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons - Sticky at bottom */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50/50">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeModals}
-                disabled={submitting}
-                className="px-6 py-2.5 text-sm font-medium hover:bg-white transition-all"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleEditEvent}
-                disabled={submitting}
-                className="px-6 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Updating Event...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Update Event
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <EventDetailsModal
-          event={detailsEvent}
-          isOpen={showDetailsModal}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setDetailsEvent(null);
-          }}
-          tenantSlug={tenantSlug}
-          canManageEvents={canManageEvents()}
-          isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
-          isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
-        />
+            )}
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-xs font-medium text-gray-900 mb-1">
+              No {statusFilter === 'all' ? '' : statusFilter} events found
+            </h3>
+            <p className="text-xs text-gray-600">
+              {statusFilter === 'all' 
+                ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
+                : "No " + statusFilter + " events at the moment"
+              }
+            </p>
+          </div>
+        )}
       </div>
+
+      <EventFormModal
+        isOpen={showCreateModal}
+        onClose={closeModals}
+        onSubmit={handleCreateEvent}
+        formData={formData}
+        setFormData={setFormData}
+        vendorHotels={vendorHotels}
+        setSelectedVendorId={setSelectedVendorId}
+        handleDateChange={handleDateChange}
+        submitting={submitting}
+        tenantData={tenantData}
+        isEdit={false}
+      />
+
+      <EventFormModal
+        isOpen={showEditModal}
+        onClose={closeModals}
+        onSubmit={handleEditEvent}
+        formData={formData}
+        setFormData={setFormData}
+        vendorHotels={vendorHotels}
+        setSelectedVendorId={setSelectedVendorId}
+        handleDateChange={handleDateChange}
+        submitting={submitting}
+        tenantData={tenantData}
+        isEdit={true}
+      />
+
+      <EventDetailsModal
+        event={detailsEvent}
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setDetailsEvent(null);
+        }}
+        tenantSlug={tenantSlug}
+        canManageEvents={canManageEvents()}
+      />
     </Layout>
   );
 }

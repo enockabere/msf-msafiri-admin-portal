@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/toast";
+import { toast } from "sonner";
 import { Plus, Edit, Trash2, Bed, Users, Settings, Loader2, Save, X } from "lucide-react";
 
 interface GuestHouseRoom {
@@ -40,11 +40,7 @@ interface RoomManagementModalProps {
 
 const roomTypes = [
   "Single",
-  "Double", 
-  "Twin",
-  "Shared",
-  "Suite",
-  "Studio"
+  "Double"
 ];
 
 const roomFacilities = [
@@ -104,7 +100,7 @@ export default function RoomManagementModal({
       }
     } catch (error) {
       console.error("Error fetching rooms:", error);
-      toast({ title: "Error", description: "Failed to load rooms", variant: "destructive" });
+      toast.error("Failed to load rooms");
     }
   };
 
@@ -113,7 +109,7 @@ export default function RoomManagementModal({
       room_number: "",
       room_name: "",
       capacity: 1,
-      room_type: "",
+      room_type: "Single",
       facilities: {}
     });
     setEditingRoom(null);
@@ -156,10 +152,7 @@ export default function RoomManagementModal({
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Room ${editingRoom ? "updated" : "added"} successfully`,
-        });
+        toast.success(`Room ${editingRoom ? "updated" : "added"} successfully`);
         fetchRooms();
         onSuccess();
         resetForm();
@@ -168,11 +161,7 @@ export default function RoomManagementModal({
       }
     } catch (error) {
       console.error("Error saving room:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${editingRoom ? "update" : "add"} room`,
-        variant: "destructive",
-      });
+      toast.error(`Failed to ${editingRoom ? "update" : "add"} room`);
     } finally {
       setLoading(false);
     }
@@ -196,7 +185,7 @@ export default function RoomManagementModal({
       );
 
       if (response.ok) {
-        toast({ title: "Success", description: "Room deleted successfully" });
+        toast.success("Room deleted successfully");
         fetchRooms();
         onSuccess();
       } else {
@@ -204,7 +193,7 @@ export default function RoomManagementModal({
       }
     } catch (error) {
       console.error("Error deleting room:", error);
-      toast({ title: "Error", description: "Failed to delete room", variant: "destructive" });
+      toast.error("Failed to delete room");
     }
   };
 
@@ -330,16 +319,25 @@ export default function RoomManagementModal({
                         Capacity
                         <span className="text-red-500 ml-1">*</span>
                       </Label>
-                      <Input
-                        id="capacity"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={formData.capacity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 1 }))}
-                        required
-                        className="h-10 pl-4 pr-4 text-sm border-2 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg transition-all"
-                      />
+                      <Select
+                        value={formData.capacity.toString()}
+                        onValueChange={(value) => {
+                          const capacity = parseInt(value);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            capacity,
+                            room_type: capacity === 1 ? "Single" : "Double"
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500">
+                          <SelectValue placeholder="Select capacity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 person</SelectItem>
+                          <SelectItem value="2">2 people</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -347,21 +345,13 @@ export default function RoomManagementModal({
                     <Label htmlFor="room_type" className="text-sm font-semibold text-gray-900">
                       Room Type
                     </Label>
-                    <Select
+                    <Input
+                      id="room_type"
                       value={formData.room_type}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, room_type: value }))}
-                    >
-                      <SelectTrigger className="h-10 border-2 border-gray-300 focus:border-red-500 focus:ring-red-500">
-                        <SelectValue placeholder="Select room type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roomTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      readOnly
+                      className="h-10 pl-4 pr-4 text-sm border-2 border-gray-200 bg-gray-50 text-gray-600 rounded-lg"
+                      placeholder="Auto-selected based on capacity"
+                    />
                   </div>
 
                   <div className="space-y-2">

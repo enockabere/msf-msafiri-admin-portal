@@ -30,7 +30,6 @@ interface EditVendorForm {
   latitude?: string;
   longitude?: string;
   description: string;
-  accommodation_template: string;
 }
 
 interface EditVendorModalProps {
@@ -58,7 +57,6 @@ export default function EditVendorModal({
     latitude: "",
     longitude: "",
     description: "",
-    accommodation_template: "",
   });
 
   useEffect(() => {
@@ -93,7 +91,6 @@ export default function EditVendorModal({
         latitude: vendor.latitude || "",
         longitude: vendor.longitude || "",
         description: vendor.description || "",
-        accommodation_template: vendor.accommodation_template || "",
       });
     }
   }, [vendor]);
@@ -210,23 +207,6 @@ export default function EditVendorModal({
               />
               <p className="text-xs text-gray-500">
                 Provide details about the accommodation facilities and services
-              </p>
-            </div>
-
-            {/* Proof of Accommodation Template */}
-            <div className="space-y-2">
-              <Label htmlFor="accommodation_template" className="text-sm font-medium text-gray-700">
-                Proof of Accommodation Template
-              </Label>
-              <AccommodationTemplateEditor
-                value={form.accommodation_template}
-                onChange={(value) => setForm({ ...form, accommodation_template: value })}
-                hotelName={form.vendor_name}
-                placeholder="Design the proof of accommodation document template..."
-                height={400}
-              />
-              <p className="text-xs text-gray-500">
-                This template will be used to generate proof of accommodation documents for participants
               </p>
             </div>
           </div>

@@ -1,51 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { APP_VERSION } from "@/lib/version";
+import { Separator } from "@/components/ui/separator";
 import {
-  ArrowLeft,
-  Mail,
-  Shield,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import {
   Eye,
   EyeOff,
   Loader2,
   CheckCircle,
   AlertCircle,
+  LogIn,
+  Download,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "next-themes";
 
-// FIXED: Robust API URL detection with better logging
+// API URL helper
 const getApiUrl = (): string => {
-  // Try environment variable first
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
-  // Client-side fallback logic
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-
-    // Local development
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      const localUrl = process.env.NEXT_PUBLIC_LOCAL_API_URL || "http://localhost:8000";
-      return localUrl;
+      return process.env.NEXT_PUBLIC_LOCAL_API_URL || "http://localhost:8000";
     }
-
-    // Vercel deployment or other production
-    const prodUrl = process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
-    return prodUrl;
+    return process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
   }
 
-  // Server-side fallback
-  const fallbackUrl = process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
-  return fallbackUrl;
+  return process.env.NEXT_PUBLIC_PROD_API_URL || "https://msafiri-visitor-api.onrender.com";
 };
 
 interface LoginFormData {
@@ -53,164 +59,79 @@ interface LoginFormData {
   password: string;
 }
 
-interface PasswordResetData {
-  email: string;
-  token?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-}
-
-type ViewMode = "login" | "resetRequest" | "resetPassword";
-
-// Travel and Events Illustration component - Responsive design
-const TravelEventsIllustration = () => (
-  <div className="relative flex justify-center items-center space-x-3 md:space-x-4 lg:space-x-6 mb-6 md:mb-8 scale-75 md:scale-90 lg:scale-100">
-    {/* Plane */}
-    <div className="relative">
-      <div className="w-16 h-6 md:w-20 md:h-8 bg-white rounded-full shadow-lg relative overflow-hidden border-2 border-gray-200">
-        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 w-8 h-3 md:w-12 md:h-4 bg-red-500 rounded-full"></div>
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2 md:w-3 md:h-3 bg-gray-300 rounded-full"></div>
-      </div>
-      {/* Wings */}
-      <div className="absolute top-1.5 left-6 w-6 h-1.5 md:top-2 md:left-8 md:w-8 md:h-2 bg-gray-300 rounded-full"></div>
-      <div className="absolute bottom-1.5 left-6 w-6 h-1.5 md:bottom-2 md:left-8 md:w-8 md:h-2 bg-gray-300 rounded-full"></div>
-      {/* Flight path dots */}
-      <div className="absolute -right-6 top-1 md:-right-8 flex space-x-1">
-        <div className="w-1 h-1 bg-red-400 rounded-full"></div>
-        <div className="w-1 h-1 bg-red-300 rounded-full"></div>
-        <div className="w-1 h-1 bg-red-200 rounded-full"></div>
-      </div>
-    </div>
-
-    {/* Event venue/building */}
-    <div className="flex flex-col items-center">
-      {/* Building */}
-      <div className="w-12 h-16 md:w-16 md:h-20 bg-gray-700 rounded-t-lg relative">
-        {/* Windows */}
-        <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 md:top-2 md:left-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 md:top-2 md:right-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        <div className="absolute top-5 left-1.5 w-1.5 h-1.5 md:top-6 md:left-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        <div className="absolute top-5 right-1.5 w-1.5 h-1.5 md:top-6 md:right-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        <div className="absolute top-8 left-1.5 w-1.5 h-1.5 md:top-10 md:left-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        <div className="absolute top-8 right-1.5 w-1.5 h-1.5 md:top-10 md:right-2 md:w-2 md:h-2 bg-yellow-300 rounded-sm"></div>
-        {/* Entrance */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-5 h-6 md:w-6 md:h-8 bg-red-500 rounded-t-lg"></div>
-      </div>
-      {/* Base */}
-      <div className="w-16 h-3 md:w-20 md:h-4 bg-gray-600 rounded-b-lg"></div>
-    </div>
-
-    {/* Calendar/Event icon */}
-    <div className="flex flex-col items-center">
-      <div className="w-11 h-13 md:w-14 md:h-16 bg-white rounded-lg shadow-lg border-2 border-gray-200 relative">
-        {/* Calendar header */}
-        <div className="w-full h-3 md:h-4 bg-red-500 rounded-t-lg"></div>
-        {/* Calendar rings */}
-        <div className="absolute -top-1 left-1.5 w-1.5 h-2 md:left-2 md:w-2 md:h-3 bg-gray-400 rounded-full"></div>
-        <div className="absolute -top-1 right-1.5 w-1.5 h-2 md:right-2 md:w-2 md:h-3 bg-gray-400 rounded-full"></div>
-        {/* Calendar content */}
-        <div className="mt-1.5 md:mt-2 px-1.5 md:px-2 space-y-0.5 md:space-y-1">
-          <div className="flex justify-between">
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </div>
-          <div className="flex justify-between">
-            <div className="w-1 h-1 bg-red-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-          </div>
-          <div className="flex justify-center">
-            <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-500 rounded-full"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Globe/World icon */}
-    <div className="relative">
-      <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-400 rounded-full relative overflow-hidden shadow-lg">
-        {/* Continents */}
-        <div className="absolute top-2 left-1.5 w-3 h-2 md:top-3 md:left-2 md:w-4 md:h-3 bg-green-400 rounded-lg transform rotate-12"></div>
-        <div className="absolute bottom-2 right-0.5 w-2 h-3 md:bottom-3 md:right-1 md:w-3 md:h-4 bg-green-400 rounded-lg"></div>
-        <div className="absolute top-5 right-2 w-1.5 h-1.5 md:top-6 md:right-3 md:w-2 md:h-2 bg-green-400 rounded-full"></div>
-        {/* Grid lines */}
-        <div className="absolute inset-0 border-2 border-blue-300 rounded-full"></div>
-        <div className="absolute top-0 left-1/2 w-px h-full bg-blue-300"></div>
-        <div className="absolute top-1/2 left-0 w-full h-px bg-blue-300"></div>
-      </div>
-    </div>
-  </div>
-);
-
 export default function LoginComponent() {
+  const id = useId();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'home' | 'resources' | 'about'>('home');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
   const [loginMethod, setLoginMethod] = useState<"sso" | "credentials">("sso");
-  const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [apiUrl, setApiUrl] = useState<string>("");
   const [isApiConnected, setIsApiConnected] = useState<boolean>(true);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: process.env.NEXT_PUBLIC_DEFAULT_EMAIL || "",
     password: "",
   });
 
-  const [resetData, setResetData] = useState<PasswordResetData>({
-    email: "",
-  });
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
-  const resetToken = searchParams.get("token");
-  const message = searchParams.get("message");
-  const emailParam = searchParams.get("email");
-  const forgotParam = searchParams.get("forgot");
 
-  // Initialize API URL and handle reset token
+  console.log('LoginComponent theme:', theme);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const url = getApiUrl();
     setApiUrl(url);
-
-    if (resetToken) {
-      setViewMode("resetPassword");
-      setResetData((prev) => ({ ...prev, token: resetToken }));
-    }
-
-    if (forgotParam === "true") {
-      setViewMode("resetRequest");
-    }
-
-    if (message === "email-changed" && emailParam) {
-      setSuccess(
-        `Your email has been successfully changed to ${emailParam}. Please sign in with your new email address.`
-      );
-      setFormData((prev) => ({ ...prev, email: emailParam }));
-    }
-
-    if (message === "password-reset" && emailParam) {
-      setSuccess(
-        `Your password has been successfully reset. Please sign in with your new password.`
-      );
-      setFormData((prev) => ({ ...prev, email: emailParam }));
-    }
-
-    if (message === "password-changed") {
-      setSuccess(
-        `Your password has been successfully changed. Please sign in with your new password.`
-      );
-    }
-
     checkApiConnectivity(url);
-  }, [resetToken, message, emailParam, forgotParam]);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    // Debug theme application
+    const observer = new MutationObserver(() => {
+      const htmlClass = document.documentElement.className;
+      const bodyClass = document.body.className;
+      console.log('HTML classes:', htmlClass);
+      console.log('Body classes:', bodyClass);
+      console.log('Has dark class:', htmlClass.includes('dark'));
+      
+      // Check if Tailwind dark mode is working
+      const testElement = document.querySelector('.dark\\:text-slate-100');
+      if (testElement) {
+        const computedStyle = window.getComputedStyle(testElement);
+        console.log('Test element color:', computedStyle.color);
+        console.log('Test element classes:', testElement.className);
+      }
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    
+    return () => observer.disconnect();
+  }, []);
 
   const checkApiConnectivity = async (url: string) => {
     try {
       const healthUrl = `${url.replace("/api/v1", "")}/health`;
-
       const response = await fetch(healthUrl, {
         method: "GET",
         signal: AbortSignal.timeout(5000),
@@ -220,21 +141,9 @@ export default function LoginComponent() {
         setIsApiConnected(true);
       } else {
         setIsApiConnected(false);
-        console.warn("⚠️ API health check failed:", response.status);
       }
     } catch (error) {
-      console.warn("⚠️ API server appears to be offline:", error);
       setIsApiConnected(false);
-    }
-  };
-
-  const handleViewChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    setError("");
-    setSuccess("");
-
-    if (mode === "login") {
-      setResetData({ email: "" });
     }
   };
 
@@ -256,17 +165,9 @@ export default function LoginComponent() {
 
       if (result?.ok) {
         setSuccess("Redirecting to Microsoft...");
-        // Let NextAuth handle the redirect
+        setIsOpen(false);
       }
     } catch (error) {
-      console.error("🚨 === MICROSOFT SSO ERROR ===");
-      console.error("Error details:", error);
-      console.error("Error type:", typeof error);
-      console.error(
-        "Error message:",
-        error instanceof Error ? error.message : "Unknown error"
-      );
-
       const errorMessage =
         error instanceof Error ? error.message : "Microsoft SSO login failed";
       setError(errorMessage);
@@ -286,11 +187,16 @@ export default function LoginComponent() {
         throw new Error("Please enter both email and password");
       }
 
+      const callbackUrl =
+        formData.password === "password@1234"
+          ? "/change-password?required=true&default=true"
+          : redirectTo;
+
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
-        callbackUrl: redirectTo,
+        callbackUrl: callbackUrl,
       });
 
       if (result?.error) {
@@ -304,195 +210,17 @@ export default function LoginComponent() {
 
       if (result?.ok) {
         setSuccess("Login successful! Redirecting...");
-
-        // Check if password must be changed (either default password or API flag)
-        const mustChangePassword = formData.password === "password@1234";
         
-        // Make direct API call to check must_change_password flag and get all roles
-        let userRole = null;
-        let allRoles = [];
-        let userTenants = [];
-        let apiMustChangePassword = false;
-        try {
-          const loginResponse = await fetch(`${apiUrl}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              username: formData.email,
-              password: formData.password,
-            }),
-          });
-          
-          if (loginResponse.ok) {
-            const loginData = await loginResponse.json();
-            console.log("🔐 USER LOGIN DATA:", {
-              email: loginData.email,
-              role: loginData.role,
-              all_roles: loginData.all_roles,
-              tenant_id: loginData.tenant_id,
-              user_tenants: loginData.user_tenants,
-              must_change_password: loginData.must_change_password
-            });
-            
-            userRole = loginData.role;
-            allRoles = loginData.all_roles || [loginData.role];
-            userTenants = loginData.user_tenants || [];
-            apiMustChangePassword = loginData.must_change_password;
-            
-            // Check if user has multiple tenants
-            if (userTenants.length > 1) {
-              // Store login data and redirect to tenant selection
-              sessionStorage.setItem('pendingLogin', JSON.stringify({
-                email: formData.email,
-                allRoles,
-                userTenants,
-                redirectTo
-              }));
-              router.push('/select-tenant');
-              return;
-            }
-            
-            // Check if user has required roles for admin portal
-            const adminRoles = [
-              'SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN',
-              'VETTING_COMMITTEE', 'VETTING_APPROVER'
-            ];
-            
-            const hasAdminAccess = allRoles.some(role => 
-              adminRoles.includes(role) || adminRoles.includes(role.toUpperCase())
-            );
-            
-            if (!hasAdminAccess) {
-              throw new Error(`Access denied - insufficient role: ${userRole}. Required roles: ${adminRoles.join(', ')}`);
-            }
-          }
-        } catch (apiError) {
-          console.log("API check failed, using default logic", apiError);
-          // If API call fails, continue with NextAuth result
+        // Immediate redirect without closing dialog or timeout
+        if (formData.password === "password@1234") {
+          router.push("/change-password?required=true&default=true");
+        } else {
+          router.push(redirectTo);
         }
-        
-        // Check if password must be changed (API flag takes precedence)
-        if (apiMustChangePassword || mustChangePassword) {
-          setTimeout(() => {
-            router.push("/change-password?required=true");
-          }, 1000);
-          return;
-        }
-        
-        setTimeout(() => {
-          if (mustChangePassword) {
-            router.push("/change-password?required=true");
-          } else {
-            // Check if user only has vetting roles (no other admin roles)
-            const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
-            const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
-            
-            const hasAdminRole = allRoles.some(role => 
-              adminRoles.includes(role) || adminRoles.includes(role.toUpperCase())
-            );
-            const hasVettingRole = allRoles.some(role => 
-              vettingRoles.includes(role) || vettingRoles.includes(role.toUpperCase())
-            );
-            
-            if (!hasAdminRole && hasVettingRole) {
-              // Vetting-only users go to events page
-              const tenantPath = userTenants.length > 0 ? userTenants[0].tenant_slug : 'default';
-              router.push(`/tenant/${tenantPath}/events`);
-            } else if (userRole === "SUPER_ADMIN" || userRole === "super_admin") {
-              router.push("/dashboard");
-            } else {
-              router.push(redirectTo);
-            }
-          }
-        }, 1000);
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Login failed";
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePasswordResetRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setIsLoading(true);
-      setError("");
-      setSuccess("");
-
-      if (!resetData.email) {
-        throw new Error("Please enter your email address");
-      }
-
-      const response = await fetch(`${apiUrl}/auth/forgot-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: resetData.email }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to send reset email");
-      }
-
-      setSuccess("Password reset link has been sent to your email address.");
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to send reset email";
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setIsLoading(true);
-      setError("");
-      setSuccess("");
-
-      if (!resetData.newPassword || !resetData.confirmPassword) {
-        throw new Error("Please fill in all password fields");
-      }
-
-      if (resetData.newPassword !== resetData.confirmPassword) {
-        throw new Error("Passwords do not match");
-      }
-
-      if (resetData.newPassword.length < 6) {
-        throw new Error("Password must be at least 6 characters long");
-      }
-
-      const response = await fetch(`${apiUrl}/auth/reset-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: resetData.token,
-          newPassword: resetData.newPassword,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to reset password");
-      }
-
-      setSuccess(
-        "Password has been successfully reset. Redirecting to login..."
-      );
-      setTimeout(() => {
-        router.push("/login?message=password-reset");
-      }, 2000);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to reset password";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -506,401 +234,372 @@ export default function LoginComponent() {
       if (error) setError("");
     };
 
-  const handleResetInputChange =
-    (field: keyof PasswordResetData) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setResetData((prev) => ({ ...prev, [field]: e.target.value }));
-      if (error) setError("");
-    };
-
-  const renderLoginContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex flex-col xl:flex-row">
-      {/* Left side - Branding and illustration (hidden on mobile/tablet, shown on extra large screens only) */}
-      <div className="hidden xl:flex xl:flex-1 flex-col justify-center items-center p-8 xl:p-12 bg-white/80 backdrop-blur-sm">
-        {/* Logo */}
-        <div>
-          <div className="flex items-center justify-center mb-4">
-            <Image
-              src="/portal/icon/MSF_logo_square.png"
-              alt="MSF Logo"
-              width={200}
-              height={200}
-              className="w-32 h-32 xl:w-40 xl:h-40"
-              priority
-            />
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white border shadow-xl rounded-lg p-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-slate-600" />
+            <p className="text-slate-600">Loading login page...</p>
           </div>
         </div>
-
-        {/* Heading */}
-        <div className="text-center mb-6 xl:mb-8 max-w-md px-4">
-          <h3 className="text-2xl xl:text-4xl font-bold text-gray-800 mb-3 xl:mb-4">
-            Visitor Travel & Events Management
-          </h3>
-          <p className="text-gray-600 text-sm xl:text-md">
-            Manage tenants, streamline event planning, invite and track
-            visitors, allocate rooms and transport, and approve per diem—all in
-            one secure platform.
-          </p>
-        </div>
-
-        {/* Travel and Events Illustration */}
-        <TravelEventsIllustration />
       </div>
+    );
+  }
 
-      {/* Right side - Login form (full width on mobile/tablet, half width on xl screens) */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 min-h-screen xl:min-h-0">
-        <div className="w-full max-w-md space-y-4 sm:space-y-6">
-          {/* Mobile/Tablet logo (shown on screens smaller than xl) */}
-          <div className="flex justify-center xl:hidden mb-2 sm:mb-4">
-            <Image
-              src="/portal/icon/MSF_logo_square.png"
-              alt="MSF Logo"
-              width={80}
-              height={80}
-              className="w-16 h-16 sm:w-20 sm:h-20"
-              priority
-            />
-          </div>
+  return (
+    <div className={`min-h-screen font-sans overflow-x-hidden scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400 transition-colors duration-200 ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-black'}`}>
+      {/* Top Navbar - Made sticky */}
+      <header className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-sm flex items-center justify-between px-10 py-4 animate-in slide-in-from-top duration-300 transition-all ${isScrolled ? 'shadow-sm' : ''} ${theme === 'dark' ? 'bg-black/95 border-b border-gray-800' : 'bg-white/95 border-b border-slate-100'}`}>
+        <div className={`flex items-center gap-2 font-bold text-xl tracking-tight animate-in fade-in-0 slide-in-from-left duration-500 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+          <Image
+            src="/portal/icon/favicon.png"
+            alt="MSafiri Logo"
+            width={32}
+            height={32}
+            className="rounded-sm"
+          />
+          MSafiri
+        </div>
 
-          <Card className="w-full bg-white/95 backdrop-blur-sm border-0 shadow-xl">
-            <CardHeader className="text-center space-y-2 sm:space-y-3 md:space-y-4 pb-2 px-4 sm:px-6 pt-6">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">
-                Welcome to MSF Msafiri
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-600">
-                Your One-Stop Companion for MSF Traveller
-              </p>
-              <p className="text-xs text-gray-400">
-                v{APP_VERSION}
-              </p>
-              {/* Mobile/Tablet description */}
-              <p className="text-xs text-gray-500 xl:hidden px-2">
-                Manage visitors, events, and travel arrangements
-              </p>
-            </CardHeader>
+        <NavigationMenu>
+          <NavigationMenuList className="hidden md:flex gap-4 animate-in fade-in-0 slide-in-from-top duration-700">
+            {["Home", "Resources", "About"].map((item, index) => (
+              <NavigationMenuItem key={item} className={`animate-in fade-in-0 slide-in-from-top duration-${500 + index * 100}`}>
+                <NavigationMenuLink 
+                  className={`${navigationMenuTriggerStyle()} ${
+                    (item === "Home" && currentView === 'home') || 
+                    (item === "Resources" && currentView === 'resources') ||
+                    (item === "About" && currentView === 'about')
+                      ? 'bg-slate-100 text-slate-900' 
+                      : ''
+                  }`}
+                  onClick={() => {
+                    if (item === "Resources") setCurrentView('resources');
+                    else if (item === "About") setCurrentView('about');
+                    else setCurrentView('home');
+                  }}
+                >
+                  {item}
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            ))}
+          </NavigationMenuList>
+        </NavigationMenu>
 
-          <CardContent className="space-y-3 sm:space-y-4 md:space-y-6 px-4 sm:px-6 pb-6">
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="rounded-full px-6 border-slate-300 animate-in fade-in-0 slide-in-from-right duration-500 hover:scale-105 transition-transform">
+              <LogIn className="mr-2 h-4 w-4" />
+              Login
+            </Button>
+          </DialogTrigger>
+          <DialogContent className={`sm:max-w-sm border ${theme === 'dark' ? 'bg-black border-gray-700 [&>button]:text-white [&>button]:hover:text-gray-300' : 'bg-white border-slate-200 [&>button]:text-black [&>button]:hover:text-gray-700'}`}>
+            <DialogHeader className="items-center">
+              <DialogTitle className={theme === 'dark' ? 'text-white' : 'text-black'}>Sign In</DialogTitle>
+              <DialogDescription className={theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}>Access your MSafiri admin portal</DialogDescription>
+            </DialogHeader>
+            
             {/* Alert Messages */}
             {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-xs sm:text-sm text-red-800">
-                  {error}
-                </AlertDescription>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             {success && (
-              <Alert className="border-green-200 bg-green-50">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-xs sm:text-sm text-green-800">
-                  {success}
-                </AlertDescription>
+              <Alert className="border-green-500 bg-green-50 text-green-900">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
-            {/* Login Form */}
-            <form onSubmit={handleCredentialLogin} className="space-y-3 sm:space-y-4">
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="email" className="text-xs sm:text-sm text-gray-600">
-                  Email address
-                </Label>
+            <form className="flex flex-col gap-4" onSubmit={handleCredentialLogin}>
+              <div className="grid gap-3">
+                <Label htmlFor="email" className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Email</Label>
                 <Input
                   id="email"
                   type="email"
+                  name="email"
                   value={formData.email}
                   onChange={handleInputChange("email")}
                   placeholder="admin@msafiri.com"
-                  className="h-10 sm:h-11 md:h-12 text-sm sm:text-base border-gray-200 focus:border-red-600 focus:ring-red-600"
-                  required
                   disabled={isLoading}
+                  className={theme === 'dark' ? 'text-white bg-gray-900 border-gray-600' : 'text-black'}
                 />
               </div>
-
-              <div className="space-y-1.5 sm:space-y-2">
-                <Label htmlFor="password" className="text-xs sm:text-sm text-gray-600">
-                  Password
-                </Label>
+              <div className="grid gap-3">
+                <Label htmlFor="password" className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     value={formData.password}
                     onChange={handleInputChange("password")}
-                    placeholder="Enter password"
-                    className="h-10 sm:h-11 md:h-12 pr-10 text-sm sm:text-base border-gray-200 focus:border-red-600 focus:ring-red-600"
-                    required
+                    placeholder="Password"
                     disabled={isLoading}
+                    className={`pr-10 ${theme === 'dark' ? 'text-white bg-gray-900 border-gray-600' : 'text-black'}`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 touch-manipulation"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" />
-                    ) : (
-                      <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                    )}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleViewChange("resetRequest")}
-                  className="text-xs sm:text-sm text-gray-600 hover:text-red-600 hover:underline touch-manipulation"
-                >
-                  Forgot password?
-                </button>
-              </div>
-
-              <Button
-                type="submit"
+            </form>
+            
+            <DialogFooter className="pt-4 sm:flex-col">
+              <Button 
+                onClick={handleCredentialLogin}
                 disabled={isLoading || !isApiConnected}
-                className="w-full h-10 sm:h-11 md:h-12 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm sm:text-base touch-manipulation"
+                className={`font-medium ${theme === 'dark' ? 'bg-white text-black hover:bg-gray-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
               >
                 {isLoading && loginMethod === "credentials" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                    Signing in...
-                  </>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin text-white dark:text-slate-900" />Signing in...</>
                 ) : (
-                  "Admin Login"
+                  "Sign In"
                 )}
               </Button>
-            </form>
-
-            {/* Microsoft SSO Button */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+              <div className="flex items-center gap-4 before:h-px before:flex-1 before:bg-slate-300 after:h-px after:flex-1 after:bg-slate-300">
+                <span className="text-slate-600 text-xs font-medium">Or</span>
               </div>
-              <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">
-                  Or continue with
-                </span>
+              <Button
+                variant="outline"
+                onClick={handleMicrosoftLogin}
+                disabled={isLoading}
+                className={`font-medium ${theme === 'dark' ? 'text-white border-gray-600 hover:bg-gray-800' : 'text-slate-900 border-slate-300 hover:bg-slate-50'}`}
+              >
+                {isLoading && loginMethod === "sso" ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin text-slate-900 dark:text-slate-100" />Redirecting...</>
+                ) : (
+                  <>
+                    <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                      <path fill="#f25022" d="M0 0h11v11H0z" />
+                      <path fill="#00a4ef" d="M13 0h11v11H13z" />
+                      <path fill="#7fba00" d="M0 13h11v11H0z" />
+                      <path fill="#ffb900" d="M13 13h11v11H13z" />
+                    </svg>
+                    <span className={theme === 'dark' ? 'text-white' : 'text-black'}>Continue with Microsoft</span>
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      {currentView === 'home' && (
+        <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-10 py-2 items-center max-w-7xl mx-auto mt-16">
+          {/* Text Content */}
+          <div className="space-y-4 animate-in fade-in-0 slide-in-from-left duration-1000">
+            <h1 className="text-4xl lg:text-5xl font-serif leading-tight">
+              <span className={`inline-block animate-in fade-in-0 slide-in-from-bottom duration-1200 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Trusted</span>{" "}
+              <span className="inline-block animate-in fade-in-0 slide-in-from-bottom duration-1400 text-red-600">One-Stop</span>{" "}
+              <span className={`inline-block animate-in fade-in-0 slide-in-from-bottom duration-1600 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Companion</span>{" "}
+              <span className={`inline-block animate-in fade-in-0 slide-in-from-bottom duration-1800 ${theme === 'dark' ? 'text-white' : 'text-black'}`}>for</span>{" "}
+              <span className="inline-block animate-in fade-in-0 slide-in-from-bottom duration-2000 text-red-600 font-bold">MSF</span>{" "}
+              <span className={`inline-block animate-in fade-in-0 slide-in-from-bottom duration-2200 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-400'}`}>Traveller</span>
+            </h1>
+            
+            <p className={`text-base max-w-md leading-relaxed animate-in fade-in-0 slide-in-from-bottom duration-1400 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>
+              Manage tenants, streamline event planning, invite and track visitors, allocate rooms and transport—all in one secure platform.
+            </p>
+
+            <div className="flex gap-4 pt-2 animate-in fade-in-0 slide-in-from-bottom duration-1600">
+              <Button className="bg-red-600 text-white hover:bg-red-700 rounded-full px-8 py-6 text-md hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl">
+                <Download className="mr-2 h-5 w-5" />
+                Download App
+              </Button>
+              <Button variant="outline" className={`rounded-full px-8 py-6 text-md hover:scale-105 transition-all duration-200 hover:border-red-200 hover:text-red-600 ${theme === 'dark' ? 'border-gray-700 hover:border-red-400 hover:text-red-400' : 'border-slate-200'}`}>
+                Learn More
+              </Button>
+            </div>
+          </div>
+
+          {/* Visual Content */}
+          <div className={`relative aspect-square rounded-2xl overflow-hidden shadow-lg animate-in fade-in-0 slide-in-from-right duration-1000 hover:shadow-xl transition-all duration-300 ${theme === 'dark' ? 'bg-gradient-to-br from-gray-800 to-black border border-gray-800' : 'bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100'}`}>
+             <Image
+               src="/portal/hero/8.jpg"
+               alt="MSF Operations Visualization"
+               fill
+               className="object-cover"
+               priority
+             />
+             
+             {/* Decorative floating cards with animations */}
+             <div className={`absolute bottom-12 right-12 w-48 h-32 backdrop-blur-md rounded-lg shadow-xl p-4 hidden md:block animate-in fade-in-0 slide-in-from-bottom duration-2000 hover:scale-105 transition-transform ${theme === 'dark' ? 'bg-gray-800/90 border border-gray-700' : 'bg-white/90 border border-slate-200'}`}>
+                <div className="w-full h-2 bg-gradient-to-r from-red-200 to-slate-100 rounded mb-2 animate-pulse" />
+                <div className="w-2/3 h-2 bg-gradient-to-r from-slate-100 to-red-100 rounded animate-pulse" />
+             </div>
+             
+             {/* Additional floating element */}
+             <div className="absolute top-8 left-8 w-16 h-16 bg-red-100/50 rounded-full animate-ping" />
+             <div className="absolute top-8 left-8 w-16 h-16 bg-red-200/30 rounded-full animate-pulse" />
+          </div>
+        </main>
+      )}
+
+      {/* Resources Section */}
+      {currentView === 'resources' && (
+        <main className="max-w-7xl mx-auto px-10 py-20 animate-in fade-in-0 slide-in-from-bottom duration-500 mt-20">
+          <div className="space-y-8">
+            <div className="text-center space-y-3">
+              <h1 className={`text-3xl lg:text-4xl font-serif ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                Resources & <span className="text-red-600">Documentation</span>
+              </h1>
+              <p className={`text-base max-w-2xl mx-auto ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>
+                Stay updated with the latest changes, improvements, and documentation for MSafiri.
+              </p>
+            </div>
+
+            <div className="grid gap-8">
+              {/* Changelog Card */}
+              <div className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow max-w-5xl mx-auto ${theme === 'dark' ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-slate-200'}`}>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">Changelog</h3>
+                      <p className="text-xs text-slate-500">Version history and updates</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="border-l-2 border-red-200 pl-6 space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            v2.1.0
+                          </span>
+                          <span className="text-xs text-slate-500">Latest</span>
+                        </div>
+                        <h4 className="font-medium text-slate-900 text-sm">Enhanced Login & Authentication</h4>
+                        <ul className="text-xs text-slate-600 space-y-1">
+                          <li>• Added Microsoft SSO integration</li>
+                          <li>• Improved login modal design</li>
+                          <li>• Enhanced security features</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                            v2.0.5
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-slate-900 text-sm">UI/UX Improvements</h4>
+                        <ul className="text-xs text-slate-600 space-y-1">
+                          <li>• Updated dashboard layout</li>
+                          <li>• Improved mobile responsiveness</li>
+                          <li>• Added dark mode support</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                            v2.0.0
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-slate-900 text-sm">Major Release</h4>
+                        <ul className="text-xs text-slate-600 space-y-1">
+                          <li>• Complete system redesign</li>
+                          <li>• New event management features</li>
+                          <li>• Enhanced performance</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        </main>
+      )}
 
-            <Button
-              type="button"
-              onClick={() => {
-                handleMicrosoftLogin();
-              }}
-              disabled={isLoading}
-              variant="outline"
-              className="w-full h-10 sm:h-11 md:h-12 border-gray-200 hover:bg-gray-50 text-xs sm:text-sm md:text-base touch-manipulation"
-            >
-              {isLoading && loginMethod === "sso" ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                  Redirecting to Microsoft...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" viewBox="0 0 24 24">
-                    <path fill="#00a1f1" d="M0 0h11v11H0z" />
-                    <path fill="#00a1f1" d="M13 0h11v11H13z" />
-                    <path fill="#00a1f1" d="M0 13h11v11H0z" />
-                    <path fill="#00a1f1" d="M13 13h11v11H13z" />
-                  </svg>
-                  Sign in with Microsoft
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-        
-        {/* Version info at bottom */}
-        <div className="text-center mt-4">
-          <p className="text-xs text-gray-400">
-            v{APP_VERSION}
-          </p>
-        </div>
-        </div>
-      </div>
+      {/* About Section */}
+      {currentView === 'about' && (
+        <main className="max-w-7xl mx-auto px-10 py-20 animate-in fade-in-0 slide-in-from-bottom duration-500 mt-20">
+          <div className="space-y-8">
+            <div className="text-center space-y-3">
+              <h1 className={`text-3xl lg:text-4xl font-serif ${theme === 'dark' ? 'text-white' : 'text-black'}`}>
+                About <span className="text-red-600">MSafiri</span>
+              </h1>
+              <p className={`text-base max-w-2xl mx-auto ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>
+                Your trusted companion for MSF operations management
+              </p>
+            </div>
+
+            <div className="grid gap-8 max-w-4xl mx-auto">
+              <div className={`rounded-lg p-8 shadow-sm ${theme === 'dark' ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-slate-200'}`}>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Our Mission</h3>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>Empowering MSF operations worldwide</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <p className={`text-sm leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>
+                      MSafiri is designed specifically for Médecins Sans Frontières (MSF) to streamline and enhance operational efficiency across all missions. Our comprehensive platform serves as a one-stop solution for managing the complex logistics of humanitarian operations.
+                    </p>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <h4 className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Key Features</h4>
+                        <ul className={`text-xs space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}`}>
+                          <li>• Event planning and management</li>
+                          <li>• Visitor tracking and invitations</li>
+                          <li>• Accommodation allocation</li>
+                          <li>• Transport coordination</li>
+                          <li>• Multi-tenant support</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <h4 className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Built For</h4>
+                        <ul className={`text-xs space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}`}>
+                          <li>• MSF field coordinators</li>
+                          <li>• Operations managers</li>
+                          <li>• Administrative staff</li>
+                          <li>• Project coordinators</li>
+                          <li>• Support teams</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div className={`pt-4 ${theme === 'dark' ? 'border-t border-gray-700' : 'border-t border-slate-100'}`}>
+                      <p className={`text-xs italic ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>
+                        "Simplifying complex operations so you can focus on what matters most - saving lives and providing humanitarian aid."
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
     </div>
   );
-
-  const renderResetRequestContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
-        <CardHeader className="text-center space-y-2 sm:space-y-4 px-4 sm:px-6 pt-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">Reset Password</h2>
-          <p className="text-xs sm:text-sm text-gray-600">
-            Enter your email address and we&apos;ll send you a reset link
-          </p>
-        </CardHeader>
-
-        <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6">
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-xs sm:text-sm text-red-800">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-xs sm:text-sm text-green-800">
-                {success}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handlePasswordResetRequest} className="space-y-3 sm:space-y-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="resetEmail" className="text-xs sm:text-sm text-gray-600">
-                Email Address
-              </Label>
-              <Input
-                id="resetEmail"
-                type="email"
-                value={resetData.email}
-                onChange={handleResetInputChange("email")}
-                placeholder="admin@msafiri.com"
-                className="h-10 sm:h-11 md:h-12 text-sm sm:text-base border-gray-200 focus:border-red-600 focus:ring-red-600"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading || !apiUrl}
-              className="w-full h-10 sm:h-11 md:h-12 bg-red-600 hover:bg-red-700 text-white text-sm sm:text-base touch-manipulation"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Send Reset Link
-                </>
-              )}
-            </Button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => handleViewChange("login")}
-                className="text-xs sm:text-sm text-gray-600 hover:text-red-600 hover:underline inline-flex items-center touch-manipulation"
-              >
-                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                Back to Login
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderResetPasswordContent = () => (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-pink-50 to-red-100 flex items-center justify-center p-4 sm:p-6 md:p-8">
-      <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm border-0 shadow-xl">
-        <CardHeader className="text-center space-y-2 sm:space-y-4 px-4 sm:px-6 pt-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800">Set New Password</h2>
-          <p className="text-xs sm:text-sm text-gray-600">Enter your new password below</p>
-        </CardHeader>
-
-        <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6 pb-6">
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-xs sm:text-sm text-red-800">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-xs sm:text-sm text-green-800">
-                {success}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handlePasswordReset} className="space-y-3 sm:space-y-4">
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="newPassword" className="text-xs sm:text-sm text-gray-600">
-                New Password
-              </Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={resetData.newPassword || ""}
-                onChange={handleResetInputChange("newPassword")}
-                placeholder="Enter new password"
-                className="h-10 sm:h-11 md:h-12 text-sm sm:text-base border-gray-200 focus:border-red-600 focus:ring-red-600"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="confirmPassword" className="text-xs sm:text-sm text-gray-600">
-                Confirm Password
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={resetData.confirmPassword || ""}
-                onChange={handleResetInputChange("confirmPassword")}
-                placeholder="Confirm new password"
-                className="h-10 sm:h-11 md:h-12 text-sm sm:text-base border-gray-200 focus:border-red-600 focus:ring-red-600"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              disabled={isLoading || !apiUrl}
-              className="w-full h-10 sm:h-11 md:h-12 bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base touch-manipulation"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Update Password
-                </>
-              )}
-            </Button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => handleViewChange("login")}
-                className="text-xs sm:text-sm text-gray-600 hover:text-red-600 hover:underline inline-flex items-center touch-manipulation"
-              >
-                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                Back to Login
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  if (viewMode === "resetRequest") return renderResetRequestContent();
-  if (viewMode === "resetPassword") return renderResetPasswordContent();
-
-  return renderLoginContent();
 }

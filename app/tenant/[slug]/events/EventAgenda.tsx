@@ -774,12 +774,12 @@ export default function EventAgenda({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Session</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Presenter</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="w-[100px]">Session</TableHead>
+                <TableHead className="w-[200px]">Title</TableHead>
+                <TableHead className="w-[300px]">Description</TableHead>
+                <TableHead className="w-[150px]">Date & Time</TableHead>
+                <TableHead className="w-[150px]">Presenter</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -791,24 +791,24 @@ export default function EventAgenda({
                 )
                 .map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
+                    <TableCell className="w-[100px]">
                       <Badge
                         variant="secondary"
-                        className="text-xs font-medium"
+                        className="text-xs font-medium whitespace-nowrap"
                       >
                         {item.session_number}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{item.title}</div>
+                    <TableCell className="w-[200px]">
+                      <div className="font-medium break-words whitespace-normal">{item.title}</div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[300px]">
                       {item.description ? (
                         <div
-                          className="text-sm text-gray-600 max-w-xs"
+                          className="text-sm text-gray-600 break-words whitespace-normal overflow-hidden"
                           dangerouslySetInnerHTML={{
-                            __html: item.description.length > 150 
-                              ? item.description.substring(0, 150) + '...' 
+                            __html: item.description.length > 150
+                              ? item.description.substring(0, 150) + '...'
                               : item.description
                           }}
                         />
@@ -816,8 +816,8 @@ export default function EventAgenda({
                         <span className="text-sm text-gray-400">No description</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
+                    <TableCell className="w-[150px]">
+                      <div className="text-sm whitespace-nowrap">
                         <div>
                           {format(
                             parseISO(item.start_datetime),
@@ -830,8 +830,10 @@ export default function EventAgenda({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{item.presenter || "-"}</TableCell>
-                    <TableCell>
+                    <TableCell className="w-[150px]">
+                      <div className="break-words whitespace-normal">{item.presenter || "-"}</div>
+                    </TableCell>
+                    <TableCell className="w-[120px]">
                       <div className="flex gap-2">
                         <Button
                           variant="outline"

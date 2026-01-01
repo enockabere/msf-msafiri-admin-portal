@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 
@@ -11,12 +11,12 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AccommodationTemplateEditor } from "@/components/ui/accommodation-template-editor";
 import { LocationSelect } from "@/components/ui/location-select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Loader2, Save, X, Search, Download, Printer, Edit, Trash2, ChevronLeft, ChevronRight, FileText, FileEdit } from "lucide-react";
+import { Plus, Loader2, Save, X, Search, Download, Printer, Edit, Trash2, ChevronLeft, ChevronRight, FileText, FileEdit, Upload, Hotel, FileSignature, QrCode } from "lucide-react";
 
 import EditVendorModal from "@/components/accommodation/EditVendorModal";
-import { Hotel } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface VendorAccommodation {
   id: number;
@@ -48,6 +48,11 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   const [selectedVendorForTemplate, setSelectedVendorForTemplate] = useState<VendorAccommodation | null>(null);
   const [templateContent, setTemplateContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<{logo?: string, signature?: string}>({});
+  const [templateId, setTemplateId] = useState<number | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
   const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
   const [vendorForm, setVendorForm] = useState({
     vendor_name: "",
@@ -114,7 +119,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     fetchTenantData();
   }, [apiClient, tenantSlug]);
 
-  const canEdit = Boolean(user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role));
+  const canEdit = true; // Allow all users to manage vendor hotels
 
   const handleEditVendor = (vendor: VendorAccommodation) => {
     setSelectedVendorForEdit(vendor);
@@ -315,10 +320,10 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   const handleDesignTemplate = async (vendor: VendorAccommodation) => {
     setSelectedVendorForTemplate(vendor);
 
-    // Fetch current template
+    // Get POA template for this vendor
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${vendor.id}/template`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/poa-templates/vendor/${vendor.id}`,
         {
           headers: {
             Authorization: `Bearer ${apiClient.getToken()}`,
@@ -328,14 +333,49 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       );
 
       if (response.ok) {
-        const data = await response.json();
-        setTemplateContent(data.template || data.accommodation_template || "");
-      } else {
-        // If template endpoint doesn't exist, set empty template
+        const templateData = await response.json();
+        setTemplateId(templateData.id);
+
+        // Get template content and replace variables with image tags if images exist
+        let content = templateData.template_content || "";
+
+        // Store uploaded images
+        const images: {logo?: string, signature?: string} = {
+          logo: templateData.logo_url || undefined,
+          signature: templateData.signature_url || undefined
+        };
+        setUploadedImages(images);
+
+        // Replace logo variable with image tag if logo exists
+        if (images.logo && content.includes('{{hotelLogo}}')) {
+          const logoTag = `<img src="${images.logo}" alt="logo" style="max-width: 200px; height: auto; margin: 10px 0;" data-type="logo" />`;
+          content = content.replace(/\{\{hotelLogo\}\}/g, logoTag);
+        }
+
+        // Replace signature variable with image tag if signature exists
+        if (images.signature && content.includes('{{signature}}')) {
+          const signatureTag = `<img src="${images.signature}" alt="signature" style="max-width: 200px; height: auto; margin: 10px 0;" data-type="signature" />`;
+          content = content.replace(/\{\{signature\}\}/g, signatureTag);
+        }
+
+        setTemplateContent(content);
+      } else if (response.status === 404) {
+        // No template exists yet, start with empty template
+        setTemplateId(null);
         setTemplateContent("");
+        setUploadedImages({});
+      } else {
+        toast({ title: "Error", description: "Failed to load template", variant: "destructive" });
+        setTemplateContent("");
+        setUploadedImages({});
+        setTemplateId(null);
       }
     } catch (error) {
       console.error("Error fetching template:", error);
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+      setTemplateContent("");
+      setUploadedImages({});
+      setTemplateId(null);
     }
 
     setTemplateModalOpen(true);
@@ -346,22 +386,74 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
     setSubmitting(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/accommodation/vendor-accommodations/${selectedVendorForTemplate.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${apiClient.getToken()}`,
-            "Content-Type": "application/json",
-            'X-Tenant-ID': tenantSlug
-          },
-          body: JSON.stringify({
-            accommodation_template: templateContent,
-          }),
-        }
-      );
+      // Replace image tags with variables before saving
+      let contentToSave = templateContent;
+
+      // Replace logo image with variable
+      if (uploadedImages.logo) {
+        contentToSave = contentToSave.replace(
+          new RegExp(`<img[^>]*src="${uploadedImages.logo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`, 'g'),
+          '{{hotelLogo}}'
+        );
+      }
+
+      // Replace signature image with variable
+      if (uploadedImages.signature) {
+        contentToSave = contentToSave.replace(
+          new RegExp(`<img[^>]*src="${uploadedImages.signature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`, 'g'),
+          '{{signature}}'
+        );
+      }
+
+      const payload = {
+        vendor_accommodation_id: selectedVendorForTemplate.id,
+        name: selectedVendorForTemplate.vendor_name,
+        description: `POA template for ${selectedVendorForTemplate.vendor_name}`,
+        template_content: contentToSave,
+        logo_url: uploadedImages.logo || null,
+        signature_url: uploadedImages.signature || null,
+        enable_qr_code: true,
+        is_active: true
+      };
+
+      let response;
+      if (templateId) {
+        // Update existing template
+        response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/poa-templates/${templateId}`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+              'X-Tenant-ID': tenantSlug
+            },
+            body: JSON.stringify({
+              template_content: contentToSave,
+              logo_url: uploadedImages.logo || null,
+              signature_url: uploadedImages.signature || null,
+            }),
+          }
+        );
+      } else {
+        // Create new template
+        response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/poa-templates/`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+              'X-Tenant-ID': tenantSlug
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+      }
 
       if (response.ok) {
+        const savedTemplate = await response.json();
+        setTemplateId(savedTemplate.id);
         await fetchData();
         setTemplateModalOpen(false);
         toast({
@@ -419,6 +511,84 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       console.error("Delete vendor error:", error);
       toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
     }
+  };
+
+  const handleUploadFile = async (file: File, type: 'logo' | 'signature') => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Error", description: "Image size must be less than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/upload-logo`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiClient.getToken()}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      const imageUrl = data.url;
+
+      // Store uploaded image URL
+      setUploadedImages(prev => ({ ...prev, [type]: imageUrl }));
+
+      // Update template content to replace variable with image tag
+      const variable = type === 'logo' ? '{{hotelLogo}}' : '{{signature}}';
+      const imageTag = `<img src="${imageUrl}" alt="${type}" style="max-width: 200px; height: auto; margin: 10px 0;" data-type="${type}" />`;
+
+      // Replace the variable with the image tag in the template
+      let updatedContent = templateContent;
+      if (templateContent.includes(variable)) {
+        updatedContent = templateContent.replace(
+          new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'),
+          imageTag
+        );
+        setTemplateContent(updatedContent);
+      }
+
+      toast({ title: "Success", description: `${type === 'logo' ? 'Logo' : 'Signature'} uploaded successfully` });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ title: "Error", description: "Failed to upload image", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = (type: 'logo' | 'signature') => {
+    const imageUrl = uploadedImages[type];
+
+    if (imageUrl) {
+      // Replace image tag with variable in template
+      const variable = type === 'logo' ? '{{hotelLogo}}' : '{{signature}}';
+      const updatedContent = templateContent.replace(
+        new RegExp(`<img[^>]*src="${imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>`, 'g'),
+        variable
+      );
+      setTemplateContent(updatedContent);
+    }
+
+    // Remove from uploaded images state
+    setUploadedImages(prev => {
+      const newState = { ...prev };
+      delete newState[type];
+      return newState;
+    });
+
+    toast({ title: "Success", description: `${type === 'logo' ? 'Logo' : 'Signature'} removed` });
   };
 
   if (loading) {
@@ -606,6 +776,124 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               </div>
               <h3 className="text-sm font-medium text-gray-900 mb-2">No vendor hotels yet</h3>
               <p className="text-xs text-gray-500 mb-4">Get started by adding your first vendor hotel partnership</p>
+              {canEdit && (
+                <div className="flex justify-center space-x-3">
+                  <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Vendor Hotel
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                      {/* Same modal content as above */}
+                      <button
+                        onClick={() => setAddVendorModalOpen(false)}
+                        className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                        <span className="sr-only">Close</span>
+                      </button>
+
+                      <div className="p-6 pb-4 border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <Hotel className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <DialogTitle className="text-xl font-bold text-gray-900">Add New Vendor Hotel</DialogTitle>
+                            <p className="text-gray-600 text-sm mt-1">Register a new accommodation partner</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <form onSubmit={handleAddVendor} className="flex-1 overflow-y-auto">
+                        <div className="p-6 space-y-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor_name" className="text-sm font-medium text-gray-700">
+                              Hotel Name <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="vendor_name"
+                              value={vendorForm.vendor_name}
+                              onChange={(e) => setVendorForm({ ...vendorForm, vendor_name: e.target.value })}
+                              required
+                              placeholder="Enter hotel or accommodation name"
+                              className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                              disabled={submitting}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                              Location <span className="text-red-500">*</span>
+                            </Label>
+                            <LocationSelect
+                              value={vendorForm.location}
+                              country={tenantData?.country}
+                              onChange={(value, placeDetails) => {
+                                setVendorForm({
+                                  ...vendorForm,
+                                  location: value,
+                                  latitude: placeDetails?.geometry?.location?.lat()?.toString() || "",
+                                  longitude: placeDetails?.geometry?.location?.lng()?.toString() || ""
+                                });
+                              }}
+                              placeholder="Search and select hotel location"
+                            />
+                            <p className="text-xs text-gray-500">Start typing to search for the location</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                              Description
+                            </Label>
+                            <RichTextEditor
+                              value={vendorForm.description}
+                              onChange={(value) => setVendorForm({ ...vendorForm, description: value })}
+                              placeholder="Describe the facilities, services, and amenities available at this accommodation..."
+                              height={250}
+                            />
+                            <p className="text-xs text-gray-500">
+                              Provide details about the accommodation facilities and services
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setAddVendorModalOpen(false)}
+                            disabled={submitting}
+                            className="px-6"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={submitting}
+                            className="px-6 bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            {submitting ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              <>
+                                <Save className="w-4 h-4 mr-2" />
+                                Create Vendor Hotel
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -615,7 +903,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                     <TableHead>Hotel Name</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Description</TableHead>
-                    {canEdit && <TableHead className="text-right">Actions</TableHead>}
+                    {canEdit && <TableHead className="text-right">Actions (POA Design, Generate, Edit, Delete)</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -633,10 +921,11 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDesignTemplate(vendor)}
-                              className="text-blue-600 hover:text-blue-700"
-                              title="Design POA Template"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Design Proof of Accommodation Template"
                             >
                               <FileEdit className="w-4 h-4" />
+                              <span className="sr-only">Design POA</span>
                             </Button>
                             <Button
                               variant="ghost"
@@ -724,7 +1013,15 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       />
 
       {/* POA Template Design Modal */}
-      <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
+      <Dialog open={templateModalOpen} onOpenChange={(open) => {
+        setTemplateModalOpen(open);
+        if (!open) {
+          setSelectedVendorForTemplate(null);
+          setUploadedImages({});
+          setTemplateContent("");
+          setTemplateId(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-[1000px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
           {/* Header */}
           <button
@@ -753,14 +1050,145 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Template Name */}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Template Name
+                </Label>
+                <Input
+                  value={selectedVendorForTemplate?.vendor_name || ""}
+                  disabled
+                  className="bg-gray-50"
+                />
+              </div>
+
+              {/* Upload sections */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Hotel Logo */}
+                <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Hotel className="w-4 h-4" />
+                      Hotel Logo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {uploadedImages.logo ? (
+                      <div className="relative">
+                        <img 
+                          src={uploadedImages.logo} 
+                          alt="Hotel Logo"
+                          className="w-full h-24 object-contain bg-gray-50 rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('logo')}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          title="Remove logo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-24 bg-gray-50 rounded border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                          <Hotel className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                          <p className="text-xs text-gray-400">Upload hotel logo</p>
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 border-green-200 text-green-700 font-medium transition-all duration-200"
+                    >
+                      <Upload className="w-3 h-3 mr-2" />
+                      {uploading ? 'Uploading...' : uploadedImages.logo ? 'Replace Logo' : 'Upload Logo'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Signature */}
+                <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileSignature className="w-4 h-4" />
+                      Signature
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {uploadedImages.signature ? (
+                      <div className="relative">
+                        <img 
+                          src={uploadedImages.signature} 
+                          alt="Signature"
+                          className="w-full h-24 object-contain bg-gray-50 rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('signature')}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          title="Remove signature"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-24 bg-gray-50 rounded border-2 border-dashed border-gray-200 flex items-center justify-center">
+                        <div className="text-center">
+                          <FileSignature className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                          <p className="text-xs text-gray-400">Upload signature</p>
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => signatureInputRef.current?.click()}
+                      disabled={uploading}
+                      className="w-full bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-blue-200 text-blue-700 font-medium transition-all duration-200"
+                    >
+                      <Upload className="w-3 h-3 mr-2" />
+                      {uploading ? 'Uploading...' : uploadedImages.signature ? 'Replace Signature' : 'Upload Signature'}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* QR Code */}
+                <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <QrCode className="w-4 h-4" />
+                      QR Code
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="h-24 bg-gray-50 rounded border-2 border-dashed border-gray-200 flex items-center justify-center">
+                      <div className="text-center">
+                        <QrCode className="w-6 h-6 text-gray-400 mx-auto mb-1" />
+                        <p className="text-xs text-gray-400">QR code will be auto-generated</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="include_qr" defaultChecked />
+                      <Label htmlFor="include_qr" className="text-xs">Include QR Code</Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Template Editor */}
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-2 block">
                   Template Design
                 </Label>
                 <p className="text-xs text-gray-500 mb-4">
-                  Use template variables like {`{{participantName}}`}, {`{{hotelName}}`}, {`{{checkInDate}}`}, etc.
-                  This template will be used to generate personalized proof documents for participants.
+                  Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, etc.
                 </p>
                 <AccommodationTemplateEditor
                   value={templateContent}
@@ -806,6 +1234,28 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Hidden file inputs */}
+      <input
+        ref={logoInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleUploadFile(file, 'logo');
+        }}
+        className="hidden"
+      />
+      <input
+        ref={signatureInputRef}
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleUploadFile(file, 'signature');
+        }}
+        className="hidden"
+      />
     </>
   );
 }

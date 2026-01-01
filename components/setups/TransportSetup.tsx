@@ -12,7 +12,7 @@ import { Loader2, Car, Save, Eye, EyeOff, CheckCircle2, XCircle, Key, Globe, Lin
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface TransportProvider {
   id?: number;
@@ -91,11 +91,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
       // Only show error if it's not a 404 (404 is expected when no config exists)
       if (error.message && !error.message.includes("not found")) {
         console.error("Error fetching config:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load transport configuration",
-          variant: "destructive"
-        });
+        toast.error("Failed to load transport configuration");
       }
     } finally {
       setLoading(false);
@@ -148,20 +144,13 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
         setConfig(response);
       }
 
-      toast({
-        title: "Success",
-        description: "Transport configuration saved successfully"
-      });
+      toast.success("Transport configuration saved successfully");
       
       // Refresh to get updated masked secrets
       await fetchConfig();
     } catch (error: any) {
       console.error("Error saving config:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save transport configuration",
-        variant: "destructive"
-      });
+      toast.error("Failed to save transport configuration");
     } finally {
       setSaving(false);
     }
@@ -183,20 +172,6 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
-              <Car className="h-5 w-5 text-primary" />
-            </div>
-            Transport Provider Setup
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure transport providers for booking services
-          </p>
-        </div>
-      </div>
 
       {/* Status Card */}
       <Card className={config.is_enabled ? "border-green-200 bg-green-50/30" : "border-muted"}>
@@ -362,32 +337,6 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
           {config.is_enabled && (
             <div className="space-y-4">
-              {/* Auto-Booking Information */}
-              <Alert className="border-blue-200 bg-blue-50/50">
-                <div className="flex gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Car className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Automatic Transport Booking Enabled</h4>
-                    <AlertDescription className="text-xs text-blue-800 space-y-1">
-                      <p>
-                        When enabled, transport is <strong>automatically booked</strong> when users confirm their flight itineraries on the mobile app.
-                      </p>
-                      <ul className="list-disc list-inside mt-2 space-y-0.5 ml-1">
-                        <li>Creates transport requests for both arrival and departure flights</li>
-                        <li>Automatically books with {TRANSPORT_PROVIDERS.find(p => p.value === selectedProvider)?.label} if configured</li>
-                        <li>Intelligently pools similar requests to optimize costs</li>
-                        <li>Falls back to manual booking if auto-booking fails</li>
-                      </ul>
-                      <p className="mt-2 text-blue-700">
-                        💡 <strong>Tip:</strong> When disabled, transport requests are still created but require manual driver assignment from the Transport Management page.
-                      </p>
-                    </AlertDescription>
-                  </div>
-                </div>
-              </Alert>
-
               {/* API Credentials Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

@@ -31,6 +31,7 @@ const TEMPLATE_VARIABLES = [
   { name: "eventLocation", label: "Event Location", description: "Location where event took place" },
   { name: "completionDate", label: "Completion Date", description: "Date of completion" },
   { name: "certificateDate", label: "Certificate Date", description: "Date certificate was issued" },
+  { name: "qrCode", label: "QR Code", description: "QR code that links to the certificate (auto-generated)" },
 ];
 
 const DEFAULT_TEMPLATE = `
@@ -176,11 +177,20 @@ export function CertificateTemplateEditor({
       const formData = new FormData();
       formData.append('file', file);
 
+      const token = apiClient.getToken();
+      if (!token) {
+        toast({ title: "Error", description: "Authentication required. Please log in again.", variant: "destructive" });
+        setUploading(false);
+        return;
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      console.log('Uploading logo with token:', token?.substring(0, 20) + '...');
+
       const response = await fetch(`${apiUrl}/api/v1/documents/upload-logo`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiClient.getToken()}`
+          'Authorization': `Bearer ${token}`
         },
         body: formData
       });

@@ -81,27 +81,34 @@ export default function DashboardPage() {
         mustChangePassword: user.mustChangePassword
       });
       
+      // Super admin users stay on main dashboard - check this FIRST
+      if (user.role === "super_admin" || user.role === "SUPER_ADMIN") {
+        console.log("✅ Super admin staying on main dashboard");
+        return;
+      }
+      
       // Check if user only has vetting roles (no other admin roles)
       const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
       const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
       
-      const hasAdminRole = adminRoles.includes(user.role?.toUpperCase());
-      const hasVettingRole = vettingRoles.includes(user.role?.toUpperCase());
+      const hasAdminRole = adminRoles.includes(user.role?.toUpperCase()) ||
+        (user.all_roles && user.all_roles.some(role => adminRoles.includes(role.toUpperCase())));
+      const hasVettingRole = vettingRoles.includes(user.role?.toUpperCase()) ||
+        (user.all_roles && user.all_roles.some(role => vettingRoles.includes(role.toUpperCase())));
       
-      if (!hasAdminRole && hasVettingRole && user.tenantId) {
+      if (!hasAdminRole && hasVettingRole) {
         // Vetting-only users go to events page
-        console.log("🔄 Redirecting vetting-only user to events:", `/tenant/${user.tenantId}/events`);
-        router.replace(`/tenant/${user.tenantId}/events`);
+        const targetTenant = user.tenantId || 'msf-oca'; // Default tenant for vetting users
+        console.log("🔄 Redirecting vetting-only user to events:", `/tenant/${targetTenant}/events`);
+        router.replace(`/tenant/${targetTenant}/events`);
         return;
       }
       
-      // Only redirect non-super-admin users to tenant dashboard
-      if (user.role !== "super_admin" && user.role !== "SUPER_ADMIN" && user.tenantId) {
-        console.log("🔄 Redirecting non-super-admin to tenant dashboard:", `/tenant/${user.tenantId}/dashboard`);
+      // Other admin users go to tenant dashboard
+      if (user.tenantId) {
+        console.log("🔄 Redirecting admin to tenant dashboard:", `/tenant/${user.tenantId}/dashboard`);
         router.replace(`/tenant/${user.tenantId}/dashboard`);
         return;
-      } else {
-        console.log("✅ Super admin staying on main dashboard");
       }
     }
   }, [loading, isAuthenticated, user, router]);

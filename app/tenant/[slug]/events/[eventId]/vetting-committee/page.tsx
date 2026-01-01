@@ -246,25 +246,35 @@ export default function VettingCommitteePage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <div className="w-full max-w-none mx-auto p-4 sm:p-6 lg:px-8 xl:px-12 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h1 className="text-xl sm:text-2xl font-bold">Vetting Committee for {eventName}</h1>
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900 mb-2">Vetting Committee</h1>
+                  <p className="text-sm text-gray-600">Manage vetting committee for {eventName}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {committee && !isEditing ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+            <Card className="text-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-base">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <CheckCircle className="w-4 h-4 text-green-500" />
                     Vetting Committee
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 relative z-10">
+                  <div className="flex flex-col sm:flex-row gap-1 relative z-10">
 
                     {canEdit(committee.status) && (
                       <>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={(e) => {
                             e.preventDefault();
@@ -277,24 +287,24 @@ export default function VettingCommitteePage() {
                               members: committee.members.map(m => ({ email: m.email, full_name: m.full_name }))
                             });
                           }}
-                          className="text-blue-600 border-blue-600 hover:bg-blue-50 pointer-events-auto w-full sm:w-auto"
+                          className="text-blue-600 hover:bg-blue-50 pointer-events-auto h-7 px-2 text-xs"
                           style={{ pointerEvents: 'auto' }}
                         >
-                          <Edit className="w-4 h-4 mr-1" />
+                          <Edit className="w-3 h-3 mr-1" />
                           Edit
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             deleteCommittee();
                           }}
-                          className="text-red-600 border-red-600 hover:bg-red-50 pointer-events-auto w-full sm:w-auto"
+                          className="text-red-600 hover:bg-red-50 pointer-events-auto h-7 px-2 text-xs"
                           style={{ pointerEvents: 'auto' }}
                         >
-                          <Trash2 className="w-4 h-4 mr-1" />
+                          <Trash2 className="w-3 h-3 mr-1" />
                           Delete
                         </Button>
 
@@ -302,54 +312,54 @@ export default function VettingCommitteePage() {
                     )}
                     {canCancelSubmission(committee.status) && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           cancelSubmission();
                         }}
-                        className="text-orange-600 border-orange-600 hover:bg-orange-50 pointer-events-auto w-full sm:w-auto"
+                        className="text-orange-600 hover:bg-orange-50 pointer-events-auto h-7 px-2 text-xs"
                         style={{ pointerEvents: 'auto' }}
                       >
-                        <X className="w-4 h-4 mr-1" />
+                        <X className="w-3 h-3 mr-1" />
                         Cancel Submission
                       </Button>
                     )}
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 text-xs">
                 <div>
-                  <Label className="font-medium">Selection Period</Label>
-                  <p className="text-sm text-gray-600">
+                  <Label className="font-medium text-xs">Selection Period</Label>
+                  <p className="text-xs text-gray-600">
                     {committee.selection_start_date ? new Date(committee.selection_start_date).toLocaleDateString() : 'Not set'} - {committee.selection_end_date ? new Date(committee.selection_end_date).toLocaleDateString() : 'Not set'}
                   </p>
                 </div>
                 
                 <div>
-                  <Label className="font-medium">Approver</Label>
-                  <p className="text-sm text-gray-600">{committee.approver_email}</p>
+                  <Label className="font-medium text-xs">Approver</Label>
+                  <p className="text-xs text-gray-600">{committee.approver_email}</p>
                 </div>
                 
                 <div>
-                  <Label className="font-medium">Committee Members</Label>
-                  <div className="mt-2 space-y-2">
+                  <Label className="font-medium text-xs">Committee Members</Label>
+                  <div className="mt-2 space-y-1">
                     {committee.members.map((member, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                        <Users className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm">{member.email}</span>
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
+                        <Users className="w-3 h-3 text-gray-500" />
+                        <span className="text-xs">{member.email}</span>
                         {member.full_name && (
-                          <span className="text-sm text-gray-500">({member.full_name})</span>
+                          <span className="text-xs text-gray-500">({member.full_name})</span>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="pt-3 border-t">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs text-gray-600">
                       Status: <span className={`font-medium ${
                         committee.status === 'open' ? 'text-blue-600' :
                         committee.status === 'pending_approval' ? 'text-orange-600' :
@@ -357,12 +367,12 @@ export default function VettingCommitteePage() {
                       }`}>{getStatusDisplay(committee.status)}</span>
                     </p>
                     {committee.submitted_at && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-gray-600">
                         Submitted: <span className="font-medium">{new Date(committee.submitted_at).toLocaleDateString()}</span>
                       </p>
                     )}
                     {committee.approved_at && (
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-gray-600">
                         Approved: <span className="font-medium">{new Date(committee.approved_at).toLocaleDateString()}</span>
                       </p>
                     )}
@@ -371,27 +381,28 @@ export default function VettingCommitteePage() {
               </CardContent>
             </Card>
           ) : showCreateForm ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{isEditing ? 'Edit Vetting Committee' : 'Create Vetting Committee'}</CardTitle>
+            <Card className="text-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{isEditing ? 'Edit Vetting Committee' : 'Create Vetting Committee'}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
 
 
                 <div>
-                  <Label htmlFor="approver_email" className="mb-2 block">Approver Email (Learning & Development) *</Label>
+                  <Label htmlFor="approver_email" className="mb-1 block text-xs font-medium">Approver Email (Learning & Development) *</Label>
                   <Input
                     id="approver_email"
                     type="email"
                     value={formData.approver_email}
                     onChange={(e) => setFormData(prev => ({ ...prev, approver_email: e.target.value }))}
                     placeholder="approver@example.com"
+                    className="text-xs"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <Label htmlFor="selection_start_date" className="mb-2 block">Selection Start Date *</Label>
+                    <Label htmlFor="selection_start_date" className="mb-1 block text-xs font-medium">Selection Start Date *</Label>
                     <Input
                       id="selection_start_date"
                       type="date"
@@ -399,10 +410,11 @@ export default function VettingCommitteePage() {
                       min={getDateConstraints().minStart}
                       max={getDateConstraints().maxStart}
                       onChange={(e) => setFormData(prev => ({ ...prev, selection_start_date: e.target.value }))}
+                      className="text-xs"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="selection_end_date" className="mb-2 block">Selection End Date *</Label>
+                    <Label htmlFor="selection_end_date" className="mb-1 block text-xs font-medium">Selection End Date *</Label>
                     <Input
                       id="selection_end_date"
                       type="date"
@@ -410,20 +422,21 @@ export default function VettingCommitteePage() {
                       min={getDateConstraints().minEnd}
                       max={getDateConstraints().maxEnd}
                       onChange={(e) => setFormData(prev => ({ ...prev, selection_end_date: e.target.value }))}
+                      className="text-xs"
                     />
                   </div>
                 </div>
 
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <Label className="block">Committee Members *</Label>
+                    <Label className="block text-xs font-medium">Committee Members *</Label>
                     <Button
                       type="button"
                       size="sm"
                       onClick={addMemberField}
-                      className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white h-7 px-3 text-xs"
                     >
-                      <Plus className="w-4 h-4 mr-1" />
+                      <Plus className="w-3 h-3 mr-1" />
                       Add Member
                     </Button>
                   </div>
@@ -436,22 +449,23 @@ export default function VettingCommitteePage() {
                           value={member.email}
                           onChange={(e) => updateMember(index, 'email', e.target.value)}
                           placeholder="member@example.com"
-                          className="flex-1"
+                          className="flex-1 text-xs"
                         />
                         <Input
                           value={member.full_name}
                           onChange={(e) => updateMember(index, 'full_name', e.target.value)}
                           placeholder="Member Name"
-                          className="flex-1"
+                          className="flex-1 text-xs"
                         />
                         {formData.members.length > 1 && (
                           <Button
                             type="button"
+                            variant="ghost"
                             size="sm"
                             onClick={() => removeMemberField(index)}
-                            className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+                            className="text-red-600 hover:bg-red-50 h-7 px-2 text-xs"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         )}
                       </div>
@@ -459,17 +473,17 @@ export default function VettingCommitteePage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2">
                   <Button
                     onClick={createCommittee}
                     disabled={creating}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-xs"
                   >
                     {creating ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Committee" : "Create Committee")}
                   </Button>
                   {isEditing && (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       onClick={() => {
                         setIsEditing(false);
                         setFormData({
@@ -479,9 +493,9 @@ export default function VettingCommitteePage() {
                           members: [{ email: "", full_name: "" }]
                         });
                       }}
-                      className="w-full sm:w-auto"
+                      className="text-xs"
                     >
-                      <X className="w-4 h-4 mr-1" />
+                      <X className="w-3 h-3 mr-1" />
                       Cancel
                     </Button>
                   )}

@@ -10,6 +10,7 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role: string;
+      all_roles?: string[];
       tenantId?: string;
       isActive: boolean;
       accessToken: string;
@@ -20,6 +21,7 @@ declare module "next-auth" {
 
   interface User extends DefaultUser {
     role?: string;
+    all_roles?: string[];
     tenantId?: string;
     isActive?: boolean;
     accessToken?: string;
@@ -36,6 +38,7 @@ declare module "next-auth/jwt" {
     isActive?: boolean;
     accessToken?: string;
     refreshToken?: string;
+    all_roles?: string[];
     accessTokenExpires?: number;
     firstLogin?: boolean;
     mustChangePassword?: boolean;

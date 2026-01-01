@@ -1,0 +1,100 @@
+{
+  "common": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "import": "استيراد",
+    "loading": "جارٍ التحميل...",
+    "error": "خطأ",
+    "success": "نجح",
+    "confirm": "تأكيد",
+    "yes": "نعم",
+    "no": "لا",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "submit": "إرسال",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي"
+  },
+  "navigation": {
+    "dashboard": "لوحة التحكم",
+    "events": "إدارة الأحداث",
+    "participants": "المشاركون",
+    "notifications": "الإشعارات",
+    "setups": "الإعدادات",
+    "inventory": "المخزون",
+    "transport": "النقل",
+    "accommodation": "الإقامة",
+    "news": "الأخبار والتحديثات",
+    "contacts": "جهات الاتصال المفيدة",
+    "systemSettings": "إعدادات النظام"
+  },
+  "settings": {
+    "title": "إعدادات النظام",
+    "subtitle": "قم بتخصيص تجربتك في البوابة",
+    "theme": {
+      "title": "مظهر السمة",
+      "subtitle": "اختر كيف تبدو البوابة لك",
+      "light": "فاتح",
+      "lightDescription": "واجهة نظيفة ومشرقة",
+      "dark": "داكن",
+      "darkDescription": "مريح للعينين",
+      "system": "النظام",
+      "systemDescription": "مطابقة إعدادات الجهاز"
+    },
+    "language": {
+      "title": "اللغة والمنطقة",
+      "subtitle": "حدد لغتك المفضلة",
+      "label": "لغة البوابة",
+      "comingSoon": "الدعم متعدد اللغات قريبًا",
+      "comingSoonDescription": "نحن نعمل على إضافة ترجمات كاملة باللغات الفرنسية والإسبانية والعربية إلى بوابة أطباء بلا حدود. سيتم حفظ اختيارك وتطبيقه تلقائيًا عند توفره."
+    },
+    "about": {
+      "title": "حول هذه الإعدادات",
+      "themePreference": "يتم حفظ تفضيلات السمة الخاصة بك محليًا وتستمر عبر الجلسات",
+      "systemTheme": "تتبدل سمة النظام تلقائيًا بين الفاتح والداكن بناءً على إعدادات جهازك",
+      "languageChanges": "ستطبق تغييرات اللغة على واجهة البوابة بالكامل عند التنفيذ الكامل"
+    }
+  },
+  "events": {
+    "title": "الأحداث",
+    "create": "إنشاء حدث",
+    "edit": "تعديل الحدث",
+    "delete": "حذف الحدث",
+    "details": "تفاصيل الحدث",
+    "participants": "المشاركون",
+    "agenda": "جدول الأعمال",
+    "certificates": "الشهادات والشارات",
+    "food": "الطعام والتموين",
+    "allocations": "التخصيصات",
+    "feedback": "التعليقات",
+    "status": "الحالة",
+    "startDate": "تاريخ البدء",
+    "endDate": "تاريخ الانتهاء",
+    "location": "الموقع",
+    "description": "الوصف"
+  },
+  "participants": {
+    "analytics": "تحليلات وإحصائيات المشاركين",
+    "showStats": "عرض الإحصائيات",
+    "hideStats": "إخفاء الإحصائيات",
+    "totalParticipants": "إجمالي المشاركين",
+    "selected": "المحددون",
+    "facilitators": "الميسرون",
+    "declined": "المرفوضون",
+    "byStatus": "حسب الحالة",
+    "byGender": "حسب الجنس",
+    "byRole": "حسب الدور",
+    "byOperationalCenter": "حسب المركز التشغيلي",
+    "topCountries": "أهم البلدان",
+    "genderDistribution": "توزيع الجنس حسب المركز التشغيلي"
+  }
+}

@@ -312,86 +312,64 @@ export default function AccommodationPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Modern Header Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-red-600 via-red-700 to-orange-600 rounded-2xl shadow-xl">
-          {/* Decorative Background Elements */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-          </div>
-
-          <div className="relative p-6 lg:p-8">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              {/* Title Section */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-white">Visitor Accommodations</h1>
-                    <p className="text-sm text-red-100 mt-0.5">Manage and track all visitor bookings and check-ins</p>
-                  </div>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="flex items-center gap-4 mt-4">
-                  <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
-                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                      <Users className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-white">{allocations.length}</div>
-                      <div className="text-xs text-red-100">Active Bookings</div>
-                    </div>
-                  </div>
+        {/* Header Section - Simplified like Vendor Hotels */}
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Visitor Accommodations</h1>
+                <p className="text-sm text-gray-600">Manage and track all visitor bookings and check-ins</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-gray-500">{allocations.length} Active Bookings</span>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <Button
-                  onClick={() => setShowBookingModal(true)}
-                  className="bg-white text-red-600 hover:bg-red-50 shadow-lg font-semibold h-12 px-6"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Book Guest House
-                </Button>
-                <Button
-                  onClick={handleRefreshAccommodations}
-                  disabled={refreshing}
-                  className="bg-white/10 backdrop-blur-sm text-white border-2 border-white/30 hover:bg-white/20 shadow-lg h-12 px-6"
-                >
-                  {refreshing ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Refresh
-                    </>
-                  )}
-                </Button>
-              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <Button
+                onClick={() => setShowBookingModal(true)}
+                className="bg-red-600 hover:bg-red-700 text-white shadow-lg font-medium h-10 px-4 text-sm"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Book Guest House
+              </Button>
+              <Button
+                onClick={handleRefreshAccommodations}
+                disabled={refreshing}
+                variant="outline"
+                className="border-gray-300 hover:bg-gray-50 h-10 px-4 text-sm"
+              >
+                {refreshing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Content Area */}
         {loading ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="text-center space-y-6">
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center space-y-4">
               <div className="relative inline-block">
-                <div className="animate-spin rounded-full h-20 w-20 border-4 border-red-100 border-t-red-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Users className="w-10 h-10 text-red-600 animate-pulse" />
+                  <Users className="w-6 h-6 text-red-600 animate-pulse" />
                 </div>
               </div>
               <div>
-                <p className="text-lg font-semibold text-gray-900">Loading accommodations...</p>
-                <p className="text-sm text-gray-500 mt-1">Please wait while we fetch the data</p>
+                <p className="text-base font-medium text-gray-900">Loading accommodations...</p>
+                <p className="text-sm text-gray-500">Please wait while we fetch the data</p>
               </div>
             </div>
           </div>

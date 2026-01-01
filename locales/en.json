@@ -1,0 +1,100 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "settings": "Settings",
+    "logout": "Logout",
+    "profile": "Profile"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "events": "Event Management",
+    "participants": "Participants",
+    "notifications": "Notifications",
+    "setups": "Setups",
+    "inventory": "Inventory",
+    "transport": "Transport",
+    "accommodation": "Accommodation",
+    "news": "News & Updates",
+    "contacts": "Useful Contacts",
+    "systemSettings": "System Settings"
+  },
+  "settings": {
+    "title": "System Settings",
+    "subtitle": "Customize your portal experience",
+    "theme": {
+      "title": "Theme Appearance",
+      "subtitle": "Choose how the portal looks to you",
+      "light": "Light",
+      "lightDescription": "Clean and bright interface",
+      "dark": "Dark",
+      "darkDescription": "Easy on the eyes",
+      "system": "System",
+      "systemDescription": "Match device settings"
+    },
+    "language": {
+      "title": "Language & Region",
+      "subtitle": "Select your preferred language",
+      "label": "Portal Language",
+      "comingSoon": "Multi-language Support Coming Soon",
+      "comingSoonDescription": "We're working on bringing full French, Spanish, and Arabic translations to the MSF Portal. Your selection will be saved and applied automatically when available."
+    },
+    "about": {
+      "title": "About These Settings",
+      "themePreference": "Your theme preference is saved locally and persists across sessions",
+      "systemTheme": "System theme automatically switches between light and dark based on your device settings",
+      "languageChanges": "Language changes will apply to the entire portal interface when fully implemented"
+    }
+  },
+  "events": {
+    "title": "Events",
+    "create": "Create Event",
+    "edit": "Edit Event",
+    "delete": "Delete Event",
+    "details": "Event Details",
+    "participants": "Participants",
+    "agenda": "Agenda",
+    "certificates": "Certificates & Badges",
+    "food": "Food & Catering",
+    "allocations": "Allocations",
+    "feedback": "Feedback",
+    "status": "Status",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "location": "Location",
+    "description": "Description"
+  },
+  "participants": {
+    "analytics": "Participant Analytics & Statistics",
+    "showStats": "Show Stats",
+    "hideStats": "Hide Stats",
+    "totalParticipants": "Total Participants",
+    "selected": "Selected",
+    "facilitators": "Facilitators",
+    "declined": "Declined",
+    "byStatus": "By Status",
+    "byGender": "By Gender",
+    "byRole": "By Role",
+    "byOperationalCenter": "By Operational Center",
+    "topCountries": "Top Countries",
+    "genderDistribution": "Gender Distribution by Operational Center"
+  }
+}

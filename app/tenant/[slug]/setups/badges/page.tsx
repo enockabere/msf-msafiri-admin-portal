@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth, useAuthenticatedApi } from '@/lib/auth'
-import { toast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import DashboardLayout from '@/components/layout/dashboard-layout'
 import Swal from 'sweetalert2'
 
@@ -40,11 +40,11 @@ interface BadgeTemplate {
 interface BadgeFormData {
   name: string
   description: string
+  template_content: string
   badge_size: 'small' | 'standard' | 'large'
   orientation: 'portrait' | 'landscape'
   enable_qr_code: boolean
   include_avatar: boolean
-  is_active: boolean
   contact_phone: string
   website_url: string
   logo_url: string
@@ -71,6 +71,7 @@ function BadgePreview({
   logoUrl: string
   avatarUrl: string
 }) {
+  console.log('BadgePreview component rendering with props:', { size, orientation, showQR, showAvatar });
   const getDimensions = () => {
     const sizes = {
       small: { portrait: { width: 200, height: 280 }, landscape: { width: 280, height: 200 } },
@@ -243,7 +244,7 @@ function BadgePreview({
                   textShadow: '0 2px 4px rgba(0,0,0,0.1)'
                 }}
               >
-                  {"{{eventName}}"}
+                {`{{eventTitle}}`}
               </h2>
               <p
                 className="text-white/90 font-medium"
@@ -252,7 +253,7 @@ function BadgePreview({
                   lineHeight: '1.3'
                 }}
               >
-                  {"{{eventDates}}"}
+                {`{{startDate}} - {{endDate}}`}
               </p>
             </div>
           </div>
@@ -279,7 +280,10 @@ function BadgePreview({
                   lineHeight: '1.2'
                 }}
               >
-                {"{{participantName}}"}
+                {(() => {
+                  console.log('Rendering participantName template variable');
+                  return `{{participantName}}`;
+                })()}
               </h3>
               <p
                 className="text-gray-600 text-center font-medium"
@@ -289,7 +293,7 @@ function BadgePreview({
                   marginBottom: `${(showAvatar ? 1 : 2) * scale}px`
                 }}
               >
-                {"{{participantRole}}"}
+                {`{{participantRole}}`}
               </p>
               <p
                 className="text-gray-500 text-center text-xs"
@@ -298,7 +302,7 @@ function BadgePreview({
                   lineHeight: '1.3'
                 }}
               >
-                {"{{tagline}}"}
+                {`{{badgeTagline}}`}
               </p>
             </div>
 
@@ -350,11 +354,13 @@ function BadgePreview({
 }
 
 export default function BadgeDesignPage() {
+  console.log('BadgeDesignPage component starting to render');
   const params = useParams()
   const tenantSlug = params.slug as string
   const { user, loading: authLoading } = useAuth()
   const { apiClient } = useAuthenticatedApi()
 
+  console.log('BadgeDesignPage: Initial state setup');
   const [templates, setTemplates] = useState<BadgeTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -365,20 +371,23 @@ export default function BadgeDesignPage() {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
+  console.log('BadgeDesignPage: Setting up formData state');
   // Form state for live preview
   const [formData, setFormData] = useState<BadgeFormData>({
     name: '',
     description: '',
+    template_content: '',
     badge_size: 'standard',
     orientation: 'portrait',
     enable_qr_code: true,
     include_avatar: false,
-    is_active: true,
     contact_phone: '',
     website_url: '',
     logo_url: '',
     avatar_url: ''
   })
+
+  console.log('BadgeDesignPage: formData initialized:', formData);
 
   const canEdit = Boolean(user?.role && ['super_admin', 'SUPER_ADMIN', 'mt_admin', 'hr_admin', 'event_admin'].includes(user.role))
 
@@ -408,12 +417,12 @@ export default function BadgeDesignPage() {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' })
+      toast.error('Please select an image file')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' })
+      toast.error('File size must be less than 5MB')
       return
     }
 
@@ -421,10 +430,10 @@ export default function BadgeDesignPage() {
     try {
       const { url } = await uploadToCloudinary(file)
       setFormData({ ...formData, logo_url: url })
-      toast({ title: 'Success', description: 'Logo uploaded successfully' })
+      toast.success('Logo uploaded successfully')
     } catch (error) {
       console.error('Logo upload error:', error)
-      toast({ title: 'Error', description: 'Failed to upload logo', variant: 'destructive' })
+      toast.error('Failed to upload logo')
     } finally {
       setUploading(false)
     }
@@ -435,12 +444,12 @@ export default function BadgeDesignPage() {
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' })
+      toast.error('Please select an image file')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' })
+      toast.error('File size must be less than 5MB')
       return
     }
 
@@ -464,10 +473,10 @@ export default function BadgeDesignPage() {
 
       const data = await response.json()
       setFormData(prev => ({ ...prev, avatar_url: data.url }))
-      toast({ title: 'Success', description: 'Avatar uploaded successfully' })
+      toast.success('Avatar uploaded successfully')
     } catch (error) {
       console.error('Avatar upload error:', error)
-      toast({ title: 'Error', description: 'Failed to upload avatar', variant: 'destructive' })
+      toast.error('Failed to upload avatar')
     } finally {
       setUploading(false)
     }
@@ -475,7 +484,7 @@ export default function BadgeDesignPage() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast({ title: 'Error', description: 'Template name is required', variant: 'destructive' })
+      toast.error('Template name is required')
       return
     }
 
@@ -484,10 +493,212 @@ export default function BadgeDesignPage() {
       const payload = {
         name: formData.name,
         description: formData.description,
+        template_content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Badge</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @media print {
+      body { margin: 0; padding: 0; }
+      @page { size: A4; margin: 0.5in; }
+      .badge { page-break-inside: avoid; }
+      * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .badge {
+      width: 280px;
+      height: 450px;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    /* Red background - absolute positioning covering exactly 273px */
+    .red-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 273px;
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      z-index: 0;
+    }
+    /* Hanging hole */
+    .hole {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 14px;
+      height: 14px;
+      background: white;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.1);
+      z-index: 30;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* Avatar at the red/white boundary - at exactly 273px */
+    .avatar {
+      position: absolute;
+      top: 273px;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: ${formData.include_avatar ? '60px' : '0'};
+      height: ${formData.include_avatar ? '60px' : '0'};
+      border-radius: 50%;
+      border: 4px solid white;
+      z-index: 20;
+      object-fit: cover;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      ${formData.include_avatar ? '' : 'display: none;'}
+    }
+    /* Top content section - relative positioning */
+    .top-section {
+      position: relative;
+      z-index: 10;
+      height: 273px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: ${formData.include_avatar ? '20px 20px 35px 20px' : '30px 20px'};
+      text-align: center;
+      color: white;
+    }
+    .logo-container {
+      margin-bottom: 10px;
+    }
+    .logo-container img {
+      max-width: 100px;
+      max-height: 70px;
+      object-fit: contain;
+    }
+    .event-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 10px 0 5px 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      line-height: 1.2;
+    }
+    .event-dates {
+      font-size: 10px;
+      opacity: 0.9;
+      line-height: 1.3;
+    }
+    /* Bottom content section - relative positioning, 177px (450 - 273) */
+    .bottom-section {
+      position: relative;
+      z-index: 10;
+      height: 177px;
+      background: white;
+      padding: ${formData.include_avatar ? '40px 20px 20px 20px' : '20px'};
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .participant-info {
+      text-align: center;
+      margin-top: ${formData.include_avatar ? '10px' : '0'};
+      flex: 1;
+    }
+    .participant-name {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1f2937;
+      margin: 0 0 5px 0;
+      line-height: 1.2;
+    }
+    .participant-role {
+      font-size: 11px;
+      color: #6b7280;
+      margin: 0 0 5px 0;
+    }
+    .badge-tagline {
+      font-size: 9px;
+      color: #9ca3af;
+      margin: 0;
+    }
+    .contact-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: auto;
+      padding-top: 10px;
+    }
+    .contact-info {
+      font-size: 8px;
+      color: #9ca3af;
+      line-height: 1.4;
+      flex: 1;
+    }
+    .qr-code {
+      width: 45px;
+      height: 45px;
+      border: 1px solid #d1d5db;
+      display: ${formData.enable_qr_code ? 'flex' : 'none'};
+      align-items: center;
+      justify-content: center;
+      font-size: 7px;
+      color: #6b7280;
+      background: #f9fafb;
+      margin-left: 10px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="badge">
+    <!-- Red background -->
+    <div class="red-bg"></div>
+
+    <!-- Hanging hole -->
+    <div class="hole"></div>
+
+    <!-- Avatar (only if include_avatar is true) -->
+    ${formData.include_avatar ? '{{participantAvatar}}' : ''}
+
+    <!-- Top section with logo and event info -->
+    <div class="top-section">
+      <div class="logo-container">{{logo}}</div>
+      <h2 class="event-title">{{eventTitle}}</h2>
+      <p class="event-dates">{{startDate}} - {{endDate}}</p>
+    </div>
+
+    <!-- Bottom section with participant info -->
+    <div class="bottom-section">
+      <div class="participant-info">
+        <h3 class="participant-name">{{participantName}}</h3>
+        <p class="participant-role">{{participantRole}}</p>
+        <p class="badge-tagline">{{badgeTagline}}</p>
+      </div>
+      <div class="contact-section">
+        <div class="contact-info">
+          ${formData.contact_phone || '+123 456 789'}<br/>
+          ${formData.website_url || 'www.msf.org'}
+        </div>
+        <div class="qr-code">QR</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
         badge_size: formData.badge_size,
         orientation: formData.orientation,
         enable_qr_code: formData.enable_qr_code,
-        is_active: formData.is_active,
+        is_active: true,
         contact_phone: formData.contact_phone,
         website_url: formData.website_url,
         logo_url: formData.logo_url,
@@ -519,10 +730,7 @@ export default function BadgeDesignPage() {
       }
 
       if (response.ok) {
-        toast({ 
-          title: 'Success', 
-          description: `Badge template ${editingTemplate ? 'updated' : 'created'} successfully` 
-        })
+        toast.success(`Badge template ${editingTemplate ? 'updated' : 'created'} successfully`)
         setModalOpen(false)
         resetForm()
         loadTemplates()
@@ -532,7 +740,7 @@ export default function BadgeDesignPage() {
       }
     } catch (error) {
       console.error('Template save error:', error)
-      toast({ title: 'Error', description: error.message || 'Failed to save template', variant: 'destructive' })
+      toast.error(error.message || 'Failed to save template')
     } finally {
       setSubmitting(false)
     }
@@ -591,14 +799,14 @@ export default function BadgeDesignPage() {
       })
 
       if (response.ok) {
-        toast({ title: 'Success', description: 'Template deleted successfully' })
+        toast.success('Template deleted successfully')
         loadTemplates()
       } else {
         throw new Error('Failed to delete template')
       }
     } catch (error) {
       console.error('Delete error:', error)
-      toast({ title: 'Error', description: 'Failed to delete template', variant: 'destructive' })
+      toast.error('Failed to delete template')
     }
   }
 
@@ -606,11 +814,11 @@ export default function BadgeDesignPage() {
     setFormData({
       name: '',
       description: '',
+      template_content: '',
       badge_size: 'standard',
       orientation: 'portrait',
       enable_qr_code: true,
       include_avatar: false,
-      is_active: true,
       contact_phone: '',
       website_url: '',
       logo_url: '',
@@ -640,14 +848,14 @@ export default function BadgeDesignPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-8 border border-gray-200 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Award className="w-7 h-7 text-white" />
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Award className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Badge Templates</h1>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Badge Templates</h1>
                 <p className="text-sm text-gray-600">Design and manage event badge templates with live preview</p>
               </div>
             </div>
@@ -657,8 +865,8 @@ export default function BadgeDesignPage() {
                 if (!open) resetForm()
               }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-2.5">
-                    <Plus className="w-5 h-5 mr-2" />
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 text-xs">
+                    <Plus className="w-4 h-4 mr-2" />
                     Create Template
                   </Button>
                 </DialogTrigger>
@@ -673,14 +881,14 @@ export default function BadgeDesignPage() {
 
                   <div className="p-6 pb-4 border-b border-gray-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <Award className="w-6 h-6 text-blue-600" />
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Award className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <DialogTitle className="text-xl font-bold text-gray-900">
+                        <DialogTitle className="text-lg font-bold text-gray-900">
                           {editingTemplate ? 'Edit Badge Template' : 'Create Badge Template'}
                         </DialogTitle>
-                        <p className="text-gray-600 text-sm mt-1">
+                        <p className="text-gray-600 text-xs mt-1">
                           Design a reusable badge template for events
                         </p>
                       </div>
@@ -691,10 +899,10 @@ export default function BadgeDesignPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* Form Section */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Template Settings</h3>
+                        <h3 className="text-base font-semibold text-gray-900 mb-3">Template Settings</h3>
 
                         <div>
-                          <Label htmlFor="name" className="text-sm font-medium text-gray-700">Template Name</Label>
+                          <Label htmlFor="name" className="text-xs font-medium text-gray-700">Template Name</Label>
                           <Input
                             id="name"
                             placeholder="Enter template name"
@@ -705,7 +913,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
+                          <Label htmlFor="description" className="text-xs font-medium text-gray-700">Description</Label>
                           <Input
                             id="description"
                             placeholder="Brief description of the badge template"
@@ -715,11 +923,13 @@ export default function BadgeDesignPage() {
                           />
                         </div>
 
+
+
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-sm font-medium text-gray-700">Badge Size</Label>
+                            <Label className="text-xs font-medium text-gray-700">Badge Size</Label>
                             <select
-                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-xs"
                               value={formData.badge_size}
                               onChange={(e) => setFormData({ ...formData, badge_size: e.target.value as 'small' | 'standard' | 'large' })}
                             >
@@ -729,9 +939,9 @@ export default function BadgeDesignPage() {
                             </select>
                           </div>
                           <div>
-                            <Label className="text-sm font-medium text-gray-700">Orientation</Label>
+                            <Label className="text-xs font-medium text-gray-700">Orientation</Label>
                             <select
-                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-xs"
                               value={formData.orientation}
                               onChange={(e) => setFormData({ ...formData, orientation: e.target.value as 'portrait' | 'landscape' })}
                             >
@@ -749,7 +959,7 @@ export default function BadgeDesignPage() {
                             checked={formData.enable_qr_code}
                             onChange={(e) => setFormData({ ...formData, enable_qr_code: e.target.checked })}
                           />
-                          <Label htmlFor="qr_code" className="text-sm text-gray-700">Include QR Code</Label>
+                          <Label htmlFor="qr_code" className="text-xs text-gray-700">Include QR Code</Label>
                         </div>
 
                         <div className="flex items-center space-x-2">
@@ -760,22 +970,11 @@ export default function BadgeDesignPage() {
                             checked={formData.include_avatar}
                             onChange={(e) => setFormData({ ...formData, include_avatar: e.target.checked })}
                           />
-                          <Label htmlFor="avatar" className="text-sm text-gray-700">Include Avatar</Label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id="active"
-                            className="rounded"
-                            checked={formData.is_active}
-                            onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                          />
-                          <Label htmlFor="active" className="text-sm text-gray-700">Active Template</Label>
+                          <Label htmlFor="avatar" className="text-xs text-gray-700">Include Avatar</Label>
                         </div>
 
                         <div>
-                          <Label htmlFor="contact_phone" className="text-sm font-medium text-gray-700">Contact Phone</Label>
+                          <Label htmlFor="contact_phone" className="text-xs font-medium text-gray-700">Contact Phone</Label>
                           <Input
                             id="contact_phone"
                             placeholder="+123 456 789"
@@ -786,7 +985,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="website_url" className="text-sm font-medium text-gray-700">Website URL</Label>
+                          <Label htmlFor="website_url" className="text-xs font-medium text-gray-700">Website URL</Label>
                           <Input
                             id="website_url"
                             placeholder="www.msf.org"
@@ -797,7 +996,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-sm font-medium text-gray-700">Logo</Label>
+                          <Label className="text-xs font-medium text-gray-700">Logo</Label>
                           {formData.logo_url ? (
                             <div className="relative">
                               <img 
@@ -847,7 +1046,7 @@ export default function BadgeDesignPage() {
 
                         {formData.include_avatar && (
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium text-gray-700">Avatar</Label>
+                            <Label className="text-xs font-medium text-gray-700">Avatar</Label>
                             {formData.avatar_url ? (
                               <div className="relative">
                                 <img 
@@ -900,7 +1099,7 @@ export default function BadgeDesignPage() {
                       {/* Preview Section */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-gray-900">Live Preview</h3>
+                          <h3 className="text-base font-semibold text-gray-900">Live Preview</h3>
                           <div className="text-xs text-gray-500">
                             {formData.badge_size.charAt(0).toUpperCase() + formData.badge_size.slice(1)} • {formData.orientation.charAt(0).toUpperCase() + formData.orientation.slice(1)}
                           </div>
@@ -920,7 +1119,7 @@ export default function BadgeDesignPage() {
                     
                     <div className="pt-6 border-t mt-6">
                       <div className="flex justify-end">
-                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-2.5" onClick={handleSubmit} disabled={submitting}>
+                        <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-2 text-xs" onClick={handleSubmit} disabled={submitting}>
                           <Save className="w-4 h-4 mr-2" />
                           {submitting ? 'Saving...' : (editingTemplate ? 'Update Template' : 'Create Template')}
                         </Button>
@@ -940,50 +1139,39 @@ export default function BadgeDesignPage() {
                 <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
                   <Award className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">No badge templates yet</h3>
-                <p className="text-xs text-gray-500 mb-4">Create your first badge template</p>
+                <h3 className="text-xs font-medium text-gray-900 mb-1">No badge templates yet</h3>
+                <p className="text-xs text-gray-500 mb-3">Create your first badge template</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Name</TableHead>
+                    <TableHead className="text-xs font-medium text-gray-700">Created</TableHead>
+                    <TableHead className="text-right text-xs font-medium text-gray-700">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {templates.map((template) => (
                     <TableRow key={template.id}>
-                      <TableCell className="font-medium">{template.name}</TableCell>
-                      <TableCell>{new Date(template.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        {template.is_active ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            Inactive
-                          </span>
-                        )}
-                      </TableCell>
+                      <TableCell className="font-medium text-xs">{template.name}</TableCell>
+                      <TableCell className="text-xs text-gray-600">{new Date(template.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
+                        <div className="flex justify-end space-x-1">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="h-7 px-2 text-xs"
                             onClick={() => {
                               setEditingTemplate(template)
                               setFormData({
                                 name: template.name || '',
                                 description: template.description || '',
+                                template_content: template.template_content || '',
                                 badge_size: template.badge_size as 'small' | 'standard' | 'large' || 'standard',
                                 orientation: template.orientation as 'portrait' | 'landscape' || 'portrait',
                                 enable_qr_code: template.enable_qr_code ?? true,
                                 include_avatar: template.include_avatar ?? false,
-                                is_active: template.is_active ?? true,
                                 contact_phone: template.contact_phone || '',
                                 website_url: template.website_url || '',
                                 logo_url: template.logo_url || '',
@@ -992,15 +1180,15 @@ export default function BadgeDesignPage() {
                               setModalOpen(true)
                             }}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3 w-3" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => handleDelete(template.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>

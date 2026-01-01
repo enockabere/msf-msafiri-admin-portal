@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { EmailTemplateEditor } from "@/components/ui/email-template-editor";
+import ParticipantAnalytics from "@/components/events/ParticipantAnalytics";
 import {
   Plus,
   Send,
@@ -104,6 +105,53 @@ interface VettingMode {
   onRegisteredCountChange?: (count: number) => void;
   onTotalCountChange?: (count: number) => void;
   onStatusChange?: (status: string) => void;
+}
+
+interface AccommodationData {
+  id: number;
+  guest_name: string;
+  guest_email: string;
+  check_in_date: string;
+  check_out_date: string;
+  accommodation_type: 'guesthouse' | 'vendor';
+  status: string;
+  event_id?: number;
+  event?: {
+    id: number;
+    title: string;
+  };
+  room_type?: 'single' | 'double';
+  room?: {
+    id: number;
+    room_number: string;
+    capacity: number;
+    current_occupants: number;
+    guesthouse: {
+      id: number;
+      name: string;
+      location?: string;
+    };
+  };
+  vendor_accommodation?: {
+    id: number;
+    vendor_name: string;
+    location: string;
+    roommate_name?: string;
+  };
+}
+
+interface TravelRequirement {
+  id: number;
+  country: string;
+  visa_required: boolean;
+  eta_required: boolean;
+  passport_required: boolean;
+  flight_ticket_required: boolean;
+  additional_requirements?: {
+    name: string;
+    required: boolean;
+    description?: string;
+  }[];
 }
 
 interface EventParticipantsProps {
@@ -305,7 +353,144 @@ function LOISection({ participant, eventId }: { participant: Participant; eventI
   );
 }
 
-// Certificate Component
+// Badge Component
+function BadgeSection({ participant, eventId }: { participant: Participant; eventId: number }) {
+  const { apiClient } = useAuthenticatedApi();
+  const [eventBadges, setEventBadges] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchEventBadges = async () => {
+    console.log('🔍 DEBUG: fetchEventBadges called');
+    console.log('🔍 DEBUG: eventId:', eventId, 'participantId:', participant.id);
+    
+    setLoading(true);
+    setError(null);
+    try {
+      // Check for badges assigned to this specific event using the correct endpoint
+      console.log('🔍 DEBUG: Calling badges endpoint...');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/badges`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`,
+            'x-tenant-id': window.location.pathname.split('/')[2] // Get tenant from URL
+          },
+        }
+      );
+      
+      console.log('🔍 DEBUG: Badge response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 DEBUG: Badge response data:', data);
+        
+        // The response should be an array of badges
+        const badges = Array.isArray(data) ? data : [];
+        
+        // Fetch badge template details to log template content
+        for (const badge of badges) {
+          try {
+            const templateResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/v1/badge-templates/${badge.badge_template_id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${apiClient.getToken()}`,
+                  'x-tenant-id': window.location.pathname.split('/')[2]
+                },
+              }
+            );
+            if (templateResponse.ok) {
+              const templateData = await templateResponse.json();
+              console.log('=== BADGE TEMPLATE CONTENT (RAW) ===');
+              console.log('Template ID:', templateData.id);
+              console.log('Template Name:', templateData.name);
+              console.log('Template Content:');
+              console.log(templateData.template_content);
+              console.log('=== END BADGE TEMPLATE ===');
+            }
+          } catch (error) {
+            console.error('Failed to fetch template details:', error);
+          }
+        }
+        
+        setEventBadges(badges);
+        if (badges.length === 0) {
+          setError('No badges assigned to this event');
+        }
+      } else {
+        console.log('🔍 DEBUG: Badge response not ok:', response.status, response.statusText);
+        setError('No badges found for this event');
+      }
+    } catch (error) {
+      console.error('🔍 DEBUG: Badge fetch error:', error);
+      setError('Failed to fetch event badges');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateBadge = async (badgeId: number) => {
+    try {
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/badges/${badgeId}/generate/${participant.id}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      setError('Failed to generate badge');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {eventBadges.length === 0 && !loading && !error && (
+        <Button
+          onClick={() => {
+            console.log('🔥 BUTTON CLICKED: Check Badges button was clicked!');
+            fetchEventBadges();
+          }}
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Award className="h-4 w-4 mr-2" />
+          Check Badges
+        </Button>
+      )}
+      
+      {loading && (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          <span className="text-sm text-gray-600">Loading badges...</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="text-sm text-gray-500">
+          {error}
+        </div>
+      )}
+      
+      {eventBadges.length > 0 && (
+        <div className="space-y-2">
+          {eventBadges.map((badge, index) => (
+            <div key={index} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-blue-900">Event Badge</p>
+                <p className="text-xs text-blue-700">Badge ID: {badge.id}</p>
+              </div>
+              <Button
+                onClick={() => generateBadge(badge.id)}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 function CertificateSection({ participant, eventId }: { participant: Participant; eventId: number }) {
   const [certificate, setCertificate] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -396,6 +581,8 @@ function CertificateSection({ participant, eventId }: { participant: Participant
   );
 }
 
+
+
 export default function EventParticipants({
   eventId,
   roleFilter,
@@ -406,6 +593,7 @@ export default function EventParticipants({
 }: EventParticipantsProps) {
   const { apiClient } = useAuthenticatedApi();
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newParticipant, setNewParticipant] = useState({
     full_name: "",
@@ -433,9 +621,7 @@ export default function EventParticipants({
   const [processingBulkRole, setProcessingBulkRole] = useState(false);
   const [updatingRoleId, setUpdatingRoleId] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-  const [participantComments, setParticipantComments] = useState<Record<number, string>>({});
   const [submittingVetting, setSubmittingVetting] = useState(false);
-  const [vettingSubmitted, setVettingSubmitted] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
   const [availableColumns, setAvailableColumns] = useState<Record<string, string>>({});
   const [showColumnSelector, setShowColumnSelector] = useState(false);
@@ -480,6 +666,7 @@ The Event Organization Team`);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [vettingApproved, setVettingApproved] = useState(false);
   const [committeeStatus, setCommitteeStatus] = useState<string | null>(null);
+  const [participantComments, setParticipantComments] = useState<Record<number, string>>({});
   
   // Update vetting mode based on committee status
   const normalizeStatus = (status: string | undefined) => {
@@ -1000,8 +1187,19 @@ The Event Organization Team`);
     }, [participant.id, participant.email, participant.status, eventId, apiClient, participant.travelling_internationally, participant.travellingInternationally, participant.travelling_from_country]);
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl">
+      <div
+        className="fixed inset-0 bg-black bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        onClick={(e) => {
+          // Close panel if clicking on backdrop
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div
+          className="bg-white w-full max-w-7xl max-h-[90vh] overflow-y-auto rounded-lg shadow-xl modal-scrollbar"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="p-6">
             {/* Feedback Message */}
             {feedbackMessage && (
@@ -1525,22 +1723,34 @@ The Event Organization Team`);
                       )}
                     </div>
                   </div>
-                  <div>
-                    <span className="font-medium text-gray-700 block mb-2">
-                      Letter of Invitation (LOI):
-                    </span>
-                    <div className="bg-white p-4 rounded-lg border">
-                      <LOISection participant={participant} eventId={eventId} />
-                    </div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700 block mb-2">
-                      Certificates:
-                    </span>
-                    <div className="bg-white p-4 rounded-lg border">
-                      <CertificateSection participant={participant} eventId={eventId} />
-                    </div>
-                  </div>
+                  {participant.status?.toLowerCase() === 'confirmed' && (
+                    <>
+                      <div>
+                        <span className="font-medium text-gray-700 block mb-2">
+                          Letter of Invitation (LOI):
+                        </span>
+                        <div className="bg-white p-4 rounded-lg border">
+                          <LOISection participant={participant} eventId={eventId} />
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700 block mb-2">
+                          Badges:
+                        </span>
+                        <div className="bg-white p-4 rounded-lg border">
+                          <BadgeSection participant={participant} eventId={eventId} />
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700 block mb-2">
+                          Certificates:
+                        </span>
+                        <div className="bg-white p-4 rounded-lg border">
+                          <CertificateSection participant={participant} eventId={eventId} />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {/* Travel Requirements & Checklist Status */}
                   {((participant.travelling_internationally && participant.travelling_internationally.toLowerCase() === 'yes') || 
                     (participant.travellingInternationally && participant.travellingInternationally.toLowerCase() === 'yes')) && 
@@ -2273,8 +2483,7 @@ The Event Organization Team`);
             'full_name': 'Name',
             'email': 'Email',
             'status': 'Status',
-            'participant_role': 'Role',
-            'role': 'Role',
+            'role': 'Role', // Use single role column
             'oc': 'OC',
             'position': 'Position',
             'country_of_work': 'Country of Work'
@@ -2294,6 +2503,9 @@ The Event Organization Team`);
               defaultVisible[key] = true;
             }
           });
+          
+          // Remove participant_role from allFields to prevent duplicate role columns
+          allFields.delete('participant_role');
           
           // Also fetch form responses to detect dynamic form fields
           try {
@@ -2984,6 +3196,125 @@ The Event Organization Team`);
     setViewingParticipant(participant);
   };
 
+  // Comments Modal Component
+  const CommentsModal = () => {
+    if (!viewingParticipant || !showCommentsModal) return null;
+
+    const handleSaveComment = async () => {
+      if (!modalComment.trim()) return;
+      
+      try {
+        const currentParticipant = participants.find(p => p.id === viewingParticipant.id);
+        if (!currentParticipant) return;
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${viewingParticipant.id}/status`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ 
+              status: currentParticipant.status,
+              comments: modalComment.trim(),
+              suppress_email: true
+            }),
+          }
+        );
+
+        if (response.ok) {
+          setParticipants(prev => prev.map(p => 
+            p.id === viewingParticipant.id 
+              ? { ...p, vetting_comments: modalComment.trim() }
+              : p
+          ));
+          
+          if (viewingParticipant) {
+            setViewingParticipant({
+              ...viewingParticipant,
+              vetting_comments: modalComment.trim()
+            });
+          }
+        }
+      } catch (error) {
+        // Silent error handling
+      }
+      
+      setShowCommentsModal(false);
+      setModalComment('');
+    };
+
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+        onClick={(e) => {
+          // Close modal if clicking on backdrop
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowCommentsModal(false);
+            setModalComment('');
+          }
+        }}
+      >
+        <div
+          className="bg-white rounded-lg p-6 w-96 max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-lg font-semibold mb-4">Comments for {viewingParticipant.full_name}</h3>
+          
+          {viewingParticipant.vetting_comments && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Existing Comments:</label>
+              <div className="bg-gray-50 p-3 rounded border text-sm">
+                {viewingParticipant.vetting_comments}
+              </div>
+            </div>
+          )}
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Add Comment:</label>
+            <input
+              type="text"
+              value={modalComment}
+              onChange={(e) => setModalComment(e.target.value)}
+              placeholder="Enter your comment..."
+              className="w-full h-24 p-3 border border-gray-300 rounded focus:border-blue-500 focus:outline-none text-sm"
+              maxLength={500}
+              autoFocus
+            />
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCommentsModal(false);
+                setModalComment('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSaveComment();
+              }}
+              disabled={!modalComment.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Save Comment
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
 
   return (
@@ -3020,39 +3351,19 @@ The Event Organization Team`);
         </div>
       )}
 
-      {/* Vetting Mode Read-Only Indicator */}
-      {effectiveVettingMode && !effectiveVettingMode.canEdit && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-blue-800">
-                {(() => {
-                  const getStatusDisplay = (status: string) => {
-                    if (status === 'pending_approval') return 'Pending Approval';
-                    if (status === 'approved') return 'Approved';
-                    return 'Open';
-                  };
-                  
-                  if (effectiveVettingMode.submissionStatus === 'approved') {
-                    return 'Vetting approved - View only mode';
-                  } else if (effectiveVettingMode.isVettingCommittee) {
-                    return `Read-only: Committee members can only edit when status is Open (current: ${getStatusDisplay(effectiveVettingMode.submissionStatus || 'open')})`;
-                  } else if (effectiveVettingMode.isVettingApprover) {
-                    return `Read-only: Approvers can only edit when status is Pending Approval (current: ${getStatusDisplay(effectiveVettingMode.submissionStatus || 'open')})`;
-                  } else {
-                    return 'Read-only: Cannot edit participants during this phase';
-                  }
-                })()}
-              </p>
-            </div>
-          </div>
-        </div>
+
+
+      {/* Analytics Dashboard */}
+      {participants.length > 0 && (
+        <ParticipantAnalytics 
+          participants={participants} 
+          onExpandedChange={setAnalyticsExpanded}
+        />
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      {!analyticsExpanded && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-gray-900">
             {roleFilter ? `Event ${roleFilter}s` : "Event Participants"}
@@ -3074,7 +3385,7 @@ The Event Organization Team`);
             )}
             {committeeStatus && filteredParticipants.length > 0 && (
               <span className="ml-2">
-                • Vetting Status: 
+                • Vetting Status:
                 <Badge className={`ml-1 text-xs ${getCommitteeStatusDisplay(committeeStatus).color}`}>
                   {getCommitteeStatusDisplay(committeeStatus).text}
                 </Badge>
@@ -3246,7 +3557,6 @@ The Event Organization Team`);
             </Button>
           )}
         </div>
-      </div>
 
       {showAddForm && allowAdminAdd && (
         <div className="bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-xl p-6 space-y-4 mb-6 shadow-sm">
@@ -3371,21 +3681,41 @@ The Event Organization Team`);
                 }
                 
                 if (key === 'status') {
-                  return (
+                  return effectiveVettingMode && !effectiveVettingMode.canEdit ? (
                     <Badge className={`text-xs px-2 py-0.5 ${getStatusColor(participant.status)}`}>
                       {participant.status.replace("_", " ").toUpperCase()}
                     </Badge>
+                  ) : (
+                    <Select
+                      value={participant.status}
+                      onValueChange={(value) => handleStatusChange(participant.id, value)}
+                      disabled={eventHasEnded}
+                    >
+                      <SelectTrigger className="w-24 h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="selected">Selected</SelectItem>
+                        <SelectItem value="not_selected">Not Selected</SelectItem>
+                        <SelectItem value="waiting">Waiting</SelectItem>
+                        <SelectItem value="canceled">Canceled</SelectItem>
+                        <SelectItem value="declined">Declined</SelectItem>
+                        <SelectItem value="attended">Attended</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   );
                 }
                 
-                if (key === 'participant_role' || key === 'role') {
+                if (key === 'role') {
+                  const roleValue = participant.participant_role || participant.role || "visitor";
                   return effectiveVettingMode && !effectiveVettingMode.canEdit ? (
                     <Badge className="text-xs px-2 py-0.5 bg-gray-100 text-gray-700">
-                      {(participant.participant_role || participant.role || "visitor").toUpperCase()}
+                      {roleValue.toUpperCase()}
                     </Badge>
                   ) : (
                     <Select
-                      value={participant.participant_role || participant.role || "visitor"}
+                      value={roleValue}
                       onValueChange={(value) => handleRoleChange(participant.id, value)}
                       disabled={eventHasEnded || updatingRoleId === participant.id}
                     >
@@ -3472,28 +3802,6 @@ The Event Organization Team`);
                 if (key === 'actions') {
                   return (
                     <div className="flex items-center gap-1">
-                      <LOIQuickAccess participant={participant} eventId={eventId} />
-                      {effectiveVettingMode && effectiveVettingMode.isVettingApprover && vettingApproved && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full" title="Email sent"></div>
-                          {!eventHasEnded && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleResendInvitation(participant.id)}
-                              disabled={resendingId === participant.id}
-                              className="h-7 px-2 text-xs border-blue-300 text-blue-700 hover:bg-blue-50"
-                              title="Resend notification email"
-                            >
-                              {resendingId === participant.id ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
-                              ) : (
-                                <Mail className="h-3 w-3" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      )}
                       {(!effectiveVettingMode || effectiveVettingMode.isVettingApprover) &&
                         participant.status === "selected" &&
                         participant.email &&
@@ -3666,8 +3974,7 @@ The Event Organization Team`);
       </div>
 
       {/* Vetting Committee Submit Button */}
-      {vettingMode && vettingMode.isVettingCommittee && filteredParticipants.length > 0 && 
-       effectiveVettingMode?.submissionStatus === 'open' && (
+      {vettingMode && vettingMode.isVettingCommittee && filteredParticipants.length > 0 && (
         <div className="mt-6 p-4 border-2 rounded-lg bg-blue-50 border-blue-200">
           <div className="flex items-center justify-between">
             <div>
@@ -3678,57 +3985,59 @@ The Event Organization Team`);
                 Review all participants and submit for approval when ready.
               </p>
             </div>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
-              disabled={submittingVetting}
-              onClick={async () => {
-                setSubmittingVetting(true);
-                try {
-                  // Submit vetting for approval
-                  const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/submit`,
-                    {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${apiClient.getToken()}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                        event_id: eventId,
-                        submitted_by: 'vetting_committee'
-                      })
-                    }
-                  );
-                  
-                  if (response.ok) {
-                    // Update committee status immediately
-                    setCommitteeStatus('pending_approval');
+            {effectiveVettingMode?.submissionStatus === 'open' ? (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                disabled={submittingVetting}
+                onClick={async () => {
+                  setSubmittingVetting(true);
+                  try {
+                    const response = await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/vetting/submit`,
+                      {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${apiClient.getToken()}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          event_id: eventId,
+                          submitted_by: 'vetting_committee'
+                        })
+                      }
+                    );
                     
-                    // Notify parent component about status change
-                    if (vettingMode?.onStatusChange) {
-                      vettingMode.onStatusChange('pending_approval');
+                    if (response.ok) {
+                      setCommitteeStatus('pending_approval');
+                      if (vettingMode?.onStatusChange) {
+                        vettingMode.onStatusChange('pending_approval');
+                      }
+                      showFeedback('success', 'Vetting submitted for approval! Approver has been notified.');
+                    } else {
+                      const errorData = await response.json().catch(() => ({}));
+                      showFeedback('error', errorData.detail || 'Failed to submit vetting. Please try again.');
                     }
-                    showFeedback('success', 'Vetting submitted for approval! Approver has been notified.');
-                  } else {
-                    const errorData = await response.json().catch(() => ({}));
-                    showFeedback('error', errorData.detail || 'Failed to submit vetting. Please try again.');
+                  } catch (error) {
+                    showFeedback('error', 'Network error. Please try again.');
+                  } finally {
+                    setSubmittingVetting(false);
                   }
-                } catch (error) {
-                  showFeedback('error', 'Network error. Please try again.');
-                } finally {
-                  setSubmittingVetting(false);
-                }
-              }}
-            >
-              {submittingVetting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Submitting...
-                </>
-              ) : (
-                'Submit for Approval'
-              )}
-            </Button>
+                }}
+              >
+                {submittingVetting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit for Approval'
+                )}
+              </Button>
+            ) : (
+              <div className="text-xs text-gray-500">
+                Cannot submit - Status: {effectiveVettingMode?.submissionStatus || 'undefined'}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3778,6 +4087,7 @@ The Event Organization Team`);
                     eventTitle=""
                     placeholder="Dear participant, you have been selected..."
                     height={300}
+                    registrationUrl=""
                   />
                 </div>
                 <div className="flex gap-2">
@@ -4057,6 +4367,8 @@ The Event Organization Team`);
               )}
             </Button>
           </div>
+        </div>
+      )}
         </div>
       )}
 

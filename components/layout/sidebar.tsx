@@ -110,8 +110,15 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
   const isVettingCommitteeOnly = userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && !hasRealAdminRoles;
   const isApproverOnly = userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && !hasRealAdminRoles;
 
-  // For vetting users only (no admin roles), show limited menu
+  // For vetting users only (no admin roles), show same menu for both committee and approver
   if (isVettingCommitteeOnly || isApproverOnly) {
+    sections.push({
+      title: "Overview",
+      items: [
+        { icon: Home, label: "Dashboard", href: "/dashboard", badge: null },
+      ],
+    });
+
     sections.push({
       title: "Operations",
       items: [
@@ -270,6 +277,14 @@ const getNavigationItems = (userRoles: string[], isAdmin: boolean, isTenantAdmin
   sections.push({
     title: "Communication",
     items: communicationItems,
+  });
+
+  // System Settings - Available to all users
+  sections.push({
+    title: "System",
+    items: [
+      { icon: Settings, label: "System Settings", href: "/settings", badge: null },
+    ],
   });
 
   // User Management - Only for Super Admin or Tenant Admin (owner) (moved down before System)
@@ -456,6 +471,7 @@ export default function Sidebar({
                 item.href === '/travel-requirements' ? `/tenant/${tenantSlug}/travel-requirements` :
                 item.href === '/transport-setup' ? `/tenant/${tenantSlug}/transport-setup` :
                 item.href === '/guest-house-setup' ? `/tenant/${tenantSlug}/guest-house-setup` :
+                item.href === '/settings' ? `/tenant/${tenantSlug}/settings` :
                 item.href,
           children: (item as any).children ? (item as any).children.map((child: any) => ({
             ...child,
@@ -526,8 +542,8 @@ export default function Sidebar({
       <div
         className={cn(
           "text-white transition-all duration-300 flex flex-col shadow-2xl relative z-50 h-screen",
-          "border-r border-red-700/50",
-          "bg-[#ee0000]",
+          "border-r border-red-700/50 dark:border-red-900/50",
+          "bg-[#ee0000] dark:bg-[#990000]",
           isMobile
             ? "fixed left-0 top-0 h-full w-80"
             : collapsed
@@ -536,7 +552,7 @@ export default function Sidebar({
         )}
       >
         {/* Header */}
-        <div className="p-4 lg:p-6 border-b border-red-700/50 bg-black/10">
+        <div className="p-4 lg:p-6 border-b border-red-700/50 dark:border-red-900/50 bg-black/10 dark:bg-black/20">
           <div className="flex items-center justify-between">
             {/* Logo and Title - Hidden when collapsed */}
             {(!collapsed || isMobile) && (
@@ -604,7 +620,7 @@ export default function Sidebar({
 
         {/* User Info */}
         {(!collapsed || isMobile) && (
-          <div className="p-4 border-b border-red-700/50 bg-black/10">
+          <div className="p-4 border-b border-red-700/50 dark:border-red-900/50 bg-black/10 dark:bg-black/20">
             {authLoading || userDataLoading ? (
               <div className="animate-pulse">
                 <div className="flex items-center space-x-3">
@@ -1046,7 +1062,7 @@ export default function Sidebar({
         </div>
 
         {/* Footer with Logout */}
-        <div className="p-4 border-t border-red-700/50 bg-black/10">
+        <div className="p-4 border-t border-red-700/50 dark:border-red-900/50 bg-black/10 dark:bg-black/20">
           {collapsed && !isMobile ? (
             <Tooltip content="Sign Out">
               <Button

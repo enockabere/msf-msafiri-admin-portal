@@ -358,21 +358,6 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
   return (
     <div className="space-y-4">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-1.5 bg-primary/10 rounded-lg">
-              <Plane className="h-5 w-5 text-primary" />
-            </div>
-            Travel Requirements
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Configure travel requirements for visitors traveling to {tenantCountry || "your base country"}
-          </p>
-        </div>
-      </div>
-
       {/* Base Country Info */}
       {tenantCountry && (
         <Card className="border-primary/20 bg-primary/5">

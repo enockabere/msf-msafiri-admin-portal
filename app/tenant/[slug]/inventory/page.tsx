@@ -244,25 +244,28 @@ export default function InventoryPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-medium text-gray-900 mb-1">
-              Stationary & Equipment
-            </h1>
-            <p className="text-xs text-gray-600">
-              Manage your inventory items efficiently
-            </p>
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Stationary & Equipment</h1>
+                <p className="text-sm text-gray-600">Manage your inventory items efficiently and track equipment status</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                setShowModal(true);
+                setEditingItem(null);
+              }}
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Item
+            </Button>
           </div>
-          <Button
-            onClick={() => {
-              setShowModal(true);
-              setEditingItem(null);
-            }}
-            className="bg-red-600 hover:bg-red-700 text-white text-xs"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            Add New Item
-          </Button>
         </div>
 
         <Card>
@@ -311,26 +314,39 @@ export default function InventoryPage() {
 
             {loading ? (
               <div className="text-center py-12">
-                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Package className="w-10 h-10 text-gray-400 animate-pulse" />
+                <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Package className="w-8 h-8 text-white animate-pulse" />
                 </div>
-                <p className="text-xs font-medium text-gray-600">Loading inventory...</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">Loading inventory...</h3>
+                <p className="text-xs text-gray-600">Please wait while we fetch your items</p>
               </div>
             ) : items.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Package className="w-10 h-10 text-gray-400" />
+                <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Package className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">
+                <h3 className="text-base font-semibold text-gray-900 mb-2">
                   {searchTerm || categoryFilter !== "all"
                     ? "No items found"
                     : "No inventory items yet"}
                 </h3>
-                <p className="text-xs text-gray-500 mb-4">
+                <p className="text-xs text-gray-600 mb-4">
                   {searchTerm || categoryFilter !== "all"
                     ? "Try adjusting your search or filters"
                     : "Get started by adding your first inventory item"}
                 </p>
+                {(!searchTerm && categoryFilter === "all") && (
+                  <Button
+                    onClick={() => {
+                      setShowModal(true);
+                      setEditingItem(null);
+                    }}
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add First Item
+                  </Button>
+                )}
               </div>
             ) : (
               <>
@@ -383,71 +399,71 @@ export default function InventoryPage() {
                   </TableBody>
                 </Table>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
-                    <div className="text-xs text-gray-600">
-                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="text-xs"
-                      >
-                        <ChevronLeft className="w-3 h-3 mr-1" />
-                        Previous
-                      </Button>
-
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                          .filter((page) => {
-                            if (totalPages <= 7) return true;
-                            if (page === 1 || page === totalPages) return true;
-                            if (page >= currentPage - 1 && page <= currentPage + 1) return true;
-                            return false;
-                          })
-                          .map((page, index, array) => {
-                            const prevPage = array[index - 1];
-                            const showEllipsis = prevPage && page - prevPage > 1;
-
-                            return (
-                              <div key={page} className="flex items-center gap-1">
-                                {showEllipsis && (
-                                  <span className="text-gray-400 px-1">...</span>
-                                )}
-                                <Button
-                                  variant={currentPage === page ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setCurrentPage(page)}
-                                  className={`w-8 h-8 p-0 text-xs ${
-                                    currentPage === page
-                                      ? "bg-red-600 hover:bg-red-700 text-white"
-                                      : ""
-                                  }`}
-                                >
-                                  {page}
-                                </Button>
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className="text-xs"
-                      >
-                        Next
-                        <ChevronRight className="w-3 h-3 ml-1" />
-                      </Button>
-                    </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+                  <div className="text-xs text-gray-600">
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="text-xs"
+                    >
+                      <ChevronLeft className="w-3 h-3 mr-1" />
+                      Previous
+                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          if (totalPages <= 7) return true;
+                          if (page === 1 || page === totalPages) return true;
+                          if (page >= currentPage - 1 && page <= currentPage + 1) return true;
+                          return false;
+                        })
+                        .map((page, index, array) => {
+                          const prevPage = array[index - 1];
+                          const showEllipsis = prevPage && page - prevPage > 1;
+
+                          return (
+                            <div key={page} className="flex items-center gap-1">
+                              {showEllipsis && (
+                                <span className="text-gray-400 px-1">...</span>
+                              )}
+                              <Button
+                                variant={currentPage === page ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setCurrentPage(page)}
+                                className={`w-8 h-8 p-0 text-xs ${
+                                  currentPage === page
+                                    ? "bg-red-600 hover:bg-red-700 text-white"
+                                    : ""
+                                }`}
+                              >
+                                {page}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="text-xs"
+                    >
+                      Next
+                      <ChevronRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
               </>
             )}
           </CardContent>

@@ -86,14 +86,14 @@ interface AgendaItem {
   end_time: string;
 }
 
+
+
 interface EventDetailsModalProps {
   event: Event | null;
   isOpen: boolean;
   onClose: () => void;
   tenantSlug: string;
   canManageEvents?: boolean;
-  isVettingCommitteeOnly?: boolean;
-  isApproverOnly?: boolean;
 }
 
 export default function EventDetailsModal({
@@ -102,14 +102,12 @@ export default function EventDetailsModal({
   onClose,
   tenantSlug,
   canManageEvents = true,
-  isVettingCommitteeOnly = false,
-  isApproverOnly = false,
 }: EventDetailsModalProps) {
   const { accessToken, isAuthenticated, user } = useAuth();
   const { apiClient } = useAuthenticatedApi();
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [vettingStatus, setVettingStatus] = useState<string>('pending');
-  const [vettingCommitteeExists, setVettingCommitteeExists] = useState<boolean>(false);
+  const [, setVettingCommitteeExists] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [tabLoading, setTabLoading] = useState(false);
 
@@ -129,7 +127,6 @@ export default function EventDetailsModal({
 
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [participantsCount, setParticipantsCount] = useState(0);
-  const [facilitatorsCount, setFacilitatorsCount] = useState(0);
   const [attachmentsCount, setAttachmentsCount] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [editedEvent, setEditedEvent] = useState<Partial<Event>>({});
@@ -154,10 +151,6 @@ export default function EventDetailsModal({
     setParticipantsCount(count);
   }, []);
 
-  const handleFacilitatorsChange = useCallback((count: number) => {
-    setFacilitatorsCount(count);
-  }, []);
-
   const fetchParticipants = useCallback(async () => {
     if (!event || !accessToken) return;
 
@@ -176,12 +169,6 @@ export default function EventDetailsModal({
         setParticipants(data);
         // Set counts for all participants (no filtering needed since we removed facilitator tab)
         setParticipantsCount(data.length);
-        
-        // Count facilitators for overview display
-        const facilitators = data.filter(
-          (p: Participant) => (p.participant_role || p.role) === "facilitator"
-        );
-        setFacilitatorsCount(facilitators.length);
       }
     } catch {
       console.error("Error fetching participants");
@@ -587,9 +574,8 @@ export default function EventDetailsModal({
 
   if (!event) return null;
 
-  // Check if event has ended or started
+  // Check if event has ended
   const eventHasEnded = new Date() > new Date(event.end_date);
-  const eventHasStarted = new Date() >= new Date(event.start_date);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -646,7 +632,7 @@ export default function EventDetailsModal({
             }}
             className="h-full flex flex-col"
           >
-            <TabsList className="inline-flex w-auto gap-2 bg-transparent border-b-0 p-0 mx-4 sm:mx-6 lg:mx-8 mt-4 h-auto overflow-x-auto">
+            <TabsList className="inline-flex w-auto gap-2 bg-transparent border-b-0 p-0 mx-4 sm:mx-6 lg:mx-8 mt-4 h-auto overflow-x-auto modal-scrollbar">
               <TabsTrigger
                 value="overview"
                 className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=inactive]:bg-white data-[state=inactive]:text-gray-700 data-[state=inactive]:border data-[state=inactive]:border-gray-200 hover:bg-gray-50"
@@ -666,7 +652,20 @@ export default function EventDetailsModal({
                 </span>
               </TabsTrigger>
 
-              {!isVettingCommitteeOnly && !isApproverOnly && (
+              {(() => {
+                // Check if user is vetting-only
+                const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+                const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+                
+                const hasAdminRole = adminRoles.includes(user?.role || '') ||
+                  (user?.all_roles && user.all_roles.some((role: string) => adminRoles.includes(role)));
+                const hasVettingRole = vettingRoles.includes(user?.role || '') ||
+                  (user?.all_roles && user.all_roles.some((role: string) => vettingRoles.includes(role)));
+                
+                const isVettingOnlyUser = hasVettingRole && !hasAdminRole;
+                
+                return !isVettingOnlyUser;
+              })() && (
                 <>
                   <TabsTrigger
                     value="attachments"
@@ -722,7 +721,7 @@ export default function EventDetailsModal({
               )}
             </TabsList>
 
-            <div className="flex-1 overflow-y-auto relative">
+            <div className="flex-1 overflow-y-auto modal-scrollbar relative">
               {tabLoading && (
                 <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
                   <div className="flex items-center gap-2">
@@ -733,7 +732,7 @@ export default function EventDetailsModal({
               )}
               <TabsContent
                 value="overview"
-                className="space-y-4 sm:space-y-6 mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="space-y-4 sm:space-y-6 mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
                   <div>
@@ -850,7 +849,7 @@ export default function EventDetailsModal({
                         variant="outline"
                         onClick={() => {
                           setEditMode(false);
-                          setEditedEvent(event);
+                          setEditedEvent(event || {});
                         }}
                         disabled={saving}
                       >
@@ -1062,7 +1061,7 @@ export default function EventDetailsModal({
                         <div className="flex justify-between items-center py-2 border-b border-blue-200">
                           <span className="text-xs font-normal text-gray-600">Total Capacity:</span>
                           <span className="text-xs text-indigo-600 font-semibold">
-                            {(event.single_rooms || 0) + (event.double_rooms || 0) * 2} people
+                            {((event.single_rooms || 0) + ((event.double_rooms || 0) * 2))} people
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-2 border-b border-blue-200">
@@ -1099,7 +1098,7 @@ export default function EventDetailsModal({
                             {roomStats ? (
                               `${roomStats.total_occupied_guests}/${roomStats.total_capacity} (${Math.round((roomStats.total_occupied_guests / Math.max(1, roomStats.total_capacity)) * 100)}%)`
                             ) : (
-                              `${accommodationStats.totalBookings}/${(event.single_rooms || 0) + ((event.double_rooms || 0) * 2)} (${Math.round((accommodationStats.totalBookings / Math.max(1, (event.single_rooms || 0) + ((event.double_rooms || 0) * 2))) * 100)}%)`
+                              `${accommodationStats.totalBookings}/${((event.single_rooms || 0) + ((event.double_rooms || 0) * 2))} (${Math.round((accommodationStats.totalBookings / Math.max(1, ((event.single_rooms || 0) + ((event.double_rooms || 0) * 2)))) * 100)}%)`
                             )}
                           </span>
                         </div>
@@ -1154,8 +1153,8 @@ export default function EventDetailsModal({
                                 Map:
                               </span>
                               <GoogleMap
-                                latitude={lat}
-                                longitude={lng}
+                                latitude={lat!}
+                                longitude={lng!}
                                 markerTitle={event.location || "Event Location"}
                                 className="h-48 rounded-lg border"
                               />
@@ -1205,29 +1204,29 @@ export default function EventDetailsModal({
 
                 <EventParticipants
                   eventId={event.id}
-                  tenantSlug={tenantSlug}
                   onParticipantsChange={handleParticipantsChange}
                   eventHasEnded={eventHasEnded}
-                  canManageEvents={canManageEvents}
                   vettingMode={(() => {
-                    // Only enable vetting mode if a vetting committee actually exists for this event
-                    if (!vettingCommitteeExists) {
+                    const isVettingCommittee = userRoles.some(role => ['VETTING_COMMITTEE'].includes(role));
+                    const isVettingApprover = userRoles.some(role => ['VETTING_APPROVER'].includes(role));
+                    
+                    // If user has vetting roles, enable vetting mode regardless of vettingCommitteeExists
+                    if (!isVettingCommittee && !isVettingApprover) {
                       return undefined;
                     }
-                    
-                    const isVettingCommittee = userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role));
-                    const isVettingApprover = userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role));
 
-                    // Committee can only edit when no submission exists (status is not submitted/pending/approved/rejected)
-                    const committeeCanEdit = isVettingCommittee && vettingStatus !== 'submitted' && vettingStatus !== 'pending' && vettingStatus !== 'approved' && vettingStatus !== 'rejected';
-                    // Approver can only edit when submission is pending approval
-                    const approverCanEdit = isVettingApprover && (vettingStatus === 'submitted' || vettingStatus === 'pending');
+                    const committeeCanEdit = isVettingCommittee && vettingStatus !== 'submitted' && vettingStatus !== 'approved';
+                    const approverCanEdit = isVettingApprover && vettingStatus === 'submitted';
+
+                    const mappedStatus = vettingStatus === 'submitted' ? 'pending_approval' as const : 
+                                       vettingStatus === 'approved' ? 'approved' as const : 
+                                       'open' as const;
 
                     return {
                       isVettingCommittee,
                       isVettingApprover,
                       canEdit: committeeCanEdit || approverCanEdit,
-                      submissionStatus: vettingStatus === 'submitted' ? 'pending_approval' : vettingStatus === 'pending' ? 'pending_approval' : vettingStatus
+                      submissionStatus: mappedStatus
                     };
                   })()}
                 />
@@ -1237,7 +1236,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="attachments"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <EventAttachments
                   eventId={event.id}
@@ -1249,7 +1248,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="agenda"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <EventAgenda
                   eventId={event.id}
@@ -1260,7 +1259,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="allocations"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <EventAllocations
                   eventId={event.id}
@@ -1271,7 +1270,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="certificates"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <EventCertificates
                   eventId={event.id}
@@ -1282,7 +1281,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="food"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <EventFood
                   eventId={event.id}
@@ -1299,7 +1298,7 @@ export default function EventDetailsModal({
 
               <TabsContent
                 value="feedback"
-                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto"
+                className="mt-0 bg-gray-50 mx-3 sm:mx-4 lg:mx-6 p-3 sm:p-4 lg:p-6 rounded-lg border-0 shadow-none h-full overflow-y-auto modal-scrollbar"
               >
                 <SessionFeedback eventId={event.id} tenantSlug={tenantSlug} />
               </TabsContent>

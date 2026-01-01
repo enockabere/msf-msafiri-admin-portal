@@ -33,6 +33,7 @@ import { useAuth, AuthUtils } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationPriority } from "@/lib/api";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface NavbarProps {
   showLogo?: boolean;
@@ -186,7 +187,7 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200">
+    <header className="sticky top-0 z-40 w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
       <div className={`${showLogo ? 'px-4 sm:px-6 lg:px-8' : 'container mx-auto px-4 sm:px-6 lg:px-8'}`}>
         <div className="flex h-16 items-center justify-between">
           {/* Left Section - Logo and Greeting */}
@@ -204,13 +205,13 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
             )}
             <div className="min-w-0 flex-1">
               {/* Main greeting */}
-              <h1 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 truncate">
+              <h1 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                 {getGreeting()}, {displayName?.split(" ")[0] || "Admin"}
               </h1>
 
               {/* Secondary info - hidden on mobile */}
               <div className="hidden sm:flex items-center space-x-3 mt-1">
-                <div className="flex items-center text-xs text-gray-500">
+                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                   <Calendar className="h-3 w-3 mr-1" />
                   {getCurrentDate()}
                 </div>
@@ -240,9 +241,9 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200"
+                    className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200 dark:border-gray-700"
                   >
-                    <Bell className="h-4 w-4 text-gray-600" />
+                    <Bell className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                     {unreadCount > 0 && (
                       <Badge
                         variant="destructive"
@@ -260,13 +261,13 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent
-                  className="w-80 bg-white border border-gray-200 shadow-lg rounded-lg z-50 max-h-96 overflow-hidden"
+                  className="w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg z-50 max-h-96 overflow-hidden"
                   align="end"
                   sideOffset={8}
                 >
-                  <DropdownMenuLabel className="font-normal bg-gray-50/50 border-b border-gray-100 p-3">
+                  <DropdownMenuLabel className="font-normal bg-gray-50/50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600 p-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm text-gray-900">
+                      <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
                         Notifications
                       </h3>
                       <div className="flex items-center space-x-1">
@@ -316,8 +317,8 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                       notifications.slice(0, 10).map((notification) => (
                         <DropdownMenuItem
                           key={notification.id}
-                          className={`p-3 cursor-pointer border-b border-gray-50 last:border-b-0 hover:bg-gray-50 focus:bg-gray-50 ${
-                            !notification.is_read ? "bg-blue-50/50" : ""
+                          className={`p-3 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 ${
+                            !notification.is_read ? "bg-blue-50/50 dark:bg-blue-900/20" : ""
                           }`}
                           onClick={() =>
                             handleNotificationRead(notification.id)
@@ -329,14 +330,14 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs font-medium text-gray-900 line-clamp-1">
+                                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
                                   {notification.title}
                                 </p>
                                 {!notification.is_read && (
                                   <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
                                 )}
                               </div>
-                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
                                 {notification.message}
                               </p>
                               <div className="flex items-center mt-2">
@@ -382,7 +383,7 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 border border-gray-200"
+                className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700"
                 onClick={() => {
                   const pathname = window.location.pathname;
                   const tenantMatch = pathname.match(/\/tenant\/([^/]+)/);
@@ -392,7 +393,7 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   router.push(notificationsUrl);
                 }}
               >
-                <Bell className="h-4 w-4 text-gray-600" />
+                <Bell className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                 {unreadCount > 0 && (
                   <Badge
                     variant="destructive"
@@ -404,12 +405,15 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               </Button>
             </div>
 
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* User Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200"
+                  className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200 dark:border-gray-700"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
@@ -420,11 +424,11 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
-                className="w-72 bg-white border border-gray-200 shadow-lg rounded-lg z-50"
+                className="w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg z-50"
                 align="end"
                 sideOffset={8}
               >
-                <DropdownMenuLabel className="font-normal bg-gray-50/50 p-4">
+                <DropdownMenuLabel className="font-normal bg-gray-50/50 dark:bg-gray-700/50 p-4">
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -434,10 +438,10 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-gray-900 truncate">
+                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
                             {displayName || "User"}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {fullUserData?.email || user.email}
                           </p>
                         </div>
@@ -456,7 +460,7 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                     </div>
 
                     {fullUserData?.job_title && (
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-gray-600 dark:text-gray-300">
                         {fullUserData.job_title}
                       </p>
                     )}
@@ -501,20 +505,20 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   {!isVettingOnly && (
                     <DropdownMenuItem
                       onClick={() => router.push("/profile")}
-                      className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 px-4 py-2"
                     >
-                      <User className="mr-3 h-4 w-4 text-gray-500" />
-                      <span className="text-xs">Profile Settings</span>
+                      <User className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs dark:text-gray-200">Profile Settings</span>
                     </DropdownMenuItem>
                   )}
 
                   {(isSuperAdmin || user?.role === 'super_admin') && (
                     <DropdownMenuItem
                       onClick={() => router.push("/admin/system")}
-                      className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50 px-4 py-2"
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 px-4 py-2"
                     >
-                      <Settings className="mr-3 h-4 w-4 text-gray-500" />
-                      <span className="text-xs">System Settings</span>
+                      <Settings className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs dark:text-gray-200">System Settings</span>
                     </DropdownMenuItem>
                   )}
                 </div>
@@ -525,7 +529,7 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   <DropdownMenuItem
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 hover:text-red-700 px-4 py-2"
+                    className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 px-4 py-2"
                   >
                     {isLoggingOut ? (
                       <Loader2 className="mr-3 h-4 w-4 animate-spin" />

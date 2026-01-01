@@ -29,6 +29,9 @@ const TEMPLATE_VARIABLES = [
   { variable: '{{eventName}}', description: 'Event name' },
   { variable: '{{eventDates}}', description: 'Event dates' },
   { variable: '{{confirmationNumber}}', description: 'Booking confirmation number' },
+  { variable: '{{hotelLogo}}', description: 'Hotel logo image' },
+  { variable: '{{signature}}', description: 'Signature image' },
+  { variable: '{{qrCode}}', description: 'QR code for verification' },
 ];
 
 export function AccommodationTemplateEditor({
@@ -49,51 +52,56 @@ export function AccommodationTemplateEditor({
       if (!value || value.trim() === '') {
         const defaultTemplate = `
           <div style="text-align: center; margin-bottom: 30px;">
+            <div style="margin-bottom: 20px; display: flex; justify-content: center;">\{\{hotelLogo\}\}</div>
             <h1 style="color: #dc2626; margin: 0;">PROOF OF ACCOMMODATION</h1>
             ${hotelName ? `<h2 style="color: #374151; margin: 10px 0 0 0;">${hotelName}</h2>` : ''}
           </div>
 
-          <p style="margin: 20px 0;">Dear <strong>{{participantName}}</strong>,</p>
+          <p style="margin: 20px 0;">Dear <strong>\{\{participantName\}\}</strong>,</p>
 
-          <p>This is to confirm your accommodation booking for the event <strong>{{eventName}}</strong>.</p>
+          <p>This is to confirm your accommodation booking for the event <strong>\{\{eventName\}\}</strong>.</p>
 
           <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 30px 0;">
             <h3 style="margin: 0 0 15px 0; color: #1f2937;">Accommodation Details</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; font-weight: 600; width: 200px;">Hotel:</td>
-                <td style="padding: 8px 0;">{{hotelName}}</td>
+                <td style="padding: 8px 0;">\{\{hotelName\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Address:</td>
-                <td style="padding: 8px 0;">{{hotelAddress}}</td>
+                <td style="padding: 8px 0;">\{\{hotelAddress\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Check-in Date:</td>
-                <td style="padding: 8px 0;">{{checkInDate}}</td>
+                <td style="padding: 8px 0;">\{\{checkInDate\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Check-out Date:</td>
-                <td style="padding: 8px 0;">{{checkOutDate}}</td>
+                <td style="padding: 8px 0;">\{\{checkOutDate\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Room Type:</td>
-                <td style="padding: 8px 0;">{{roomType}}</td>
+                <td style="padding: 8px 0;">\{\{roomType\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Room Number:</td>
-                <td style="padding: 8px 0;">{{roomNumber}}</td>
+                <td style="padding: 8px 0;">\{\{roomNumber\}\}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: 600;">Confirmation #:</td>
-                <td style="padding: 8px 0;">{{confirmationNumber}}</td>
+                <td style="padding: 8px 0;">\{\{confirmationNumber\}\}</td>
               </tr>
             </table>
           </div>
 
           <p>Please present this document along with your ID at the hotel reception upon check-in.</p>
 
-          <p style="margin-top: 40px;">Best regards,<br><strong>MSF Event Team</strong></p>
+          <p style="margin-top: 40px;">Best regards,<br>\{\{signature\}\}<br><strong>MSF Event Team</strong></p>
+          
+          <div style="position: relative; margin-top: 50px;">
+            <div style="position: absolute; bottom: 0; right: 0;">\{\{qrCode\}\}</div>
+          </div>
         `;
         editorRef.current.innerHTML = defaultTemplate;
         onChange(defaultTemplate);

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { SessionProvider } from "@/components/SessionProvider";
+import { SessionRefresher } from "@/components/SessionRefresher";
 import { TenantProvider } from "@/context/TenantContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ToastContainer } from "@/components/ui/toast";
@@ -23,6 +24,7 @@ export function ConditionalProviders({ children }: { children: React.ReactNode }
 
   return (
     <SessionProvider>
+      <SessionRefresher />
       <TenantProvider>
         <SidebarProvider>
           <SessionTimeoutHandler />

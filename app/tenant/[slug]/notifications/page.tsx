@@ -135,50 +135,44 @@ function NotificationsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <Link href={`/tenant/${tenantSlug}/dashboard`}>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-200">
-              <Bell className="w-5 h-5 text-blue-600" />
+      {/* Header - Simplified like Vendor Hotels */}
+      <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-start space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Bell className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                Notifications
-              </h1>
-              <p className="text-xs text-gray-500">
-                Manage system alerts and updates
-              </p>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Notifications</h1>
+              <p className="text-sm text-gray-600">Manage system alerts and updates</p>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="text-xs text-gray-500">{stats?.total || 0} Total</span>
+                <span className="text-xs text-gray-500">{stats?.unread || 0} Unread</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading || refreshing}
-            className="gap-2 hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading || refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          {(stats?.unread ?? 0) > 0 && (
+          <div className="flex items-center gap-3">
             <Button
-              onClick={markAllAsRead}
+              variant="outline"
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+              onClick={handleRefresh}
+              disabled={loading || refreshing}
+              className="border-gray-300 hover:bg-gray-50 h-10 px-4 text-sm"
             >
-              <CheckCheck className="h-4 w-4" />
-              Mark All Read
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading || refreshing ? "animate-spin" : ""}`} />
+              Refresh
             </Button>
-          )}
+            {(stats?.unread ?? 0) > 0 && (
+              <Button
+                onClick={markAllAsRead}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 text-sm font-medium"
+              >
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Mark All Read
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -191,7 +185,7 @@ function NotificationsContent() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium">Total</p>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-gray-900">
                   {stats?.total || 0}
                 </p>
               </div>
@@ -207,7 +201,7 @@ function NotificationsContent() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium">Unread</p>
-                <p className="text-xl font-bold text-red-600">
+                <p className="text-2xl font-bold text-red-600">
                   {stats?.unread || 0}
                 </p>
               </div>
@@ -223,7 +217,7 @@ function NotificationsContent() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium">Urgent</p>
-                <p className="text-xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-orange-600">
                   {stats?.urgent || 0}
                 </p>
               </div>
@@ -239,7 +233,7 @@ function NotificationsContent() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-medium">Read</p>
-                <p className="text-xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-600">
                   {(stats?.total || 0) - (stats?.unread || 0)}
                 </p>
               </div>
@@ -398,22 +392,11 @@ function NotificationsContent() {
 }
 
 export default function TenantNotificationsPage() {
-  const { user } = useAuth();
-  const isAdmin = user?.role && ["super_admin", "mt_admin", "hr_admin", "event_admin"].includes(user.role);
-  
   return (
     <NotificationProvider>
-      {isAdmin ? (
-        <DashboardLayout>
-          <NotificationsContent />
-        </DashboardLayout>
-      ) : (
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto px-4 py-6">
-            <NotificationsContent />
-          </div>
-        </div>
-      )}
+      <DashboardLayout>
+        <NotificationsContent />
+      </DashboardLayout>
     </NotificationProvider>
   );
 }

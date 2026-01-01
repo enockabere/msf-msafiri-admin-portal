@@ -46,88 +46,125 @@ export default function CertificatesPage() {
 <head>
   <meta charset="UTF-8">
   <title>Certificate</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Times New Roman', serif;
+    }
+    .certificate-page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      padding: 15mm;
+      box-sizing: border-box;
+      page-break-after: always;
+    }
+    .certificate-border {
+      border: 3px solid #d32f2f;
+      height: 100%;
+      padding: 30px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+  </style>
 </head>
 <body>
 <!-- Page 1: Certificate -->
-<div style="text-align: center; font-family: 'Times New Roman', serif; padding: 40px; border: 3px solid #d32f2f; margin: 20px;">
-  <!-- Logo placeholder - will be replaced by actual logo -->
-  <div style="text-align: center; margin-bottom: 20px;">
-    {{logo}}
-  </div>
-
-  <h1 style="font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #000;">TRAINING ATTENDANCE CERTIFICATE</h1>
-
-  <p style="font-size: 12px; margin: 20px 0;">This certificate attests to the fact that</p>
-
-  <h2 style="font-size: 18px; font-weight: bold; margin: 20px 0; border-bottom: 2px dotted #000; display: inline-block; padding-bottom: 2px;">{{participantName}}</h2>
-
-  <p style="font-size: 12px; margin: 15px 0;">has participated in and completed the</p>
-
-  <h3 style="font-size: 16px; font-weight: bold; margin: 20px 0; color: #d32f2f; text-decoration: underline;">{{eventTitle}}</h3>
-
-  <p style="font-size: 11px; margin: 15px 0;">From {{startDate}} until {{endDate}},<br/>
-  Organized by Médecins Sans Frontières OCA</p>
-
-  <div style="display: flex; justify-content: space-between; margin-top: 50px; text-align: left;">
-    <div style="width: 30%;">
-      <div style="margin-bottom: 5px; height: 40px;"></div>
-      <p style="font-size: 11px; font-weight: bold;">{{organizerName}}</p>
-      <p style="font-size: 10px;">{{organizerTitle}}</p>
+<div class="certificate-page">
+  <div class="certificate-border">
+    <!-- Logo placeholder -->
+    <div style="text-align: center; margin-bottom: 25px;">
+      {{logo}}
     </div>
 
-    <div style="width: 30%;">
-      <div style="margin-bottom: 5px; height: 40px;"></div>
-      <p style="font-size: 11px; font-weight: bold;">{{facilitatorName}}</p>
-      <p style="font-size: 10px;">{{facilitatorTitle}}</p>
+    <h1 style="font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #000;">TRAINING ATTENDANCE CERTIFICATE</h1>
+
+    <p style="font-size: 13px; margin: 20px 0;">This certificate attests to the fact that</p>
+
+    <h2 style="font-size: 20px; font-weight: bold; margin: 25px 0; border-bottom: 2px dotted #000; display: inline-block; padding-bottom: 3px;">{{participantName}}</h2>
+
+    <p style="font-size: 13px; margin: 20px 0;">has participated in and completed the</p>
+
+    <h3 style="font-size: 18px; font-weight: bold; margin: 25px 0; color: #d32f2f; text-decoration: underline;">{{eventTitle}}</h3>
+
+    <p style="font-size: 12px; margin: 20px 0; line-height: 1.6;">From {{startDate}} until {{endDate}},<br/>
+    Organized by Médecins Sans Frontières OCA<br/>
+    Location: {{eventLocation}}</p>
+
+    <!-- QR Code -->
+    <div style="position: absolute; bottom: 10px; right: 10px;">
+      {{qrCode}}
     </div>
 
-    <div style="width: 30%;">
-      <div style="margin-bottom: 5px; height: 40px;"></div>
-      <p style="font-size: 11px; font-weight: bold;">{{coordinatorName}}</p>
-      <p style="font-size: 10px;">{{coordinatorTitle}}</p>
+    <div style="display: flex; justify-content: space-between; margin-top: 60px; text-align: left;">
+      <div style="width: 30%;">
+        <div style="margin-bottom: 5px; height: 45px;"></div>
+        <p style="font-size: 12px; font-weight: bold; margin: 0;">{{organizerName}}</p>
+        <p style="font-size: 11px; margin: 0;">{{organizerTitle}}</p>
+      </div>
+
+      <div style="width: 30%;">
+        <div style="margin-bottom: 5px; height: 45px;"></div>
+        <p style="font-size: 12px; font-weight: bold; margin: 0;">{{facilitatorName}}</p>
+        <p style="font-size: 11px; margin: 0;">{{facilitatorTitle}}</p>
+      </div>
+
+      <div style="width: 30%;">
+        <div style="margin-bottom: 5px; height: 45px;"></div>
+        <p style="font-size: 12px; font-weight: bold; margin: 0;">{{coordinatorName}}</p>
+        <p style="font-size: 11px; margin: 0;">{{coordinatorTitle}}</p>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Page break -->
-<div style="page-break-before: always;"></div>
-
 <!-- Page 2: Course Details with Watermark -->
-<div style="position: relative; font-family: 'Times New Roman', serif; padding: 40px; border: 3px solid #d32f2f; margin: 20px; min-height: 600px;">
-  <!-- Watermark logo in background -->
-  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08; z-index: 0; pointer-events: none;">
-    {{logoWatermark}}
-  </div>
-
-  <div style="position: relative; z-index: 1; text-align: left;">
-    <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #d32f2f; text-align: center; text-decoration: underline;">{{eventTitle}}</h2>
-
-    <div style="margin-bottom: 25px;">
-      <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000;">ABOUT</h3>
-      <p style="font-size: 11px; line-height: 1.6; color: #333;">{{courseDescription}}</p>
+<div class="certificate-page">
+  <div class="certificate-border" style="text-align: left; position: relative;">
+    <!-- Watermark logo in background -->
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08; z-index: 0; pointer-events: none;">
+      {{logoWatermark}}
     </div>
 
-    <div style="margin-bottom: 25px;">
-      <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000;">COURSE OBJECTIVES</h3>
-      <ul style="font-size: 11px; line-height: 1.6; color: #333; padding-left: 20px;">
-        {{#each courseObjectives}}
-        <li style="margin-bottom: 4px;">{{this}}</li>
-        {{/each}}
-      </ul>
-    </div>
+    <div style="position: relative; z-index: 1;">
+      <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #d32f2f; text-align: center; text-decoration: underline;">{{eventTitle}}</h2>
 
-    <div style="margin-bottom: 25px;">
-      <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000;">KEY COURSE CONTENTS</h3>
-      <ul style="font-size: 11px; line-height: 1.6; color: #333; padding-left: 20px;">
-        {{#each courseContents}}
-        <li style="margin-bottom: 4px;">{{this}}</li>
-        {{/each}}
-      </ul>
-    </div>
+      <div style="margin-bottom: 25px;">
+        <h3 style="font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #000;">ABOUT</h3>
+        <div style="font-size: 12px; line-height: 1.6; color: #333;">{{courseDescription}}</div>
+      </div>
 
-    <div style="margin-top: 40px; text-align: center;">
-      <p style="font-size: 11px; color: #666;">Certificate issued on {{certificateDate}}</p>
-      <p style="font-size: 11px; color: #666;">Location: {{eventLocation}}</p>
+      <div style="margin-bottom: 25px;">
+        <h3 style="font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #000;">COURSE OBJECTIVES</h3>
+        <div style="font-size: 12px; line-height: 1.6; color: #333; padding-left: 20px;">
+          {{#each courseObjectives}}
+          <li style="margin-bottom: 4px;">{{this}}</li>
+          {{/each}}
+        </div>
+      </div>
+
+      <div style="margin-bottom: 25px;">
+        <h3 style="font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #000;">KEY COURSE CONTENTS</h3>
+        <div style="font-size: 12px; line-height: 1.6; color: #333; padding-left: 20px;">
+          {{#each courseContents}}
+          <li style="margin-bottom: 4px;">{{this}}</li>
+          {{/each}}
+        </div>
+      </div>
+
+      <div style="margin-top: 40px; text-align: center;">
+        <p style="font-size: 12px; color: #666; margin: 5px 0;">Certificate issued on {{certificateDate}}</p>
+        <p style="font-size: 12px; color: #666; margin: 5px 0;">Location: {{eventLocation}}</p>
+      </div>
     </div>
   </div>
 </div>
@@ -208,6 +245,7 @@ export default function CertificatesPage() {
   };
 
   const handleEdit = (template: CertificateTemplate) => {
+    console.log('Editing template:', template);
     setEditingTemplate(template);
     setTemplateForm({
       name: template.name,
@@ -217,6 +255,10 @@ export default function CertificatesPage() {
       logo_public_id: template.logo_public_id || "",
     });
     setModalOpen(true);
+    console.log('Template form set to:', {
+      name: template.name,
+      description: template.description,
+    });
   };
 
   const handleDelete = async (template: CertificateTemplate) => {
@@ -299,9 +341,14 @@ export default function CertificatesPage() {
       <div className="space-y-6">
         <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Certificate Templates</h1>
-              <p className="text-sm text-gray-600">Design certificate templates for events and training programs</p>
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Award className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Certificate Templates</h1>
+                <p className="text-sm text-gray-600">Design certificate templates for events and training programs</p>
+              </div>
             </div>
             {canEdit && (
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -346,7 +393,10 @@ export default function CertificatesPage() {
                           <Input
                             id="name"
                             value={templateForm.name}
-                            onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                            onChange={(e) => {
+                              console.log('Name changed to:', e.target.value);
+                              setTemplateForm({ ...templateForm, name: e.target.value });
+                            }}
                             required
                             placeholder="e.g., HATT Certificate"
                             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -360,7 +410,10 @@ export default function CertificatesPage() {
                           <Input
                             id="description"
                             value={templateForm.description}
-                            onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                            onChange={(e) => {
+                              console.log('Description changed to:', e.target.value);
+                              setTemplateForm({ ...templateForm, description: e.target.value });
+                            }}
                             placeholder="Brief description of this template"
                             className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             disabled={submitting}
@@ -373,7 +426,8 @@ export default function CertificatesPage() {
                           Certificate Design
                         </Label>
                         <p className="text-xs text-gray-500 mb-4">
-                          Use variables like {`{{participantName}}`}, {`{{eventTitle}}`}, {`{{startDate}}`}, {`{{endDate}}`}, {`{{organizerName}}`}, etc.
+                          Use variables like {`{{participantName}}`}, {`{{eventTitle}}`}, {`{{startDate}}`}, {`{{endDate}}`}, {`{{organizerName}}`}, {`{{qrCode}}`} etc.<br/>
+                          <strong>Note:</strong> {`{{qrCode}}`} will be replaced with a QR code that links to the certificate when scanned.
                         </p>
                         <CertificateTemplateEditor
                           value={templateForm.template_content}

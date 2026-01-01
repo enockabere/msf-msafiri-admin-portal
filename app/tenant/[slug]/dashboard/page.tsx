@@ -50,14 +50,29 @@ export default function TenantDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const tenantSlug = params.slug as string;
-  const isVettingUser = user?.role === "vetting_committee" || user?.role === "vetting_approver";
+  const isVettingOnlyUser = () => {
+    if (!user) return false;
+    
+    // Check if user has admin roles
+    const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+    const hasAdminRole = adminRoles.includes(user.role) || 
+      (user.all_roles && user.all_roles.some((role: string) => adminRoles.includes(role)));
+    
+    // Check if user has vetting roles
+    const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+    const hasVettingRole = vettingRoles.includes(user.role) ||
+      (user.all_roles && user.all_roles.some((role: string) => vettingRoles.includes(role)));
+    
+    // Return true if user has vetting roles but no admin roles
+    return hasVettingRole && !hasAdminRole;
+  };
 
-  // Redirect vetting users to events page (they can only access vetting)
+  // Redirect vetting-only users to events page
   useEffect(() => {
-    if (isVettingUser && !loading) {
+    if (user && isVettingOnlyUser() && !loading) {
       router.replace(`/tenant/${tenantSlug}/events`);
     }
-  }, [isVettingUser, loading, router, tenantSlug]);
+  }, [user, loading, router, tenantSlug]);
 
   const fetchRecentActivities = useCallback(async () => {
     try {
@@ -304,8 +319,8 @@ export default function TenantDashboardPage() {
     }
   };
 
-  if (loading || isVettingUser) {
-    return <LoadingScreen message={isVettingUser ? "Redirecting to events..." : "Loading tenant dashboard..."} />;
+  if (loading || (user && isVettingOnlyUser())) {
+    return <LoadingScreen message={(user && isVettingOnlyUser()) ? "Redirecting to events..." : "Loading tenant dashboard..."} />;
   }
 
   if (cardNavigating) {

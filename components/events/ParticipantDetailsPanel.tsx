@@ -552,6 +552,75 @@ export default function ParticipantDetailsPanel({
     }
   };
 
+  const handleCheckCertificate = async () => {
+    console.log('🔍 DEBUG: handleCheckCertificate called');
+    console.log('🔍 DEBUG: eventId:', eventId, 'participantId:', participantId, 'tenantSlug:', tenantSlug);
+    
+    try {
+      // Check for both certificates and badges
+      let certificateFound = false;
+      let badgeFound = false;
+      
+      // Try to find certificate first
+      try {
+        console.log('🔍 DEBUG: Checking for certificates...');
+        const certResponse = await apiClient.request(
+          `/events/${eventId}/certificates/participant/${participantId}`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        console.log('🔍 DEBUG: Certificate response:', certResponse);
+        
+        if (certResponse) {
+          certificateFound = true;
+          const certificateUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/certificates/${certResponse.event_certificate_id}/generate/${participantId}`;
+          console.log('🔍 DEBUG: Opening certificate URL:', certificateUrl);
+          window.open(certificateUrl, '_blank');
+          return;
+        }
+      } catch (error) {
+        console.log('🔍 DEBUG: No certificate found, checking for badges...', error);
+      }
+      
+      // Try to find badge if no certificate found
+      try {
+        console.log('🔍 DEBUG: Checking for badges...');
+        const badgeResponse = await apiClient.request(
+          `/events/${eventId}/badges`,
+          { headers: { 'X-Tenant-ID': tenantSlug } }
+        );
+        console.log('🔍 DEBUG: Badge response:', badgeResponse);
+        
+        if (badgeResponse && Array.isArray(badgeResponse) && badgeResponse.length > 0) {
+          badgeFound = true;
+          const firstBadge = badgeResponse[0];
+          const badgeUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/badges/${firstBadge.id}/generate/${participantId}`;
+          console.log('🔍 DEBUG: Opening badge URL:', badgeUrl);
+          window.open(badgeUrl, '_blank');
+          return;
+        }
+      } catch (error) {
+        console.log('🔍 DEBUG: No badges found either', error);
+      }
+      
+      // If neither found, show appropriate message
+      if (!certificateFound && !badgeFound) {
+        console.log('🔍 DEBUG: Neither certificates nor badges found');
+        toast({
+          title: 'No Certificates or Badges Found',
+          description: 'No certificates or badges have been created for this participant yet.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('🔍 DEBUG: Failed to check certificate/badge:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to check for certificates or badges.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="border border-gray-200 rounded-xl bg-white shadow-lg">
       <div className="p-6">
@@ -1311,7 +1380,7 @@ export default function ParticipantDetailsPanel({
 
               {/* Action Buttons - Enhanced */}
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <Button
                     size="lg"
                     variant="outline"
@@ -1324,8 +1393,20 @@ export default function ParticipantDetailsPanel({
                   <Button
                     size="lg"
                     variant="outline"
+                    onClick={() => {
+                      console.log('🔥 BUTTON CLICKED: Check Certificate button was clicked!');
+                      handleCheckCertificate();
+                    }}
+                    className="gap-2 h-12 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 text-green-700 hover:bg-green-100 hover:border-green-400 font-semibold transition-all shadow-sm"
+                  >
+                    <FileText className="h-5 w-5" />
+                    Check Certificate
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
                     onClick={() => setShowPDFReport(true)}
-                    className="gap-2 h-12 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-300 text-red-700 hover:bg-red-100 hover:border-red-400 font-semibold transition-all shadow-sm"
+                    className="gap-2 h-12 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 text-orange-700 hover:bg-orange-100 hover:border-orange-400 font-semibold transition-all shadow-sm"
                   >
                     <FileText className="h-5 w-5" />
                     PDF Report

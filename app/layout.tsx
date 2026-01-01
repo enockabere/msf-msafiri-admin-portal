@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ConditionalProviders } from "@/components/ConditionalProviders";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -23,16 +24,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiase`}>
-        <div className="relative z-10">
-          <ConditionalProviders>{children}</ConditionalProviders>
-        </div>
-        <Toaster
-          position="top-right"
-          richColors
-          closeButton
-        />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange={false}
+          storageKey="msafiri-theme"
+        >
+          <div className="relative z-10">
+            <ConditionalProviders>{children}</ConditionalProviders>
+          </div>
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LocationSelect } from "@/components/ui/location-select";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { MapPin, Clock, X, Save, Loader2, Home } from "lucide-react";
 
 interface GuestHouse {
@@ -168,10 +168,7 @@ export default function GuestHouseSetupModal({
       });
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Guest house ${editingGuestHouse ? "updated" : "created"} successfully`,
-        });
+        toast.success(`Guest house ${editingGuestHouse ? "updated" : "created"} successfully`);
         onSuccess();
         onOpenChange(false);
       } else {
@@ -179,11 +176,7 @@ export default function GuestHouseSetupModal({
       }
     } catch (error) {
       console.error("Error saving guest house:", error);
-      toast({
-        title: "Error",
-        description: `Failed to ${editingGuestHouse ? "update" : "create"} guest house`,
-        variant: "destructive",
-      });
+      toast.error(`Failed to ${editingGuestHouse ? "update" : "create"} guest house`);
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Swal from 'sweetalert2';
 
@@ -103,10 +103,7 @@ export default function InvitationsPage() {
       }
 
       if (response.ok) {
-        toast({ 
-          title: "Success", 
-          description: `Invitation template ${editingTemplate ? 'updated' : 'created'} successfully` 
-        });
+        toast.success(`Invitation template ${editingTemplate ? 'updated' : 'created'} successfully`);
         setModalOpen(false);
         resetForm();
         loadTemplates();
@@ -116,7 +113,7 @@ export default function InvitationsPage() {
       }
     } catch (error) {
       console.error('Template save error:', error);
-      toast({ title: "Error", description: error.message || "Failed to save template", variant: "destructive" });
+      toast.error(error.message || "Failed to save template");
     } finally {
       setSubmitting(false);
     }
@@ -145,14 +142,14 @@ export default function InvitationsPage() {
       });
       
       if (response.ok) {
-        toast({ title: "Success", description: "Template deleted successfully" });
+        toast.success("Template deleted successfully");
         loadTemplates();
       } else {
         throw new Error('Failed to delete template');
       }
     } catch (error) {
       console.error('Delete error:', error);
-      toast({ title: "Error", description: "Failed to delete template", variant: "destructive" });
+      toast.error("Failed to delete template");
     }
   };
 
@@ -228,16 +225,21 @@ export default function InvitationsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-2xl p-6 border-2 border-gray-100">
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Letter of Invitation Templates</h1>
-              <p className="text-sm text-gray-600">Design invitation letter templates for events and meetings</p>
+            <div className="flex items-start space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Mail className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Letter of Invitation Templates</h1>
+                <p className="text-sm text-gray-600">Design invitation letter templates for events and meetings</p>
+              </div>
             </div>
             {canEdit && (
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Template
                   </Button>
@@ -253,8 +255,8 @@ export default function InvitationsPage() {
 
                   <div className="p-6 pb-4 border-b border-gray-200">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                        <Mail className="w-6 h-6 text-green-600" />
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
                         <DialogTitle className="text-xl font-bold text-gray-900">
@@ -289,31 +291,40 @@ export default function InvitationsPage() {
         </div>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-4 text-sm">
             {templates.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-10 h-10 text-gray-400" />
+                <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">No invitation templates yet</h3>
-                <p className="text-xs text-gray-500 mb-4">Create your first invitation letter template</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">No invitation templates yet</h3>
+                <p className="text-xs text-gray-600 mb-4">Create your first invitation letter template</p>
+                {canEdit && (
+                  <Button
+                    onClick={() => setModalOpen(true)}
+                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Template
+                  </Button>
+                )}
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Template Name</TableHead>
+                    <TableHead>Created Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {canEdit && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {templates.map((template) => (
                     <TableRow key={template.id}>
-                      <TableCell className="font-medium">{template.name}</TableCell>
-                      <TableCell>{new Date(template.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-xs">{template.name}</TableCell>
+                      <TableCell className="text-xs">{new Date(template.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-xs">
                         {template.is_active ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Active
@@ -324,29 +335,33 @@ export default function InvitationsPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              console.log('Setting editing template:', template);
-                              setEditingTemplate(template);
-                              setModalOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                            onClick={() => handleDelete(template.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {canEdit && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                console.log('Setting editing template:', template);
+                                setEditingTemplate(template);
+                                setModalOpen(true);
+                              }}
+                              title="Edit Template"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(template.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Delete Template"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

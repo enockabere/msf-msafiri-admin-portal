@@ -1,0 +1,100 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "add": "Agregar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "import": "Importar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "submit": "Enviar",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "profile": "Perfil"
+  },
+  "navigation": {
+    "dashboard": "Panel de control",
+    "events": "Gestión de eventos",
+    "participants": "Participantes",
+    "notifications": "Notificaciones",
+    "setups": "Configuraciones",
+    "inventory": "Inventario",
+    "transport": "Transporte",
+    "accommodation": "Alojamiento",
+    "news": "Noticias y actualizaciones",
+    "contacts": "Contactos útiles",
+    "systemSettings": "Configuración del sistema"
+  },
+  "settings": {
+    "title": "Configuración del sistema",
+    "subtitle": "Personaliza tu experiencia en el portal",
+    "theme": {
+      "title": "Apariencia del tema",
+      "subtitle": "Elige cómo se ve el portal",
+      "light": "Claro",
+      "lightDescription": "Interfaz limpia y brillante",
+      "dark": "Oscuro",
+      "darkDescription": "Suave para los ojos",
+      "system": "Sistema",
+      "systemDescription": "Seguir configuración del dispositivo"
+    },
+    "language": {
+      "title": "Idioma y región",
+      "subtitle": "Selecciona tu idioma preferido",
+      "label": "Idioma del portal",
+      "comingSoon": "Soporte multiidioma próximamente",
+      "comingSoonDescription": "Estamos trabajando en traer traducciones completas en francés, español y árabe al portal de MSF. Tu selección se guardará y se aplicará automáticamente cuando esté disponible."
+    },
+    "about": {
+      "title": "Acerca de esta configuración",
+      "themePreference": "Tu preferencia de tema se guarda localmente y persiste entre sesiones",
+      "systemTheme": "El tema del sistema cambia automáticamente entre claro y oscuro según la configuración de tu dispositivo",
+      "languageChanges": "Los cambios de idioma se aplicarán a toda la interfaz del portal cuando esté completamente implementado"
+    }
+  },
+  "events": {
+    "title": "Eventos",
+    "create": "Crear evento",
+    "edit": "Editar evento",
+    "delete": "Eliminar evento",
+    "details": "Detalles del evento",
+    "participants": "Participantes",
+    "agenda": "Agenda",
+    "certificates": "Certificados e insignias",
+    "food": "Comida y catering",
+    "allocations": "Asignaciones",
+    "feedback": "Comentarios",
+    "status": "Estado",
+    "startDate": "Fecha de inicio",
+    "endDate": "Fecha de finalización",
+    "location": "Ubicación",
+    "description": "Descripción"
+  },
+  "participants": {
+    "analytics": "Análisis y estadísticas de participantes",
+    "showStats": "Mostrar estadísticas",
+    "hideStats": "Ocultar estadísticas",
+    "totalParticipants": "Total de participantes",
+    "selected": "Seleccionados",
+    "facilitators": "Facilitadores",
+    "declined": "Rechazados",
+    "byStatus": "Por estado",
+    "byGender": "Por género",
+    "byRole": "Por rol",
+    "byOperationalCenter": "Por centro operacional",
+    "topCountries": "Principales países",
+    "genderDistribution": "Distribución de género por centro operacional"
+  }
+}
