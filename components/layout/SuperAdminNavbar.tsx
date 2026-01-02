@@ -7,6 +7,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "next-themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,15 +48,8 @@ export function SuperAdminNavbar({
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 0);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const { user: fullUserData } = useUserData();
   const {
@@ -65,6 +60,25 @@ export function SuperAdminNavbar({
     markAllAsRead,
     refetch: refetchNotifications,
   } = useNotifications();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const isDark = resolvedTheme === 'dark';
 
   const handleLogout = async () => {
     try {
@@ -120,16 +134,26 @@ export function SuperAdminNavbar({
   // Shared notification content for both mobile and desktop
   const NotificationContent = () => (
     <>
-      <DropdownMenuLabel className="font-normal bg-gray-50 border-b border-gray-100 p-3">
+      <DropdownMenuLabel 
+        className="font-normal border-b p-3"
+        style={{
+          backgroundColor: isDark ? '#111827' : '#f9fafb',
+          borderColor: isDark ? '#374151' : '#f3f4f6'
+        }}
+      >
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Notifications</h3>
+          <h3 className="font-semibold" style={{ color: isDark ? '#ffffff' : '#111827' }}>Notifications</h3>
           <div className="flex items-center space-x-1">
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-2 text-xs text-red-600 hover:text-red-800 hover:bg-red-50"
+                className="h-6 px-2 text-xs"
                 onClick={handleClearAllNotifications}
+                style={{
+                  color: '#dc2626',
+                  backgroundColor: 'transparent'
+                }}
               >
                 Mark all read
               </Button>
@@ -137,9 +161,12 @@ export function SuperAdminNavbar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 hover:bg-gray-100"
+              className="h-6 w-6 p-0"
               onClick={refetchNotifications}
               disabled={notificationsLoading}
+              style={{
+                backgroundColor: isDark ? '#1f2937' : '#f3f4f6'
+              }}
             >
               <RefreshCw
                 className={`h-3 w-3 ${
@@ -220,26 +247,32 @@ export function SuperAdminNavbar({
   // Shared user menu content for both mobile and desktop
   const UserMenuContent = () => (
     <>
-      <DropdownMenuLabel className="font-normal bg-red-50 border-b border-red-100 p-4">
+      <DropdownMenuLabel 
+        className="font-normal border-b p-4"
+        style={{
+          backgroundColor: '#fef2f2',
+          borderColor: '#fecaca'
+        }}
+      >
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold">
+              <AvatarFallback className="bg-gradient-to-r from-red-600 to-red-600 text-white font-semibold">
                 {getUserInitials(displayName)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">
+              <p className="text-sm font-semibold truncate" style={{ color: '#111827' }}>
                 {displayName || "Super Administrator"}
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs truncate" style={{ color: '#6b7280' }}>
                 {fullUserData?.email || user?.email}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 pt-2">
-            <Badge className="bg-gradient-to-r from-red-600 to-red-700 text-white">
+            <Badge className="bg-gradient-to-r from-red-600 to-red-600 text-white">
               {AuthUtils.getRoleDisplayName(user?.role || "")}
             </Badge>
             <Badge
@@ -251,7 +284,7 @@ export function SuperAdminNavbar({
           </div>
 
           {fullUserData?.last_login && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs" style={{ color: '#6b7280' }}>
               Last login:{" "}
               {new Date(fullUserData.last_login).toLocaleDateString()}
             </p>
@@ -261,31 +294,43 @@ export function SuperAdminNavbar({
       <DropdownMenuSeparator />
       <DropdownMenuItem
         onClick={onProfileClick}
-        className="cursor-pointer hover:bg-gray-50 px-4 py-2"
+        className="cursor-pointer px-4 py-2"
+        style={{
+          backgroundColor: 'transparent',
+          color: isDark ? '#ffffff' : '#000000'
+        }}
       >
         <User className="w-4 h-4 mr-2" />
         Profile Settings
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => router.push("/notifications")}
-        className="cursor-pointer hover:bg-gray-50 px-4 py-2"
+        className="cursor-pointer px-4 py-2"
+        style={{
+          backgroundColor: 'transparent',
+          color: isDark ? '#ffffff' : '#000000'
+        }}
       >
         <Bell className="w-4 h-4 mr-2" />
         All Notifications
         {unreadCount > 0 && (
-          <Badge variant="destructive" className="ml-auto text-xs">
+          <Badge variant="destructive" className="ml-auto text-xs bg-red-600">
             {unreadCount}
           </Badge>
         )}
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => router.push("/super-admin/feedback")}
-        className="cursor-pointer hover:bg-gray-50 px-4 py-2"
+        className="cursor-pointer px-4 py-2"
+        style={{
+          backgroundColor: 'transparent',
+          color: isDark ? '#ffffff' : '#000000'
+        }}
       >
         <Bell className="w-4 h-4 mr-2" />
         App Feedback
         {notifications.filter(n => n.notification_type === 'app_feedback' && !n.is_read).length > 0 && (
-          <Badge variant="destructive" className="ml-auto text-xs">
+          <Badge variant="destructive" className="ml-auto text-xs bg-red-600">
             {notifications.filter(n => n.notification_type === 'app_feedback' && !n.is_read).length}
           </Badge>
         )}
@@ -294,7 +339,11 @@ export function SuperAdminNavbar({
       <DropdownMenuItem
         onClick={handleLogout}
         disabled={isLoggingOut}
-        className="text-red-600 focus:text-red-600 cursor-pointer hover:bg-red-50 px-4 py-2"
+        className="cursor-pointer px-4 py-2"
+        style={{
+          color: '#dc2626',
+          backgroundColor: 'transparent'
+        }}
       >
         {isLoggingOut ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -338,31 +387,38 @@ export function SuperAdminNavbar({
   }
 
   return (
-    <nav 
-      className={`text-white border-b border-red-600 sticky top-0 z-50 transition-shadow duration-200 ${
-      isScrolled ? 'shadow-lg' : 'shadow-sm'
-    }`}
-      style={{ backgroundColor: '#ee0000' }}
+    <nav
+      className={`border-b sticky top-0 z-50 transition-shadow duration-200 ${isScrolled ? 'shadow-lg' : 'shadow-sm'}`}
+      style={{
+        backgroundColor: isDark ? '#000000' : '#ffffff',
+        borderColor: isDark ? '#374151' : '#e5e7eb'
+      }}
     >
       <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20">
         <div className="flex items-center justify-between h-16">
           {/* Logo Section - Always Visible */}
           <div className="flex items-center space-x-3 min-w-0 flex-1 sm:flex-none">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/20 p-2 backdrop-blur-sm border border-red-300/40 flex-shrink-0">
+            <div 
+              className="w-10 h-10 rounded-xl overflow-hidden p-2 border flex-shrink-0"
+              style={{
+                backgroundColor: isDark ? '#1f2937' : '#f9fafb',
+                borderColor: isDark ? '#374151' : '#e5e7eb'
+              }}
+            >
               <Image
                 src="/portal/icon/favicon.png"
                 alt="MSF Logo"
                 width={32}
                 height={32}
-                className="w-full h-full object-contain filter brightness-0 invert"
+                className="w-full h-full object-contain"
                 style={{ width: "auto", height: "auto" }}
               />
             </div>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-white truncate">
+              <h1 className="text-xl font-bold truncate" style={{ color: isDark ? '#ffffff' : '#000000' }}>
                 MSF Msafiri
               </h1>
-              <p className="text-xs text-red-200 hidden sm:block">
+              <p className="text-xs hidden sm:block" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                 Super Admin Portal
               </p>
             </div>
@@ -370,24 +426,36 @@ export function SuperAdminNavbar({
 
           {/* Actions Section - Responsive */}
           <div className="flex items-center space-x-3 flex-shrink-0">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Notifications */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="relative text-white hover:bg-white/20 border border-white/20 bg-white/10 backdrop-blur-sm rounded-lg h-10 w-10 p-0"
+                  className="relative rounded-lg h-10 w-10 p-0"
+                  style={{
+                    color: isDark ? '#ffffff' : '#000000',
+                    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                    borderColor: isDark ? '#374151' : '#e5e7eb'
+                  }}
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xs font-bold text-red-900">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
                       {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-80 sm:w-80 bg-white border border-gray-200 shadow-xl rounded-lg z-[9999] max-h-96 overflow-hidden"
+                className="w-80 sm:w-80 shadow-xl rounded-lg z-[9999] max-h-96 overflow-hidden"
+                style={{
+                  backgroundColor: isDark ? '#111827' : '#ffffff',
+                  borderColor: isDark ? '#374151' : '#e5e7eb'
+                }}
                 align="end"
                 sideOffset={8}
                 alignOffset={-10}
@@ -403,10 +471,15 @@ export function SuperAdminNavbar({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="text-white hover:bg-white/20 border border-white/20 bg-white/10 backdrop-blur-sm rounded-lg h-10 w-10 p-0"
+                  className="rounded-lg h-10 w-10 p-0"
+                  style={{
+                    color: isDark ? '#ffffff' : '#000000',
+                    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                    borderColor: isDark ? '#374151' : '#e5e7eb'
+                  }}
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
+                    <AvatarFallback className="bg-black text-white font-semibold text-sm">
                       {getUserInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
@@ -414,7 +487,11 @@ export function SuperAdminNavbar({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-64 sm:w-72 bg-white border border-gray-200 shadow-xl rounded-lg z-[9999]"
+                className="w-64 sm:w-72 shadow-xl rounded-lg z-[9999]"
+                style={{
+                  backgroundColor: isDark ? '#111827' : '#ffffff',
+                  borderColor: isDark ? '#374151' : '#e5e7eb'
+                }}
                 sideOffset={8}
                 alignOffset={-10}
                 avoidCollisions={true}

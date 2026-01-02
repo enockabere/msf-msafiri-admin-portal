@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
+import { useForm, Controller } from "react-hook-form";
+import { toast } from "sonner";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,10 +15,98 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Building2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Building2, Search, Bold, Italic, List, Link } from "lucide-react";
 import apiClient, { TenantCreateRequest } from "@/lib/api";
-import { CountrySelect } from "@/components/ui/country-select";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+
+// Simple rich text toolbar component
+const RichTextEditor = ({ value, onChange, isDark }: { value: string, onChange: (value: string) => void, isDark: boolean }) => {
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const insertText = (before: string, after: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = value.substring(start, end);
+    const newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
+    
+    onChange(newText);
+    
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
+  return (
+    <div className="border rounded-md" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+      <div className="flex items-center gap-1 p-2 border-b" style={{ borderColor: isDark ? '#374151' : '#e5e7eb', backgroundColor: isDark ? '#1f2937' : '#f9fafb' }}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => insertText('**', '**')}
+          title="Bold"
+        >
+          <Bold className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => insertText('*', '*')}
+          title="Italic"
+        >
+          <Italic className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => insertText('- ')}
+          title="List"
+        >
+          <List className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => insertText('[', '](url)')}
+          title="Link"
+        >
+          <Link className="h-4 w-4" />
+        </Button>
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Brief description of the organization..."
+        className="border-0 resize-none focus-visible:ring-0"
+        rows={4}
+        style={{
+          backgroundColor: isDark ? '#000000' : '#ffffff',
+          color: isDark ? '#ffffff' : '#000000'
+        }}
+      />
+    </div>
+  );
+};
 
 interface AddTenantModalProps {
   open: boolean;
@@ -28,364 +119,266 @@ export function AddTenantModal({
   onClose,
   onSuccess,
 }: AddTenantModalProps) {
-  const [formData, setFormData] = useState<TenantCreateRequest>({
-    name: "",
-    slug: "",
-    contact_email: "",
-    admin_email: "",
-    domain: "",
-    description: "",
-    country: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  const [countries, setCountries] = React.useState<Array<{name: string, code: string}>>([]);
+  const [countrySearch, setCountrySearch] = React.useState("");
+  const [isLoadingCountries, setIsLoadingCountries] = React.useState(true);
 
-  const handleInputChange = (
-    field: keyof TenantCreateRequest,
-    value: string
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    control,
+    formState: { errors },
+  } = useForm<TenantCreateRequest>();
 
-    // Auto-generate slug from name
-    if (field === "name") {
-      const slug = value
+  React.useEffect(() => {
+    setMounted(true);
+    // Load countries
+    const loadCountries = async () => {
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2');
+        const data = await response.json();
+        const sortedCountries = data.map((country: any) => ({
+          name: country.name.common,
+          code: country.cca2
+        })).sort((a: any, b: any) => a.name.localeCompare(b.name));
+        setCountries(sortedCountries);
+      } catch (error) {
+        console.error('Failed to load countries:', error);
+      } finally {
+        setIsLoadingCountries(false);
+      }
+    };
+    loadCountries();
+  }, []);
+
+  // Auto-generate slug from name
+  const nameValue = watch("name");
+  React.useEffect(() => {
+    if (nameValue) {
+      const slug = nameValue
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, "")
         .replace(/\s+/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-+|-+$/g, "")
         .trim();
-      setFormData((prev) => ({ ...prev, slug }));
+      setValue("slug", slug);
     }
+  }, [nameValue, setValue]);
 
-    // Real-time email validation
-    if (field === "contact_email" || field === "admin_email") {
-      if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        setErrors((prev) => ({
-          ...prev,
-          [field]: "Please enter a valid email address"
-        }));
-      } else {
-        setErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[field];
-          return newErrors;
-        });
-      }
-    } else {
-      // Clear error when user starts typing
-      if (errors[field]) {
-        setErrors((prev) => ({ ...prev, [field]: "" }));
-      }
-    }
-  };
+  if (!mounted) {
+    return null;
+  }
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
+  const isDark = resolvedTheme === 'dark';
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Organization name is required";
-    }
+  const filteredCountries = countries.filter(country => 
+    country.name.toLowerCase().includes(countrySearch.toLowerCase())
+  );
 
-    if (!formData.slug.trim()) {
-      newErrors.slug = "Slug is required";
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug =
-        "Slug can only contain lowercase letters, numbers, and hyphens";
-    }
-
-    if (!formData.contact_email.trim()) {
-      newErrors.contact_email = "Contact email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-      newErrors.contact_email = "Please enter a valid email address";
-    }
-
-    if (!formData.admin_email.trim()) {
-      newErrors.admin_email = "Admin email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
-      newErrors.admin_email = "Please enter a valid email address";
-    }
-
-    if (!formData.country?.trim()) {
-      newErrors.country = "Country is required";
-    }
-
-    if (
-      formData.domain &&
-      !/^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,}\.[a-zA-Z]{2,})$/.test(
-        formData.domain
-      )
-    ) {
-      newErrors.domain = "Please enter a valid domain (e.g., example.com)";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+  const onSubmit = async (data: TenantCreateRequest) => {
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
       await apiClient.createTenant({
-        ...formData,
-        domain: formData.domain || undefined,
-        description: formData.description || undefined,
+        ...data,
+        domain: data.domain || undefined,
       });
-
-      // Reset form
-      setFormData({
-        name: "",
-        slug: "",
-        contact_email: "",
-        admin_email: "",
-        domain: "",
-        description: "",
-        country: "",
-      });
-      setErrors({});
-
-      // Show success notification
-      if (typeof window !== 'undefined') {
-        const event = new CustomEvent('showNotification', {
-          detail: {
-            type: 'success',
-            message: `Tenant "${formData.name}" has been successfully created!`
-          }
-        });
-        window.dispatchEvent(event);
-      }
-
-      onSuccess();
-    } catch (error) {
-      console.error("Failed to create tenant:", error);
-      if (error instanceof Error) {
-        // Show error notification
-        if (typeof window !== 'undefined') {
-          const event = new CustomEvent('showNotification', {
-            detail: {
-              type: 'error',
-              message: `Failed to create tenant: ${error.message}`
-            }
-          });
-          window.dispatchEvent(event);
-        }
-
-        if (error.message.includes("slug")) {
-          setErrors({
-            slug: "This slug is already taken. Please choose a different one.",
-          });
-        } else if (error.message.includes("email")) {
-          setErrors({
-            contact_email:
-              "This email is already associated with another tenant.",
-          });
-        } else {
-          setErrors({ general: error.message });
-        }
+      toast.success("Tenant created successfully");
+      reset();
+      onClose();
+      // Call onSuccess after closing to avoid token issues during refresh
+      setTimeout(() => {
+        onSuccess();
+      }, 100);
+    } catch (error: any) {
+      console.error('Create tenant error:', error);
+      if (error.message.includes('credentials') || error.message.includes('token')) {
+        toast.error("Session expired. Please refresh the page and try again.");
+      } else {
+        toast.error(error?.message || "Failed to create tenant");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    if (!isSubmitting) {
-      setFormData({
-        name: "",
-        slug: "",
-        contact_email: "",
-        admin_email: "",
-        domain: "",
-        description: "",
-        country: "",
-      });
-      setErrors({});
-      onClose();
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleClose} modal>
-      <DialogContent className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] bg-white max-h-[95vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent 
+        className="sm:max-w-[800px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+        style={{
+          backgroundColor: isDark ? '#000000' : '#ffffff',
+          borderColor: isDark ? '#374151' : '#e5e7eb',
+          color: isDark ? '#ffffff' : '#000000'
+        }}
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2 text-gray-900">
+          <DialogTitle className="flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#000000' }}>
             <Building2 className="w-5 h-5" />
-            <span>Add New Tenant Organization</span>
+            Add New Tenant
           </DialogTitle>
-          <DialogDescription className="text-gray-600">
-            Create a new tenant organization to manage users and resources separately.
+          <DialogDescription style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+            Create a new tenant organization. The slug will be auto-generated from the name.
           </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white my-4">
-          {/* General Error */}
-          {errors.general && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-600">{errors.general}</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Organization Name */}
-            <div className="space-y-3">
-              <Label htmlFor="name" className="text-gray-700">
-                Organization Name *
-              </Label>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Organization Name</Label>
               <Input
                 id="name"
-                placeholder="e.g., MSF Kenya"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                className={`bg-white border-gray-300 ${
-                  errors.name ? "border-red-300" : ""
-                }`}
-                disabled={isSubmitting}
+                {...register("name", { required: "Name is required" })}
+                placeholder="Enter organization name"
               />
               {errors.name && (
-                <p className="text-sm text-red-600">{errors.name}</p>
+                <p className="text-sm text-destructive">{errors.name.message}</p>
               )}
             </div>
 
-            {/* Slug - Read-only, auto-generated */}
-            <div className="space-y-3">
-              <Label htmlFor="slug" className="text-gray-700">
-                URL Slug *
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="slug">Slug (Auto-generated)</Label>
               <Input
                 id="slug"
-                placeholder="Auto-generated from name"
-                value={formData.slug}
-                className="bg-gray-100 border-gray-300 text-gray-600"
-                disabled={true}
-                readOnly
+                {...register("slug", { required: "Slug is required" })}
+                placeholder="organization-slug"
+                disabled
+                className="bg-muted"
               />
-              <p className="text-xs text-gray-500">
-                Automatically generated from organization name. Used in URLs.
-              </p>
+              {errors.slug && (
+                <p className="text-sm text-destructive">{errors.slug.message}</p>
+              )}
             </div>
           </div>
 
-          {/* Contact and Admin Emails */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Contact Email */}
-            <div className="space-y-3">
-              <Label htmlFor="contact_email" className="text-gray-700">
-                Contact Email *
-              </Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="contact_email">Contact Email</Label>
               <Input
                 id="contact_email"
                 type="email"
-                placeholder="contact@organization.org"
-                value={formData.contact_email}
-                onChange={(e) =>
-                  handleInputChange("contact_email", e.target.value)
-                }
-                className={`bg-white border-gray-300 ${
-                  errors.contact_email ? "border-red-300" : ""
-                }`}
-                disabled={isSubmitting}
+                {...register("contact_email", { required: "Contact email is required" })}
+                placeholder="contact@organization.com"
               />
               {errors.contact_email && (
-                <p className="text-sm text-red-600">{errors.contact_email}</p>
+                <p className="text-sm text-destructive">{errors.contact_email.message}</p>
               )}
-              <p className="text-xs text-gray-500">
-                General contact email for the organization
-              </p>
             </div>
 
-            {/* Admin Email */}
-            <div className="space-y-3">
-              <Label htmlFor="admin_email" className="text-gray-700">
-                Admin Email *
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="admin_email">Admin Email</Label>
               <Input
                 id="admin_email"
                 type="email"
-                placeholder="admin@organization.org"
-                value={formData.admin_email}
-                onChange={(e) =>
-                  handleInputChange("admin_email", e.target.value)
-                }
-                className={`bg-white border-gray-300 ${
-                  errors.admin_email ? "border-red-300" : ""
-                }`}
-                disabled={isSubmitting}
+                {...register("admin_email", { required: "Admin email is required" })}
+                placeholder="admin@organization.com"
               />
               {errors.admin_email && (
-                <p className="text-sm text-red-600">{errors.admin_email}</p>
+                <p className="text-sm text-destructive">{errors.admin_email.message}</p>
               )}
-              <p className="text-xs text-gray-500">
-                Email of the person who will have admin access to this tenant
-              </p>
             </div>
-
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Country */}
-            <div className="space-y-3">
-              <Label htmlFor="country" className="text-gray-700">
-                Country *
-              </Label>
-              <CountrySelect
-                value={formData.country || ""}
-                onChange={(value) => handleInputChange("country", value)}
-                placeholder="Select country"
-              />
-              {errors.country && (
-                <p className="text-sm text-red-600">{errors.country}</p>
-              )}
-            </div>
-
-            {/* Domain */}
-            <div className="space-y-3">
-              <Label htmlFor="domain" className="text-gray-700">
-                Domain (Optional)
-              </Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="domain">Domain (Optional)</Label>
               <Input
                 id="domain"
-                placeholder="e.g., msf-kenya.org"
-                value={formData.domain}
-                onChange={(e) => handleInputChange("domain", e.target.value)}
-                className={`bg-white border-gray-300 ${
-                  errors.domain ? "border-red-300" : ""
-                }`}
-                disabled={isSubmitting}
+                {...register("domain")}
+                placeholder="example.com"
               />
-              {errors.domain && (
-                <p className="text-sm text-red-600">{errors.domain}</p>
-              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country">Country (Optional)</Label>
+              <Controller
+                name="country"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value || ""} onValueChange={field.onChange}>
+                    <SelectTrigger 
+                      className="w-full"
+                      style={{
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        borderColor: isDark ? '#374151' : '#e5e7eb',
+                        color: isDark ? '#ffffff' : '#000000'
+                      }}
+                    >
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent 
+                      className="max-h-60"
+                      style={{
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        borderColor: isDark ? '#374151' : '#e5e7eb'
+                      }}
+                    >
+                      <div className="p-2">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search countries..."
+                            value={countrySearch}
+                            onChange={(e) => setCountrySearch(e.target.value)}
+                            className="pl-8"
+                            style={{
+                              backgroundColor: isDark ? '#111827' : '#f9fafb',
+                              borderColor: isDark ? '#374151' : '#e5e7eb',
+                              color: isDark ? '#ffffff' : '#000000'
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {isLoadingCountries ? (
+                        <div className="p-4 text-center">
+                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          <p className="text-sm mt-2">Loading countries...</p>
+                        </div>
+                      ) : (
+                        filteredCountries.map((country) => (
+                          <SelectItem 
+                            key={country.code} 
+                            value={country.name}
+                            style={{
+                              color: isDark ? '#ffffff' : '#000000'
+                            }}
+                          >
+                            {country.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-3">
-            <Label htmlFor="description" className="text-gray-700">
-              Description (Optional)
-            </Label>
-            <RichTextEditor
-              value={formData.description || ""}
-              onChange={(value) => handleInputChange("description", value)}
-              placeholder="Brief description of the organization..."
-              height={200}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description (Optional)</Label>
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <RichTextEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  isDark={isDark}
+                />
+              )}
             />
-            <p className="text-xs text-gray-500">
-              Provide a brief description of the organization&apos;s purpose or
-              location.
-            </p>
           </div>
 
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={handleClose}
+              onClick={onClose}
               disabled={isSubmitting}
             >
               Cancel

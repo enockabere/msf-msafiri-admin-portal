@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import ParticipantAnalytics from "@/components/events/ParticipantAnalytics";
-import { FeedbackMessage } from "./components/FeedbackMessage";
-import { ParticipantControls } from "./components/ParticipantControls";
+import { Plus, Search, Download, CheckCircle, AlertCircle, X } from "lucide-react";
 import { ParticipantDetailsModal } from "./components/ParticipantDetailsModal";
 import { VettingControls } from "./components/VettingControls";
 import { ParticipantTable } from "./components/ParticipantTable";
+import { ParticipantHeader } from "./components/ParticipantHeader";
 import { AddParticipantForm } from "./components/AddParticipantForm";
 import { BulkActions } from "./components/BulkActions";
 import { ColumnSelector } from "./components/ColumnSelector";
@@ -127,6 +131,7 @@ export default function EventParticipants({
   const [showEmailTemplate, setShowEmailTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  // Normalize vetting mode status
   const normalizeStatus = (status: string | undefined) => {
     if (status === 'pending') return 'pending_approval';
     return status;
@@ -173,6 +178,7 @@ export default function EventParticipants({
 
         setParticipants(filteredData);
         
+        // Setup columns
         if (data.length > 0) {
           const coreColumns = {
             'full_name': 'Name',
@@ -258,6 +264,7 @@ export default function EventParticipants({
     return matchesSearch;
   });
 
+  // Pagination logic
   const totalPages = Math.ceil(filteredParticipants.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -268,6 +275,7 @@ export default function EventParticipants({
   };
 
   const handleStatusChange = async (participantId: number, newStatus: string) => {
+    // Implementation for status change
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
@@ -295,6 +303,7 @@ export default function EventParticipants({
   };
 
   const handleRoleChange = async (participantId: number, newRole: string) => {
+    // Implementation for role change
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participantId}/role`,
@@ -343,13 +352,39 @@ export default function EventParticipants({
 
   return (
     <div className="space-y-4">
+      {/* Feedback Message */}
       {feedbackMessage && (
-        <FeedbackMessage 
-          message={feedbackMessage}
-          onClose={() => setFeedbackMessage(null)}
-        />
+        <div className={`flex items-center justify-between p-4 rounded-lg border-2 shadow-md animate-in slide-in-from-top-2 ${
+          feedbackMessage.type === 'success'
+            ? 'bg-green-50 border-green-200'
+            : 'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {feedbackMessage.type === 'success' ? (
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className={`text-sm font-medium ${
+              feedbackMessage.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}>
+              {feedbackMessage.message}
+            </span>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage(null)}
+            className={`p-1 rounded-lg transition-colors ${
+              feedbackMessage.type === 'success'
+                ? 'hover:bg-green-100 text-green-600'
+                : 'hover:bg-red-100 text-red-600'
+            }`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       )}
 
+      {/* Analytics Dashboard */}
       {participants.length > 0 && (
         <ParticipantAnalytics 
           participants={participants} 
@@ -359,7 +394,7 @@ export default function EventParticipants({
 
       {!analyticsExpanded && (
         <div className="space-y-6">
-          <ParticipantControls
+          <ParticipantHeader
             roleFilter={roleFilter}
             effectiveVettingMode={effectiveVettingMode}
             filteredParticipants={filteredParticipants}
@@ -370,11 +405,6 @@ export default function EventParticipants({
             setSearchTerm={setSearchTerm}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
-            selectedParticipants={selectedParticipants}
-            allowAdminAdd={allowAdminAdd}
-            eventHasEnded={eventHasEnded}
-            onExport={() => {}}
-            onAddParticipant={() => setShowAddForm(true)}
           />
 
           <BulkActions
@@ -384,13 +414,35 @@ export default function EventParticipants({
             onBulkRoleChange={() => {}}
           />
 
-          <ColumnSelector
-            availableColumns={availableColumns}
-            visibleColumns={visibleColumns}
-            setVisibleColumns={setVisibleColumns}
-            showColumnSelector={showColumnSelector}
-            setShowColumnSelector={setShowColumnSelector}
-          />
+          <div className="flex items-center gap-3">
+            <ColumnSelector
+              availableColumns={availableColumns}
+              visibleColumns={visibleColumns}
+              setVisibleColumns={setVisibleColumns}
+              showColumnSelector={showColumnSelector}
+              setShowColumnSelector={setShowColumnSelector}
+            />
+            
+            <Button
+              onClick={() => {}}
+              variant="outline"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            
+            {allowAdminAdd && (
+              <Button
+                onClick={() => setShowAddForm(true)}
+                disabled={eventHasEnded}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add {roleFilter || "Participant"}
+              </Button>
+            )}
+          </div>
 
           <AddParticipantForm
             showAddForm={showAddForm}
@@ -441,37 +493,35 @@ export default function EventParticipants({
             handleCommentChange={async () => {}}
             setParticipantComments={setParticipantComments}
             goToPage={goToPage}
-            fetchLoading={fetchLoading}
           />
 
-          {vettingMode && (
-            <VettingControls
-              eventId={eventId}
-              vettingMode={vettingMode}
-              effectiveVettingMode={effectiveVettingMode!}
-              filteredParticipants={filteredParticipants}
-              eventHasEnded={eventHasEnded}
-              committeeStatus={committeeStatus}
-              vettingApproved={vettingApproved}
-              submittingVetting={submittingVetting}
-              emailSubject={emailSubject}
-              emailBody={emailBody}
-              showEmailTemplate={showEmailTemplate}
-              savingTemplate={savingTemplate}
-              apiClient={apiClient}
-              setCommitteeStatus={setCommitteeStatus}
-              setVettingApproved={setVettingApproved}
-              setSubmittingVetting={setSubmittingVetting}
-              setEmailSubject={setEmailSubject}
-              setEmailBody={setEmailBody}
-              setShowEmailTemplate={setShowEmailTemplate}
-              setSavingTemplate={setSavingTemplate}
-              showFeedback={showFeedback}
-            />
-          )}
+          <VettingControls
+            eventId={eventId}
+            vettingMode={vettingMode!}
+            effectiveVettingMode={effectiveVettingMode!}
+            filteredParticipants={filteredParticipants}
+            eventHasEnded={eventHasEnded}
+            committeeStatus={committeeStatus}
+            vettingApproved={vettingApproved}
+            submittingVetting={submittingVetting}
+            emailSubject={emailSubject}
+            emailBody={emailBody}
+            showEmailTemplate={showEmailTemplate}
+            savingTemplate={savingTemplate}
+            apiClient={apiClient}
+            setCommitteeStatus={setCommitteeStatus}
+            setVettingApproved={setVettingApproved}
+            setSubmittingVetting={setSubmittingVetting}
+            setEmailSubject={setEmailSubject}
+            setEmailBody={setEmailBody}
+            setShowEmailTemplate={setShowEmailTemplate}
+            setSavingTemplate={setSavingTemplate}
+            showFeedback={showFeedback}
+          />
         </div>
       )}
 
+      {/* Participant Details Modal */}
       {viewingParticipant && (
         <ParticipantDetailsModal
           participant={viewingParticipant}
