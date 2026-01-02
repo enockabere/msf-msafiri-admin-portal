@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,12 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
     flight_ticket_required: true
   });
   const { apiClient } = useAuthenticatedApi();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
 
   useEffect(() => {
@@ -360,7 +367,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
     <div className="space-y-4">
       {/* Base Country Info */}
       {tenantCountry && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-primary/20" style={{
+          backgroundColor: mounted && theme === 'dark' ? '#1e3a8a' : '#f0f9ff',
+          borderColor: mounted && theme === 'dark' ? '#3b82f6' : '#0ea5e9'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-start gap-2">
               <div className="p-1.5 bg-primary/10 rounded-lg">
@@ -379,71 +389,126 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
       {/* Statistics Dashboard */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
+        <Card style={{
+          background: mounted && theme === 'dark' ? 'linear-gradient(135deg, #1e3a8a 0%, #3730a3 50%)' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%)',
+          borderColor: mounted && theme === 'dark' ? '#3b82f6' : '#93c5fd'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-blue-700">Total Countries</p>
-                <p className="text-2xl font-bold text-blue-900 mt-1">{stats.total}</p>
+                <p className="text-xs font-medium" style={{
+                  color: mounted && theme === 'dark' ? '#93c5fd' : '#1d4ed8'
+                }}>Total Countries</p>
+                <p className="text-2xl font-bold mt-1" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#1e3a8a'
+                }}>{stats.total}</p>
               </div>
-              <div className="p-2 bg-blue-200/50 rounded-lg">
-                <Globe className="h-4 w-4 text-blue-700" />
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#3b82f6' : '#dbeafe'
+              }}>
+                <Globe className="h-4 w-4" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#1d4ed8'
+                }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
+        <Card style={{
+          background: mounted && theme === 'dark' ? 'linear-gradient(135deg, #166534 0%, #15803d 50%)' : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 50%)',
+          borderColor: mounted && theme === 'dark' ? '#22c55e' : '#86efac'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-green-700">Configured</p>
-                <p className="text-2xl font-bold text-green-900 mt-1">{stats.configured}</p>
+                <p className="text-xs font-medium" style={{
+                  color: mounted && theme === 'dark' ? '#86efac' : '#166534'
+                }}>Configured</p>
+                <p className="text-2xl font-bold mt-1" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#166534'
+                }}>{stats.configured}</p>
               </div>
-              <div className="p-2 bg-green-200/50 rounded-lg">
-                <CheckCircle2 className="h-4 w-4 text-green-700" />
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#22c55e' : '#dcfce7'
+              }}>
+                <CheckCircle2 className="h-4 w-4" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#166534'
+                }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
+        <Card style={{
+          background: mounted && theme === 'dark' ? 'linear-gradient(135deg, #92400e 0%, #d97706 50%)' : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 50%)',
+          borderColor: mounted && theme === 'dark' ? '#f59e0b' : '#fcd34d'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-amber-700">Pending</p>
-                <p className="text-2xl font-bold text-amber-900 mt-1">{stats.unconfigured}</p>
+                <p className="text-xs font-medium" style={{
+                  color: mounted && theme === 'dark' ? '#fcd34d' : '#92400e'
+                }}>Pending</p>
+                <p className="text-2xl font-bold mt-1" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#92400e'
+                }}>{stats.unconfigured}</p>
               </div>
-              <div className="p-2 bg-amber-200/50 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-amber-700" />
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#f59e0b' : '#fef3c7'
+              }}>
+                <AlertCircle className="h-4 w-4" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#92400e'
+                }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200">
+        <Card style={{
+          background: mounted && theme === 'dark' ? 'linear-gradient(135deg, #7c2d12 0%, #a855f7 50%)' : 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 50%)',
+          borderColor: mounted && theme === 'dark' ? '#a855f7' : '#c4b5fd'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-purple-700">Visa Required</p>
-                <p className="text-2xl font-bold text-purple-900 mt-1">{stats.visaRequired}</p>
+                <p className="text-xs font-medium" style={{
+                  color: mounted && theme === 'dark' ? '#c4b5fd' : '#7c2d12'
+                }}>Visa Required</p>
+                <p className="text-2xl font-bold mt-1" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#7c2d12'
+                }}>{stats.visaRequired}</p>
               </div>
-              <div className="p-2 bg-purple-200/50 rounded-lg">
-                <FileText className="h-4 w-4 text-purple-700" />
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#a855f7' : '#f3e8ff'
+              }}>
+                <FileText className="h-4 w-4" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#7c2d12'
+                }} />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-rose-50 to-rose-100/50 border-rose-200">
+        <Card style={{
+          background: mounted && theme === 'dark' ? 'linear-gradient(135deg, #881337 0%, #e11d48 50%)' : 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%)',
+          borderColor: mounted && theme === 'dark' ? '#e11d48' : '#f9a8d4'
+        }}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-rose-700">eTA Required</p>
-                <p className="text-2xl font-bold text-rose-900 mt-1">{stats.etaRequired}</p>
+                <p className="text-xs font-medium" style={{
+                  color: mounted && theme === 'dark' ? '#f9a8d4' : '#881337'
+                }}>eTA Required</p>
+                <p className="text-2xl font-bold mt-1" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#881337'
+                }}>{stats.etaRequired}</p>
               </div>
-              <div className="p-2 bg-rose-200/50 rounded-lg">
-                <CreditCard className="h-4 w-4 text-rose-700" />
+              <div className="p-2 rounded-lg" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#e11d48' : '#fdf2f8'
+              }}>
+                <CreditCard className="h-4 w-4" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#881337'
+                }} />
               </div>
             </div>
           </CardContent>
@@ -451,7 +516,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       </div>
 
       {/* Search and Filter Section */}
-      <Card>
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+      }}>
         <CardContent className="pt-4">
           <div className="flex flex-col gap-3">
             <div className="relative">
@@ -530,7 +598,10 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       </Card>
 
       {/* Countries Grid */}
-      <Card>
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+      }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Country Requirements</CardTitle>
           <CardDescription className="text-xs">
@@ -558,9 +629,11 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
                 return (
                   <Card
                     key={country}
-                    className={`relative transition-all hover:shadow-lg ${
-                      isConfigured ? 'border-green-200 bg-green-50/30' : 'border-muted'
-                    }`}
+                    className={`relative transition-all hover:shadow-lg`}
+                    style={{
+                      backgroundColor: mounted && theme === 'dark' ? '#000000' : (isConfigured ? '#f0fdf4' : '#ffffff'),
+                      borderColor: mounted && theme === 'dark' ? '#374151' : (isConfigured ? '#bbf7d0' : '#e5e7eb')
+                    }}
                   >
                     <CardHeader className="pb-2 p-3 sm:p-4">
                       <div className="flex items-start justify-between gap-2">
@@ -796,9 +869,16 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
       {/* Defaults Selection Modal */}
       {showDefaultsModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md border border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Configure All Countries</h3>
-            <p className="text-sm text-gray-600 mb-6">
+          <div className="rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md border" style={{
+            backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+          }}>
+            <h3 className="text-lg font-semibold mb-4" style={{
+              color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+            }}>Configure All Countries</h3>
+            <p className="text-sm mb-6" style={{
+              color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+            }}>
               Apply these settings to all {countries.filter(c => c !== tenantCountry).length} countries. This will update existing configurations:
             </p>
             

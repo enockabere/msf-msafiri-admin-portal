@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useId } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,8 +34,24 @@ import {
   LogIn,
   Download,
 } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "next-themes";
+import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
 
 // API URL helper
 const getApiUrl = (): string => {
@@ -62,6 +78,7 @@ interface LoginFormData {
 export default function LoginComponent() {
   const id = useId();
   const { theme } = useTheme();
+  const { data: session, status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'home' | 'resources' | 'about'>('home');
@@ -73,6 +90,12 @@ export default function LoginComponent() {
   const [apiUrl, setApiUrl] = useState<string>("");
   const [isApiConnected, setIsApiConnected] = useState<boolean>(true);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const heroImages = [
+    "/portal/hero/1.png",
+    "/portal/hero/2.png",
+    "/portal/hero/3.svg"
+  ];
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: process.env.NEXT_PUBLIC_DEFAULT_EMAIL || "",
@@ -88,6 +111,13 @@ export default function LoginComponent() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check if user is already authenticated and redirect
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      router.push(redirectTo);
+    }
+  }, [status, session, router, redirectTo]);
 
   useEffect(() => {
     const url = getApiUrl();
@@ -234,13 +264,13 @@ export default function LoginComponent() {
       if (error) setError("");
     };
 
-  if (!mounted) {
+  if (!mounted || status === "loading") {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white border shadow-xl rounded-lg p-8 text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-slate-600" />
-            <p className="text-slate-600">Loading login page...</p>
+            <p className="text-slate-600">Loading...</p>
           </div>
         </div>
       </div>
@@ -427,24 +457,29 @@ export default function LoginComponent() {
           </div>
 
           {/* Visual Content */}
-          <div className={`relative aspect-square rounded-2xl overflow-hidden shadow-lg animate-in fade-in-0 slide-in-from-right duration-1000 hover:shadow-xl transition-all duration-300 ${theme === 'dark' ? 'bg-gradient-to-br from-gray-800 to-black border border-gray-800' : 'bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100'}`}>
-             <Image
-               src="/portal/hero/8.jpg"
-               alt="MSF Operations Visualization"
-               fill
-               className="object-cover"
-               priority
-             />
-             
-             {/* Decorative floating cards with animations */}
-             <div className={`absolute bottom-12 right-12 w-48 h-32 backdrop-blur-md rounded-lg shadow-xl p-4 hidden md:block animate-in fade-in-0 slide-in-from-bottom duration-2000 hover:scale-105 transition-transform ${theme === 'dark' ? 'bg-gray-800/90 border border-gray-700' : 'bg-white/90 border border-slate-200'}`}>
-                <div className="w-full h-2 bg-gradient-to-r from-red-200 to-slate-100 rounded mb-2 animate-pulse" />
-                <div className="w-2/3 h-2 bg-gradient-to-r from-slate-100 to-red-100 rounded animate-pulse" />
-             </div>
-             
-             {/* Additional floating element */}
-             <div className="absolute top-8 left-8 w-16 h-16 bg-red-100/50 rounded-full animate-ping" />
-             <div className="absolute top-8 left-8 w-16 h-16 bg-red-200/30 rounded-full animate-pulse" />
+          <div className="flex items-center justify-center my-16 animate-in fade-in-0 slide-in-from-right duration-1000">
+            <Carousel
+              plugins={[Autoplay({ delay: 3000 })]}
+              className="w-full max-w-lg relative"
+            >
+              <CarouselContent>
+                {heroImages.map((image, index) => (
+                  <CarouselItem key={index}>
+                    <div className="flex items-center justify-center">
+                      <Image
+                        src={image}
+                        alt="MSF Operations Visualization"
+                        width={600}
+                        height={600}
+                        priority={index === 0}
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-2" />
+              <CarouselNext className="right-2" />
+            </Carousel>
           </div>
         </main>
       )}
@@ -463,9 +498,8 @@ export default function LoginComponent() {
             </div>
 
             <div className="grid gap-8">
-              {/* Changelog Card */}
-              <div className={`rounded-lg p-8 shadow-sm hover:shadow-md transition-shadow max-w-5xl mx-auto ${theme === 'dark' ? 'bg-gray-900 border border-gray-700' : 'bg-white border border-slate-200'}`}>
-                <div className="space-y-6">
+              <Card className="max-w-5xl mx-auto">
+                <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                       <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -473,22 +507,23 @@ export default function LoginComponent() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900">Changelog</h3>
-                      <p className="text-xs text-slate-500">Version history and updates</p>
+                      <CardTitle>Changelog</CardTitle>
+                      <CardDescription>Version history and updates</CardDescription>
                     </div>
                   </div>
-                  
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-6">
                     <div className="border-l-2 border-red-200 pl-6 space-y-4">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <Badge className="bg-red-600 text-white hover:bg-red-700">
                             v2.1.0
-                          </span>
-                          <span className="text-xs text-slate-500">Latest</span>
+                          </Badge>
+                          <Badge variant="secondary">Latest</Badge>
                         </div>
-                        <h4 className="font-medium text-slate-900 text-sm">Enhanced Login & Authentication</h4>
-                        <ul className="text-xs text-slate-600 space-y-1">
+                        <h4 className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Enhanced Login & Authentication</h4>
+                        <ul className={`text-xs space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}`}>
                           <li>• Added Microsoft SSO integration</li>
                           <li>• Improved login modal design</li>
                           <li>• Enhanced security features</li>
@@ -497,12 +532,12 @@ export default function LoginComponent() {
                       
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                          <Badge variant="secondary">
                             v2.0.5
-                          </span>
+                          </Badge>
                         </div>
-                        <h4 className="font-medium text-slate-900 text-sm">UI/UX Improvements</h4>
-                        <ul className="text-xs text-slate-600 space-y-1">
+                        <h4 className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>UI/UX Improvements</h4>
+                        <ul className={`text-xs space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}`}>
                           <li>• Updated dashboard layout</li>
                           <li>• Improved mobile responsiveness</li>
                           <li>• Added dark mode support</li>
@@ -511,12 +546,12 @@ export default function LoginComponent() {
                       
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                          <Badge variant="secondary">
                             v2.0.0
-                          </span>
+                          </Badge>
                         </div>
-                        <h4 className="font-medium text-slate-900 text-sm">Major Release</h4>
-                        <ul className="text-xs text-slate-600 space-y-1">
+                        <h4 className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-black'}`}>Major Release</h4>
+                        <ul className={`text-xs space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'}`}>
                           <li>• Complete system redesign</li>
                           <li>• New event management features</li>
                           <li>• Enhanced performance</li>
@@ -524,8 +559,8 @@ export default function LoginComponent() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>
@@ -600,6 +635,9 @@ export default function LoginComponent() {
           </div>
         </main>
       )}
+      
+      {/* Footer */}
+      <SuperAdminFooter />
     </div>
   );
 }

@@ -203,26 +203,48 @@ export function LocationSelect({
           : "Type to search locations"
       }
       styles={{
-        control: (base) => ({
+        control: (base, state) => ({
           ...base,
           minHeight: '40px',
-          border: '1px solid #d1d5db',
-          borderRadius: '6px',
+          backgroundColor: 'hsl(var(--background))',
+          borderColor: 'hsl(var(--border))',
+          color: 'hsl(var(--foreground))',
           '&:hover': {
-            border: '1px solid #d1d5db',
+            borderColor: 'hsl(var(--border))',
           },
           '&:focus-within': {
-            border: '2px solid #3b82f6',
-            boxShadow: '0 0 0 1px #3b82f6',
+            borderColor: 'hsl(var(--ring))',
+            boxShadow: '0 0 0 2px hsl(var(--ring))',
           },
+        }),
+        menu: (base) => ({
+          ...base,
+          backgroundColor: 'hsl(var(--popover))',
+          border: '1px solid hsl(var(--border))',
         }),
         option: (base, state) => ({
           ...base,
-          backgroundColor: state.isSelected ? '#f3f4f6' : state.isFocused ? '#f9fafb' : 'white',
-          color: '#111827',
+          backgroundColor: state.isSelected 
+            ? 'hsl(var(--accent))' 
+            : state.isFocused 
+            ? 'hsl(var(--accent))' 
+            : 'transparent',
+          color: 'hsl(var(--foreground))',
           '&:hover': {
-            backgroundColor: '#f3f4f6',
+            backgroundColor: 'hsl(var(--accent))',
           },
+        }),
+        singleValue: (base) => ({
+          ...base,
+          color: 'hsl(var(--foreground))',
+        }),
+        input: (base) => ({
+          ...base,
+          color: 'hsl(var(--foreground))',
+        }),
+        placeholder: (base) => ({
+          ...base,
+          color: 'hsl(var(--muted-foreground))',
         }),
       }}
     />

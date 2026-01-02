@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useTheme } from "next-themes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +50,8 @@ interface InventoryItem {
 export default function InventoryPage() {
   const params = useParams();
   const tenantSlug = params.slug as string;
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -60,6 +63,10 @@ export default function InventoryPage() {
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
@@ -244,15 +251,22 @@ export default function InventoryPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <Card className="rounded-2xl p-6 border-2" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Package className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Stationary & Equipment</h1>
-                <p className="text-sm text-gray-600">Manage your inventory items efficiently and track equipment status</p>
+                <h1 className="text-2xl font-semibold mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                }}>Stationary & Equipment</h1>
+                <p className="text-sm" style={{
+                  color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
+                }}>Manage your inventory items efficiently and track equipment status</p>
               </div>
             </div>
             <Button
@@ -266,9 +280,12 @@ export default function InventoryPage() {
               Add New Item
             </Button>
           </div>
-        </div>
+        </Card>
 
-        <Card>
+        <Card style={{
+          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <CardContent className="p-4 text-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4">
@@ -401,8 +418,12 @@ export default function InventoryPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-                  <div className="text-xs text-gray-600">
+                <div className="flex justify-between items-center mt-6 pt-4 border-t" style={{
+                  borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+                }}>
+                  <div className="text-xs" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                  }}>
                     Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
                   </div>
                   <div className="flex items-center gap-2">
@@ -432,7 +453,9 @@ export default function InventoryPage() {
                           return (
                             <div key={page} className="flex items-center gap-1">
                               {showEllipsis && (
-                                <span className="text-gray-400 px-1">...</span>
+                                <span className="px-1" style={{
+                                  color: mounted && theme === 'dark' ? '#6b7280' : '#9ca3af'
+                                }}>...</span>
                               )}
                               <Button
                                 variant={currentPage === page ? "default" : "outline"}

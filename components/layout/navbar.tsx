@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,20 +30,30 @@ import {
   X,
   RefreshCw,
   Calendar,
+  Search,
 } from "lucide-react";
 import { useAuth, AuthUtils } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationPriority } from "@/lib/api";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "next-themes";
 
 interface NavbarProps {
   showLogo?: boolean;
 }
 
 export default function Navbar({ showLogo = false }: NavbarProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
 
   // Use your existing auth hook for session data
   const { user, isAuthenticated, isSuperAdmin, loading } = useAuth();
@@ -152,18 +164,29 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
     stats?.unread || notifications.filter((n) => !n.is_read).length;
 
   // Loading state
-  if (loading || userDataLoading) {
+  if (loading || userDataLoading || !mounted) {
     return (
-      <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200">
+      <header className="sticky top-0 z-40 w-full border-b" style={{
+        backgroundColor: mounted && resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && resolvedTheme === 'dark' ? '#333333' : '#e5e7eb'
+      }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="h-8 bg-gray-200 rounded w-32 animate-pulse"></div>
-              <div className="hidden md:block h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+              <div className="h-8 rounded w-32 animate-pulse" style={{
+                backgroundColor: mounted && resolvedTheme === 'dark' ? '#374151' : '#e5e7eb'
+              }}></div>
+              <div className="hidden md:block h-4 rounded w-48 animate-pulse" style={{
+                backgroundColor: mounted && resolvedTheme === 'dark' ? '#374151' : '#e5e7eb'
+              }}></div>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
-              <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+              <div className="h-8 w-8 rounded-full animate-pulse" style={{
+                backgroundColor: mounted && resolvedTheme === 'dark' ? '#374151' : '#e5e7eb'
+              }}></div>
+              <div className="h-10 w-24 rounded-lg animate-pulse" style={{
+                backgroundColor: mounted && resolvedTheme === 'dark' ? '#374151' : '#e5e7eb'
+              }}></div>
             </div>
           </div>
         </div>
@@ -174,10 +197,15 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
   // Not authenticated state
   if (!isAuthenticated || !user) {
     return (
-      <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200">
+      <header className="sticky top-0 z-40 w-full border-b" style={{
+        backgroundColor: mounted && resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && resolvedTheme === 'dark' ? '#333333' : '#e5e7eb'
+      }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-center">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm" style={{
+              color: mounted && resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280'
+            }}>
               Please log in to access the dashboard
             </div>
           </div>
@@ -187,7 +215,10 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+    <header className="sticky top-0 z-40 w-full border-b" style={{
+      backgroundColor: isDark ? '#000000' : '#ffffff',
+      borderColor: isDark ? '#333333' : '#e5e7eb'
+    }}>
       <div className={`${showLogo ? 'px-4 sm:px-6 lg:px-8' : 'container mx-auto px-4 sm:px-6 lg:px-8'}`}>
         <div className="flex h-16 items-center justify-between">
           {/* Left Section - Logo and Greeting */}
@@ -205,13 +236,17 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
             )}
             <div className="min-w-0 flex-1">
               {/* Main greeting */}
-              <h1 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+              <h1 className="text-sm sm:text-base lg:text-lg font-semibold truncate" style={{
+                color: isDark ? '#ffffff' : '#111827'
+              }}>
                 {getGreeting()}, {displayName?.split(" ")[0] || "Admin"}
               </h1>
 
               {/* Secondary info - hidden on mobile */}
               <div className="hidden sm:flex items-center space-x-3 mt-1">
-                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center text-xs" style={{
+                  color: isDark ? '#9ca3af' : '#6b7280'
+                }}>
                   <Calendar className="h-3 w-3 mr-1" />
                   {getCurrentDate()}
                 </div>
@@ -234,6 +269,23 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Search Input - Hidden on mobile */}
+            <div className="hidden md:block">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search..."
+                  className="pl-10 w-64 h-10"
+                  style={{
+                    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                    borderColor: isDark ? '#374151' : '#e5e7eb',
+                    color: isDark ? '#ffffff' : '#000000'
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Notifications Dropdown - Hidden on small screens */}
             <div className="hidden sm:block">
               <DropdownMenu>
@@ -241,16 +293,18 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200 dark:border-gray-700"
+                    className="relative rounded-lg h-10 w-10 p-0"
+                    style={{
+                      color: isDark ? '#ffffff' : '#000000',
+                      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                      borderColor: isDark ? '#374151' : '#e5e7eb'
+                    }}
                   >
-                    <Bell className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                    <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
-                      <Badge
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white border-2 border-white"
-                      >
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </Badge>
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
                     )}
                     <span className="sr-only">
                       {unreadCount > 0
@@ -261,13 +315,22 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent
-                  className="w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg z-50 max-h-96 overflow-hidden"
+                  className="w-80 shadow-lg rounded-lg z-50 max-h-96 overflow-hidden"
+                  style={{
+                    backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                    borderColor: isDark ? '#333333' : '#e5e7eb'
+                  }}
                   align="end"
                   sideOffset={8}
                 >
-                  <DropdownMenuLabel className="font-normal bg-gray-50/50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600 p-3">
+                  <DropdownMenuLabel className="font-normal p-3" style={{
+                    backgroundColor: isDark ? '#262626' : '#f9fafb',
+                    borderBottom: `1px solid ${isDark ? '#404040' : '#f3f4f6'}`
+                  }}>
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                      <h3 className="font-medium text-sm" style={{
+                        color: isDark ? '#ffffff' : '#111827'
+                      }}>
                         Notifications
                       </h3>
                       <div className="flex items-center space-x-1">
@@ -317,9 +380,17 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                       notifications.slice(0, 10).map((notification) => (
                         <DropdownMenuItem
                           key={notification.id}
-                          className={`p-3 cursor-pointer border-b border-gray-50 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 ${
-                            !notification.is_read ? "bg-blue-50/50 dark:bg-blue-900/20" : ""
-                          }`}
+                          className="p-3 cursor-pointer last:border-b-0"
+                          style={{
+                            borderBottom: `1px solid ${isDark ? '#333333' : '#f9fafb'}`,
+                            backgroundColor: !notification.is_read ? (isDark ? '#1e3a8a' : '#eff6ff') : 'transparent'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = !notification.is_read ? (isDark ? '#1e3a8a' : '#eff6ff') : 'transparent';
+                          }}
                           onClick={() =>
                             handleNotificationRead(notification.id)
                           }
@@ -330,14 +401,18 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-1">
+                                <p className="text-xs font-medium line-clamp-1" style={{
+                                  color: isDark ? '#ffffff' : '#111827'
+                                }}>
                                   {notification.title}
                                 </p>
                                 {!notification.is_read && (
                                   <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
                                 )}
                               </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                              <p className="text-xs mt-1 line-clamp-2" style={{
+                                color: isDark ? '#d1d5db' : '#4b5563'
+                              }}>
                                 {notification.message}
                               </p>
                               <div className="flex items-center mt-2">
@@ -383,7 +458,12 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="relative h-9 w-9 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                className="relative rounded-lg h-10 w-10 p-0"
+                style={{
+                  color: isDark ? '#ffffff' : '#000000',
+                  backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                  borderColor: isDark ? '#374151' : '#e5e7eb'
+                }}
                 onClick={() => {
                   const pathname = window.location.pathname;
                   const tenantMatch = pathname.match(/\/tenant\/([^/]+)/);
@@ -393,14 +473,11 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                   router.push(notificationsUrl);
                 }}
               >
-                <Bell className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                <Bell className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 text-white border-2 border-white"
-                  >
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
                     {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
+                  </span>
                 )}
               </Button>
             </div>
@@ -413,10 +490,15 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="relative h-10 w-10 rounded-full p-0 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 border border-gray-200 dark:border-gray-700"
+                  className="rounded-lg h-10 w-10 p-0"
+                  style={{
+                    color: isDark ? '#ffffff' : '#000000',
+                    backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                    borderColor: isDark ? '#374151' : '#e5e7eb'
+                  }}
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold text-sm">
+                    <AvatarFallback className="bg-black text-white font-semibold text-sm">
                       {getUserInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
@@ -424,11 +506,17 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
-                className="w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg z-50"
+                className="w-72 shadow-lg rounded-lg z-50"
+                style={{
+                  backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                  borderColor: isDark ? '#333333' : '#e5e7eb'
+                }}
                 align="end"
                 sideOffset={8}
               >
-                <DropdownMenuLabel className="font-normal bg-gray-50/50 dark:bg-gray-700/50 p-4">
+                <DropdownMenuLabel className="font-normal p-4" style={{
+                  backgroundColor: isDark ? '#262626' : '#f9fafb'
+                }}>
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -438,10 +526,14 @@ export default function Navbar({ showLogo = false }: NavbarProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          <p className="text-xs font-semibold truncate" style={{
+                            color: isDark ? '#ffffff' : '#111827'
+                          }}>
                             {displayName || "User"}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs truncate" style={{
+                            color: isDark ? '#9ca3af' : '#6b7280'
+                          }}>
                             {fullUserData?.email || user.email}
                           </p>
                         </div>

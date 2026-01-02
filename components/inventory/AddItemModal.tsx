@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useTheme } from "next-themes";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Package, Save, X } from "lucide-react";
 import { useParams } from "next/navigation";
 
@@ -33,6 +35,8 @@ interface AddItemModalProps {
 export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit }: AddItemModalProps) {
   const params = useParams();
   const tenantSlug = params.slug as string;
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -44,6 +48,10 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
   const [categories, setCategories] = useState<string[]>([]);
   const [showCategoryInput, setShowCategoryInput] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch existing categories
   useEffect(() => {
@@ -114,38 +122,35 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Header with close button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-        >
-          <X className="h-4 w-4 text-gray-500" />
-          <span className="sr-only">Close</span>
-        </button>
-
-        <div className="p-6 pb-4 border-b border-gray-200">
+      <DialogContent 
+        className="sm:max-w-[900px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+        style={{
+          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+          color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+        }}
+      >
+        <DialogHeader>
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <Package className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-gray-900">
+              <DialogTitle>
                 {editingItem ? "Edit Inventory Item" : "Add New Inventory Item"}
               </DialogTitle>
-              <p className="text-gray-600 text-sm mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {editingItem ? "Update item details" : "Add a new item to your inventory"}
               </p>
             </div>
           </div>
-        </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            {/* Item Name */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                Item Name <span className="text-red-500">*</span>
+              <Label htmlFor="name">
+                Item Name <span className="text-red-600">*</span>
               </Label>
               <Input
                 id="name"
@@ -153,34 +158,34 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
                 placeholder="e.g., Laptop, Printer, Notebook, Desk Chair"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Category */}
             <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium text-gray-700">
-                Category <span className="text-red-500">*</span>
+              <Label htmlFor="category">
+                Category <span className="text-red-600">*</span>
               </Label>
               {!showCategoryInput ? (
                 <div className="space-y-2">
-                  <select
+                  <Select
                     value={formData.category}
-                    onChange={(e) => handleCategorySelect(e.target.value)}
-                    required
+                    onValueChange={handleCategorySelect}
                     disabled={isSubmitting}
-                    className="w-full h-11 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
-                    <option value="">Select a category</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                    <option value="_new_">+ Add New Category</option>
-                  </select>
-                  <p className="text-xs text-gray-500">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="_new_">+ Add New Category</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
                     Choose an existing category or create a new one
                   </p>
                 </div>
@@ -192,7 +197,7 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                       onChange={(e) => setCustomCategory(e.target.value)}
                       required
                       placeholder="Enter new category name"
-                      className="flex-1 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="flex-1"
                       disabled={isSubmitting}
                     />
                     <Button
@@ -207,18 +212,15 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                       Cancel
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Enter the new category name
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Quantity */}
             <div className="space-y-2">
-              <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
-                Quantity
-              </Label>
+              <Label htmlFor="quantity">Quantity</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -231,63 +233,60 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                   })
                 }
                 placeholder="Enter quantity"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 disabled={isSubmitting}
               />
             </div>
 
-            {/* Condition */}
             <div className="space-y-2">
-              <Label htmlFor="condition" className="text-sm font-medium text-gray-700">
-                Condition
-              </Label>
-              <select
+              <Label htmlFor="condition">Condition</Label>
+              <Select
                 value={formData.condition}
-                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                onValueChange={(value) => setFormData({ ...formData, condition: value })}
                 disabled={isSubmitting}
-                className="w-full h-11 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
-                <option value="good">Good - Excellent working condition</option>
-                <option value="fair">Fair - Usable with minor issues</option>
-                <option value="poor">Poor - Needs repair or replacement</option>
-              </select>
-              <p className="text-xs text-gray-500">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="good">Good - Excellent working condition</SelectItem>
+                  <SelectItem value="fair">Fair - Usable with minor issues</SelectItem>
+                  <SelectItem value="poor">Poor - Needs repair or replacement</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
                 Select the current condition of the item
               </p>
             </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-              className="px-6"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 bg-red-600 hover:bg-red-700 text-white"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {editingItem ? "Updating..." : "Adding..."}
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  {editingItem ? "Update Item" : "Add Item"}
-                </>
-              )}
-            </Button>
-          </div>
         </form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={handleSubmit}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {editingItem ? "Updating..." : "Adding..."}
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                {editingItem ? "Update Item" : "Add Item"}
+              </>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

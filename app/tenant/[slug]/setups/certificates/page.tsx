@@ -3,11 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 import { toast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,12 +33,18 @@ export default function CertificatesPage() {
   const tenantSlug = params.slug as string;
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplate | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
@@ -329,7 +336,9 @@ export default function CertificatesPage() {
                 <Award className="w-8 h-8 text-blue-600 animate-pulse" />
               </div>
             </div>
-            <p className="text-xs font-medium text-gray-600">Loading certificate templates...</p>
+            <p className="text-xs font-medium" style={{
+              color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+            }}>Loading certificate templates...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -339,15 +348,22 @@ export default function CertificatesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <Card className="rounded-2xl p-6 border-2" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Award className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Certificate Templates</h1>
-                <p className="text-sm text-gray-600">Design certificate templates for events and training programs</p>
+                <h1 className="text-2xl font-semibold mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                }}>Certificate Templates</h1>
+                <p className="text-sm" style={{
+                  color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
+                }}>Design certificate templates for events and training programs</p>
               </div>
             </div>
             {canEdit && (
@@ -358,76 +374,64 @@ export default function CertificatesPage() {
                     Create Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[1200px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-                  <button
-                    onClick={handleModalClose}
-                    className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-                  >
-                    <X className="h-4 w-4 text-gray-500" />
-                    <span className="sr-only">Close</span>
-                  </button>
-
-                  <div className="p-6 pb-4 border-b border-gray-200">
+                <DialogContent 
+                  className="sm:max-w-[1200px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+                  style={{
+                    backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                    borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                  }}
+                >
+                  <DialogHeader>
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                         <Award className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <DialogTitle className="text-xl font-bold text-gray-900">
+                        <DialogTitle>
                           {editingTemplate ? 'Edit Certificate Template' : 'Create Certificate Template'}
                         </DialogTitle>
-                        <p className="text-gray-600 text-sm mt-1">
+                        <p className="text-sm text-muted-foreground mt-1">
                           Design a reusable certificate template for events
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </DialogHeader>
 
-                  <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-                    <div className="p-6 space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                            Template Name <span className="text-red-500">*</span>
+                          <Label htmlFor="name">
+                            Template Name <span className="text-red-600">*</span>
                           </Label>
                           <Input
                             id="name"
                             value={templateForm.name}
-                            onChange={(e) => {
-                              console.log('Name changed to:', e.target.value);
-                              setTemplateForm({ ...templateForm, name: e.target.value });
-                            }}
+                            onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                             required
                             placeholder="e.g., HATT Certificate"
-                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             disabled={submitting}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                            Description
-                          </Label>
+                          <Label htmlFor="description">Description</Label>
                           <Input
                             id="description"
                             value={templateForm.description}
-                            onChange={(e) => {
-                              console.log('Description changed to:', e.target.value);
-                              setTemplateForm({ ...templateForm, description: e.target.value });
-                            }}
+                            onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                             placeholder="Brief description of this template"
-                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                             disabled={submitting}
                           />
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                        <Label className="text-sm font-medium mb-2 block">
                           Certificate Design
                         </Label>
-                        <p className="text-xs text-gray-500 mb-4">
-                          Use variables like {`{{participantName}}`}, {`{{eventTitle}}`}, {`{{startDate}}`}, {`{{endDate}}`}, {`{{organizerName}}`}, {`{{qrCode}}`} etc.<br/>
-                          <strong>Note:</strong> {`{{qrCode}}`} will be replaced with a QR code that links to the certificate when scanned.
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Use variables like {`{{participantName}}`}, {`{{eventTitle}}`}, {`{{startDate}}`}, {`{{endDate}}`}, {`{{organizerName}}`}, {`{{qrCode}}`} etc.
                         </p>
                         <CertificateTemplateEditor
                           value={templateForm.template_content}
@@ -448,55 +452,66 @@ export default function CertificatesPage() {
                             });
                           }}
                           height={500}
+                          theme={theme}
                         />
                       </div>
                     </div>
-
-                    <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleModalClose}
-                        disabled={submitting}
-                        className="px-6"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="px-6 bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {submitting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            {editingTemplate ? 'Updating...' : 'Creating...'}
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            {editingTemplate ? 'Update Template' : 'Create Template'}
-                          </>
-                        )}
-                      </Button>
-                    </div>
                   </form>
+
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleModalClose}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={handleSubmit}
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          {editingTemplate ? 'Updating...' : 'Creating...'}
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          {editingTemplate ? 'Update Template' : 'Create Template'}
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             )}
           </div>
-        </div>
+        </Card>
 
-        <Card>
+        <Card style={{
+          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <CardContent className="p-4 text-sm">
             {templates.length === 0 ? (
               <div className="text-center py-12">
-                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-10 h-10 text-gray-400" />
+                <div className="rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4" style={{
+                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+                }}>
+                  <Award className="w-10 h-10" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                  }} />
                 </div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">No certificate templates yet</h3>
-                <p className="text-xs text-gray-500 mb-4">Create your first certificate template for events</p>
+                <h3 className="text-sm font-medium mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                }}>No certificate templates yet</h3>
+                <p className="text-xs mb-4" style={{
+                  color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                }}>Create your first certificate template for events</p>
               </div>
             ) : (
               <Table>

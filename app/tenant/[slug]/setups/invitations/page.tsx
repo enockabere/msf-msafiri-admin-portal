@@ -6,6 +6,7 @@ import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import Swal from 'sweetalert2';
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ export default function InvitationsPage() {
   const tenantSlug = params.slug as string;
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const { resolvedTheme } = useTheme();
 
   const [templates, setTemplates] = useState<InvitationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,15 +227,15 @@ export default function InvitationsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '2px solid #f3f4f6' }} className="rounded-2xl p-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Mail className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Letter of Invitation Templates</h1>
-                <p className="text-sm text-gray-600">Design invitation letter templates for events and meetings</p>
+                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Letter of Invitation Templates</h1>
+                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Design invitation letter templates for events and meetings</p>
               </div>
             </div>
             {canEdit && (
@@ -244,7 +246,7 @@ export default function InvitationsPage() {
                     Create Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[1200px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                <DialogContent style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="sm:max-w-[1200px] shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
                   <button
                     onClick={handleModalClose}
                     className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
@@ -253,16 +255,16 @@ export default function InvitationsPage() {
                     <span className="sr-only">Close</span>
                   </button>
 
-                  <div className="p-6 pb-4 border-b border-gray-200">
+                  <div style={{ borderBottom: resolvedTheme === 'dark' ? '1px solid #374151' : '1px solid #e5e7eb' }} className="p-6 pb-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                         <Mail className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <DialogTitle className="text-xl font-bold text-gray-900">
+                        <DialogTitle style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xl font-bold">
                           {editingTemplate ? 'Edit Invitation Template' : 'Create Invitation Template'}
                         </DialogTitle>
-                        <p className="text-gray-600 text-sm mt-1">
+                        <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm mt-1">
                           Design a reusable invitation letter template for events
                         </p>
                       </div>
@@ -271,10 +273,10 @@ export default function InvitationsPage() {
 
                   <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                      <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-sm font-medium mb-2 block">
                         Invitation Letter Design
                       </Label>
-                      <p className="text-xs text-gray-500 mb-4">
+                      <p style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs mb-4">
                         Use variables like {`{{participant_name}}`}, {`{{event_title}}`}, {`{{event_start_date}}`}, {`{{event_end_date}}`}, {`{{organization_address}}`}, etc.
                       </p>
                       <InvitationTemplateEditor
@@ -288,17 +290,17 @@ export default function InvitationsPage() {
               </Dialog>
             )}
           </div>
-        </div>
+        </Card>
 
-        <Card>
+        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
           <CardContent className="p-4 text-sm">
             {templates.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-2">No invitation templates yet</h3>
-                <p className="text-xs text-gray-600 mb-4">Create your first invitation letter template</p>
+                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-base font-semibold mb-2">No invitation templates yet</h3>
+                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-xs mb-4">Create your first invitation letter template</p>
                 {canEdit && (
                   <Button
                     onClick={() => setModalOpen(true)}

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 import { toast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -38,6 +39,12 @@ interface VendorHotelsSetupProps {
 export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorAdded }: VendorHotelsSetupProps) {
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [vendors, setVendors] = useState<VendorAccommodation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -601,7 +608,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               <Hotel className="w-8 h-8 text-blue-600 animate-pulse" />
             </div>
           </div>
-          <p className="text-xs font-medium text-gray-600">Loading vendor hotels...</p>
+          <p className={`text-xs font-medium ${mounted && theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Loading vendor hotels...</p>
         </div>
       </div>
     );
@@ -616,51 +623,42 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
             Add Vendor Hotel
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-          {/* Header with close button */}
-          <button
-            onClick={() => setAddVendorModalOpen(false)}
-            className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-          >
-            <X className="h-4 w-4 text-gray-500" />
-            <span className="sr-only">Close</span>
-          </button>
-
-          <div className="p-6 pb-4 border-b border-gray-200">
+        <DialogContent 
+          className="sm:max-w-[900px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+          style={{
+            backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+            color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+          }}
+        >
+          <DialogHeader>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <Hotel className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">Add New Vendor Hotel</DialogTitle>
-                <p className="text-gray-600 text-sm mt-1">Register a new accommodation partner</p>
+                <DialogTitle>Add New Vendor Hotel</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">Register a new accommodation partner</p>
               </div>
             </div>
-          </div>
+          </DialogHeader>
 
-          <form onSubmit={handleAddVendor} className="flex-1 overflow-y-auto">
-            <div className="p-6 space-y-6">
-              {/* Hotel Name */}
+          <form onSubmit={handleAddVendor} className="space-y-6">
+            <div className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="vendor_name" className="text-sm font-medium text-gray-700">
-                  Hotel Name <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="vendor_name">Hotel Name <span className="text-red-600">*</span></Label>
                 <Input
                   id="vendor_name"
                   value={vendorForm.vendor_name}
                   onChange={(e) => setVendorForm({ ...vendorForm, vendor_name: e.target.value })}
                   required
                   placeholder="Enter hotel or accommodation name"
-                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   disabled={submitting}
                 />
               </div>
 
-              {/* Location */}
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                  Location <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="location">Location <span className="text-red-600">*</span></Label>
                 <LocationSelect
                   value={vendorForm.location}
                   country={tenantData?.country}
@@ -674,34 +672,76 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                   }}
                   placeholder="Search and select hotel location"
                 />
-                <p className="text-xs text-gray-500">Start typing to search for the location</p>
+                <p className="text-xs text-muted-foreground">Start typing to search for the location</p>
               </div>
 
-              {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                  Description
-                </Label>
-                <RichTextEditor
-                  value={vendorForm.description}
-                  onChange={(value) => setVendorForm({ ...vendorForm, description: value })}
-                  placeholder="Describe the facilities, services, and amenities available at this accommodation..."
-                  height={250}
-                />
-                <p className="text-xs text-gray-500">
+                <Label htmlFor="description">Description</Label>
+                <div className="border rounded-md" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb' }}>
+                  <div className="flex items-center gap-1 p-2 border-b" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb', backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb' }}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                        if (textarea) {
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const selectedText = vendorForm.description.substring(start, end);
+                          const newText = vendorForm.description.substring(0, start) + '**' + selectedText + '**' + vendorForm.description.substring(end);
+                          setVendorForm({ ...vendorForm, description: newText });
+                        }
+                      }}
+                      title="Bold"
+                    >
+                      <span className="font-bold text-sm">B</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                        if (textarea) {
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          const selectedText = vendorForm.description.substring(start, end);
+                          const newText = vendorForm.description.substring(0, start) + '*' + selectedText + '*' + vendorForm.description.substring(end);
+                          setVendorForm({ ...vendorForm, description: newText });
+                        }
+                      }}
+                      title="Italic"
+                    >
+                      <span className="italic text-sm">I</span>
+                    </Button>
+                  </div>
+                  <textarea
+                    value={vendorForm.description}
+                    onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })}
+                    placeholder="Describe the facilities, services, and amenities available at this accommodation..."
+                    className="w-full p-3 border-0 resize-none focus:outline-none"
+                    rows={4}
+                    style={{
+                      backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                      color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
                   Provide details about the accommodation facilities and services
                 </p>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setAddVendorModalOpen(false)}
                 disabled={submitting}
-                className="px-6"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
@@ -709,7 +749,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               <Button
                 type="submit"
                 disabled={submitting}
-                className="px-6 bg-red-600 hover:bg-red-700 text-white"
+                className="bg-red-600 hover:bg-red-700 text-white"
               >
                 {submitting ? (
                   <>
@@ -723,7 +763,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                   </>
                 )}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -771,11 +811,11 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
           {vendors.length === 0 ? (
             <div className="text-center py-12">
-              <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <Hotel className="w-10 h-10 text-gray-400" />
+              <div className={`rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                <Hotel className={`w-10 h-10 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 mb-2">No vendor hotels yet</h3>
-              <p className="text-xs text-gray-500 mb-4">Get started by adding your first vendor hotel partnership</p>
+              <h3 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>No vendor hotels yet</h3>
+              <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Get started by adding your first vendor hotel partnership</p>
               {canEdit && (
                 <div className="flex justify-center space-x-3">
                   <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
@@ -785,24 +825,42 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                         Add Vendor Hotel
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+                    <DialogContent 
+                      className="sm:max-w-[900px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+                      style={{
+                        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+                        color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                      }}
+                    >
+          <DialogHeader>
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Hotel className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <DialogTitle>Add New Vendor Hotel</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">Register a new accommodation partner</p>
+              </div>
+            </div>
+          </DialogHeader>
                       {/* Same modal content as above */}
                       <button
                         onClick={() => setAddVendorModalOpen(false)}
-                        className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
+                        className={`absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                       >
-                        <X className="h-4 w-4 text-gray-500" />
+                        <X className="h-4 w-4" />
                         <span className="sr-only">Close</span>
                       </button>
 
-                      <div className="p-6 pb-4 border-b border-gray-200">
+                      <div className={`p-6 pb-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                             <Hotel className="w-6 h-6 text-blue-600" />
                           </div>
                           <div>
-                            <DialogTitle className="text-xl font-bold text-gray-900">Add New Vendor Hotel</DialogTitle>
-                            <p className="text-gray-600 text-sm mt-1">Register a new accommodation partner</p>
+                            <DialogTitle className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add New Vendor Hotel</DialogTitle>
+                            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Register a new accommodation partner</p>
                           </div>
                         </div>
                       </div>
@@ -810,8 +868,8 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                       <form onSubmit={handleAddVendor} className="flex-1 overflow-y-auto">
                         <div className="p-6 space-y-6">
                           <div className="space-y-2">
-                            <Label htmlFor="vendor_name" className="text-sm font-medium text-gray-700">
-                              Hotel Name <span className="text-red-500">*</span>
+                            <Label htmlFor="vendor_name" className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                              Hotel Name <span className="text-red-600">*</span>
                             </Label>
                             <Input
                               id="vendor_name"
@@ -819,14 +877,14 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               onChange={(e) => setVendorForm({ ...vendorForm, vendor_name: e.target.value })}
                               required
                               placeholder="Enter hotel or accommodation name"
-                              className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                              className={`focus:border-blue-500 focus:ring-blue-500 ${theme === 'dark' ? 'bg-gray-800 border-gray-600 text-white' : 'border-gray-300'}`}
                               disabled={submitting}
                             />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                              Location <span className="text-red-500">*</span>
+                            <Label htmlFor="location" className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
+                              Location <span className="text-red-600">*</span>
                             </Label>
                             <LocationSelect
                               value={vendorForm.location}
@@ -840,27 +898,75 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                                 });
                               }}
                               placeholder="Search and select hotel location"
+                              className={theme === 'dark' ? 'bg-gray-800 border-gray-600 text-white' : ''}
                             />
-                            <p className="text-xs text-gray-500">Start typing to search for the location</p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Start typing to search for the location</p>
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                            <Label htmlFor="description" className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-200' : 'text-gray-700'}`}>
                               Description
                             </Label>
-                            <RichTextEditor
-                              value={vendorForm.description}
-                              onChange={(value) => setVendorForm({ ...vendorForm, description: value })}
-                              placeholder="Describe the facilities, services, and amenities available at this accommodation..."
-                              height={250}
-                            />
-                            <p className="text-xs text-gray-500">
+                            <div className="border rounded-md" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb' }}>
+                              <div className="flex items-center gap-1 p-2 border-b" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb', backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb' }}>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                                    if (textarea) {
+                                      const start = textarea.selectionStart;
+                                      const end = textarea.selectionEnd;
+                                      const selectedText = vendorForm.description.substring(start, end);
+                                      const newText = vendorForm.description.substring(0, start) + '**' + selectedText + '**' + vendorForm.description.substring(end);
+                                      setVendorForm({ ...vendorForm, description: newText });
+                                    }
+                                  }}
+                                  title="Bold"
+                                >
+                                  <span className="font-bold text-sm">B</span>
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => {
+                                    const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                                    if (textarea) {
+                                      const start = textarea.selectionStart;
+                                      const end = textarea.selectionEnd;
+                                      const selectedText = vendorForm.description.substring(start, end);
+                                      const newText = vendorForm.description.substring(0, start) + '*' + selectedText + '*' + vendorForm.description.substring(end);
+                                      setVendorForm({ ...vendorForm, description: newText });
+                                    }
+                                  }}
+                                  title="Italic"
+                                >
+                                  <span className="italic text-sm">I</span>
+                                </Button>
+                              </div>
+                              <textarea
+                                value={vendorForm.description}
+                                onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })}
+                                placeholder="Describe the facilities, services, and amenities available at this accommodation..."
+                                className="w-full p-3 border-0 resize-none focus:outline-none"
+                                rows={4}
+                                style={{
+                                  backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                                  color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                                }}
+                              />
+                            </div>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                               Provide details about the accommodation facilities and services
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+                        <div className={`flex justify-end space-x-3 p-6 border-t ${theme === 'dark' ? 'border-gray-700 bg-black' : 'border-gray-200 bg-gray-50'}`}>
                           <Button
                             type="button"
                             variant="outline"
@@ -963,7 +1069,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-6">
-                  <div className="text-xs text-gray-500">
+                  <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                     Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredVendors.length)} of {filteredVendors.length} results
                   </div>
                   <div className="flex items-center space-x-2">
@@ -977,7 +1083,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                       <ChevronLeft className="w-3 h-3" />
                       Previous
                     </Button>
-                    <span className="text-xs text-gray-500">
+                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                       Page {currentPage} of {totalPages}
                     </span>
                     <Button
@@ -1022,44 +1128,44 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
           setTemplateId(null);
         }
       }}>
-        <DialogContent className="sm:max-w-[1000px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-          {/* Header */}
-          <button
-            onClick={() => setTemplateModalOpen(false)}
-            className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-          >
-            <X className="h-4 w-4 text-gray-500" />
-            <span className="sr-only">Close</span>
-          </button>
-
-          <div className="p-6 pb-4 border-b border-gray-200">
+        <DialogContent 
+          className="sm:max-w-[1000px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+          style={{
+            backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+            color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+          }}
+        >
+          <DialogHeader>
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <FileEdit className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">
-                  Design Proof of Accommodation Template
-                </DialogTitle>
-                <p className="text-gray-600 text-sm mt-1">
+                <DialogTitle>Design Proof of Accommodation Template</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
                   {selectedVendorForTemplate?.vendor_name}
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          </DialogHeader>
             <div className="space-y-6">
               {/* Template Name */}
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label 
+                  className="text-sm font-medium mb-2 block"
+                  style={{ color: mounted && theme === 'dark' ? '#d1d5db' : '#374151' }}
+                >
                   Template Name
                 </Label>
                 <Input
                   value={selectedVendorForTemplate?.vendor_name || ""}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-gray-50 dark:bg-gray-800"
+                  style={{
+                    backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb',
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                  }}
                 />
               </div>
 
@@ -1184,10 +1290,16 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
 
               {/* Template Editor */}
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label 
+                  className="text-sm font-medium mb-2 block"
+                  style={{ color: mounted && theme === 'dark' ? '#d1d5db' : '#374151' }}
+                >
                   Template Design
                 </Label>
-                <p className="text-xs text-gray-500 mb-4">
+                <p 
+                  className="text-xs mb-4"
+                  style={{ color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280' }}
+                >
                   Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, etc.
                 </p>
                 <AccommodationTemplateEditor
@@ -1196,19 +1308,17 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                   hotelName={selectedVendorForTemplate?.vendor_name || ""}
                   placeholder="Design the proof of accommodation document template..."
                   height={450}
+                  theme={theme}
                 />
               </div>
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => setTemplateModalOpen(false)}
               disabled={submitting}
-              className="px-6"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -1217,7 +1327,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               type="button"
               onClick={handleSaveTemplate}
               disabled={submitting}
-              className="px-6 bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {submitting ? (
                 <>
@@ -1231,7 +1341,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                 </>
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       

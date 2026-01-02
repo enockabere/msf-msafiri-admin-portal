@@ -8,6 +8,7 @@ import Navbar from "@/components/layout/navbar";
 import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTheme } from "next-themes";
 
 
 import EventFormModal from "./components/EventFormModal";
@@ -101,6 +102,7 @@ export default function TenantEventsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const { resolvedTheme } = useTheme();
   const [events, setEvents] = useState<Event[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [isTenantAdmin, setIsTenantAdmin] = useState(false);
@@ -839,15 +841,15 @@ export default function TenantEventsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+        <div style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="rounded-xl p-6 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Events Management</h1>
-                <p className="text-sm text-gray-600">Manage events for your organization</p>
+                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Events Management</h1>
+                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Manage events for your organization</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -1024,10 +1026,10 @@ export default function TenantEventsPage() {
         ) : (
           <div className="text-center py-12">
             <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-            <h3 className="text-xs font-medium text-gray-900 mb-1">
+            <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">
               No {statusFilter === 'all' ? '' : statusFilter} events found
             </h3>
-            <p className="text-xs text-gray-600">
+            <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-xs">
               {statusFilter === 'all' 
                 ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
                 : "No " + statusFilter + " events at the moment"

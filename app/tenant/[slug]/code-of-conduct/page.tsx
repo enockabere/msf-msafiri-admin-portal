@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import DashboardLayout from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,8 +48,14 @@ export default function CodeOfConductPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   const { apiClient, isReady, isLoading } = useAuthenticatedApi();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Wait for authentication to be ready before fetching
@@ -185,15 +192,22 @@ export default function CodeOfConductPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header Section - matching vendor hotels design */}
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <Card className="rounded-2xl p-6 border-2" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <FileCheck className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Code of Conduct</h1>
-                <p className="text-sm text-gray-600">Manage your organization's code of conduct document</p>
+                <h1 className="text-2xl font-semibold mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                }}>Code of Conduct</h1>
+                <p className="text-sm" style={{
+                  color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
+                }}>Manage your organization's code of conduct document</p>
               </div>
             </div>
             {currentCode?.document_url && (
@@ -203,11 +217,14 @@ export default function CodeOfConductPage() {
               </Badge>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Document Info Card - Only show if document exists */}
         {currentCode && (
-          <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-blue-50">
+          <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+          }}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4 text-red-600" />
@@ -221,9 +238,15 @@ export default function CodeOfConductPage() {
                     <Calendar className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Created</p>
-                    <p className="text-sm text-gray-900">{formatDate(currentCode.created_at)}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">by {currentCode.created_by}</p>
+                    <p className="text-xs font-medium mb-1" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }}>Created</p>
+                    <p className="text-sm" style={{
+                      color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                    }}>{formatDate(currentCode.created_at)}</p>
+                    <p className="text-xs mt-0.5" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }}>by {currentCode.created_by}</p>
                   </div>
                 </div>
 
@@ -232,10 +255,16 @@ export default function CodeOfConductPage() {
                     <Clock className="h-4 w-4 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Last Updated</p>
-                    <p className="text-sm text-gray-900">{formatDate(currentCode.updated_at)}</p>
+                    <p className="text-xs font-medium mb-1" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }}>Last Updated</p>
+                    <p className="text-sm" style={{
+                      color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                    }}>{formatDate(currentCode.updated_at)}</p>
                     {currentCode.updated_by && (
-                      <p className="text-xs text-gray-500 mt-0.5">by {currentCode.updated_by}</p>
+                      <p className="text-xs mt-0.5" style={{
+                        color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                      }}>by {currentCode.updated_by}</p>
                     )}
                   </div>
                 </div>
@@ -246,7 +275,10 @@ export default function CodeOfConductPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Upload Section */}
-          <Card className="lg:col-span-1 shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-blue-50">
+          <Card className="lg:col-span-1 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+          }}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Upload className="h-4 w-4 text-red-600" />
@@ -255,16 +287,27 @@ export default function CodeOfConductPage() {
             </CardHeader>
             <CardContent className="p-4 space-y-4">
               {!currentCode?.document_url ? (
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div className="border-2 border-dashed rounded-xl p-6 text-center transition-colors" style={{
+                  borderColor: mounted && theme === 'dark' ? '#4b5563' : '#d1d5db',
+                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+                }} onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = mounted && theme === 'dark' ? '#374151' : '#f3f4f6';
+                }} onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = mounted && theme === 'dark' ? '#1f2937' : '#f9fafb';
+                }}>
                   <div className="bg-red-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <Upload className="h-6 w-6 text-red-600" />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Upload Document</h3>
-                  <p className="text-xs text-gray-600 mb-4">Upload a PDF file (max 10MB)</p>
+                  <h3 className="text-sm font-semibold mb-2" style={{
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                  }}>Upload Document</h3>
+                  <p className="text-xs mb-4" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                  }}>Upload a PDF file (max 10MB)</p>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                     size="sm"
                   >
                     {uploading ? (
@@ -325,9 +368,15 @@ export default function CodeOfConductPage() {
                 className="hidden"
               />
 
-              <div className="pt-3 border-t border-gray-200">
-                <h4 className="text-xs font-semibold text-gray-700 mb-2">Requirements</h4>
-                <ul className="space-y-1 text-xs text-gray-600">
+              <div className="pt-3 border-t" style={{
+                borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+              }}>
+                <h4 className="text-xs font-semibold mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                }}>Requirements</h4>
+                <ul className="space-y-1 text-xs" style={{
+                  color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                }}>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
                     <span>PDF format only</span>
@@ -346,7 +395,10 @@ export default function CodeOfConductPage() {
           </Card>
 
           {/* PDF Viewer */}
-          <Card className="lg:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-blue-50">
+          <Card className="lg:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+          }}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -368,7 +420,10 @@ export default function CodeOfConductPage() {
             </CardHeader>
             <CardContent className="p-4">
               {currentCode?.document_url ? (
-                <div className="w-full h-[600px] border-2 border-gray-200 rounded-xl overflow-hidden shadow-inner bg-gray-50">
+                <div className="w-full h-[600px] border-2 rounded-xl overflow-hidden shadow-inner" style={{
+                  borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+                }}>
                   <iframe
                     src={`${currentCode.document_url}#toolbar=1&navpanes=1`}
                     className="w-full h-full"
@@ -380,17 +435,28 @@ export default function CodeOfConductPage() {
                   />
                 </div>
               ) : (
-                <div className="w-full h-[600px] border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50">
-                  <div className="text-center text-gray-500 max-w-md">
-                    <div className="bg-gray-200 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="h-8 w-8 text-gray-400" />
+                <div className="w-full h-[600px] border-2 border-dashed rounded-xl flex items-center justify-center" style={{
+                  borderColor: mounted && theme === 'dark' ? '#4b5563' : '#d1d5db',
+                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+                }}>
+                  <div className="text-center max-w-md">
+                    <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
+                      backgroundColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+                    }}>
+                      <AlertCircle className="h-8 w-8" style={{
+                        color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                      }} />
                     </div>
-                    <h3 className="text-base font-semibold text-gray-700 mb-2">No Document Available</h3>
-                    <p className="text-sm text-gray-600 mb-4">Upload a PDF document to preview it here</p>
+                    <h3 className="text-base font-semibold mb-2" style={{
+                      color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                    }}>No Document Available</h3>
+                    <p className="text-sm mb-4" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                    }}>Upload a PDF document to preview it here</p>
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                      className="bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                       size="sm"
                     >
                       <Upload className="h-4 w-4 mr-2" />

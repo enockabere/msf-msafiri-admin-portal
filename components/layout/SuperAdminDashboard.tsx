@@ -14,10 +14,12 @@ import { ToastContainer } from "@/components/ui/toast";
 import { LoadingScreen } from "@/components/ui/loading";
 import { useProfile } from "@/hooks/useProfile";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { useTheme } from "next-themes";
 import type { AuthUser } from "@/types/auth";
 
 export default function SuperAdminDashboard() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const { profile, refreshProfile } = useProfile();
   const { tenants, loading, error, refreshTenants } = useTenant();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -65,13 +67,13 @@ export default function SuperAdminDashboard() {
 
   return (
     <NotificationProvider>
-      <div className="min-h-screen flex flex-col bg-red-800">
+      <div className={`min-h-screen flex flex-col ${theme === 'dark' ? 'bg-black' : 'bg-red-800'}`}>
         <SuperAdminNavbar
           user={typedUser}
           onProfileClick={() => setShowProfile(true)}
         />
 
-      <main className="flex-1 bg-gray-50 w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 py-4 sm:py-6 lg:py-8">
+      <main className={`flex-1 w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 py-4 sm:py-6 lg:py-8 ${theme === 'dark' ? 'bg-black' : 'bg-gray-50'}`}>
         <SessionTimeoutWarning warningMinutes={5} sessionDurationMinutes={30} />
 
         {/* Notification */}

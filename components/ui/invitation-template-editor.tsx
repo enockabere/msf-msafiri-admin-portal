@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { InvitationRichTextEditor } from '@/components/ui/invitation-rich-text-editor';
 import { Upload, Eye, Save, FileText, Image, FileSignature, Layers, QrCode, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from 'next-themes';
 
 interface InvitationTemplateEditorProps {
   template?: any;
@@ -23,6 +24,7 @@ interface InvitationTemplateEditorProps {
 
 export function InvitationTemplateEditor({ template, onSave, onCancel }: InvitationTemplateEditorProps) {
   const { apiClient } = useAuthenticatedApi();
+  const { resolvedTheme } = useTheme();
   
   // Debug logging
   console.log('Template data received:', template);
@@ -253,17 +255,25 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-lg">
+        <TabsList style={{ background: resolvedTheme === 'dark' ? '#374151' : '#f3f4f6' }} className="grid w-full grid-cols-2 p-1 rounded-lg">
           <TabsTrigger 
             value="editor" 
-            className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm transition-all duration-200 rounded-md font-medium"
+            style={{ 
+              background: activeTab === 'editor' ? (resolvedTheme === 'dark' ? '#000000' : '#ffffff') : 'transparent',
+              color: resolvedTheme === 'dark' ? '#ffffff' : '#111827'
+            }}
+            className="data-[state=active]:shadow-sm transition-all duration-200 rounded-md font-medium"
           >
             <FileText className="w-4 h-4 mr-2" />
             Editor
           </TabsTrigger>
           <TabsTrigger 
             value="preview" 
-            className="data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm transition-all duration-200 rounded-md font-medium"
+            style={{ 
+              background: activeTab === 'preview' ? (resolvedTheme === 'dark' ? '#000000' : '#ffffff') : 'transparent',
+              color: resolvedTheme === 'dark' ? '#ffffff' : '#111827'
+            }}
+            className="data-[state=active]:shadow-sm transition-all duration-200 rounded-md font-medium"
           >
             <Eye className="w-4 h-4 mr-2" />
             Preview
@@ -274,7 +284,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <Label htmlFor="name" className="text-sm font-medium mb-2 block">Template Name</Label>
+                <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="name" className="text-sm font-medium mb-2 block">Template Name</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -287,7 +297,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">Organization Address (Top Right)</h3>
+                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-sm font-medium">Organization Address (Top Right)</h3>
                 <Button
                   type="button"
                   variant="outline"
@@ -322,7 +332,12 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                         newFields[index] = typeof field === 'string' ? { text: field, type: e.target.value } : { ...field, type: e.target.value };
                         setFormData(prev => ({ ...prev, addressFields: newFields }));
                       }}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm min-w-[100px]"
+                      style={{ 
+                        background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                        color: resolvedTheme === 'dark' ? '#ffffff' : '#111827',
+                        border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #d1d5db'
+                      }}
+                      className="px-3 py-2 rounded-md text-sm min-w-[100px]"
                     >
                       <option value="text">Text</option>
                       <option value="link">Link</option>
@@ -350,7 +365,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-700">Signature Footer (Below Signature)</h3>
+                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-sm font-medium">Signature Footer (Below Signature)</h3>
                 <Button
                   type="button"
                   variant="outline"
@@ -385,7 +400,12 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                         newFields[index] = typeof field === 'string' ? { text: field, type: e.target.value } : { ...field, type: e.target.value };
                         setFormData(prev => ({ ...prev, signatureFooterFields: newFields }));
                       }}
-                      className="px-3 py-2 border border-gray-300 rounded-md text-sm min-w-[100px]"
+                      style={{ 
+                        background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                        color: resolvedTheme === 'dark' ? '#ffffff' : '#111827',
+                        border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #d1d5db'
+                      }}
+                      className="px-3 py-2 rounded-md text-sm min-w-[100px]"
                     >
                       <option value="text">Text</option>
                       <option value="link">Link</option>
@@ -416,7 +436,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                   checked={formData.include_qr_code}
                   onCheckedChange={(checked) => setFormData({ ...formData, include_qr_code: checked })}
                 />
-                <Label htmlFor="qr_code" className="text-sm font-medium cursor-pointer">Include QR Code</Label>
+                <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="qr_code" className="text-sm font-medium cursor-pointer">Include QR Code</Label>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -425,12 +445,12 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
-                <Label htmlFor="is_active" className="text-sm font-medium cursor-pointer">Active Template</Label>
+                <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="is_active" className="text-sm font-medium cursor-pointer">Active Template</Label>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+              <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '2px dashed #e5e7eb' }} className="hover:border-gray-300 transition-colors">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Image className="w-4 h-4" />
@@ -486,7 +506,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                 </CardContent>
               </Card>
               
-              <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+              <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '2px dashed #e5e7eb' }} className="hover:border-gray-300 transition-colors">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <FileSignature className="w-4 h-4" />
@@ -542,7 +562,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+              <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '2px dashed #e5e7eb' }} className="hover:border-gray-300 transition-colors">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Layers className="w-4 h-4" />
@@ -600,7 +620,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
             </div>
 
             <div>
-              <Label htmlFor="content" className="text-sm font-medium mb-2 block">Template Content</Label>
+              <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="content" className="text-sm font-medium mb-2 block">Template Content</Label>
               <InvitationRichTextEditor
                 value={formData.content}
                 onChange={(content) => setFormData({ ...formData, content })}
@@ -612,9 +632,9 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
         </TabsContent>
         
         <TabsContent value="preview" className="space-y-6">
-          <Card>
+          <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="flex items-center">
                 <Eye className="h-5 w-5 mr-2" />
                 Letter of Invitation Preview
               </CardTitle>
@@ -633,7 +653,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
         </TabsContent>
       </Tabs>
       
-      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+      <div style={{ borderTop: resolvedTheme === 'dark' ? '1px solid #374151' : '1px solid #e5e7eb' }} className="flex justify-end space-x-3 pt-6">
         <Button
           type="button"
           variant="outline"
@@ -646,7 +666,7 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
         <Button
           type="button"
           onClick={handleSubmit}
-          className="px-6 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+          className="px-6 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-300"
         >
           <Save className="h-4 w-4 mr-2" />
           {template ? 'Update Template' : 'Create Template'}

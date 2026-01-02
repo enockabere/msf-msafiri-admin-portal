@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,12 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
     token_url: "https://api.absolutecabs.co.ke/oauth/token"
   });
   const { apiClient } = useAuthenticatedApi();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     fetchConfig();
@@ -158,7 +165,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+      }}>
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="ml-2 text-sm">Loading transport configuration...</span>
@@ -174,7 +184,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
     <div className="space-y-4">
 
       {/* Status Card */}
-      <Card className={config.is_enabled ? "border-green-200 bg-green-50/30" : "border-muted"}>
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : (config.is_enabled ? '#f0fdf4' : '#ffffff'),
+        borderColor: mounted && theme === 'dark' ? '#374151' : (config.is_enabled ? '#bbf7d0' : '#e5e7eb')
+      }}>
         <CardContent className="pt-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -200,7 +213,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
             </div>
             <Badge
               variant={config.is_enabled ? "default" : "secondary"}
-              className={config.is_enabled ? "bg-green-600" : ""}
+              className={config.is_enabled ? "bg-red-600" : ""}
             >
               {config.is_enabled ? 'Enabled' : 'Disabled'}
             </Badge>
@@ -209,7 +222,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
       </Card>
 
       {/* Configuration Card */}
-      <Card>
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+      }}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -256,7 +272,10 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
               </Select>
             </div>
 
-            <Card className="border-2 border-blue-100 bg-gradient-to-br from-blue-50/30 to-purple-50/30">
+            <Card className="border-2" style={{
+              backgroundColor: mounted && theme === 'dark' ? '#1e3a8a' : '#f0f9ff',
+              borderColor: mounted && theme === 'dark' ? '#3b82f6' : '#93c5fd'
+            }}>
               <CardContent className="pt-4 pb-4">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <div className="flex items-center gap-4 w-full sm:w-auto">
@@ -266,7 +285,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                       onClick={() => setConfig(prev => ({ ...prev, is_enabled: !prev.is_enabled }))}
                       className={`relative inline-flex h-9 w-20 items-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 ${
                         config.is_enabled
-                          ? 'bg-gradient-to-r from-green-500 to-green-600 focus:ring-green-200 shadow-md shadow-green-200'
+                          ? 'bg-gradient-to-r from-red-500 to-red-600 focus:ring-red-200 shadow-md shadow-red-200'
                           : 'bg-gradient-to-r from-gray-300 to-gray-400 focus:ring-gray-200 shadow-sm'
                       }`}
                     >
@@ -297,7 +316,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                         }`}
                       >
                         {config.is_enabled ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <CheckCircle2 className="h-4 w-4 text-red-600" />
                         ) : (
                           <XCircle className="h-4 w-4 text-gray-500" />
                         )}
@@ -310,7 +329,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
                           {TRANSPORT_PROVIDERS.find(p => p.value === selectedProvider)?.label} Integration
                         </h3>
                         {config.is_enabled ? (
-                          <Badge className="bg-green-600 text-white text-[10px] px-2 py-0.5">
+                          <Badge className="bg-red-600 text-white text-[10px] px-2 py-0.5">
                             <CheckCircle2 className="h-2.5 w-2.5 mr-1" />
                             Active
                           </Badge>
@@ -481,17 +500,26 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
 
           <Separator />
 
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+          <div className="rounded-lg p-4 border" style={{
+            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #f3e8ff 50%)',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#93c5fd'
+          }}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-white rounded-lg shadow-sm">
+                <div className="p-2 rounded-lg shadow-sm" style={{
+                  backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff'
+                }}>
                   <Save className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-900">
+                  <h4 className="text-sm font-semibold" style={{
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                  }}>
                     {isConfigured ? 'Update Configuration' : 'Save Configuration'}
                   </h4>
-                  <p className="text-xs text-gray-600 mt-0.5">
+                  <p className="text-xs mt-0.5" style={{
+                    color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
+                  }}>
                     {isConfigured
                       ? 'Your transport provider is configured. Save any changes made above.'
                       : 'Save your configuration to activate transport booking services.'}
@@ -501,7 +529,7 @@ export default function TransportSetup({ tenantSlug }: TransportSetupProps) {
               <Button
                 onClick={saveConfig}
                 disabled={saving}
-                className="h-10 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all whitespace-nowrap"
+                className="h-10 px-6 bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg transition-all whitespace-nowrap"
               >
                 {saving ? (
                   <>

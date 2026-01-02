@@ -7,6 +7,8 @@ import SuperAdminManagement from "./super-admin-management";
 import TenantManagement from "./tenant-management";
 import PendingInvitations from "./pending-invitations";
 import { TabLoading } from "@/components/ui/tab-loading";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 
 interface DashboardContentProps {
   activeTenants: number;
@@ -35,6 +37,18 @@ export function DashboardContent({
   onTenantUpdate,
   tabLoading = false,
 }: DashboardContentProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  const isDark = resolvedTheme === 'dark';
   return (
     <>
       {/* Enhanced Stats Cards */}
@@ -85,9 +99,12 @@ export function DashboardContent({
       {tabLoading ? (
         <TabLoading />
       ) : (
-        <div className="bg-white rounded-lg border shadow-sm p-6">
+        <div className="rounded-lg border shadow-sm p-6" style={{
+          backgroundColor: isDark ? '#000000' : '#ffffff',
+          borderColor: isDark ? '#333333' : '#e5e7eb'
+        }}>
           <div className="mb-6">
-            <h2 className="card-title mb-2">
+            <h2 className="card-title mb-2" style={{ color: isDark ? '#ffffff' : '#111827' }}>
               {currentView === 'super-admins'
                 ? 'Super Administrator Management'
                 : currentView === 'pending-invitations'
@@ -99,7 +116,7 @@ export function DashboardContent({
                 : 'All Tenants'
               }
             </h2>
-            <p className="card-subtitle text-gray-600">
+            <p className="card-subtitle" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
               {currentView === 'super-admins'
                 ? 'Manage super administrator accounts and permissions'
                 : currentView === 'pending-invitations'

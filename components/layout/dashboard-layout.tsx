@@ -1,19 +1,31 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { useSidebar } from "@/contexts/SidebarContext";
-import Sidebar from "./sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppSidebar from "./sidebar";
 import Navbar from "./navbar";
+import QuickLinksFloat from "@/components/QuickLinksFloat";
+import { SuperAdminFooter } from "./SuperAdminFooter";
+import { useTheme } from "next-themes";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
   const pathname = usePathname();
-  const { collapsed, toggleCollapsed } = useSidebar();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === 'dark';
+  const isTenantPath = pathname?.startsWith('/tenant/');
 
   // Check if we're on a tenant dashboard route
   const isTenantDashboard = pathname?.startsWith('/tenant/');
@@ -25,15 +37,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Regular admins get the traditional sidebar layout
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <Sidebar
-        collapsed={collapsed}
-        toggleCollapse={toggleCollapsed}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar />
-        <main className="flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-gray-950">{children}</main>
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <SidebarInset className="flex flex-col">
+          <Navbar />
+          <main className="flex-1 p-6 overflow-y-auto" style={{
+            backgroundColor: mounted ? (isDark ? '#000000' : '#ffffff') : '#ffffff'
+          }}>
+            {children}
+          </main>
+          {isTenantPath && <SuperAdminFooter />}
+        </SidebarInset>
       </div>
-    </div>
+      {isTenantPath && <QuickLinksFloat />}
+    </SidebarProvider>
   );
 }

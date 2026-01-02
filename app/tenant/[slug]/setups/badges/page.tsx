@@ -6,6 +6,7 @@ import { useAuth, useAuthenticatedApi } from '@/lib/auth'
 import { toast } from 'sonner'
 import DashboardLayout from '@/components/layout/dashboard-layout'
 import Swal from 'sweetalert2'
+import { useTheme } from 'next-themes'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -359,6 +360,7 @@ export default function BadgeDesignPage() {
   const tenantSlug = params.slug as string
   const { user, loading: authLoading } = useAuth()
   const { apiClient } = useAuthenticatedApi()
+  const { resolvedTheme } = useTheme()
 
   console.log('BadgeDesignPage: Initial state setup');
   const [templates, setTemplates] = useState<BadgeTemplate[]>([])
@@ -848,15 +850,15 @@ export default function BadgeDesignPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
+        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="rounded-xl p-6 shadow-sm">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Award className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Badge Templates</h1>
-                <p className="text-sm text-gray-600">Design and manage event badge templates with live preview</p>
+                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Badge Templates</h1>
+                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Design and manage event badge templates with live preview</p>
               </div>
             </div>
             {canEdit && (
@@ -870,7 +872,7 @@ export default function BadgeDesignPage() {
                     Create Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[1200px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col" showCloseButton={false}>
+                <DialogContent style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="sm:max-w-[1200px] shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col" showCloseButton={false}>
                   <button
                     onClick={() => setModalOpen(false)}
                     className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
@@ -879,16 +881,16 @@ export default function BadgeDesignPage() {
                     <span className="sr-only">Close</span>
                   </button>
 
-                  <div className="p-6 pb-4 border-b border-gray-200">
+                  <div style={{ borderBottom: resolvedTheme === 'dark' ? '1px solid #374151' : '1px solid #e5e7eb' }} className="p-6 pb-4">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Award className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <DialogTitle className="text-lg font-bold text-gray-900">
+                        <DialogTitle style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-lg font-bold">
                           {editingTemplate ? 'Edit Badge Template' : 'Create Badge Template'}
                         </DialogTitle>
-                        <p className="text-gray-600 text-xs mt-1">
+                        <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-xs mt-1">
                           Design a reusable badge template for events
                         </p>
                       </div>
@@ -899,10 +901,10 @@ export default function BadgeDesignPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                       {/* Form Section */}
                       <div className="space-y-4">
-                        <h3 className="text-base font-semibold text-gray-900 mb-3">Template Settings</h3>
+                        <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-base font-semibold mb-3">Template Settings</h3>
 
                         <div>
-                          <Label htmlFor="name" className="text-xs font-medium text-gray-700">Template Name</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="name" className="text-xs font-medium">Template Name</Label>
                           <Input
                             id="name"
                             placeholder="Enter template name"
@@ -913,7 +915,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="description" className="text-xs font-medium text-gray-700">Description</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="description" className="text-xs font-medium">Description</Label>
                           <Input
                             id="description"
                             placeholder="Brief description of the badge template"
@@ -927,9 +929,14 @@ export default function BadgeDesignPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <Label className="text-xs font-medium text-gray-700">Badge Size</Label>
+                            <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-xs font-medium">Badge Size</Label>
                             <select
-                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-xs"
+                              style={{ 
+                                background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                                color: resolvedTheme === 'dark' ? '#ffffff' : '#111827',
+                                border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #d1d5db'
+                              }}
+                              className="mt-1 block w-full rounded-md px-3 py-2 text-xs"
                               value={formData.badge_size}
                               onChange={(e) => setFormData({ ...formData, badge_size: e.target.value as 'small' | 'standard' | 'large' })}
                             >
@@ -939,9 +946,14 @@ export default function BadgeDesignPage() {
                             </select>
                           </div>
                           <div>
-                            <Label className="text-xs font-medium text-gray-700">Orientation</Label>
+                            <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-xs font-medium">Orientation</Label>
                             <select
-                              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-xs"
+                              style={{ 
+                                background: resolvedTheme === 'dark' ? '#000000' : '#ffffff',
+                                color: resolvedTheme === 'dark' ? '#ffffff' : '#111827',
+                                border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #d1d5db'
+                              }}
+                              className="mt-1 block w-full rounded-md px-3 py-2 text-xs"
                               value={formData.orientation}
                               onChange={(e) => setFormData({ ...formData, orientation: e.target.value as 'portrait' | 'landscape' })}
                             >
@@ -959,7 +971,7 @@ export default function BadgeDesignPage() {
                             checked={formData.enable_qr_code}
                             onChange={(e) => setFormData({ ...formData, enable_qr_code: e.target.checked })}
                           />
-                          <Label htmlFor="qr_code" className="text-xs text-gray-700">Include QR Code</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="qr_code" className="text-xs">Include QR Code</Label>
                         </div>
 
                         <div className="flex items-center space-x-2">
@@ -970,11 +982,11 @@ export default function BadgeDesignPage() {
                             checked={formData.include_avatar}
                             onChange={(e) => setFormData({ ...formData, include_avatar: e.target.checked })}
                           />
-                          <Label htmlFor="avatar" className="text-xs text-gray-700">Include Avatar</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="avatar" className="text-xs">Include Avatar</Label>
                         </div>
 
                         <div>
-                          <Label htmlFor="contact_phone" className="text-xs font-medium text-gray-700">Contact Phone</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="contact_phone" className="text-xs font-medium">Contact Phone</Label>
                           <Input
                             id="contact_phone"
                             placeholder="+123 456 789"
@@ -985,7 +997,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="website_url" className="text-xs font-medium text-gray-700">Website URL</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} htmlFor="website_url" className="text-xs font-medium">Website URL</Label>
                           <Input
                             id="website_url"
                             placeholder="www.msf.org"
@@ -996,7 +1008,7 @@ export default function BadgeDesignPage() {
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-xs font-medium text-gray-700">Logo</Label>
+                          <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-xs font-medium">Logo</Label>
                           {formData.logo_url ? (
                             <div className="relative">
                               <img 
@@ -1046,7 +1058,7 @@ export default function BadgeDesignPage() {
 
                         {formData.include_avatar && (
                           <div className="space-y-3">
-                            <Label className="text-xs font-medium text-gray-700">Avatar</Label>
+                            <Label style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#374151' }} className="text-xs font-medium">Avatar</Label>
                             {formData.avatar_url ? (
                               <div className="relative">
                                 <img 
@@ -1099,8 +1111,8 @@ export default function BadgeDesignPage() {
                       {/* Preview Section */}
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-base font-semibold text-gray-900">Live Preview</h3>
-                          <div className="text-xs text-gray-500">
+                          <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-base font-semibold">Live Preview</h3>
+                          <div style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs">
                             {formData.badge_size.charAt(0).toUpperCase() + formData.badge_size.slice(1)} • {formData.orientation.charAt(0).toUpperCase() + formData.orientation.slice(1)}
                           </div>
                         </div>
@@ -1117,7 +1129,7 @@ export default function BadgeDesignPage() {
                       </div>
                     </div>
                     
-                    <div className="pt-6 border-t mt-6">
+                    <div style={{ borderTop: resolvedTheme === 'dark' ? '1px solid #374151' : '1px solid #e5e7eb' }} className="pt-6 mt-6">
                       <div className="flex justify-end">
                         <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-2 text-xs" onClick={handleSubmit} disabled={submitting}>
                           <Save className="w-4 h-4 mr-2" />
@@ -1130,17 +1142,17 @@ export default function BadgeDesignPage() {
               </Dialog>
             )}
           </div>
-        </div>
+        </Card>
 
-        <Card>
+        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
           <CardContent className="p-4">
             {templates.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
                   <Award className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-xs font-medium text-gray-900 mb-1">No badge templates yet</h3>
-                <p className="text-xs text-gray-500 mb-3">Create your first badge template</p>
+                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">No badge templates yet</h3>
+                <p style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs mb-3">Create your first badge template</p>
               </div>
             ) : (
               <Table>

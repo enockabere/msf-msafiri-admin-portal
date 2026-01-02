@@ -16,8 +16,11 @@ import { User } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { SuperAdminTable } from "./super-admin-table";
 import { getInternalApiUrl } from "@/lib/base-path";
+import { useTheme } from "next-themes";
 
 export default function SuperAdminManagement() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const { apiClient } = useAuthenticatedApi();
   const [superAdmins, setSuperAdmins] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +30,12 @@ export default function SuperAdminManagement() {
     email: "",
     full_name: "",
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === 'dark';
 
   const fetchSuperAdmins = useCallback(async () => {
     setLoading(true);
@@ -148,8 +157,29 @@ export default function SuperAdminManagement() {
   const activeCount = superAdmins.filter((admin) => admin.is_active).length;
   const totalCount = superAdmins.length;
 
+  if (!mounted) {
+    return (
+      <div className="space-y-8" style={{
+        backgroundColor: isDark ? '#000000' : '#ffffff'
+      }}>
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 rounded" style={{
+            backgroundColor: isDark ? '#333333' : '#e5e7eb',
+            width: '25%'
+          }}></div>
+          <div className="h-32 rounded" style={{
+            backgroundColor: isDark ? '#333333' : '#e5e7eb'
+          }}></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" style={{
+      backgroundColor: isDark ? '#000000' : '#ffffff',
+      color: isDark ? '#ffffff' : '#000000'
+    }}>
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -158,10 +188,14 @@ export default function SuperAdminManagement() {
               <Shield className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold" style={{
+                color: isDark ? '#ffffff' : '#111827'
+              }}>
                 Super Admin Management
               </h1>
-              <p className="text-sm text-gray-500 font-medium">
+              <p className="text-sm font-medium" style={{
+                color: isDark ? '#9ca3af' : '#6b7280'
+              }}>
                 Manage system administrators and permissions
               </p>
             </div>
@@ -170,10 +204,16 @@ export default function SuperAdminManagement() {
 
         {/* Stats & Action */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-4 px-4 py-2 rounded-lg" style={{
+            backgroundColor: isDark ? '#1a1a1a' : '#f9fafb'
+          }}>
             <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-medium text-gray-600">
+              <Users className="w-4 h-4" style={{
+                color: isDark ? '#9ca3af' : '#6b7280'
+              }} />
+              <span className="text-sm font-medium" style={{
+                color: isDark ? '#d1d5db' : '#374151'
+              }}>
                 {activeCount}/{totalCount} Active
               </span>
             </div>
@@ -181,7 +221,7 @@ export default function SuperAdminManagement() {
 
           <Button
             onClick={() => setShowInviteModal(true)}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+            className="bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
             size="sm"
           >
             <UserPlus className="w-4 h-4 mr-2" />
@@ -191,7 +231,10 @@ export default function SuperAdminManagement() {
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      <div className="rounded-xl shadow-sm" style={{
+        backgroundColor: isDark ? '#000000' : '#ffffff',
+        border: `1px solid ${isDark ? '#333333' : '#e5e7eb'}`
+      }}>
         <SuperAdminTable
           data={superAdmins}
           loading={loading}
@@ -284,7 +327,7 @@ export default function SuperAdminManagement() {
               <Button
                 type="submit"
                 disabled={actionLoading === -1}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white"
+                className="bg-red-600 hover:bg-red-700 text-white"
                 size="sm"
               >
                 {actionLoading === -1 ? (

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LocationSelect } from "@/components/ui/location-select";
 import { toast } from "sonner";
@@ -65,6 +65,8 @@ export default function GuestHouseSetupModal({
 }: GuestHouseSetupModalProps) {
   const [loading, setLoading] = useState(false);
   const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     location: "",
@@ -73,6 +75,10 @@ export default function GuestHouseSetupModal({
     house_rules: "",
     facilities: {} as Record<string, boolean>
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (editingGuestHouse) {
@@ -199,26 +205,24 @@ export default function GuestHouseSetupModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Header with close button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-        >
-          <X className="h-4 w-4 text-gray-500" />
-          <span className="sr-only">Close</span>
-        </button>
-
-        <div className="p-6 pb-4 border-b border-gray-200">
+      <DialogContent 
+        className="sm:max-w-[900px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+        style={{
+          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+          color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+        }}
+      >
+        <DialogHeader>
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <Home className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-gray-900">
+              <DialogTitle>
                 {editingGuestHouse ? "Edit Guest House" : "Add New Guest House"}
               </DialogTitle>
-              <p className="text-gray-600 text-sm mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {editingGuestHouse 
                   ? "Update the guest house details and configuration"
                   : "Set up a new guest house with location and facility details"
@@ -226,31 +230,24 @@ export default function GuestHouseSetupModal({
               </p>
             </div>
           </div>
-        </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            {/* Guest House Name */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                Guest House Name <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="name">Guest House Name <span className="text-red-600">*</span></Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 required
                 placeholder="Enter guest house name"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 disabled={loading}
               />
             </div>
 
-            {/* Location */}
             <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                Location <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="location">Location <span className="text-red-600">*</span></Label>
               <LocationSelect
                 value={formData.location}
                 country={tenantData?.country}
@@ -264,17 +261,15 @@ export default function GuestHouseSetupModal({
                 }}
                 placeholder="Search and select guest house location"
               />
-              <p className="text-xs text-gray-500">Start typing to search for the location</p>
+              <p className="text-xs text-muted-foreground">Start typing to search for the location</p>
             </div>
 
-
-
-            {/* Facilities */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
-                Facilities & Amenities
-              </Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <Label>Facilities & Amenities</Label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-lg border" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#374151' : '#f9fafb',
+                borderColor: mounted && theme === 'dark' ? '#4b5563' : '#e5e7eb'
+              }}>
                 {commonFacilities.map((facility) => (
                   <div key={facility.key} className="flex items-center space-x-2">
                     <Checkbox
@@ -283,7 +278,7 @@ export default function GuestHouseSetupModal({
                       onCheckedChange={(checked) => handleFacilityChange(facility.key, checked as boolean)}
                       className="border-gray-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
                     />
-                    <Label htmlFor={facility.key} className="text-sm font-medium text-gray-700 cursor-pointer">
+                    <Label htmlFor={facility.key} className="text-sm font-medium cursor-pointer">
                       {facility.label}
                     </Label>
                   </div>
@@ -291,54 +286,96 @@ export default function GuestHouseSetupModal({
               </div>
             </div>
 
-            {/* House Rules */}
             <div className="space-y-2">
-              <Label htmlFor="house_rules" className="text-sm font-medium text-gray-700">
-                House Rules
-              </Label>
-              <RichTextEditor
-                value={formData.house_rules}
-                onChange={(value) => setFormData(prev => ({ ...prev, house_rules: value }))}
-                placeholder="Enter house rules and policies (e.g., no smoking, quiet hours 10 PM - 7 AM, etc.)..."
-                height={200}
-              />
-              <p className="text-xs text-gray-500">
+              <Label htmlFor="house_rules">House Rules</Label>
+              <div className="border rounded-md" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb' }}>
+                <div className="flex items-center gap-1 p-2 border-b" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb', backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb' }}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      const textarea = document.querySelector('textarea[placeholder*="Enter house rules"]') as HTMLTextAreaElement;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const selectedText = formData.house_rules.substring(start, end);
+                        const newText = formData.house_rules.substring(0, start) + '**' + selectedText + '**' + formData.house_rules.substring(end);
+                        setFormData(prev => ({ ...prev, house_rules: newText }));
+                      }
+                    }}
+                    title="Bold"
+                  >
+                    <span className="font-bold text-sm">B</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      const textarea = document.querySelector('textarea[placeholder*="Enter house rules"]') as HTMLTextAreaElement;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const selectedText = formData.house_rules.substring(start, end);
+                        const newText = formData.house_rules.substring(0, start) + '*' + selectedText + '*' + formData.house_rules.substring(end);
+                        setFormData(prev => ({ ...prev, house_rules: newText }));
+                      }
+                    }}
+                    title="Italic"
+                  >
+                    <span className="italic text-sm">I</span>
+                  </Button>
+                </div>
+                <textarea
+                  value={formData.house_rules}
+                  onChange={(e) => setFormData(prev => ({ ...prev, house_rules: e.target.value }))}
+                  placeholder="Enter house rules and policies (e.g., no smoking, quiet hours 10 PM - 7 AM, etc.)..."
+                  className="w-full p-3 border-0 resize-none focus:outline-none"
+                  rows={4}
+                  style={{
+                    backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
                 Specify rules and policies for guests
               </p>
             </div>
           </div>
-        </form>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-            className="px-6"
-          >
-            <X className="w-4 h-4 mr-2" />
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-6 bg-red-600 hover:bg-red-700 text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {editingGuestHouse ? "Updating..." : "Creating..."}
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                {editingGuestHouse ? "Update Guest House" : "Create Guest House"}
-              </>
-            )}
-          </Button>
-        </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {editingGuestHouse ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingGuestHouse ? "Update Guest House" : "Create Guest House"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

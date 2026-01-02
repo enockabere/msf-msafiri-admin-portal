@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { AccommodationTemplateEditor } from "@/components/ui/accommodation-template-editor";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { LocationSelect } from "@/components/ui/location-select";
 import { Loader2, Save, X, Hotel } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -51,6 +50,8 @@ export default function EditVendorModal({
 }: EditVendorModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<EditVendorForm>({
     vendor_name: "",
     location: "",
@@ -58,6 +59,10 @@ export default function EditVendorModal({
     longitude: "",
     description: "",
   });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchTenantData = async () => {
@@ -133,51 +138,42 @@ export default function EditVendorModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] bg-white border border-gray-200 shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
-        {/* Header with close button */}
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none"
-        >
-          <X className="h-4 w-4 text-gray-500" />
-          <span className="sr-only">Close</span>
-        </button>
-
-        <div className="p-6 pb-4 border-b border-gray-200">
+      <DialogContent 
+        className="sm:max-w-[900px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+        style={{
+          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+          color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+        }}
+      >
+        <DialogHeader>
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <Hotel className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-gray-900">Edit Vendor Hotel</DialogTitle>
-              <p className="text-gray-600 text-sm mt-1">Update accommodation partner details</p>
+              <DialogTitle>Edit Vendor Hotel</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">Update accommodation partner details</p>
             </div>
           </div>
-        </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            {/* Hotel Name */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="vendor_name" className="text-sm font-medium text-gray-700">
-                Hotel Name <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="vendor_name">Hotel Name <span className="text-red-600">*</span></Label>
               <Input
                 id="vendor_name"
                 value={form.vendor_name}
                 onChange={(e) => setForm({ ...form, vendor_name: e.target.value })}
                 required
                 placeholder="Enter hotel or accommodation name"
-                className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 disabled={submitting}
               />
             </div>
 
-            {/* Location */}
             <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                Location <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="location">Location <span className="text-red-600">*</span></Label>
               <LocationSelect
                 value={form.location}
                 country={tenantData?.country}
@@ -191,33 +187,76 @@ export default function EditVendorModal({
                 }}
                 placeholder="Search and select hotel location"
               />
-              <p className="text-xs text-gray-500">Start typing to search for the location</p>
+              <p className="text-xs text-muted-foreground">Start typing to search for the location</p>
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                Description
-              </Label>
-              <RichTextEditor
-                value={form.description}
-                onChange={(value) => setForm({ ...form, description: value })}
-                placeholder="Describe the facilities, services, and amenities available at this accommodation..."
-                height={250}
-              />
-              <p className="text-xs text-gray-500">
+              <Label htmlFor="description">Description</Label>
+              <div className="border rounded-md" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb' }}>
+                <div className="flex items-center gap-1 p-2 border-b" style={{ borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb', backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb' }}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const selectedText = form.description.substring(start, end);
+                        const newText = form.description.substring(0, start) + '**' + selectedText + '**' + form.description.substring(end);
+                        setForm({ ...form, description: newText });
+                      }
+                    }}
+                    title="Bold"
+                  >
+                    <span className="font-bold text-sm">B</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => {
+                      const textarea = document.querySelector('textarea[placeholder*="Describe the facilities"]') as HTMLTextAreaElement;
+                      if (textarea) {
+                        const start = textarea.selectionStart;
+                        const end = textarea.selectionEnd;
+                        const selectedText = form.description.substring(start, end);
+                        const newText = form.description.substring(0, start) + '*' + selectedText + '*' + form.description.substring(end);
+                        setForm({ ...form, description: newText });
+                      }
+                    }}
+                    title="Italic"
+                  >
+                    <span className="italic text-sm">I</span>
+                  </Button>
+                </div>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Describe the facilities, services, and amenities available at this accommodation..."
+                  className="w-full p-3 border-0 resize-none focus:outline-none"
+                  rows={4}
+                  style={{
+                    backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
                 Provide details about the accommodation facilities and services
               </p>
             </div>
           </div>
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
-              className="px-6"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -225,7 +264,7 @@ export default function EditVendorModal({
             <Button
               type="submit"
               disabled={submitting}
-              className="px-6 bg-red-600 hover:bg-red-700 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {submitting ? (
                 <>
@@ -239,7 +278,7 @@ export default function EditVendorModal({
                 </>
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

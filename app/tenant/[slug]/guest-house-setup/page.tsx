@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,8 +50,14 @@ interface GuestHouse {
 export default function GuestHouseSetupPage() {
   const { user, loading: authLoading } = useAuth();
   const { apiClient } = useAuthenticatedApi();
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const tenantSlug = params.slug as string;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [guestHouses, setGuestHouses] = useState<GuestHouse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +230,9 @@ export default function GuestHouseSetupPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-sm text-gray-600">Loading guest houses...</p>
+            <p className="mt-2 text-sm" style={{
+              color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+            }}>Loading guest houses...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -233,15 +242,24 @@ export default function GuestHouseSetupPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
+        <div className="rounded-2xl p-6 border-2" style={{
+          background: mounted && theme === 'dark' 
+            ? 'linear-gradient(135deg, #000000 0%, #111827 100%)' 
+            : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="flex items-start space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                 <Home className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Guest House Setup</h1>
-                <p className="text-sm text-gray-600">Manage guest houses and their room configurations for visitor accommodations</p>
+                <h1 className="text-2xl font-semibold mb-2" style={{
+                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                }}>Guest House Setup</h1>
+                <p className="text-sm" style={{
+                  color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                }}>Manage guest houses and their room configurations for visitor accommodations</p>
               </div>
             </div>
             {canEdit && (
@@ -260,11 +278,20 @@ export default function GuestHouseSetupPage() {
         </div>
 
         {guestHouses.length === 0 ? (
-          <Card>
+          <Card style={{
+            backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+          }}>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Home className="w-12 h-12 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Guest Houses</h3>
-              <p className="text-sm text-gray-600 text-center max-w-md mb-4">
+              <Home className="w-12 h-12 mb-4" style={{
+                color: mounted && theme === 'dark' ? '#6b7280' : '#d1d5db'
+              }} />
+              <h3 className="text-lg font-medium mb-2" style={{
+                color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+              }}>No Guest Houses</h3>
+              <p className="text-sm text-center max-w-md mb-4" style={{
+                color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+              }}>
                 Get started by adding your first guest house. You can configure rooms and manage bookings once set up.
               </p>
               {canEdit && (
@@ -284,7 +311,10 @@ export default function GuestHouseSetupPage() {
         ) : (
           <div className="grid gap-5 sm:gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {guestHouses.map((guestHouse) => (
-              <Card key={guestHouse.id} className="shadow-md hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-blue-50 group overflow-hidden">
+              <Card key={guestHouse.id} className="group" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+                border: mounted && theme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb'
+              }}>
                 <CardHeader className="pb-3">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-2">
@@ -292,7 +322,9 @@ export default function GuestHouseSetupPage() {
                         <div className="p-2 rounded-lg bg-gradient-to-br from-red-100 to-red-200 shadow-sm flex-shrink-0">
                           <Home className="w-4 h-4 sm:w-5 sm:h-5 text-red-700" />
                         </div>
-                        <CardTitle className="text-base sm:text-lg group-hover:text-red-600 transition-colors break-words">
+                        <CardTitle className="text-base sm:text-lg group-hover:text-red-600 transition-colors break-words" style={{
+                          color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                        }}>
                           {guestHouse.name}
                         </CardTitle>
                       </div>
@@ -303,14 +335,18 @@ export default function GuestHouseSetupPage() {
                         {guestHouse.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
-                    <CardDescription className="flex items-start gap-1 text-xs">
+                    <CardDescription className="flex items-start gap-1 text-xs" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }}>
                       <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
                       <span className="break-words">{guestHouse.location}</span>
                     </CardDescription>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                  }}>
                     <p className="line-clamp-2 break-words">{guestHouse.address}</p>
                   </div>
 
@@ -330,11 +366,20 @@ export default function GuestHouseSetupPage() {
                   </div>
 
                   {guestHouse.contact_person && (
-                    <div className="text-xs sm:text-sm bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                      <span className="font-semibold text-gray-700">Contact:</span>{" "}
-                      <span className="text-gray-900">{guestHouse.contact_person}</span>
+                    <div className="text-xs sm:text-sm p-2.5 rounded-lg border" style={{
+                      backgroundColor: mounted && theme === 'dark' ? '#374151' : '#f9fafb',
+                      borderColor: mounted && theme === 'dark' ? '#4b5563' : '#e5e7eb'
+                    }}>
+                      <span className="font-semibold" style={{
+                        color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                      }}>Contact:</span>{" "}
+                      <span style={{
+                        color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                      }}>{guestHouse.contact_person}</span>
                       {guestHouse.phone && (
-                        <span className="text-gray-500 block sm:inline sm:ml-1">• {guestHouse.phone}</span>
+                        <span className="block sm:inline sm:ml-1" style={{
+                          color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                        }}>• {guestHouse.phone}</span>
                       )}
                     </div>
                   )}
@@ -343,13 +388,21 @@ export default function GuestHouseSetupPage() {
                     <div className="flex flex-wrap gap-1.5">
                       {Object.entries(guestHouse.facilities).slice(0, 5).map(([key, value]) => (
                         value && (
-                          <Badge key={key} variant="outline" className="text-[10px] sm:text-xs bg-white">
+                          <Badge key={key} variant="outline" className="text-[10px] sm:text-xs" style={{
+                          backgroundColor: mounted && theme === 'dark' ? '#374151' : '#ffffff',
+                          borderColor: mounted && theme === 'dark' ? '#4b5563' : '#e5e7eb',
+                          color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                        }}>
                             {key.replace('_', ' ')}
                           </Badge>
                         )
                       ))}
                       {Object.entries(guestHouse.facilities).filter(([_, v]) => v).length > 5 && (
-                        <Badge variant="outline" className="text-[10px] sm:text-xs bg-white">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs" style={{
+                        backgroundColor: mounted && theme === 'dark' ? '#374151' : '#ffffff',
+                        borderColor: mounted && theme === 'dark' ? '#4b5563' : '#e5e7eb',
+                        color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                      }}>
                           +{Object.entries(guestHouse.facilities).filter(([_, v]) => v).length - 5} more
                         </Badge>
                       )}
@@ -357,7 +410,9 @@ export default function GuestHouseSetupPage() {
                   )}
 
                   {canEdit && (
-                    <div className="space-y-2 pt-2 border-t border-gray-200">
+                    <div className="space-y-2 pt-2 border-t" style={{
+                      borderColor: mounted && theme === 'dark' ? '#4b5563' : '#e5e7eb'
+                    }}>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           onClick={() => handleManageRooms(guestHouse)}

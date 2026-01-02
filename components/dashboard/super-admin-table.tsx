@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
 import { User } from "@/lib/api";
 import { format } from "date-fns";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { useTheme } from "next-themes";
 
 interface SuperAdminTableProps {
   data: User[];
@@ -57,6 +58,8 @@ export function SuperAdminTable({
   onResendInvite,
   onRemove,
 }: SuperAdminTableProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof User>("full_name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -67,6 +70,12 @@ export function SuperAdminTable({
     type: "activate" | "deactivate" | "remove";
     user: User;
   } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === 'dark';
 
   // Filter data based on search term and status
   const filteredData = data.filter((user) => {
@@ -162,13 +171,16 @@ export function SuperAdminTable({
     );
   };
 
-  if (loading) {
+  if (loading || !mounted) {
     return <TableSkeleton />;
   }
 
   return (
     <>
-      <div className="w-full space-y-4 p-6">
+      <div className="w-full space-y-4 p-6" style={{
+        backgroundColor: isDark ? '#000000' : '#ffffff',
+        color: isDark ? '#ffffff' : '#000000'
+      }}>
         {/* Search, Filter and Export Controls */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -219,14 +231,31 @@ export function SuperAdminTable({
         </div>
 
         {/* Table */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="rounded-lg overflow-hidden" style={{
+          border: `1px solid ${isDark ? '#333333' : '#e5e7eb'}`,
+          backgroundColor: isDark ? '#000000' : '#ffffff'
+        }}>
           <div className="overflow-x-auto">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="w-full" style={{
+              backgroundColor: isDark ? '#000000' : '#ffffff'
+            }}>
+              <thead style={{
+                backgroundColor: isDark ? '#1a1a1a' : '#f9fafb',
+                borderBottom: `1px solid ${isDark ? '#333333' : '#e5e7eb'}`
+              }}>
                 <tr>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
                     onClick={() => handleSort("full_name")}
+                    style={{
+                      color: isDark ? '#d1d5db' : '#374151'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                    }}
                   >
                     <div className="flex items-center">
                       Admin
@@ -234,20 +263,40 @@ export function SuperAdminTable({
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
                     onClick={() => handleSort("email")}
+                    style={{
+                      color: isDark ? '#d1d5db' : '#374151'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                    }}
                   >
                     <div className="flex items-center">
                       Contact
                       {getSortIcon("email")}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{
+                    color: isDark ? '#d1d5db' : '#374151'
+                  }}>
                     Role
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
                     onClick={() => handleSort("is_active")}
+                    style={{
+                      color: isDark ? '#d1d5db' : '#374151'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                    }}
                   >
                     <div className="flex items-center">
                       Status
@@ -255,8 +304,17 @@ export function SuperAdminTable({
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
                     onClick={() => handleSort("last_login")}
+                    style={{
+                      color: isDark ? '#d1d5db' : '#374151'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                    }}
                   >
                     <div className="flex items-center">
                       Last Active
@@ -264,20 +322,33 @@ export function SuperAdminTable({
                     </div>
                   </th>
                   <th
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
                     onClick={() => handleSort("created_at")}
+                    style={{
+                      color: isDark ? '#d1d5db' : '#374151'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f3f4f6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                    }}
                   >
                     <div className="flex items-center">
                       Joined
                       {getSortIcon("created_at")}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{
+                    color: isDark ? '#d1d5db' : '#374151'
+                  }}>
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody style={{
+                backgroundColor: isDark ? '#000000' : '#ffffff'
+              }}>
                 {sortedData.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center">
@@ -300,7 +371,17 @@ export function SuperAdminTable({
                   sortedData.map((user) => (
                     <tr
                       key={user.id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="transition-colors"
+                      style={{
+                        borderTop: `1px solid ${isDark ? '#333333' : '#e5e7eb'}`,
+                        backgroundColor: isDark ? '#000000' : '#ffffff'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = isDark ? '#1a1a1a' : '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = isDark ? '#000000' : '#ffffff';
+                      }}
                     >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
@@ -315,20 +396,28 @@ export function SuperAdminTable({
                             </span>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-medium text-gray-900 truncate">
+                            <div className="text-sm font-medium truncate" style={{
+                              color: isDark ? '#ffffff' : '#111827'
+                            }}>
                               {user.full_name}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs" style={{
+                              color: isDark ? '#9ca3af' : '#6b7280'
+                            }}>
                               ID: {user.id}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm" style={{
+                          color: isDark ? '#ffffff' : '#111827'
+                        }}>
                           {user.email}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs" style={{
+                          color: isDark ? '#9ca3af' : '#6b7280'
+                        }}>
                           Primary contact
                         </div>
                       </td>
@@ -356,27 +445,37 @@ export function SuperAdminTable({
                       <td className="px-4 py-4">
                         {user.last_login ? (
                           <div>
-                            <div className="text-sm text-gray-900">
+                            <div className="text-sm" style={{
+                              color: isDark ? '#ffffff' : '#111827'
+                            }}>
                               {format(
                                 new Date(user.last_login),
                                 "MMM dd, yyyy"
                               )}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs" style={{
+                              color: isDark ? '#9ca3af' : '#6b7280'
+                            }}>
                               {format(new Date(user.last_login), "HH:mm")}
                             </div>
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-400">
+                          <div className="text-sm" style={{
+                            color: isDark ? '#9ca3af' : '#6b7280'
+                          }}>
                             Never logged in
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm" style={{
+                          color: isDark ? '#ffffff' : '#111827'
+                        }}>
                           {format(new Date(user.created_at), "MMM dd, yyyy")}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs" style={{
+                          color: isDark ? '#9ca3af' : '#6b7280'
+                        }}>
                           {format(new Date(user.created_at), "HH:mm")}
                         </div>
                       </td>

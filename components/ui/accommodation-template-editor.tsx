@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { Button } from './button';
 import {
   Bold, Italic, Underline, List, Link, AlignLeft,
@@ -15,6 +15,7 @@ interface AccommodationTemplateEditorProps {
   hotelName?: string;
   placeholder?: string;
   height?: number;
+  theme?: string;
 }
 
 // Template variables that can be used
@@ -39,65 +40,71 @@ export function AccommodationTemplateEditor({
   onChange,
   hotelName,
   placeholder,
-  height = 400
+  height = 400,
+  theme
 }: AccommodationTemplateEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
 
-  // Initialize editor with default template if empty
+  // Memoize dependencies to prevent useEffect array size changes
+  const dependencies = useMemo(() => [value, hotelName, theme], [value, hotelName, theme]);
+
+  // Initialize editor with default template if empty or update colors when theme changes
   useEffect(() => {
     if (editorRef.current) {
+      const isDark = theme === 'dark';
+      
       if (!value || value.trim() === '') {
         const defaultTemplate = `
           <div style="text-align: center; margin-bottom: 30px;">
             <div style="margin-bottom: 20px; display: flex; justify-content: center;">\{\{hotelLogo\}\}</div>
             <h1 style="color: #dc2626; margin: 0;">PROOF OF ACCOMMODATION</h1>
-            ${hotelName ? `<h2 style="color: #374151; margin: 10px 0 0 0;">${hotelName}</h2>` : ''}
+            ${hotelName ? `<h2 style="color: ${isDark ? '#d1d5db' : '#374151'}; margin: 10px 0 0 0;">${hotelName}</h2>` : ''}
           </div>
 
-          <p style="margin: 20px 0;">Dear <strong>\{\{participantName\}\}</strong>,</p>
+          <p style="margin: 20px 0; color: ${isDark ? '#ffffff' : '#000000'};">Dear <strong>\{\{participantName\}\}</strong>,</p>
 
-          <p>This is to confirm your accommodation booking for the event <strong>\{\{eventName\}\}</strong>.</p>
+          <p style="color: ${isDark ? '#ffffff' : '#000000'};">This is to confirm your accommodation booking for the event <strong>\{\{eventName\}\}</strong>.</p>
 
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 30px 0;">
-            <h3 style="margin: 0 0 15px 0; color: #1f2937;">Accommodation Details</h3>
+          <div style="background: ${isDark ? '#000000' : '#f3f4f6'}; padding: 20px; border-radius: 8px; margin: 30px 0;">
+            <h3 style="margin: 0 0 15px 0; color: ${isDark ? '#ffffff' : '#1f2937'};">Accommodation Details</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 8px 0; font-weight: 600; width: 200px;">Hotel:</td>
-                <td style="padding: 8px 0;">\{\{hotelName\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; width: 200px; color: ${isDark ? '#ffffff' : '#000000'};">Hotel:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{hotelName\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Address:</td>
-                <td style="padding: 8px 0;">\{\{hotelAddress\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Address:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{hotelAddress\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Check-in Date:</td>
-                <td style="padding: 8px 0;">\{\{checkInDate\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Check-in Date:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{checkInDate\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Check-out Date:</td>
-                <td style="padding: 8px 0;">\{\{checkOutDate\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Check-out Date:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{checkOutDate\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Room Type:</td>
-                <td style="padding: 8px 0;">\{\{roomType\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Room Type:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{roomType\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Room Number:</td>
-                <td style="padding: 8px 0;">\{\{roomNumber\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Room Number:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{roomNumber\}\}</td>
               </tr>
               <tr>
-                <td style="padding: 8px 0; font-weight: 600;">Confirmation #:</td>
-                <td style="padding: 8px 0;">\{\{confirmationNumber\}\}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: ${isDark ? '#ffffff' : '#000000'};">Confirmation #:</td>
+                <td style="padding: 8px 0; color: ${isDark ? '#ffffff' : '#000000'};">\{\{confirmationNumber\}\}</td>
               </tr>
             </table>
           </div>
 
-          <p>Please present this document along with your ID at the hotel reception upon check-in.</p>
+          <p style="color: ${isDark ? '#ffffff' : '#000000'};">Please present this document along with your ID at the hotel reception upon check-in.</p>
 
-          <p style="margin-top: 40px;">Best regards,<br>\{\{signature\}\}<br><strong>MSF Event Team</strong></p>
+          <p style="margin-top: 40px; color: ${isDark ? '#ffffff' : '#000000'};">Best regards,<br>\{\{signature\}\}<br><strong>MSF Event Team</strong></p>
           
           <div style="position: relative; margin-top: 50px;">
             <div style="position: absolute; bottom: 0; right: 0;">\{\{qrCode\}\}</div>
@@ -106,10 +113,58 @@ export function AccommodationTemplateEditor({
         editorRef.current.innerHTML = defaultTemplate;
         onChange(defaultTemplate);
       } else {
-        editorRef.current.innerHTML = value;
+        // Update existing content colors for theme changes
+        let updatedContent = value;
+        
+        // Update accommodation details background
+        updatedContent = updatedContent.replace(
+          /background:\s*#f3f4f6/g,
+          `background: ${isDark ? '#000000' : '#f3f4f6'}`
+        );
+        
+        updatedContent = updatedContent.replace(
+          /background:\s*#374151/g,
+          `background: ${isDark ? '#000000' : '#f3f4f6'}`
+        );
+        
+        // Update text colors in accommodation details
+        updatedContent = updatedContent.replace(
+          /color:\s*#1f2937/g,
+          `color: ${isDark ? '#ffffff' : '#1f2937'}`
+        );
+        
+        // Update general text colors
+        updatedContent = updatedContent.replace(
+          /<p style="([^"]*)"/g,
+          (match, styles) => {
+            if (!styles.includes('color:')) {
+              return `<p style="${styles}; color: ${isDark ? '#ffffff' : '#000000'}"`;
+            }
+            return match;
+          }
+        );
+        
+        // Update table cell colors
+        updatedContent = updatedContent.replace(
+          /<td style="padding: 8px 0;([^"]*)"/g,
+          (match, styles) => {
+            const hasColor = styles.includes('color:');
+            if (!hasColor) {
+              return `<td style="padding: 8px 0;${styles} color: ${isDark ? '#ffffff' : '#000000'}"`;
+            }
+            return match;
+          }
+        );
+        
+        if (updatedContent !== value) {
+          editorRef.current.innerHTML = updatedContent;
+          onChange(updatedContent);
+        } else {
+          editorRef.current.innerHTML = value;
+        }
       }
     }
-  }, [value, hotelName, onChange]);
+  }, dependencies);
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -205,9 +260,21 @@ export function AccommodationTemplateEditor({
   };
 
   return (
-    <div className="border border-gray-300 rounded-lg overflow-hidden">
+    <div 
+      className="border rounded-lg overflow-hidden"
+      style={{ 
+        borderColor: theme === 'dark' ? '#374151' : '#d1d5db',
+        backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff'
+      }}
+    >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2 border-b border-gray-200 bg-gray-50">
+      <div 
+        className="flex flex-wrap items-center gap-1 p-2 border-b"
+        style={{
+          borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+          backgroundColor: theme === 'dark' ? '#111827' : '#f9fafb'
+        }}
+      >
         <Button
           type="button"
           variant="ghost"
@@ -389,7 +456,12 @@ export function AccommodationTemplateEditor({
         onInput={handleInput}
         onPaste={handlePaste}
         className="p-4 focus:outline-none focus:ring-2 focus:ring-red-500 prose max-w-none overflow-y-auto"
-        style={{ minHeight: height, maxHeight: height * 1.5 }}
+        style={{ 
+          minHeight: height, 
+          maxHeight: height * 1.5,
+          backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
+          color: theme === 'dark' ? '#ffffff' : '#000000'
+        }}
         suppressContentEditableWarning={true}
       />
 

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
+import { useTheme } from "next-themes";
 
 interface SuperAdmin {
   id: number;
@@ -109,6 +110,8 @@ export default function EnhancedStatsCards({
   selectedCard,
   loading = false,
 }: StatsCardsProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [superAdminsLoading, setSuperAdminsLoading] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
@@ -200,6 +203,10 @@ export default function EnhancedStatsCards({
   }, [apiClient]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     fetchSuperAdmins();
     fetchTenantStats();
     fetchPendingInvitations();
@@ -283,139 +290,85 @@ export default function EnhancedStatsCards({
     ]
   );
 
+  if (!mounted) {
+    return null;
+  }
+
+  const isDark = resolvedTheme === 'dark';
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
       {statsData.map((stat, index) => (
         <Card
           key={stat.id}
-          className={`group relative overflow-hidden border-0 backdrop-blur-sm transition-all duration-300 ease-out cursor-pointer hover:scale-[1.02] hover:shadow-xl ${
-            stat.shadowColor
-          } ${
-            selectedCard === stat.id
-              ? `bg-gradient-to-br ${stat.gradient} shadow-xl ${stat.shadowColor} scale-[1.02]`
-              : `bg-gradient-to-br ${stat.bgGradient} hover:shadow-lg`
-          }`}
+          className="group relative cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
           style={{
-            animationDelay: `${index * 100}ms`,
-            animation: "fadeInUp 0.6s ease-out forwards",
+            backgroundColor: selectedCard === stat.id 
+              ? (isDark ? '#1a1a1a' : '#fef2f2') 
+              : (isDark ? '#000000' : '#ffffff'),
+            borderColor: selectedCard === stat.id 
+              ? (isDark ? '#dc2626' : '#fecaca') 
+              : (isDark ? '#333333' : '#fecaca')
           }}
           onClick={() => {
             onCardClick(stat.id);
-            // Scroll down to show the content below
             setTimeout(() => {
               window.scrollBy({ top: 400, behavior: 'smooth' });
             }, 100);
           }}
         >
-          {/* Animated background gradient */}
-          <div
-            className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
-          />
-
-          {/* Subtle border gradient */}
-          <div
-            className={`absolute inset-0 rounded-lg bg-gradient-to-br ${stat.gradient} opacity-10 p-[1px]`}
-          >
-            <div className="h-full w-full rounded-[calc(0.5rem-1px)] bg-white" />
-          </div>
-
-          <CardHeader className="relative flex flex-row items-center justify-between space-y-0 pb-3 pt-6 px-6">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div className="space-y-1">
-              <p
-                className={`text-sm font-semibold tracking-wide uppercase opacity-80 ${
-                  selectedCard === stat.id ? "text-white" : stat.textColor
-                }`}
-              >
+              <p className="text-sm font-medium" style={{
+                color: selectedCard === stat.id 
+                  ? (isDark ? '#fca5a5' : '#b91c1c') 
+                  : (isDark ? '#d1d5db' : '#4b5563')
+              }}>
                 {stat.title}
               </p>
               {stat.trend && (
-                <div className="flex items-center gap-2">
-                  <TrendingUp className={`h-3 w-3 ${
-                    selectedCard === stat.id ? "text-white" : stat.trendColor
-                  }`} />
-                  <span className={`text-xs font-medium ${
-                    selectedCard === stat.id ? "text-white" : stat.trendColor
-                  }`}>
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3" style={{ color: isDark ? '#34d399' : '#059669' }} />
+                  <span className="text-xs" style={{
+                    color: selectedCard === stat.id 
+                      ? (isDark ? '#f87171' : '#dc2626') 
+                      : (isDark ? '#9ca3af' : '#6b7280')
+                  }}>
                     {stat.trend}
                   </span>
                 </div>
               )}
             </div>
-
-            <div
-              className={`relative p-3 rounded-xl ${stat.iconBg} group-hover:scale-110 transition-all duration-300 shadow-sm`}
-            >
-              {((stat.id === "super-admins" && superAdminsLoading) || (stat.id === "pending-invitations" && pendingInvitationsLoading) || loading) ? (
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <div className="p-2 rounded-lg" style={{
+              backgroundColor: selectedCard === stat.id 
+                ? (isDark ? '#333333' : '#fee2e2') 
+                : (isDark ? '#1a1a1a' : '#fef2f2')
+            }}>
+              {((stat.id === "super-admins" && superAdminsLoading) || 
+                (stat.id === "pending-invitations" && pendingInvitationsLoading) || 
+                loading) ? (
+                <Loader2 className="h-4 w-4 animate-spin" style={{ color: isDark ? '#f87171' : '#dc2626' }} />
               ) : (
-                <stat.icon className={`h-6 w-6 ${
-                  selectedCard === stat.id ? "text-white" : "text-gray-600"
-                }`} />
+                <stat.icon className="h-4 w-4" style={{ color: isDark ? '#f87171' : '#dc2626' }} />
               )}
-
-              {/* Glow effect */}
-              <div
-                className={`absolute inset-0 rounded-xl ${stat.iconBg} opacity-0 group-hover:opacity-50 blur transition-opacity duration-300`}
-              />
             </div>
           </CardHeader>
-
-          <CardContent className="relative px-6 pb-6">
-            <div className="space-y-2">
-              <div
-                className={`text-3xl font-bold ${
-                  selectedCard === stat.id 
-                    ? "text-white" 
-                    : `bg-gradient-to-br ${stat.gradient} bg-clip-text text-transparent`
-                }`}
-              >
-                {stat.value}
-              </div>
-              <div className={`text-sm font-medium ${
-                selectedCard === stat.id ? "text-white/80" : "text-gray-600"
-              }`}>
-                {stat.description}
-              </div>
-            </div>
-
-            {/* Bottom accent line */}
-            <div
-              className={`absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r ${stat.gradient} opacity-20 group-hover:opacity-40 transition-opacity duration-300`}
-            />
+          <CardContent>
+            <div className="text-2xl font-bold" style={{
+              color: selectedCard === stat.id 
+                ? (isDark ? '#fca5a5' : '#b91c1c') 
+                : (isDark ? '#f87171' : '#dc2626')
+            }}>{stat.value}</div>
+            <p className="text-xs" style={{
+              color: selectedCard === stat.id 
+                ? (isDark ? '#f87171' : '#dc2626') 
+                : (isDark ? '#9ca3af' : '#6b7280')
+            }}>
+              {stat.description}
+            </p>
           </CardContent>
-
-          {/* Hover shimmer effect */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 animate-shimmer" />
-          </div>
         </Card>
       ))}
-
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes shimmer {
-          0% {
-            transform: translateX(-100%) skewX(-12deg);
-          }
-          100% {
-            transform: translateX(200%) skewX(-12deg);
-          }
-        }
-
-        .animate-shimmer {
-          animation: shimmer 2s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

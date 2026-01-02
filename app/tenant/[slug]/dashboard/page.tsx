@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTheme } from "next-themes";
 import {
   ArrowLeft,
   Building2,
@@ -25,6 +26,8 @@ import {
 import { LoadingScreen } from "@/components/ui/loading";
 
 export default function TenantDashboardPage() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
@@ -48,6 +51,12 @@ export default function TenantDashboardPage() {
   const [navigationLoading, setNavigationLoading] = useState(false);
   const [cardNavigating, setCardNavigating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = resolvedTheme === 'dark';
 
   const tenantSlug = params.slug as string;
   const isVettingOnlyUser = () => {
@@ -417,98 +426,120 @@ export default function TenantDashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {user?.role?.toLowerCase() === "super_admin" && (
-              <Button
-                onClick={handleBackToDashboard}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                disabled={navigationLoading}
+        {/* Quick Actions - Stats Cards */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: isDark ? '#ffffff' : '#111827' }}>Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Manage Users */}
+            {(tenant?.admin_email === user?.email || user?.role?.toLowerCase() === "super_admin" || user?.tenantId === tenantSlug) && (
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all duration-200"
+                style={{
+                  backgroundColor: isDark ? '#000000' : '#ffffff',
+                  borderColor: isDark ? '#374151' : '#fecaca'
+                }}
+                onClick={() => handleCardClick(`/tenant/${tenantSlug}/admin-users`)}
               >
-                {navigationLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ArrowLeft className="w-4 h-4" />
-                )}
-                Back to Super Admin
-              </Button>
+                <CardContent className="p-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>Users</h3>
+                      <div className="p-2 rounded-lg" style={{ backgroundColor: isDark ? '#1a1a1a' : '#fef2f2' }}>
+                        <UserPlus className="h-4 w-4" style={{ color: isDark ? '#f87171' : '#dc2626' }} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        +{stats.totalUsers > 0 ? '1' : '0'} from last month
+                      </div>
+                      <div className="text-2xl font-bold" style={{ color: isDark ? '#f87171' : '#dc2626' }}>
+                        {stats.totalUsers}
+                      </div>
+                      <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+                        Users in {tenant.name}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-full flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-blue-700" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">
-                  {tenant.name}
-                </h1>
-                <div className="flex items-center space-x-2">
-                  <Badge
-                    variant={tenant.is_active ? "default" : "secondary"}
-                    className={
-                      tenant.is_active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-600"
-                    }
-                  >
-                    {tenant.is_active ? "Active" : "Inactive"}
-                  </Badge>
-                  <span className="text-xs text-gray-500">{tenant.slug}</span>
+            
+            {/* Manage Events */}
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all duration-200"
+              style={{
+                backgroundColor: isDark ? '#000000' : '#ffffff',
+                borderColor: isDark ? '#374151' : '#fecaca'
+              }}
+              onClick={() => handleCardClick(`/tenant/${tenantSlug}/events`)}
+            >
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>Active Events</h3>
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: isDark ? '#1a1a1a' : '#fef2f2' }}>
+                      <Calendar className="h-4 w-4" style={{ color: isDark ? '#f87171' : '#dc2626' }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                      +{stats.activeEvents > 0 ? '1' : '0'} from last month
+                    </div>
+                    <div className="text-2xl font-bold" style={{ color: isDark ? '#f87171' : '#dc2626' }}>
+                      {stats.activeEvents}
+                    </div>
+                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+                      Events currently active
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+            
+            {/* Inventory */}
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all duration-200"
+              style={{
+                backgroundColor: isDark ? '#000000' : '#ffffff',
+                borderColor: isDark ? '#374151' : '#fecaca'
+              }}
+              onClick={() => handleCardClick(`/tenant/${tenantSlug}/inventory`)}
+            >
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>Inventory Items</h3>
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: isDark ? '#1a1a1a' : '#fef2f2' }}>
+                      <Coins className="h-4 w-4" style={{ color: isDark ? '#f87171' : '#dc2626' }} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-green-600 dark:text-green-400 font-medium">
+                      +{stats.totalInventory > 0 ? '1' : '0'} from last month
+                    </div>
+                    <div className="text-2xl font-bold" style={{ color: isDark ? '#f87171' : '#dc2626' }}>
+                      {stats.totalInventory}
+                    </div>
+                    <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
+                      Items available
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {quickActions.filter(action => action.enabled).map((action, index) => {
-            const Icon = action.icon;
-            const colorClasses = {
-              blue: "bg-blue-500 hover:bg-blue-600 text-blue-600",
-              green: "bg-green-500 hover:bg-green-600 text-green-600",
-              orange: "bg-orange-500 hover:bg-orange-600 text-orange-600",
-              purple: "bg-purple-500 hover:bg-purple-600 text-purple-600",
-              indigo: "bg-indigo-500 hover:bg-indigo-600 text-indigo-600",
-              red: "bg-red-500 hover:bg-red-600 text-red-600",
-            };
-
-            return (
-              <Button
-                key={index}
-                variant="outline"
-                className="h-auto p-6 justify-start hover:shadow-md transition-all duration-200 border-2 hover:border-gray-300"
-                onClick={() => handleCardClick(action.path)}
-                disabled={cardNavigating}
-              >
-                <div
-                  className={`p-3 rounded-lg text-white ${
-                    colorClasses[
-                      action.color as keyof typeof colorClasses
-                    ].split(" ")[0]
-                  }`}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <div className="ml-4 text-left">
-                  <div className="font-medium text-sm text-gray-900">
-                    {action.title}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {action.description}
-                  </div>
-                </div>
-              </Button>
-            );
-          })}
-        </div>
-
         {/* Recent Activities */}
-        <Card>
+        <Card 
+          className="border-2"
+          style={{
+            backgroundColor: isDark ? '#000000' : '#ffffff',
+            borderColor: isDark ? '#374151' : '#e5e7eb'
+          }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#111827' }}>
               <Clock className="w-5 h-5" />
               Recent Activities
             </CardTitle>
@@ -516,7 +547,7 @@ export default function TenantDashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {recentActivities.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                   No recent activities
                 </div>
               ) : (
@@ -524,34 +555,48 @@ export default function TenantDashboardPage() {
                   <div
                     key={activity.id || index}
                     className="flex items-center justify-between p-3 border rounded-lg"
+                    style={{
+                      backgroundColor: isDark ? '#1f2937' : '#f9fafb',
+                      borderColor: isDark ? '#374151' : '#e5e7eb'
+                    }}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="p-2 rounded-lg bg-blue-100">
-                        <Activity className="h-4 w-4 text-blue-600" />
+                      <div 
+                        className="p-2 rounded-lg"
+                        style={{
+                          backgroundColor: isDark ? '#1e3a8a' : '#dbeafe'
+                        }}
+                      >
+                        <Activity className="h-4 w-4" style={{ color: isDark ? '#60a5fa' : '#2563eb' }} />
                       </div>
                       <div>
-                        <div className="font-medium text-sm text-gray-900 capitalize">
+                        <div className="font-medium text-sm capitalize" style={{ color: isDark ? '#ffffff' : '#111827' }}>
                           {activity.type?.replace("_", " ") ||
                             "System Activity"}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                           {activity.description}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
                       <Badge
-                        className={
-                          activity.status === "completed"
-                            ? "bg-green-100 text-green-800"
+                        style={{
+                          backgroundColor: activity.status === "completed"
+                            ? (isDark ? '#14532d' : '#dcfce7')
                             : activity.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-blue-100 text-blue-800"
-                        }
+                            ? (isDark ? '#713f12' : '#fef3c7')
+                            : (isDark ? '#1e3a8a' : '#dbeafe'),
+                          color: activity.status === "completed"
+                            ? (isDark ? '#4ade80' : '#166534')
+                            : activity.status === "pending"
+                            ? (isDark ? '#fbbf24' : '#92400e')
+                            : (isDark ? '#60a5fa' : '#1e40af')
+                        }}
                       >
                         {activity.status || "Active"}
                       </Badge>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs mt-1" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                         {activity.created_at
                           ? new Date(activity.created_at).toLocaleDateString()
                           : "Today"}
@@ -565,9 +610,15 @@ export default function TenantDashboardPage() {
         </Card>
 
         {/* Tenant Info */}
-        <Card>
+        <Card 
+          className="border-2"
+          style={{
+            backgroundColor: isDark ? '#000000' : '#ffffff',
+            borderColor: isDark ? '#374151' : '#e5e7eb'
+          }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2" style={{ color: isDark ? '#ffffff' : '#111827' }}>
               <Building2 className="w-5 h-5" />
               Organization Information
             </CardTitle>
@@ -575,46 +626,50 @@ export default function TenantDashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-gray-500">
+                <label className="text-xs font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                   Organization Name
                 </label>
-                <p className="text-xs text-gray-900">{tenant.name}</p>
+                <p className="text-xs" style={{ color: isDark ? '#ffffff' : '#111827' }}>{tenant.name}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">
+                <label className="text-xs font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                   Contact Email
                 </label>
-                <p className="text-xs text-gray-900">{tenant.contact_email}</p>
+                <p className="text-xs" style={{ color: isDark ? '#ffffff' : '#111827' }}>{tenant.contact_email}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">
+                <label className="text-xs font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                   Status
                 </label>
                 <Badge
-                  className={
-                    tenant.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-600"
-                  }
+                  style={{
+                    backgroundColor: tenant.is_active
+                      ? (isDark ? '#14532d' : '#dcfce7')
+                      : (isDark ? '#1f2937' : '#f3f4f6'),
+                    color: tenant.is_active
+                      ? (isDark ? '#4ade80' : '#166534')
+                      : (isDark ? '#9ca3af' : '#4b5563')
+                  }}
                 >
                   {tenant.is_active ? "Active" : "Inactive"}
                 </Badge>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-500">
+                <label className="text-xs font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                   Domain
                 </label>
-                <p className="text-xs text-gray-900">
+                <p className="text-xs" style={{ color: isDark ? '#ffffff' : '#111827' }}>
                   {tenant.domain || "Not configured"}
                 </p>
               </div>
               {tenant.description && (
                 <div className="md:col-span-2">
-                  <label className="text-xs font-medium text-gray-500">
+                  <label className="text-xs font-medium" style={{ color: isDark ? '#9ca3af' : '#6b7280' }}>
                     Description
                   </label>
                   <div
-                    className="text-xs text-gray-900 prose prose-sm max-w-none"
+                    className="text-xs prose prose-sm max-w-none"
+                    style={{ color: isDark ? '#ffffff' : '#111827' }}
                     dangerouslySetInnerHTML={{
                       __html: tenant.description
                         .replace(/\s*data-start="[^"]*"/g, '')
