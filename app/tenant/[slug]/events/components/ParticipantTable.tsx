@@ -130,6 +130,7 @@ export function ParticipantTable({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="registered">Registered</SelectItem>
             <SelectItem value="selected">Selected</SelectItem>
             <SelectItem value="not_selected">Not Selected</SelectItem>
             <SelectItem value="waiting">Waiting</SelectItem>
