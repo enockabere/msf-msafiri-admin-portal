@@ -350,6 +350,7 @@ class ApiClient {
 
   // Token management - simplified for NextAuth integration
   setToken(token: string): void {
+    console.log("🔑 Setting new token, length:", token?.length || 0);
     this.token = token;
     this.refreshPromise = null; // Clear any pending refresh
     this.startBackgroundRefresh(); // Restart background refresh with new token
@@ -375,8 +376,10 @@ class ApiClient {
   private startBackgroundRefresh(): void {
     this.stopBackgroundRefresh();
     if (this.token) {
+      console.log("⏰ Token refresh scheduled in 180 minutes");
       // Refresh every 23 hours (1 hour before 24-hour expiration)
       this.refreshTimer = setInterval(() => {
+        console.log("⏰ Background refresh timer triggered");
         this.refreshTokenSilently();
       }, 23 * 60 * 60 * 1000); // 23 hours
     }
@@ -392,21 +395,25 @@ class ApiClient {
   // Silent token refresh for background refresh
   private async refreshTokenSilently(): Promise<void> {
     try {
+      console.log("🔄 Starting background token refresh...");
       await this.refreshToken();
-      console.log("🔄 Background token refresh successful");
+      console.log("✅ Background token refresh successful");
     } catch (error) {
-      console.warn("⚠️ Background token refresh failed:", error);
+      console.warn("❌ Background token refresh failed:", error);
     }
   }
 
   // Refresh token with deduplication
   private async refreshToken(): Promise<string> {
     if (this.refreshPromise) {
+      console.log("🔄 Using existing refresh promise");
       return this.refreshPromise;
     }
 
+    console.log("🔄 Creating new refresh promise");
     this.refreshPromise = (async () => {
       try {
+        console.log("🔄 Making refresh request to API...");
         const refreshResponse = await fetch(
           getApiUrl("/auth/refresh"),
           {
@@ -418,14 +425,19 @@ class ApiClient {
           }
         );
 
+        console.log("🔄 Refresh response status:", refreshResponse.status);
         if (refreshResponse.ok) {
           const newTokenData = await refreshResponse.json();
+          console.log("✅ Got new token from refresh");
           this.setToken(newTokenData.access_token);
           return newTokenData.access_token;
         } else {
-          throw new Error("Refresh failed");
+          const errorText = await refreshResponse.text();
+          console.error("❌ Refresh failed with status:", refreshResponse.status, "Error:", errorText);
+          throw new Error(`Refresh failed: ${refreshResponse.status}`);
         }
       } finally {
+        console.log("🔄 Clearing refresh promise");
         this.refreshPromise = null;
       }
     })();
@@ -435,6 +447,7 @@ class ApiClient {
 
   // Queue requests during token refresh
   private async queueRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    console.log("📥 Queueing request, queue length:", this.requestQueue.length + 1);
     return new Promise((resolve, reject) => {
       this.requestQueue.push({ resolve, reject, request: requestFn });
       this.processQueue();
@@ -447,18 +460,23 @@ class ApiClient {
       return;
     }
 
+    console.log("📤 Processing queue with", this.requestQueue.length, "requests");
     this.isProcessingQueue = true;
 
     while (this.requestQueue.length > 0) {
       const { resolve, reject, request } = this.requestQueue.shift()!;
       try {
+        console.log("📤 Processing queued request...");
         const result = await request();
+        console.log("✅ Queued request successful");
         resolve(result);
       } catch (error) {
+        console.error("❌ Queued request failed:", error);
         reject(error);
       }
     }
 
+    console.log("📤 Queue processing complete");
     this.isProcessingQueue = false;
   }
 
@@ -514,8 +532,10 @@ class ApiClient {
         if (!response.ok) {
           // Handle 401 errors (authentication/authorization issues)
           if (response.status === 401) {
+            console.log("🚫 Got 401 error for endpoint:", endpoint);
             // Skip auth error handling for login endpoints or when explicitly requested
             if (options.skipAuthError || endpoint.includes("/auth/login") || endpoint.includes("/auth/refresh")) {
+              console.log("🚫 Skipping auth error handling for this endpoint");
               const errorData = await response.json().catch(() => ({
                 detail: "Invalid credentials",
                 status_code: 401,
@@ -523,6 +543,7 @@ class ApiClient {
               throw new Error(errorData.detail || "Authentication failed");
             }
 
+            console.log("🚫 Token expired, will attempt refresh");
             // For other 401 errors, try to refresh the token and retry once
             throw new Error("TOKEN_EXPIRED");
           }
@@ -594,9 +615,12 @@ class ApiClient {
 
     // Try to make the request
     try {
+      console.log("🌐 Making request to:", endpoint);
       if (options.skipAuthError || endpoint.includes("/auth/login")) {
+        console.log("🌐 Direct request (no retry)");
         return await makeRequest();
       } else {
+        console.log("🌐 Request with retry");
         return await retryRequest(makeRequest, 1, 1000);
       }
     } catch (error) {
@@ -606,12 +630,15 @@ class ApiClient {
 
         return await this.queueRequest(async () => {
           try {
+            console.log("🔄 Attempting token refresh...");
             const newToken = await this.refreshToken();
+            console.log("✅ Token refresh successful, retrying original request");
             
             // Retry the original request with new token
             return await makeRequest();
           } catch (refreshError) {
             console.error("❌ Token auto-refresh failed:", refreshError);
+            console.log("🚪 Handling session expiry...");
             // Only logout if refresh actually fails, not on first 401
             await handleSessionExpiry();
             throw new Error("Session expired. Please log in again.");
@@ -619,6 +646,7 @@ class ApiClient {
         });
       }
 
+      console.error("❌ Request failed with error:", error);
       // Re-throw other errors
       throw error;
     }

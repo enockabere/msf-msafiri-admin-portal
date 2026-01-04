@@ -40,14 +40,21 @@ export function SessionRefresher() {
       const refreshIn = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
       const now = Date.now();
 
+      console.log("🕰️ SessionRefresher: Checking refresh schedule", {
+        lastRefresh: lastRefreshRef.current ? new Date(lastRefreshRef.current).toISOString() : 'never',
+        timeSinceLastRefresh: lastRefreshRef.current ? Math.round((now - lastRefreshRef.current) / 1000 / 60) : 'N/A',
+        refreshInMinutes: refreshIn / 1000 / 60
+      });
+
       // Don't schedule if we just refreshed (within last 30 minutes)
       if (now - lastRefreshRef.current < 30 * 60 * 1000) {
+        console.log("⏸️ SessionRefresher: Skipping refresh - too recent");
         return;
       }
 
       refreshTimerRef.current = setTimeout(async () => {
         try {
-          console.log("🔄 Proactively refreshing token...");
+          console.log("🔄 SessionRefresher: Proactively refreshing token...");
           lastRefreshRef.current = Date.now();
 
           // Call the refresh endpoint directly
@@ -62,9 +69,10 @@ export function SessionRefresher() {
             }
           );
 
+          console.log("🔄 SessionRefresher: Refresh response status:", response.status);
           if (response.ok) {
             const newTokenData = await response.json();
-            console.log("✅ Token refreshed successfully");
+            console.log("✅ SessionRefresher: Token refreshed successfully");
 
             // Update the session with new token (this won't cause page refresh)
             await update({
@@ -78,16 +86,20 @@ export function SessionRefresher() {
             // Update API client immediately
             apiClient.setToken(newTokenData.access_token);
           } else {
-            console.warn("⚠️ Token refresh failed, will retry on next interaction");
+            const errorText = await response.text();
+            console.warn("⚠️ SessionRefresher: Token refresh failed:", response.status, errorText);
           }
         } catch (error) {
-          console.warn("⚠️ Token refresh error:", error);
+          console.warn("⚠️ SessionRefresher: Token refresh error:", error);
         }
       }, refreshIn);
 
-      console.log(`⏰ Token refresh scheduled in ${refreshIn / 1000 / 60} minutes`);
+      console.log(`⏰ SessionRefresher: Token refresh scheduled in ${refreshIn / 1000 / 60} minutes`);
     } else if (status === "unauthenticated") {
+      console.log("🚫 SessionRefresher: User unauthenticated, clearing token");
       apiClient.clearToken();
+    } else {
+      console.log("🕰️ SessionRefresher: Session status:", status);
     }
 
     // Cleanup

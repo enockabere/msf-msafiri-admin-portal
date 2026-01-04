@@ -73,6 +73,7 @@ export function useApiClient() {
 
   useEffect(() => {
     if (session?.user?.accessToken) {
+      console.log("🔑 Setting token from session, length:", session.user.accessToken.length);
       apiClient.setToken(session.user.accessToken);
       
       // Start background refresh if token is close to expiry
@@ -82,13 +83,26 @@ export function useApiClient() {
         const currentTime = Date.now();
         const timeUntilExpiry = expiryTime - currentTime;
         
+        console.log("🕰️ Token expiry check:", {
+          expiryTime: new Date(expiryTime).toISOString(),
+          currentTime: new Date(currentTime).toISOString(),
+          timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
+        });
+        
         // Only refresh if token expires in less than 2 hours (for 24-hour tokens)
         if (timeUntilExpiry < 2 * 60 * 60 * 1000 && timeUntilExpiry > 0) {
           console.log("🔄 Token expires soon, triggering refresh");
           // The API client will handle the refresh automatically
+        } else if (timeUntilExpiry <= 0) {
+          console.warn("⚠️ Token is already expired!");
+        } else {
+          console.log("✅ Token is still valid for", Math.round(timeUntilExpiry / 1000 / 60 / 60), "hours");
         }
+      } else {
+        console.warn("⚠️ Could not parse token expiry");
       }
     } else {
+      console.log("🚫 No session token, clearing API client token");
       // Clear token if no session
       apiClient.setToken("");
     }
