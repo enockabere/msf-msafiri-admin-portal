@@ -350,7 +350,6 @@ class ApiClient {
 
   // Token management - simplified for NextAuth integration
   setToken(token: string): void {
-    console.log("🔧 Setting new token:", token ? `${token.substring(0, 20)}...` : "null");
     this.token = token;
     this.refreshPromise = null; // Clear any pending refresh
     this.startBackgroundRefresh(); // Restart background refresh with new token
@@ -486,7 +485,6 @@ class ApiClient {
 
       // Use current token - NextAuth will handle refresh automatically
       const token = this.getToken();
-      console.log("🔍 Making request to:", url, "with token:", token ? `${token.substring(0, 20)}...` : "null");
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -496,9 +494,6 @@ class ApiClient {
       // Add authorization header if token exists
       if (token && token !== "") {
         headers.Authorization = `Bearer ${token}`;
-        console.log("✅ Authorization header added");
-      } else {
-        console.log("❌ No token available for authorization");
       }
 
       // Add request ID for debugging
@@ -519,7 +514,6 @@ class ApiClient {
         if (!response.ok) {
           // Handle 401 errors (authentication/authorization issues)
           if (response.status === 401) {
-            console.log("🚫 Got 401 error for:", url);
             // Skip auth error handling for login endpoints or when explicitly requested
             if (options.skipAuthError || endpoint.includes("/auth/login") || endpoint.includes("/auth/refresh")) {
               const errorData = await response.json().catch(() => ({
@@ -530,7 +524,6 @@ class ApiClient {
             }
 
             // For other 401 errors, try to refresh the token and retry once
-            console.log("🔄 Triggering token refresh due to 401");
             throw new Error("TOKEN_EXPIRED");
           }
 
@@ -614,10 +607,8 @@ class ApiClient {
         return await this.queueRequest(async () => {
           try {
             const newToken = await this.refreshToken();
-            console.log("✅ Token auto-refreshed successfully, new token:", newToken ? `${newToken.substring(0, 20)}...` : "null");
             
             // Retry the original request with new token
-            console.log("🔄 Retrying original request with new token");
             return await makeRequest();
           } catch (refreshError) {
             console.error("❌ Token auto-refresh failed:", refreshError);
