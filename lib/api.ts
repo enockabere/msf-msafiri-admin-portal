@@ -600,14 +600,8 @@ class ApiClient {
         return await retryRequest(makeRequest, 1, 1000);
       }
     } catch (error) {
-      // If we get a TOKEN_EXPIRED error, only refresh if token is actually expired
+      // If we get a TOKEN_EXPIRED error, try to refresh the token
       if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
-        // Check if token is actually expired before refreshing
-        if (!this.token || !this.isTokenExpired(this.token)) {
-          // Token is not actually expired, don't refresh
-          throw new Error("Authentication failed. Please refresh the page.");
-        }
-
         console.log("🔄 Token expired, queueing request and refreshing...");
 
         return await this.queueRequest(async () => {
@@ -618,8 +612,10 @@ class ApiClient {
             // Retry the original request with new token
             return await makeRequest();
           } catch (refreshError) {
-            console.error("❌ Token auto-refresh error:", refreshError);
-            throw new Error("Session expired. Please refresh the page or log in again.");
+            console.error("❌ Token auto-refresh failed:", refreshError);
+            // Only logout if refresh actually fails, not on first 401
+            await handleSessionExpiry();
+            throw new Error("Session expired. Please log in again.");
           }
         });
       }

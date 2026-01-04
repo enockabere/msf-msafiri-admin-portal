@@ -82,8 +82,8 @@ export function useApiClient() {
         const currentTime = Date.now();
         const timeUntilExpiry = expiryTime - currentTime;
         
-        // Only refresh if token expires in less than 30 minutes (for 24-hour tokens)
-        if (timeUntilExpiry < 30 * 60 * 1000 && timeUntilExpiry > 0) {
+        // Only refresh if token expires in less than 2 hours (for 24-hour tokens)
+        if (timeUntilExpiry < 2 * 60 * 60 * 1000 && timeUntilExpiry > 0) {
           console.log("🔄 Token expires soon, triggering refresh");
           // The API client will handle the refresh automatically
         }
