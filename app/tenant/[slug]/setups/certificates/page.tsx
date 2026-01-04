@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { useTheme } from "next-themes";
 import { toast } from "@/hooks/use-toast";
-import DashboardLayout from "@/components/layout/dashboard-layout";
+
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -185,17 +185,10 @@ export default function CertificatesPage() {
     if (authLoading || !user) return;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates`, {
-        headers: { 
-          Authorization: `Bearer ${apiClient.getToken()}`,
-          'X-Tenant-ID': tenantSlug
-        },
+      const data = await apiClient.request<CertificateTemplate[]>('/certificate-templates', {
+        headers: { 'X-Tenant-ID': tenantSlug }
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data);
-      }
+      setTemplates(data);
     } catch (error) {
       console.error("Error fetching templates:", error);
     } finally {
@@ -216,36 +209,31 @@ export default function CertificatesPage() {
     setSubmitting(true);
 
     try {
-      const url = editingTemplate 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates/${editingTemplate.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates`;
+      const endpoint = editingTemplate 
+        ? `/certificate-templates/${editingTemplate.id}`
+        : '/certificate-templates';
       
       const method = editingTemplate ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      await apiClient.request(endpoint, {
         method,
         headers: {
-          Authorization: `Bearer ${apiClient.getToken()}`,
           "Content-Type": "application/json",
           'X-Tenant-ID': tenantSlug
         },
         body: JSON.stringify(templateForm),
       });
 
-      if (response.ok) {
-        await fetchTemplates();
-        setModalOpen(false);
-        resetForm();
-        toast({ 
-          title: "Success", 
-          description: `Certificate template ${editingTemplate ? 'updated' : 'created'} successfully` 
-        });
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+      await fetchTemplates();
+      setModalOpen(false);
+      resetForm();
+      toast({ 
+        title: "Success", 
+        description: `Certificate template ${editingTemplate ? 'updated' : 'created'} successfully` 
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -285,27 +273,17 @@ export default function CertificatesPage() {
     if (!result.isConfirmed) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/certificate-templates/${template.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${apiClient.getToken()}`,
-            'X-Tenant-ID': tenantSlug
-          },
-        }
-      );
+      await apiClient.request(`/certificate-templates/${template.id}`, {
+        method: "DELETE",
+        headers: { 'X-Tenant-ID': tenantSlug }
+      });
 
-      if (response.ok) {
-        await fetchTemplates();
-        toast({ title: "Success", description: "Certificate template deleted successfully" });
-      } else {
-        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
-        toast({ title: "Error", description: errorData.detail, variant: "destructive" });
-      }
+      await fetchTemplates();
+      toast({ title: "Success", description: "Certificate template deleted successfully" });
     } catch (error) {
       console.error("Delete template error:", error);
-      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : "Network error occurred";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     }
   };
 
@@ -327,55 +305,49 @@ export default function CertificatesPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Award className="w-8 h-8 text-blue-600 animate-pulse" />
-              </div>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Award className="w-6 h-6 text-red-600 animate-pulse" />
             </div>
-            <p className="text-xs font-medium" style={{
-              color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
-            }}>Loading certificate templates...</p>
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading certificate templates...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <Card className="rounded-2xl p-6 border-2" style={{
-          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
-          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-        }}>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Award className="w-6 h-6 text-white" />
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Award className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-semibold mb-2" style={{
-                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
-                }}>Certificate Templates</h1>
-                <p className="text-sm" style={{
-                  color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
-                }}>Design certificate templates for events and training programs</p>
+              <div className="min-w-0">
+                <h1 className={`text-sm sm:text-base font-medium ${mounted && theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Certificate Templates</h1>
+                <p className={`text-xs ${mounted && theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} hidden sm:block`}>Design certificate templates for events and training programs</p>
               </div>
             </div>
             {canEdit && (
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Template
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs px-3 py-2 w-full sm:w-auto">
+                    <Plus className="w-3 h-3 mr-2" />
+                    <span className="sm:hidden">Create</span>
+                    <span className="hidden sm:inline">Create Template</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent 
-                  className="sm:max-w-[1200px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+                  className="w-[95vw] max-w-[1200px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
                   style={{
                     backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
                     borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
@@ -400,7 +372,7 @@ export default function CertificatesPage() {
 
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">
                             Template Name <span className="text-red-600">*</span>
@@ -490,82 +462,93 @@ export default function CertificatesPage() {
               </Dialog>
             )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        <Card style={{
-          backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
-          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-        }}>
-          <CardContent className="p-4 text-sm">
-            {templates.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4" style={{
-                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
-                }}>
-                  <Award className="w-10 h-10" style={{
-                    color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                  }} />
-                </div>
-                <h3 className="text-sm font-medium mb-2" style={{
-                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
-                }}>No certificate templates yet</h3>
-                <p className="text-xs mb-4" style={{
+      <Card style={{
+        backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
+        borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+      }}>
+        <CardContent className="p-3 text-xs overflow-x-auto">
+          {templates.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3" style={{
+                backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+              }}>
+                <Award className="w-8 h-8" style={{
                   color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                }}>Create your first certificate template for events</p>
+                }} />
               </div>
+              <h3 className="text-xs font-medium mb-1" style={{
+                color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+              }}>No certificate templates yet</h3>
+              <p className="text-xs mb-3" style={{
+                color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+              }}>Create your first certificate template for events</p>
+            </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Template Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Updated</TableHead>
-                    {canEdit && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium text-xs">{template.name}</TableCell>
-                      <TableCell className="text-xs">{template.description || 'No description'}</TableCell>
-                      <TableCell className="text-xs">
-                        {new Date(template.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {new Date(template.updated_at).toLocaleDateString()}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(template)}
-                              title="Edit Template"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(template)}
-                              className="text-red-600 hover:text-red-700"
-                              title="Delete Template"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+              <div className="min-w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[120px]">Template Name</TableHead>
+                      <TableHead className="min-w-[150px] hidden sm:table-cell">Description</TableHead>
+                      <TableHead className="min-w-[100px] hidden md:table-cell">Created</TableHead>
+                      <TableHead className="min-w-[100px] hidden lg:table-cell">Updated</TableHead>
+                      {canEdit && <TableHead className="text-right min-w-[100px]">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium text-xs">
+                          <div className="max-w-[120px] truncate" title={template.name}>
+                            {template.name}
                           </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <TableCell className="text-xs hidden sm:table-cell">
+                          <div className="max-w-[150px] truncate" title={template.description || 'No description'}>
+                            {template.description || 'No description'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs hidden md:table-cell">
+                          {new Date(template.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-xs hidden lg:table-cell">
+                          {new Date(template.updated_at).toLocaleDateString()}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(template)}
+                                title="Edit Template"
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(template)}
+                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                                title="Delete Template"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
