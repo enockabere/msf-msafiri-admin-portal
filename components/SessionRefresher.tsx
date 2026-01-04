@@ -29,9 +29,14 @@ export function SessionRefresher() {
     // Update API client token whenever session changes
     if (status === "authenticated" && session?.user?.accessToken) {
       const currentToken = apiClient.getToken();
+      console.log("🔍 Current API token:", currentToken ? `${currentToken.substring(0, 20)}...` : "null");
+      console.log("🔍 Session token:", session.user.accessToken ? `${session.user.accessToken.substring(0, 20)}...` : "null");
+      
       if (currentToken !== session.user.accessToken) {
         apiClient.setToken(session.user.accessToken);
         console.log("🔑 API token updated");
+      } else {
+        console.log("🔑 API token already up to date");
       }
 
       // Schedule proactive token refresh
@@ -63,7 +68,7 @@ export function SessionRefresher() {
 
           if (response.ok) {
             const newTokenData = await response.json();
-            console.log("✅ Token refreshed successfully");
+            console.log("✅ Token refreshed successfully, new token:", newTokenData.access_token ? `${newTokenData.access_token.substring(0, 20)}...` : "null");
 
             // Update the session with new token (this won't cause page refresh)
             await update({
@@ -76,6 +81,7 @@ export function SessionRefresher() {
 
             // Update API client immediately
             apiClient.setToken(newTokenData.access_token);
+            console.log("🔄 API client updated with new token");
           } else {
             console.warn("⚠️ Token refresh failed, will retry on next interaction");
           }
