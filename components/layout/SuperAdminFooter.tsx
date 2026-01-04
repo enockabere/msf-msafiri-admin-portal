@@ -27,7 +27,7 @@ export function SuperAdminFooter({ tenantName }: SuperAdminFooterProps) {
         color: '#000000'
       }}>
         <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 text-center sm:text-left">
             <div className="flex items-center space-x-4 text-sm" style={{ color: '#6b7280' }}>
               <span>© {currentYear} Médecins Sans Frontières{tenantName ? ` (${tenantName})` : ''}</span>
             </div>
@@ -49,7 +49,7 @@ export function SuperAdminFooter({ tenantName }: SuperAdminFooterProps) {
       color: isDark ? '#ffffff' : '#000000'
     }}>
       <div className="w-full px-4 sm:px-6 lg:px-12 xl:px-16 2xl:px-20 py-4">
-        <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
+        <div className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 text-center sm:text-left">
           <div className="flex items-center space-x-2 text-sm">
             <span style={{
               color: isDark ? '#d1d5db' : '#6b7280'

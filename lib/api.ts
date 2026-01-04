@@ -336,16 +336,23 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private isHandlingSessionExpiry: boolean = false;
+  private refreshPromise: Promise<string> | null = null;
+  private requestQueue: Array<{ resolve: Function; reject: Function; request: () => Promise<any> }> = [];
+  private isProcessingQueue: boolean = false;
+  private refreshTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     this.baseURL = API_BASE_URL.endsWith("/api/v1")
       ? API_BASE_URL.replace("/api/v1", "")
       : API_BASE_URL;
+    this.startBackgroundRefresh();
   }
 
   // Token management - simplified for NextAuth integration
   setToken(token: string): void {
     this.token = token;
+    this.refreshPromise = null; // Clear any pending refresh
+    this.startBackgroundRefresh(); // Restart background refresh with new token
   }
 
   getToken(): string | null {
@@ -355,11 +362,104 @@ class ApiClient {
   // Clear token (used by hooks)
   clearToken(): void {
     this.token = null;
+    this.refreshPromise = null;
+    this.stopBackgroundRefresh();
   }
 
   // Check if currently handling session expiry to prevent multiple simultaneous logouts
   private isHandlingExpiry(): boolean {
     return this.isHandlingSessionExpiry;
+  }
+
+  // Background token refresh - refresh 5 minutes before expiration
+  private startBackgroundRefresh(): void {
+    this.stopBackgroundRefresh();
+    if (this.token) {
+      // Refresh every 23 hours (1 hour before 24-hour expiration)
+      this.refreshTimer = setInterval(() => {
+        this.refreshTokenSilently();
+      }, 23 * 60 * 60 * 1000); // 23 hours
+    }
+  }
+
+  private stopBackgroundRefresh(): void {
+    if (this.refreshTimer) {
+      clearInterval(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  // Silent token refresh for background refresh
+  private async refreshTokenSilently(): Promise<void> {
+    try {
+      await this.refreshToken();
+      console.log("🔄 Background token refresh successful");
+    } catch (error) {
+      console.warn("⚠️ Background token refresh failed:", error);
+    }
+  }
+
+  // Refresh token with deduplication
+  private async refreshToken(): Promise<string> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const refreshResponse = await fetch(
+          getApiUrl("/auth/refresh"),
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${this.token}`,
+            },
+          }
+        );
+
+        if (refreshResponse.ok) {
+          const newTokenData = await refreshResponse.json();
+          this.setToken(newTokenData.access_token);
+          return newTokenData.access_token;
+        } else {
+          throw new Error("Refresh failed");
+        }
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  // Queue requests during token refresh
+  private async queueRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({ resolve, reject, request: requestFn });
+      this.processQueue();
+    });
+  }
+
+  // Process queued requests
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const { resolve, reject, request } = this.requestQueue.shift()!;
+      try {
+        const result = await request();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+
+    this.isProcessingQueue = false;
   }
 
   // Core request method with enhanced error handling and retry logic
@@ -489,40 +589,22 @@ class ApiClient {
         return await retryRequest(makeRequest, 1, 1000);
       }
     } catch (error) {
-      // If we get a TOKEN_EXPIRED error, try to refresh and retry once
+      // If we get a TOKEN_EXPIRED error, queue the request and refresh
       if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
-        console.log("🔄 Token expired, attempting automatic refresh...");
+        console.log("🔄 Token expired, queueing request and refreshing...");
 
-        try {
-          // Try to refresh the token
-          const refreshResponse = await fetch(
-            getApiUrl("/auth/refresh"),
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${this.token}`,
-              },
-            }
-          );
-
-          if (refreshResponse.ok) {
-            const newTokenData = await refreshResponse.json();
+        return await this.queueRequest(async () => {
+          try {
+            const newToken = await this.refreshToken();
             console.log("✅ Token auto-refreshed successfully");
-
-            // Update the token
-            this.setToken(newTokenData.access_token);
-
+            
             // Retry the original request with new token
-            return await this.request(endpoint, options);
-          } else {
-            console.warn("⚠️ Auto-refresh failed, user needs to re-login");
-            throw new Error("Could not validate credentials. Please refresh the page or log in again.");
+            return await makeRequest();
+          } catch (refreshError) {
+            console.error("❌ Token auto-refresh error:", refreshError);
+            throw new Error("Session expired. Please refresh the page or log in again.");
           }
-        } catch (refreshError) {
-          console.error("❌ Token auto-refresh error:", refreshError);
-          throw new Error("Session expired. Please refresh the page or log in again.");
-        }
+        });
       }
 
       // Re-throw other errors
@@ -825,7 +907,12 @@ class ApiClient {
   // Notification methods
   async getNotifications(unreadOnly: boolean = false): Promise<Notification[]> {
     const query = unreadOnly ? "?unread_only=true" : "";
-    const response = await fetch(getInternalApiUrl(`/api/notifications${query}`));
+    const response = await fetch(getInternalApiUrl(`/api/notifications${query}`), {
+      headers: {
+        "Authorization": this.token ? `Bearer ${this.token}` : "",
+        "Content-Type": "application/json"
+      }
+    });
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -840,7 +927,13 @@ class ApiClient {
   }
 
   async getNotificationStats(): Promise<NotificationStats> {
-    const response = await fetch(getInternalApiUrl("/api/notifications/stats"));
+    // Use internal API route through Next.js API handler
+    const response = await fetch(getInternalApiUrl("/api/notifications/stats"), {
+      headers: {
+        "Authorization": this.token ? `Bearer ${this.token}` : "",
+        "Content-Type": "application/json"
+      }
+    });
     if (!response.ok) {
       const errorData = await response
         .json()
@@ -855,7 +948,10 @@ class ApiClient {
   ): Promise<{ message: string }> {
     const response = await fetch(getInternalApiUrl("/api/notifications/mark-read"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": this.token ? `Bearer ${this.token}` : ""
+      },
       body: JSON.stringify({ notificationId }),
     });
     if (!response.ok) {
@@ -870,7 +966,10 @@ class ApiClient {
   async markAllNotificationsRead(): Promise<{ message: string }> {
     const response = await fetch(getInternalApiUrl("/api/notifications/mark-all-read"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": this.token ? `Bearer ${this.token}` : ""
+      },
     });
     if (!response.ok) {
       const errorData = await response

@@ -74,6 +74,20 @@ export function useApiClient() {
   useEffect(() => {
     if (session?.user?.accessToken) {
       apiClient.setToken(session.user.accessToken);
+      
+      // Start background refresh if token is close to expiry
+      const tokenPayload = parseJWT(session.user.accessToken);
+      if (tokenPayload?.exp) {
+        const expiryTime = tokenPayload.exp * 1000;
+        const currentTime = Date.now();
+        const timeUntilExpiry = expiryTime - currentTime;
+        
+        // If token expires in less than 1 hour, refresh immediately
+        if (timeUntilExpiry < 60 * 60 * 1000) {
+          console.log("🔄 Token expires soon, triggering refresh");
+          // The API client will handle the refresh automatically
+        }
+      }
     } else {
       // Clear token if no session
       apiClient.setToken("");
@@ -81,6 +95,21 @@ export function useApiClient() {
   }, [session?.user?.accessToken]);
 
   return apiClient;
+}
+
+// Utility function to parse JWT without verification (client-side only)
+function parseJWT(token: string): any {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.warn('Failed to parse JWT:', error);
+    return null;
+  }
 }
 
 // Hook for making authenticated API calls with ready state
