@@ -126,18 +126,58 @@ export function ParticipantTable({
           onValueChange={(value) => handleStatusChange(participant.id, value)}
           disabled={eventHasEnded}
         >
-          <SelectTrigger className="w-24 h-7 text-xs">
+          <SelectTrigger className="w-32 h-8 text-xs bg-white border border-gray-200 shadow-sm hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="registered">Registered</SelectItem>
-            <SelectItem value="selected">Selected</SelectItem>
-            <SelectItem value="not_selected">Not Selected</SelectItem>
-            <SelectItem value="waiting">Waiting</SelectItem>
-            <SelectItem value="canceled">Canceled</SelectItem>
-            <SelectItem value="declined">Declined</SelectItem>
-            <SelectItem value="attended">Attended</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
+          <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg p-1">
+            <SelectItem value="registered" className="text-xs px-3 py-2 hover:bg-purple-50 focus:bg-purple-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                Registered
+              </div>
+            </SelectItem>
+            <SelectItem value="selected" className="text-xs px-3 py-2 hover:bg-green-50 focus:bg-green-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                Selected
+              </div>
+            </SelectItem>
+            <SelectItem value="not_selected" className="text-xs px-3 py-2 hover:bg-red-50 focus:bg-red-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                Not Selected
+              </div>
+            </SelectItem>
+            <SelectItem value="waiting" className="text-xs px-3 py-2 hover:bg-yellow-50 focus:bg-yellow-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                Waiting
+              </div>
+            </SelectItem>
+            <SelectItem value="canceled" className="text-xs px-3 py-2 hover:bg-gray-50 focus:bg-gray-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                Canceled
+              </div>
+            </SelectItem>
+            <SelectItem value="declined" className="text-xs px-3 py-2 hover:bg-orange-50 focus:bg-orange-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                Declined
+              </div>
+            </SelectItem>
+            <SelectItem value="attended" className="text-xs px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                Attended
+              </div>
+            </SelectItem>
+            <SelectItem value="confirmed" className="text-xs px-3 py-2 hover:bg-emerald-50 focus:bg-emerald-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                Confirmed
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
       );
@@ -155,7 +195,7 @@ export function ParticipantTable({
           onValueChange={(value) => handleRoleChange(participant.id, value)}
           disabled={eventHasEnded || updatingRoleId === participant.id}
         >
-          <SelectTrigger className="w-24 h-7 text-xs">
+          <SelectTrigger className="w-32 h-8 text-xs bg-white border border-gray-200 shadow-sm hover:border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/20">
             {updatingRoleId === participant.id ? (
               <div className="flex items-center gap-1">
                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
@@ -165,10 +205,25 @@ export function ParticipantTable({
               <SelectValue />
             )}
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="visitor">Visitor</SelectItem>
-            <SelectItem value="facilitator">Facilitator</SelectItem>
-            <SelectItem value="organizer">Organizer</SelectItem>
+          <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg p-1">
+            <SelectItem value="visitor" className="text-xs px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                Visitor
+              </div>
+            </SelectItem>
+            <SelectItem value="facilitator" className="text-xs px-3 py-2 hover:bg-purple-50 focus:bg-purple-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                Facilitator
+              </div>
+            </SelectItem>
+            <SelectItem value="organizer" className="text-xs px-3 py-2 hover:bg-green-50 focus:bg-green-50 rounded-md cursor-pointer">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                Organizer
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
       );
@@ -345,11 +400,11 @@ export function ParticipantTable({
   }
 
   return (
-    <div className="overflow-x-auto border rounded-lg bg-white">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
+    <div className="overflow-x-auto bg-white rounded-xl border border-gray-200 shadow-sm">
+      <table className="min-w-full">
+        <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
           <tr>
-            <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <th className="px-4 py-4 text-left">
               <input
                 type="checkbox"
                 checked={
@@ -357,32 +412,34 @@ export function ParticipantTable({
                   currentParticipants.length > 0
                 }
                 onChange={handleSelectAll}
-                className="rounded border-gray-300"
+                className="rounded border-gray-300 text-red-600 focus:ring-red-500 focus:ring-2"
               />
             </th>
             {Object.entries(availableColumns).map(([key, label]) => 
               visibleColumns[key] && (
-                <th key={key} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th key={key} className="px-4 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   {label}
                 </th>
               )
             )}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {currentParticipants.map((participant) => (
-            <tr key={participant.id} className="hover:bg-gray-50">
-              <td className="px-3 py-4 whitespace-nowrap">
+        <tbody className="divide-y divide-gray-100">
+          {currentParticipants.map((participant, index) => (
+            <tr key={participant.id} className={`hover:bg-gray-50/50 transition-colors ${
+              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+            }`}>
+              <td className="px-4 py-4">
                 <input
                   type="checkbox"
                   checked={selectedParticipants.includes(participant.id)}
                   onChange={() => handleSelectParticipant(participant.id)}
-                  className="rounded border-gray-300"
+                  className="rounded border-gray-300 text-red-600 focus:ring-red-500 focus:ring-2"
                 />
               </td>
               {Object.entries(availableColumns).map(([key]) => 
                 visibleColumns[key] && (
-                  <td key={key} className="px-3 py-4 whitespace-nowrap">
+                  <td key={key} className="px-4 py-4">
                     {renderCellContent(participant, key)}
                   </td>
                 )
@@ -394,33 +451,39 @@ export function ParticipantTable({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to{" "}
-            {Math.min(endIndex, filteredParticipants.length)} of{" "}
-            {filteredParticipants.length} participants
+        <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200 rounded-b-xl">
+          <div className="text-sm text-gray-600 font-medium">
+            Showing <span className="text-gray-900 font-semibold">{startIndex + 1}</span> to{" "}
+            <span className="text-gray-900 font-semibold">{Math.min(endIndex, filteredParticipants.length)}</span> of{" "}
+            <span className="text-gray-900 font-semibold">{filteredParticipants.length}</span> participants
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Button
               size="sm"
               variant="outline"
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="h-8 px-3 text-xs"
+              className="h-9 px-4 text-xs bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ChevronLeft className="h-3 w-3" />
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Previous
             </Button>
-            <span className="text-sm text-gray-700">
-              Page {currentPage} of {totalPages}
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-600">Page</span>
+              <span className="text-sm font-semibold text-gray-900 bg-white px-3 py-1 rounded-md border border-gray-300">
+                {currentPage}
+              </span>
+              <span className="text-sm text-gray-600">of {totalPages}</span>
+            </div>
             <Button
               size="sm"
               variant="outline"
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="h-8 px-3 text-xs"
+              className="h-9 px-4 text-xs bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ChevronRight className="h-3 w-3" />
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>

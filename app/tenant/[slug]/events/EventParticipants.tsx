@@ -377,20 +377,22 @@ export default function EventParticipants({
             onAddParticipant={() => setShowAddForm(true)}
           />
 
-          <BulkActions
-            selectedParticipants={selectedParticipants}
-            effectiveVettingMode={effectiveVettingMode}
-            onBulkStatusChange={() => {}}
-            onBulkRoleChange={() => {}}
-          />
-
-          <ColumnSelector
-            availableColumns={availableColumns}
-            visibleColumns={visibleColumns}
-            setVisibleColumns={setVisibleColumns}
-            showColumnSelector={showColumnSelector}
-            setShowColumnSelector={setShowColumnSelector}
-          />
+          <div className="flex items-center justify-between mb-4">
+            <BulkActions
+              selectedParticipants={selectedParticipants}
+              effectiveVettingMode={effectiveVettingMode}
+              onBulkStatusChange={() => {}}
+              onBulkRoleChange={() => {}}
+            />
+            
+            <ColumnSelector
+              availableColumns={availableColumns}
+              visibleColumns={visibleColumns}
+              setVisibleColumns={setVisibleColumns}
+              showColumnSelector={showColumnSelector}
+              setShowColumnSelector={setShowColumnSelector}
+            />
+          </div>
 
           <AddParticipantForm
             showAddForm={showAddForm}
