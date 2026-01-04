@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuthenticatedApi } from "@/lib/auth";
-import DashboardLayout from "@/components/layout/dashboard-layout";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,11 +228,9 @@ export default function VettingCommitteePage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <DashboardLayout>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">Loading...</div>
-          </div>
-        </DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">Loading...</div>
+        </div>
       </ProtectedRoute>
     );
   }
@@ -245,21 +242,23 @@ export default function VettingCommitteePage() {
 
   return (
     <ProtectedRoute>
-      <DashboardLayout>
-        <div className="space-y-6">
-          <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-6 border border-gray-200 shadow-sm">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="flex items-start space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Users className="w-6 h-6 text-white" />
+      <div className="space-y-6">
+        <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+          <div className="relative p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                  <Users className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold text-gray-900 mb-2">Vetting Committee</h1>
-                  <p className="text-sm text-gray-600">Manage vetting committee for {eventName}</p>
+                  <h1 className="text-base font-medium text-gray-900 dark:text-white">Vetting Committee</h1>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Manage vetting committee for {eventName}</p>
                 </div>
               </div>
             </div>
           </div>
+        </Card>
 
           {committee && !isEditing ? (
             <Card className="text-sm">
@@ -429,7 +428,7 @@ export default function VettingCommitteePage() {
 
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <Label className="block text-xs font-medium">Committee Members *</Label>
+                    <Label className="block text-xs font-medium">Committee Member Email *</Label>
                     <Button
                       type="button"
                       size="sm"
@@ -503,8 +502,7 @@ export default function VettingCommitteePage() {
               </CardContent>
             </Card>
           ) : null}
-        </div>
-      </DashboardLayout>
+      </div>
     </ProtectedRoute>
   );
 }
