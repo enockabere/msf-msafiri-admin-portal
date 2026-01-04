@@ -462,6 +462,17 @@ class ApiClient {
     this.isProcessingQueue = false;
   }
 
+  // Check if token is actually expired (not just close to expiry)
+  private isTokenExpired(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Math.floor(Date.now() / 1000);
+      return payload.exp < currentTime;
+    } catch {
+      return true; // If we can't parse, assume expired
+    }
+  }
+
   // Core request method with enhanced error handling and retry logic
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     // Prevent requests if we're already handling session expiry
@@ -589,8 +600,14 @@ class ApiClient {
         return await retryRequest(makeRequest, 1, 1000);
       }
     } catch (error) {
-      // If we get a TOKEN_EXPIRED error, queue the request and refresh
+      // If we get a TOKEN_EXPIRED error, only refresh if token is actually expired
       if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
+        // Check if token is actually expired before refreshing
+        if (!this.token || !this.isTokenExpired(this.token)) {
+          // Token is not actually expired, don't refresh
+          throw new Error("Authentication failed. Please refresh the page.");
+        }
+
         console.log("🔄 Token expired, queueing request and refreshing...");
 
         return await this.queueRequest(async () => {
