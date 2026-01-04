@@ -478,7 +478,9 @@ export default function EventDetailsModal({
           description: "Event updated and notifications sent to participants.",
         });
 
-        window.location.reload();
+        onClose();
+        // Refresh the events list instead of full page reload
+        window.dispatchEvent(new CustomEvent('eventUpdated', { detail: { eventId: event.id, updatedEvent: editedEvent } }));
       } else {
         const errorText = await response.text();
         console.error("Failed to update event:", errorText);
