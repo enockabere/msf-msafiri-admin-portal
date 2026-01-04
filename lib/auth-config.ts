@@ -47,7 +47,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       return {
         ...token,
         accessToken: refreshedTokens.access_token,
-        accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 14400) * 1000, // 4 hours default
+        accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 86400) * 1000, // 24 hours default
         refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
         error: undefined,
       };
@@ -96,7 +96,19 @@ export const authOptions: NextAuthOptions = {
         try {
           // First, check if API is reachable via health endpoint
           console.warn('🏥 Checking API health:', healthUrl);
-          const healthResponse = await fetch(healthUrl);
+          
+          // Use a shorter timeout for server-side requests
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          const healthResponse = await fetch(healthUrl, {
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'MSafiri-Portal/1.0'
+            }
+          });
+          clearTimeout(timeoutId);
+          
           console.warn('🏥 Health check result:', {
             status: healthResponse.status,
             ok: healthResponse.ok,
@@ -114,17 +126,23 @@ export const authOptions: NextAuthOptions = {
             email: credentials.email,
             hasPassword: !!credentials.password
           });
+          
+          const loginController = new AbortController();
+          const loginTimeoutId = setTimeout(() => loginController.abort(), 10000); // 10 second timeout for login
                     
           const response = await fetch(loginUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'MSafiri-Portal/1.0'
             },
             body: new URLSearchParams({
               username: credentials.email,
               password: credentials.password,
             }),
+            signal: loginController.signal
           });
+          clearTimeout(loginTimeoutId);
           
           console.warn('📡 API Response:', {
             status: response.status,
@@ -141,6 +159,13 @@ export const authOptions: NextAuthOptions = {
               errorText,
               headers: Object.fromEntries(response.headers.entries())
             });
+            
+            // Return more specific error messages based on status
+            if (response.status === 500) {
+              return null; // This will show "Database connection error. Please try again."
+            } else if (response.status === 401 || response.status === 422) {
+              return null; // This will show "Invalid email or password"
+            }
             return null;
           }
 
@@ -183,13 +208,24 @@ export const authOptions: NextAuthOptions = {
             mustChangePassword: data.must_change_password || false,
           };
         } catch (error) {
-          console.error('💥 Credentials auth error:', {
-            error: error instanceof Error ? error.message : error,
-            stack: error instanceof Error ? error.stack : undefined,
-            apiUrl,
-            loginUrl,
-            email: credentials.email
-          });
+          // Check if it's a timeout/network error
+          if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('fetch failed'))) {
+            console.error('💥 Network/Timeout error - API server may be unreachable:', {
+              error: error.message,
+              apiUrl,
+              loginUrl,
+              email: credentials.email,
+              suggestion: 'Check if API server is running and accessible'
+            });
+          } else {
+            console.error('💥 Credentials auth error:', {
+              error: error instanceof Error ? error.message : error,
+              stack: error instanceof Error ? error.stack : undefined,
+              apiUrl,
+              loginUrl,
+              email: credentials.email
+            });
+          }
           // Don't throw errors, just return null to let NextAuth handle it
           return null;
         }
@@ -266,7 +302,7 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = user.refreshToken;
         token.firstLogin = user.firstLogin;
         token.mustChangePassword = user.mustChangePassword;
-        token.accessTokenExpires = Date.now() + (4 * 60 * 60 * 1000); // 4 hours from now
+        token.accessTokenExpires = Date.now() + (24 * 60 * 60 * 1000); // 24 hours from now (matches API)
         token.error = undefined; // Clear any previous errors
       }
 
@@ -277,8 +313,8 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      // Return previous token if the access token has not expired yet (with 1 hour buffer)
-      const bufferTime = 60 * 60 * 1000; // 1 hour buffer - refresh when token has 1 hour left
+      // Return previous token if the access token has not expired yet (with 2 hour buffer)
+      const bufferTime = 2 * 60 * 60 * 1000; // 2 hour buffer - refresh when token has 2 hours left
       if (Date.now() < ((token.accessTokenExpires as number) - bufferTime)) {
         return token;
       }
