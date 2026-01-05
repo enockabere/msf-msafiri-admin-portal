@@ -365,9 +365,10 @@ export function ParticipantDetailsModal({
             {/* LOI & Documents */}
             <div className="bg-purple-50 p-6 rounded-lg">
               <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-purple-200 pb-2">
-                Letter of Invitation
+                Documents
               </h4>
               <div className="space-y-3 text-sm">
+                {/* LOI Document */}
                 <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
                   <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -413,8 +414,80 @@ export function ParticipantDetailsModal({
                     </button>
                   </div>
                 </div>
+                
+                {/* Certificate Document - Only show for confirmed participants */}
+                {participant.status === 'confirmed' && (
+                  <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">Certificate</div>
+                        <div className="text-xs text-gray-500">Event completion certificate</div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {
+                          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                          const certUrl = `${apiUrl}/api/v1/certificates/events/${eventId}/participant/${participant.id}/generate`;
+                          window.open(certUrl, '_blank');
+                        }}
+                        className="px-3 py-1 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => {
+                          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                          const certUrl = `${apiUrl}/api/v1/certificates/events/${eventId}/participant/${participant.id}/download`;
+                          const link = document.createElement('a');
+                          link.href = certUrl;
+                          link.download = `certificate-${participant.full_name.replace(/\s+/g, '-')}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Badge Document */}
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-orange-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Event Badge</div>
+                      <div className="text-xs text-gray-500">{participant.badge_name || participant.badgeName || 'Event Badge'}</div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                        const badgeUrl = `${apiUrl}/api/v1/events/${eventId}/participant/${participant.id}/badge/generate`;
+                        window.open(badgeUrl, '_blank');
+                      }}
+                      className="px-3 py-1 bg-orange-600 text-white text-xs rounded-md hover:bg-orange-700 transition-colors"
+                    >
+                      View
+                    </button>
+                  </div>
+                </div>
+                
                 <div className="text-xs text-gray-600 bg-white p-2 rounded border">
-                  <strong>Note:</strong> LOI is generated using the active invitation template with participant's passport data when available.
+                  <strong>Note:</strong> Documents are generated using active templates. {participant.status === 'confirmed' ? 'Certificate available for confirmed participants.' : 'Certificate will be available once participant is confirmed.'}
                 </div>
               </div>
             </div>
