@@ -483,6 +483,27 @@ export function ParticipantDetailsModal({
                     >
                       View
                     </button>
+                    <button
+                      onClick={() => {
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                        const badgeUrl = `${apiUrl}/api/v1/events/${eventId}/participant/${participant.id}/badge/generate`;
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(badgeUrl)}`;
+                        const qrWindow = window.open('', '_blank', 'width=300,height=350');
+                        qrWindow?.document.write(`
+                          <html>
+                            <head><title>Badge QR Code</title></head>
+                            <body style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+                              <h3>Badge QR Code</h3>
+                              <img src="${qrUrl}" alt="QR Code" style="border: 1px solid #ccc; padding: 10px;" />
+                              <p style="font-size: 12px; color: #666; margin-top: 10px;">Scan to view badge</p>
+                            </body>
+                          </html>
+                        `);
+                      }}
+                      className="px-3 py-1 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      QR
+                    </button>
                   </div>
                 </div>
                 
