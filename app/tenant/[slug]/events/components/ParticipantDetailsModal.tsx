@@ -362,11 +362,70 @@ export function ParticipantDetailsModal({
               </div>
             </div>
 
-            {/* Registration Details */}
+            {/* LOI & Documents */}
             <div className="bg-purple-50 p-6 rounded-lg">
               <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-purple-200 pb-2">
-                Registration Details
+                Letter of Invitation
               </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">LOI Document</div>
+                      <div className="text-xs text-gray-500">Generated from template</div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                        const loiUrl = `${apiUrl}/api/v1/loi/events/${eventId}/participant/${participant.id}/generate`;
+                        window.open(loiUrl, '_blank');
+                      }}
+                      className="px-3 py-1 bg-purple-600 text-white text-xs rounded-md hover:bg-purple-700 transition-colors"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => {
+                        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/public/loi/${participant.id}-${eventId}`)}`;
+                        const qrWindow = window.open('', '_blank', 'width=300,height=350');
+                        qrWindow?.document.write(`
+                          <html>
+                            <head><title>LOI QR Code</title></head>
+                            <body style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+                              <h3>LOI QR Code</h3>
+                              <img src="${qrUrl}" alt="QR Code" style="border: 1px solid #ccc; padding: 10px;" />
+                              <p style="font-size: 12px; color: #666; margin-top: 10px;">Scan to view LOI document</p>
+                            </body>
+                          </html>
+                        `);
+                      }}
+                      className="px-3 py-1 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      QR
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600 bg-white p-2 rounded border">
+                  <strong>Note:</strong> LOI is generated using the active invitation template with participant's passport data when available.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Information */}
+          <div className="bg-yellow-50 p-6 rounded-lg col-span-1 lg:col-span-4 mt-6">
+            <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-yellow-200 pb-2">
+              Registration Details
+            </h4>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-3 text-sm">
                 <div>
                   <span className="font-medium text-gray-700">Certificate Name:</span>
@@ -389,6 +448,8 @@ export function ParticipantDetailsModal({
                     {participant.travelling_internationally || participant.travellingInternationally || "-"}
                   </span>
                 </div>
+              </div>
+              <div className="space-y-3 text-sm">
                 {participant.travelling_from_country && (
                   <div>
                     <span className="font-medium text-gray-700">Travelling From Country:</span>
@@ -411,39 +472,35 @@ export function ParticipantDetailsModal({
                   </span>
                 </div>
               </div>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <span className="font-medium text-gray-700">Motivation Letter:</span>
+                  <div className="bg-white p-3 rounded-lg border max-h-32 overflow-y-auto mt-2">
+                    <div
+                      className="text-gray-900 text-sm prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: participant.motivation_letter || participant.motivationLetter || "No motivation letter provided"
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Additional Information */}
-          <div className="bg-yellow-50 p-6 rounded-lg col-span-1 lg:col-span-4 mt-6">
-            <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-yellow-200 pb-2">
-              Additional Information
-            </h4>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <span className="font-medium text-gray-700 block mb-2">Motivation Letter:</span>
-                <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
-                  <div
-                    className="text-gray-900 text-sm prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{
-                      __html: participant.motivation_letter || participant.motivationLetter || "No motivation letter provided"
-                    }}
-                  />
+          {/* Vetting Comments */}
+          {participant.vetting_comments && (
+            <div className="bg-orange-50 p-6 rounded-lg col-span-1 lg:col-span-4 mt-6">
+              <h4 className="font-semibold text-gray-900 mb-4 text-lg border-b border-orange-200 pb-2">
+                Vetting Comments
+              </h4>
+              <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
+                <div className="text-gray-900 text-sm whitespace-pre-wrap">
+                  {participant.vetting_comments}
                 </div>
               </div>
-              
-              {participant.vetting_comments && (
-                <div>
-                  <span className="font-medium text-gray-700 block mb-2">Vetting Comments:</span>
-                  <div className="bg-white p-4 rounded-lg border max-h-40 overflow-y-auto">
-                    <div className="text-gray-900 text-sm whitespace-pre-wrap">
-                      {participant.vetting_comments}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
