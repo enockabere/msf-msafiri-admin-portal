@@ -91,14 +91,14 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       }
     } catch (error) {
       console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
     }
   }, [authLoading, user, apiClient, tenantSlug]);
 
   useEffect(() => {
     if (!authLoading && user) {
       fetchData();
+    } else if (!authLoading) {
+      setLoading(false);
     }
   }, [authLoading, user, fetchData]);
 
@@ -598,28 +598,14 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
     toast({ title: "Success", description: `${type === 'logo' ? 'Logo' : 'Signature'} removed` });
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Hotel className="w-8 h-8 text-blue-600 animate-pulse" />
-            </div>
-          </div>
-          <p className={`text-xs font-medium ${mounted && theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Loading vendor hotels...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (addButtonOnly) {
     return canEdit ? (
       <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
         <DialogTrigger asChild>
-          <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-            <Plus className="w-4 h-4 mr-2" />
+          <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs">
+            <Plus className="w-3 h-3 mr-2" />
             Add Vendor Hotel
           </Button>
         </DialogTrigger>
@@ -773,21 +759,22 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   return (
     <>
 
-      <Card>
-        <CardContent className="p-4 text-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
+      <Card className="w-full overflow-hidden">
+        <CardContent className="p-4 text-sm overflow-x-auto">
+        <div className="mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4 min-w-0 flex-1">
+              <div className="relative flex-shrink-0">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Search vendor hotels..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64 text-sm"
+                  className="pl-10 w-full sm:w-64 text-sm"
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-shrink-0">
               <Button
                 variant="outline"
                 size="sm"
@@ -795,7 +782,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                 className="text-xs"
               >
                 <Download className="w-3 h-3 mr-1" />
-                Export
+                <span className="hidden sm:inline">Export</span>
               </Button>
               <Button
                 variant="outline"
@@ -804,7 +791,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                 className="text-xs"
               >
                 <Printer className="w-3 h-3 mr-1" />
-                Print
+                <span className="hidden sm:inline">Print</span>
               </Button>
             </div>
           </div>
@@ -820,8 +807,8 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                 <div className="flex justify-center space-x-3">
                   <Dialog open={addVendorModalOpen} onOpenChange={setAddVendorModalOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                        <Plus className="w-4 h-4 mr-2" />
+                      <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs">
+                        <Plus className="w-3 h-3 mr-2" />
                         Add Vendor Hotel
                       </Button>
                     </DialogTrigger>
@@ -1006,39 +993,43 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Hotel Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Description</TableHead>
-                    {canEdit && <TableHead className="text-right">Actions (POA Design, Generate, Edit, Delete)</TableHead>}
+                    <TableHead className="min-w-[120px]">Hotel Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Location</TableHead>
+                    <TableHead className="hidden md:table-cell max-w-[200px]">Description</TableHead>
+                    {canEdit && <TableHead className="text-right min-w-[140px]">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedVendors.map((vendor) => (
                     <TableRow key={vendor.id}>
-                      <TableCell className="font-medium text-xs">{vendor.vendor_name}</TableCell>
-                      <TableCell className="text-xs">{vendor.location}</TableCell>
-                      <TableCell className="max-w-48 break-words whitespace-normal py-3 text-xs leading-relaxed">
+                      <TableCell className="font-medium text-xs">
+                        <div>
+                          <div>{vendor.vendor_name}</div>
+                          <div className="sm:hidden text-xs text-gray-500 mt-1">{vendor.location}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs hidden sm:table-cell">{vendor.location}</TableCell>
+                      <TableCell className="max-w-48 break-words whitespace-normal py-3 text-xs leading-relaxed hidden md:table-cell">
                         {vendor.description ? vendor.description.replace(/<[^>]*>/g, '').replace(/&lt;[^&]*&gt;/g, '') || 'No description' : 'No description'}
                       </TableCell>
                       {canEdit && (
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDesignTemplate(vendor)}
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              title="Design Proof of Accommodation Template"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1"
+                              title="Design POA"
                             >
                               <FileEdit className="w-4 h-4" />
-                              <span className="sr-only">Design POA</span>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleGenerateProof(vendor)}
-                              className="text-purple-600 hover:text-purple-700"
-                              title="Generate Proof of Accommodation"
+                              className="text-purple-600 hover:text-purple-700 p-1"
+                              title="Generate POA"
                             >
                               <FileText className="w-4 h-4" />
                             </Button>
@@ -1046,7 +1037,8 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditVendor(vendor)}
-                              title="Edit Hotel Details"
+                              className="p-1"
+                              title="Edit"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -1054,8 +1046,8 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteVendor(vendor)}
-                              className="text-red-600 hover:text-red-700"
-                              title="Delete Hotel"
+                              className="text-red-600 hover:text-red-700 p-1"
+                              title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1101,6 +1093,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
               )}
             </>
           )}
+          </div>
         </CardContent>
       </Card>
 
@@ -1288,28 +1281,82 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                 </Card>
               </div>
 
-              {/* Template Editor */}
-              <div>
-                <Label 
-                  className="text-sm font-medium mb-2 block"
-                  style={{ color: mounted && theme === 'dark' ? '#d1d5db' : '#374151' }}
-                >
-                  Template Design
-                </Label>
-                <p 
-                  className="text-xs mb-4"
-                  style={{ color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280' }}
-                >
-                  Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, etc.
-                </p>
-                <AccommodationTemplateEditor
-                  value={templateContent}
-                  onChange={setTemplateContent}
-                  hotelName={selectedVendorForTemplate?.vendor_name || ""}
-                  placeholder="Design the proof of accommodation document template..."
-                  height={450}
-                  theme={theme}
-                />
+              {/* Template Editor and Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Template Editor */}
+                <div>
+                  <Label 
+                    className="text-sm font-medium mb-2 block"
+                    style={{ color: mounted && theme === 'dark' ? '#d1d5db' : '#374151' }}
+                  >
+                    Template Design
+                  </Label>
+                  <p 
+                    className="text-xs mb-4"
+                    style={{ color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280' }}
+                  >
+                    Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, etc.
+                  </p>
+                  <AccommodationTemplateEditor
+                    value={templateContent}
+                    onChange={setTemplateContent}
+                    hotelName={selectedVendorForTemplate?.vendor_name || ""}
+                    placeholder="Design the proof of accommodation document template..."
+                    height={450}
+                    theme={theme}
+                  />
+                </div>
+
+                {/* Template Preview */}
+                <div>
+                  <Label 
+                    className="text-sm font-medium mb-2 block"
+                    style={{ color: mounted && theme === 'dark' ? '#d1d5db' : '#374151' }}
+                  >
+                    Template Preview
+                  </Label>
+                  <p 
+                    className="text-xs mb-4"
+                    style={{ color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280' }}
+                  >
+                    Preview how the template will look with sample data
+                  </p>
+                  <div 
+                    className="border rounded-lg p-4 h-[450px] overflow-y-auto bg-white"
+                    style={{
+                      borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
+                    <div 
+                      className="prose prose-sm max-w-none text-black"
+                      dangerouslySetInnerHTML={{
+                        __html: templateContent
+                          .replace(/\{\{participantName\}\}/g, 'John Doe')
+                          .replace(/\{\{hotelName\}\}/g, selectedVendorForTemplate?.vendor_name || 'Sample Hotel')
+                          .replace(/\{\{hotelAddress\}\}/g, selectedVendorForTemplate?.location || 'Sample Location')
+                          .replace(/\{\{checkInDate\}\}/g, 'January 15, 2026')
+                          .replace(/\{\{checkOutDate\}\}/g, 'January 20, 2026')
+                          .replace(/\{\{roomType\}\}/g, 'Single')
+                          .replace(/\{\{roomNumber\}\}/g, '101')
+                          .replace(/\{\{eventName\}\}/g, 'Sample Conference')
+                          .replace(/\{\{eventDates\}\}/g, 'January 15-20, 2026')
+                          .replace(/\{\{confirmationNumber\}\}/g, 'MSF-EVENT1-PART1-A1B2')
+                          .replace(/\{\{hotelLogo\}\}/g, uploadedImages.logo ? `<img src="${uploadedImages.logo}" alt="Hotel Logo" style="max-width: 200px; height: auto; margin: 10px 0;" />` : '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0;">Hotel Logo will appear here</div>')
+                          .replace(/\{\{signature\}\}/g, uploadedImages.signature ? `<img src="${uploadedImages.signature}" alt="Signature" style="max-width: 150px; height: auto; margin: 10px 0;" />` : '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0;">Signature will appear here</div>')
+                          .replace(/\{\{qrCode\}\}/g, '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0; width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;">QR Code will appear here</div>')
+                      }}
+                    />
+                    {!templateContent && (
+                      <div className="flex items-center justify-center h-full text-gray-400">
+                        <div className="text-center">
+                          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p className="text-sm">Start designing your template to see the preview</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
