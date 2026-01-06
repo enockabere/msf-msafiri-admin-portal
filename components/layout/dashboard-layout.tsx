@@ -1,19 +1,20 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { CustomSidebar } from "@/components/app-sidebar";
 import { SuperAdminFooter } from "./SuperAdminFooter";
+import { FloatingQuickLinks } from "@/components/floating-quick-links";
 import { useTheme } from "next-themes";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Home, Search, Bell } from "lucide-react";
+import { Home, Search, Bell, Camera } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LogOut, User as UserIcon, Settings as SettingsIcon, Shield, Loader2 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -21,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { useUserData } from "@/hooks/useUserData";
 import { MenuSearch } from "@/components/menu-search";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { toast } from "@/hooks/use-toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -29,7 +31,10 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -48,8 +53,66 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       localStorage.setItem('sidebar-collapsed', JSON.stringify(newState));
     }
   };
+  
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
   const { user, isSuperAdmin } = useAuth();
-  const { user: fullUserData } = useUserData();
+  const { apiClient } = useAuthenticatedApi();
+  const { user: fullUserData, refetchUser: refetchUserData } = useUserData();
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: "Error", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Error", description: "Image size must be less than 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/upload-avatar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiClient.getToken()}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      const data = await response.json();
+      
+      // Update user profile with new avatar URL
+      const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/profile`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ avatar_url: data.url }),
+      });
+
+      if (updateResponse.ok) {
+        await refetchUserData();
+        toast({ title: "Success", description: "Avatar updated successfully" });
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      toast({ title: "Error", description: "Failed to upload avatar", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
   const pathname = usePathname();
   const router = useRouter();
 
@@ -77,7 +140,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const displayName = fullUserData?.full_name || user?.name || user?.email;
-  const isVettingOnly = user?.role && ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(user.role);
+  const isLimitedUser = () => {
+    if (!user) return false;
+    
+    const adminRoles = ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+    const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+    const superAdminRoles = ['SUPER_ADMIN', 'super_admin'];
+    const guestRoles = ['GUEST', 'guest'];
+    
+    // Get all user roles
+    const allRoles = user.all_roles || [];
+    const allUserRoles = [user.role, ...allRoles].filter(Boolean);
+    
+    const hasAdminRole = allUserRoles.some(role => adminRoles.includes(role));
+    const hasVettingRole = allUserRoles.some(role => vettingRoles.includes(role));
+    const hasSuperAdminRole = allUserRoles.some(role => superAdminRoles.includes(role));
+    const hasGuestRole = allUserRoles.some(role => guestRoles.includes(role));
+    
+    // Show limited UI ONLY if user has ONLY vetting/guest roles without any admin roles
+    // If user has any admin role (MT_ADMIN, HR_ADMIN, EVENT_ADMIN), they get full access
+    return (hasVettingRole || hasGuestRole) && !hasAdminRole && !hasSuperAdminRole;
+  };
+  
+  const isLimitedUserAccess = isLimitedUser();
 
   // Get breadcrumb from pathname
   const getBreadcrumbs = () => {
@@ -118,35 +203,52 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-gray-50 dark:bg-black overflow-hidden">
-        <CustomSidebar 
-          isCollapsed={isSidebarCollapsed} 
-          onToggle={toggleSidebar} 
-        />
+        {/* Sidebar - Hidden for limited users */}
+        {!isLimitedUserAccess && (
+          <div className="hidden lg:block">
+            <CustomSidebar 
+              isCollapsed={isSidebarCollapsed} 
+              onToggle={toggleSidebar} 
+            />
+          </div>
+        )}
       
       {/* Main Content */}
-      <div 
-        className={`flex-1 flex flex-col transition-all duration-300 min-w-0 ${
-          isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-        }`}
-      >
+      <div className="flex-1 flex flex-col transition-all duration-300 min-w-0">
         {/* Header */}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-white dark:bg-black px-2 md:px-4">
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            {/* Mobile menu button - Hidden for limited users */}
+            {!isLimitedUserAccess && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden"
+                onClick={toggleMobileSidebar}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </Button>
+            )}
+            
             <Separator orientation="vertical" className="mr-2 h-4" />
 
-            {/* Breadcrumb */}
+            {/* Breadcrumb - Hide home icon for limited users */}
             <Breadcrumb className="min-w-0">
               <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href={isTenantPath ? pathname.split('/').slice(0, 4).join('/') : "/dashboard"}>
-                      <Home className="h-4 w-4" />
-                    </Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
+                {!isLimitedUserAccess && (
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href={isTenantPath ? pathname.split('/').slice(0, 4).join('/') : "/dashboard"}>
+                        <Home className="h-4 w-4" />
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                )}
                 {breadcrumbs.map((crumb, index) => (
                   <div key={crumb.href} className="flex items-center gap-1.5">
-                    <BreadcrumbSeparator />
+                    {!isLimitedUserAccess && <BreadcrumbSeparator />}
                     <BreadcrumbItem>
                       {index === breadcrumbs.length - 1 ? (
                         <BreadcrumbPage className="truncate">{crumb.label}</BreadcrumbPage>
@@ -164,8 +266,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Right side actions */}
           <div className="flex items-center gap-1 md:gap-2">
-            {/* Search */}
-            <MenuSearch className="hidden lg:block" />
+            {/* Search - Hidden for limited users */}
+            {!isLimitedUserAccess && (
+              <MenuSearch className="hidden lg:block" />
+            )}
 
             {/* Notifications */}
             <DropdownMenu>
@@ -215,11 +319,25 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuLabel className="font-normal p-4 bg-gray-50 dark:bg-gray-800">
                   <div className="flex flex-col space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                          {getUserInitials(displayName)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <div className="relative group">
+                        <Avatar className="h-10 w-10">
+                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                            {getUserInitials(displayName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <button
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={uploading}
+                          className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center disabled:cursor-not-allowed"
+                          title={uploading ? "Uploading..." : "Change avatar"}
+                        >
+                          {uploading ? (
+                            <Loader2 className="h-4 w-4 text-white animate-spin" />
+                          ) : (
+                            <Camera className="h-4 w-4 text-white" />
+                          )}
+                        </button>
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold truncate text-gray-900 dark:text-white">
                           {displayName || "User"}
@@ -235,7 +353,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuSeparator />
 
                 <div className="py-1">
-                  {!isVettingOnly && (
+                  {!isLimitedUserAccess && (
                     <DropdownMenuItem
                       onClick={() => router.push("/profile")}
                       className="cursor-pointer"
@@ -284,9 +402,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </main>
 
+        {/* Mobile sidebar overlay - Hidden for limited users */}
+        {!isLimitedUserAccess && isMobileSidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 flex">
+            <div className="fixed inset-0 bg-black/50" onClick={toggleMobileSidebar} />
+            <div className="relative flex w-64 flex-col bg-white dark:bg-black">
+              <CustomSidebar 
+                isCollapsed={false} 
+                onToggle={toggleMobileSidebar} 
+                isMobile={true}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Floating Quick Links - Show on all tenant pages except mobile and limited users */}
+        {!isLimitedUserAccess && (
+          <div className="hidden lg:block">
+            <FloatingQuickLinks />
+          </div>
+        )}
+
         {isTenantPath && <SuperAdminFooter />}
       </div>
     </div>
+    
+    {/* Hidden avatar upload input */}
+    <input
+      ref={avatarInputRef}
+      type="file"
+      accept="image/*"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) handleAvatarUpload(file);
+      }}
+      className="hidden"
+    />
     </TooltipProvider>
   );
 }
