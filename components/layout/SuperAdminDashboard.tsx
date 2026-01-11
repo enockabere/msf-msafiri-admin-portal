@@ -55,7 +55,7 @@ export default function SuperAdminDashboard() {
     const fetchVettingEvents = async () => {
       if ((hasVettingRole || hasTenantAccess) && typedUser) {
         try {
-          const response = await apiClient.request('/api/v1/vetting-committee/my-vetting-events');
+          const response = await apiClient.request('/vetting-committee/my-vetting-events');
           setVettingEvents(response.vetting_events || []);
         } catch (error) {
           console.error('Failed to fetch vetting events:', error);
