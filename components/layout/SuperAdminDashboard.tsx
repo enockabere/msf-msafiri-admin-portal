@@ -50,21 +50,22 @@ export default function SuperAdminDashboard() {
   const hasVettingRole = typedUser?.allRoles?.includes('VETTING_COMMITTEE') || typedUser?.allRoles?.includes('VETTING_APPROVER');
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
-  // Fetch vetting events if user has vetting roles
+  // Fetch vetting events if user has vetting roles OR tenant access (to check for committee membership)
   useEffect(() => {
     const fetchVettingEvents = async () => {
-      if (hasVettingRole && typedUser) {
+      if ((hasVettingRole || hasTenantAccess) && typedUser) {
         try {
           const response = await apiClient.request('/api/v1/vetting-committee/my-vetting-events');
           setVettingEvents(response.vetting_events || []);
         } catch (error) {
           console.error('Failed to fetch vetting events:', error);
+          // If API call fails, vetting events will remain empty array
         }
       }
     };
 
     fetchVettingEvents();
-  }, [hasVettingRole, typedUser, apiClient]);
+  }, [hasVettingRole, hasTenantAccess, typedUser, apiClient]);
   useEffect(() => {
     const handleNotification = (event: CustomEvent) => {
       setNotification(event.detail);
