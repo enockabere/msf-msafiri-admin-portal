@@ -44,6 +44,12 @@ export default function SuperAdminDashboard() {
   const activeTenants = tenants.filter((t) => t.is_active);
   const inactiveTenants = tenants.filter((t) => !t.is_active);
 
+  // Type-safe user casting
+  const typedUser = user as AuthUser | null;
+  const hasTenantAccess = typedUser?.tenantId && typedUser?.tenantId !== 'null';
+  const hasVettingRole = typedUser?.allRoles?.includes('VETTING_COMMITTEE') || typedUser?.allRoles?.includes('VETTING_APPROVER');
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+
   // Fetch vetting events if user has vetting roles
   useEffect(() => {
     const fetchVettingEvents = async () => {
@@ -59,8 +65,6 @@ export default function SuperAdminDashboard() {
 
     fetchVettingEvents();
   }, [hasVettingRole, typedUser, apiClient]);
-
-  // Listen for notification events
   useEffect(() => {
     const handleNotification = (event: CustomEvent) => {
       setNotification(event.detail);
@@ -71,12 +75,6 @@ export default function SuperAdminDashboard() {
     window.addEventListener('showNotification', handleNotification as EventListener);
     return () => window.removeEventListener('showNotification', handleNotification as EventListener);
   }, []);
-
-  // Type-safe user casting
-  const typedUser = user as AuthUser | null;
-  const hasTenantAccess = typedUser?.tenantId && typedUser?.tenantId !== 'null';
-  const hasVettingRole = typedUser?.allRoles?.includes('VETTING_COMMITTEE') || typedUser?.allRoles?.includes('VETTING_APPROVER');
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
   const handleCardClick = (type: 'active' | 'total' | 'inactive' | 'super-admins' | 'pending-invitations' | 'all') => {
     if (type !== currentView) {
