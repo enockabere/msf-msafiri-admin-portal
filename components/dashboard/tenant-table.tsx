@@ -240,51 +240,36 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
           <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48" style={{
-                backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-                borderColor: isDark ? '#333333' : '#e5e7eb',
-                color: isDark ? '#ffffff' : '#000000'
-              }}>
+              <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
                 {onViewTenant && currentUserEmail && tenant.admin_email === currentUserEmail && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => onViewTenant(tenant)}
-                      className="gap-2"
-                      disabled={navigationLoading}
-                    >
-                      {navigationLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                      {navigationLoading ? "Loading..." : "View Tenant Dashboard"}
-                    </DropdownMenuItem>
-                  </>
+                  <DropdownMenuItem
+                    onClick={() => onViewTenant(tenant)}
+                    className="gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                    disabled={navigationLoading}
+                  >
+                    {navigationLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                    {navigationLoading ? "Loading..." : "View Tenant Dashboard"}
+                  </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => onEdit(tenant)} className="gap-2" style={{
-                  color: isDark ? '#ffffff' : '#000000'
-                }} onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = isDark ? '#262626' : '#f9fafb';
-                }} onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}>
+                <DropdownMenuItem 
+                  onClick={() => onEdit(tenant)} 
+                  className="gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                >
                   <Edit className="w-4 h-4" />
                   Edit Details
                 </DropdownMenuItem>
                 {tenant.is_active ? (
                   <DropdownMenuItem
                     onClick={() => setConfirmAction({ type: 'deactivate', tenant })}
-                    className="gap-2 text-red-600 hover:text-red-700"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fef2f2';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
+                    className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 cursor-pointer"
                   >
                     <PowerOff className="w-4 h-4" />
                     Deactivate
@@ -292,13 +277,7 @@ export function TenantTable({ data, loading = false, onEdit, onActivate, onDeact
                 ) : (
                   <DropdownMenuItem
                     onClick={() => setConfirmAction({ type: 'activate', tenant })}
-                    className="gap-2 text-green-600 hover:text-green-700"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f0fdf4';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
+                    className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer"
                   >
                     <Power className="w-4 h-4" />
                     Activate

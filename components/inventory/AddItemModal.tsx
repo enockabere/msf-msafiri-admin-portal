@@ -176,13 +176,13 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
                       {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
+                        <SelectItem key={cat} value={cat} className="hover:bg-gray-100 focus:bg-gray-100">
                           {cat}
                         </SelectItem>
                       ))}
-                      <SelectItem value="_new_">+ Add New Category</SelectItem>
+                      <SelectItem value="_new_" className="hover:bg-gray-100 focus:bg-gray-100">+ Add New Category</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
@@ -247,10 +247,10 @@ export default function AddItemModal({ open, onOpenChange, editingItem, onSubmit
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="good">Good - Excellent working condition</SelectItem>
-                  <SelectItem value="fair">Fair - Usable with minor issues</SelectItem>
-                  <SelectItem value="poor">Poor - Needs repair or replacement</SelectItem>
+                <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                  <SelectItem value="good" className="hover:bg-gray-100 focus:bg-gray-100">Good - Excellent working condition</SelectItem>
+                  <SelectItem value="fair" className="hover:bg-gray-100 focus:bg-gray-100">Fair - Usable with minor issues</SelectItem>
+                  <SelectItem value="poor" className="hover:bg-gray-100 focus:bg-gray-100">Poor - Needs repair or replacement</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

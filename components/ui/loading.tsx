@@ -9,21 +9,17 @@ interface LoadingScreenProps {
 
 export function LoadingScreen({ message = "Loading..." }: LoadingScreenProps) {
   return (
-    <div className="fixed inset-0 bg-white z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 bg-white dark:bg-gray-900 z-[9999] flex items-center justify-center">
       <div className="text-center space-y-4">
-        <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-200 border-t-red-600 mx-auto"></div>
+        <div className="relative inline-block">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-6 h-6 bg-red-600 rounded-full animate-pulse"></div>
           </div>
         </div>
-        <div className="space-y-2">
-          <p className="text-lg font-medium text-gray-900">{message}</p>
-          <div className="flex justify-center space-x-1">
-            <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-            <div className="w-2 h-2 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-          </div>
+        <div>
+          <p className="text-base font-medium text-gray-900 dark:text-white">{message}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
         </div>
       </div>
     </div>

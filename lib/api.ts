@@ -350,7 +350,6 @@ class ApiClient {
 
   // Token management - simplified for NextAuth integration
   setToken(token: string): void {
-    console.log("🔑 Setting new token, length:", token?.length || 0);
     this.token = token;
     this.refreshPromise = null; // Clear any pending refresh
     this.startBackgroundRefresh(); // Restart background refresh with new token
@@ -376,12 +375,8 @@ class ApiClient {
   private startBackgroundRefresh(): void {
     this.stopBackgroundRefresh();
     if (this.token) {
-      console.log("⏰ Token refresh scheduled in 180 minutes");
-      // Refresh every 23 hours (1 hour before 24-hour expiration)
-      this.refreshTimer = setInterval(() => {
-        console.log("⏰ Background refresh timer triggered");
-        this.refreshTokenSilently();
-      }, 23 * 60 * 60 * 1000); // 23 hours
+      // Don't auto-refresh - let NextAuth handle token refresh
+      // This prevents conflicts with NextAuth's own refresh mechanism
     }
   }
 
@@ -532,10 +527,8 @@ class ApiClient {
         if (!response.ok) {
           // Handle 401 errors (authentication/authorization issues)
           if (response.status === 401) {
-            console.log("🚫 Got 401 error for endpoint:", endpoint);
             // Skip auth error handling for login endpoints or when explicitly requested
             if (options.skipAuthError || endpoint.includes("/auth/login") || endpoint.includes("/auth/refresh")) {
-              console.log("🚫 Skipping auth error handling for this endpoint");
               const errorData = await response.json().catch(() => ({
                 detail: "Invalid credentials",
                 status_code: 401,
@@ -543,9 +536,12 @@ class ApiClient {
               throw new Error(errorData.detail || "Authentication failed");
             }
 
-            console.log("🚫 Token expired, will attempt refresh");
-            // For other 401 errors, try to refresh the token and retry once
-            throw new Error("TOKEN_EXPIRED");
+            // For other 401 errors, don't attempt refresh - let NextAuth handle it
+            const errorData = await response.json().catch(() => ({
+              detail: "Authentication failed",
+              status_code: 401,
+            }));
+            throw new Error(errorData.detail || "Authentication failed");
           }
 
           // Handle 403 errors (insufficient permissions)
@@ -615,39 +611,9 @@ class ApiClient {
 
     // Try to make the request
     try {
-      console.log("🌐 Making request to:", endpoint);
-      if (options.skipAuthError || endpoint.includes("/auth/login")) {
-        console.log("🌐 Direct request (no retry)");
-        return await makeRequest();
-      } else {
-        console.log("🌐 Request with retry");
-        return await retryRequest(makeRequest, 1, 1000);
-      }
+      return await retryRequest(makeRequest, 1, 1000);
     } catch (error) {
-      // If we get a TOKEN_EXPIRED error, try to refresh the token
-      if (error instanceof Error && error.message === "TOKEN_EXPIRED") {
-        console.log("🔄 Token expired, queueing request and refreshing...");
-
-        return await this.queueRequest(async () => {
-          try {
-            console.log("🔄 Attempting token refresh...");
-            const newToken = await this.refreshToken();
-            console.log("✅ Token refresh successful, retrying original request");
-            
-            // Retry the original request with new token
-            return await makeRequest();
-          } catch (refreshError) {
-            console.error("❌ Token auto-refresh failed:", refreshError);
-            console.log("🚪 Handling session expiry...");
-            // Only logout if refresh actually fails, not on first 401
-            await handleSessionExpiry();
-            throw new Error("Session expired. Please log in again.");
-          }
-        });
-      }
-
-      console.error("❌ Request failed with error:", error);
-      // Re-throw other errors
+      // Re-throw all errors - let components handle them
       throw error;
     }
   }

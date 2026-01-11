@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  safelist: [
+    'border-border',
+  ],
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -15,6 +18,9 @@ module.exports = {
       screens: {
         "2xl": "1400px",
       },
+    },
+    fontFamily: {
+      sans: ['var(--font-inter)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
     },
     extend: {
       colors: {
@@ -51,6 +57,10 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      borderColor: {
+        DEFAULT: 'hsl(var(--border))',
+        border: 'hsl(var(--border))',
       },
       borderRadius: {
         lg: "var(--radius)",

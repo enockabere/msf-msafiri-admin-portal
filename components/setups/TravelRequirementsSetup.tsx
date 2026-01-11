@@ -345,12 +345,20 @@ export default function TravelRequirementsSetup({ tenantSlug }: TravelRequiremen
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading travel requirements...</span>
-        </CardContent>
-      </Card>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Plane className="w-6 h-6 text-red-600 animate-pulse" />
+            </div>
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading travel requirements...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
+          </div>
+        </div>
+      </div>
     );
   }
 

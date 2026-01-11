@@ -73,38 +73,24 @@ export function useApiClient() {
 
   useEffect(() => {
     if (session?.user?.accessToken) {
-      console.log("🔑 Setting token from session, length:", session.user.accessToken.length);
-      apiClient.setToken(session.user.accessToken);
-      
-      // Start background refresh if token is close to expiry
+      // Check if token is expired before setting it
       const tokenPayload = parseJWT(session.user.accessToken);
       if (tokenPayload?.exp) {
         const expiryTime = tokenPayload.exp * 1000;
         const currentTime = Date.now();
         const timeUntilExpiry = expiryTime - currentTime;
+        const minutesUntilExpiry = Math.round(timeUntilExpiry / 1000 / 60);
         
-        console.log("🕰️ Token expiry check:", {
-          expiryTime: new Date(expiryTime).toISOString(),
-          currentTime: new Date(currentTime).toISOString(),
-          timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
-        });
-        
-        // Only refresh if token expires in less than 2 hours (for 24-hour tokens)
-        if (timeUntilExpiry < 2 * 60 * 60 * 1000 && timeUntilExpiry > 0) {
-          console.log("🔄 Token expires soon, triggering refresh");
-          // The API client will handle the refresh automatically
-        } else if (timeUntilExpiry <= 0) {
-          console.warn("⚠️ Token is already expired!");
-        } else {
-          console.log("✅ Token is still valid for", Math.round(timeUntilExpiry / 1000 / 60 / 60), "hours");
+        // Only reject if token is expired by more than 1 minute (buffer for clock skew)
+        if (timeUntilExpiry < -60000) {
+          apiClient.clearToken();
+          return;
         }
-      } else {
-        console.warn("⚠️ Could not parse token expiry");
       }
+      
+      apiClient.setToken(session.user.accessToken);
     } else {
-      console.log("🚫 No session token, clearing API client token");
-      // Clear token if no session
-      apiClient.setToken("");
+      apiClient.clearToken();
     }
   }, [session?.user?.accessToken]);
 

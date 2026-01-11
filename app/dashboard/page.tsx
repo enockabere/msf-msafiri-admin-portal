@@ -1,217 +1,243 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/layout/dashboard-layout";
-import StatsCards from "@/components/dashboard/stats-cards";
-import RecentActivities from "@/components/dashboard/recent-activities";
-import QuickActions from "@/components/dashboard/quick-actions";
-import { useAuth, AuthUtils } from "@/lib/auth";
-import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
-import { TenantSelector } from "@/components/TenantSelector";
-import { useTenant } from "@/context/TenantContext";
+import { useAuth } from "@/lib/auth";
 import SuperAdminDashboard from "@/components/layout/SuperAdminDashboard";
-import { VersionInfo } from "@/components/ui/version-info";
-
-import { LoadingScreen } from "@/components/ui/loading";
-
-function DashboardLoading() {
-  return <LoadingScreen message="Loading dashboard..." />;
-}
-
-function UnauthorizedAccess() {
-  const router = useRouter();
-
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center space-y-6 max-w-md mx-auto p-6 bg-white/90 backdrop-blur-sm border shadow-xl rounded-lg">
-        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-          <svg
-            className="w-10 h-10 text-red-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
-          </svg>
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Access Denied
-          </h1>
-          <p className="text-gray-600 mb-6">
-            You don&#39;t have permission to access the admin dashboard. Please
-            contact your administrator if you believe this is an error.
-          </p>
-          <button
-            onClick={() => router.push("/login")}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors"
-          >
-            Back to Login
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import DashboardLayout from "@/components/layout/dashboard-layout";
+import NavbarOnlyLayout from "@/components/layout/navbar-only-layout";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
+import {
+  Users,
+  Calendar,
+  Building2,
+  Activity,
+  Clock,
+  Coins,
+} from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isAdmin, loading } = useAuth();
-  const { selectedTenant, isAllTenantsSelected } = useTenant();
-  const router = useRouter();
+  const { user } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  console.log('📊 Dashboard Page - User:', user?.role, user);
 
   useEffect(() => {
-    if (!loading && isAuthenticated && user) {
-      // Check if user must change password
-      if (user.mustChangePassword) {
-        console.log("🔐 User must change password, redirecting...");
-        router.replace("/change-password?required=true");
-        return;
-      }
-      
-      console.log("🔍 DASHBOARD REDIRECT CHECK:", {
-        userRole: user.role,
-        tenantId: user.tenantId,
-        isSuperAdmin: user.role === "super_admin" || user.role === "SUPER_ADMIN",
-        mustChangePassword: user.mustChangePassword
-      });
-      
-      // Super admin users stay on main dashboard - check this FIRST
-      if (user.role === "super_admin" || user.role === "SUPER_ADMIN") {
-        console.log("✅ Super admin staying on main dashboard");
-        return;
-      }
-      
-      // Check if user only has vetting roles (no other admin roles)
-      const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
-      const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
-      
-      const hasAdminRole = adminRoles.includes(user.role?.toUpperCase()) ||
-        (user.all_roles && user.all_roles.some(role => adminRoles.includes(role.toUpperCase())));
-      const hasVettingRole = vettingRoles.includes(user.role?.toUpperCase()) ||
-        (user.all_roles && user.all_roles.some(role => vettingRoles.includes(role.toUpperCase())));
-      
-      if (!hasAdminRole && hasVettingRole) {
-        // Vetting-only users go to events page
-        const targetTenant = user.tenantId || 'msf-oca'; // Default tenant for vetting users
-        console.log("🔄 Redirecting vetting-only user to events:", `/tenant/${targetTenant}/events`);
-        router.replace(`/tenant/${targetTenant}/events`);
-        return;
-      }
-      
-      // Other admin users go to tenant dashboard
-      if (user.tenantId) {
-        console.log("🔄 Redirecting admin to tenant dashboard:", `/tenant/${user.tenantId}/dashboard`);
-        router.replace(`/tenant/${user.tenantId}/dashboard`);
-        return;
-      }
-    }
-  }, [loading, isAuthenticated, user, router]);
+    setMounted(true);
+  }, []);
 
-  if (loading || !isAuthenticated) {
-    return <DashboardLoading />;
+  // Show loading only if not mounted, but allow user to be null during logout
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white dark:bg-black">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Show loading for non-super-admin users while redirecting
-  if (user?.role !== "super_admin" && user?.role !== "SUPER_ADMIN") {
-    return <DashboardLoading />;
+  // If user is null (during logout), don't render anything
+  if (!user) {
+    return null;
   }
 
-  // Check if user is super admin
-  const isSuperAdmin = user?.role === "super_admin" || user?.role === "SUPER_ADMIN";
-
-  // Super admins get the specialized dashboard
-  if (isSuperAdmin) {
-
-    return <SuperAdminDashboard />;
+  // Check if user has tenant access (has tenant_id and is not pure super admin)
+  const hasTenantAccess = user?.tenantId && user?.tenantId !== 'null';
+  const isPureSuperAdmin = user?.role === "SUPER_ADMIN" && !hasTenantAccess;
+  
+  // Check if user has admin roles (should get tenant dashboard)
+  const hasAdminRoles = user?.allRoles?.some(role => 
+    ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'].includes(role)
+  ) || ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'].includes(user?.role);
+  
+  // If user is pure super admin (no tenant access), show SuperAdminDashboard
+  if (isPureSuperAdmin) {
+    console.log('🔧 Pure super admin detected, wrapping in NavbarOnlyLayout');
+    return (
+      <NavbarOnlyLayout>
+        <SuperAdminDashboard />
+      </NavbarOnlyLayout>
+    );
   }
+  
+  // If user has admin roles and tenant access, show tenant dashboard (not super admin dashboard)
+  if (hasAdminRoles && hasTenantAccess) {
+    console.log('🔧 Admin user with tenant access - showing tenant dashboard');
+    const isDark = mounted && resolvedTheme === 'dark';
 
+    const stats = {
+      totalUsers: 12,
+      activeEvents: 3,
+      totalTenants: 5,
+      totalInventory: 45,
+    };
 
+    const recentActivities = [
+      {
+        id: 1,
+        type: "user_login",
+        description: "New user registered",
+        status: "completed",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 2,
+        type: "event_created",
+        description: "New event created",
+        status: "pending",
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+      },
+    ];
 
-  // Regular admins get the traditional dashboard with sidebar
-  return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <SessionTimeoutWarning warningMinutes={5} sessionDurationMinutes={30} />
-
-
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, {user?.name || user?.email}!
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Role:{" "}
-                {user?.role
-                  ? AuthUtils.getRoleDisplayName(user.role)
-                  : "Unknown"}
-              </p>
-              {(selectedTenant || isAllTenantsSelected) && (
-                <p className="text-sm text-indigo-600 mt-1">
-                  {isAllTenantsSelected
-                    ? "Viewing: All Tenants"
-                    : `Active Tenant: ${selectedTenant?.name}`}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center space-x-4">
-              {user?.role === "super_admin" && <TenantSelector />}
-
-              <div className="flex items-center space-x-3">
-                {user?.firstLogin && (
-                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    First Login
-                  </span>
-                )}
-                <VersionInfo />
+    return (
+      <div className="p-6">
+        {/* Stats Cards */}
+        <div className="grid auto-rows-min gap-4 md:grid-cols-4 mb-6">
+          <Card className="bg-muted/50">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Total Users</h3>
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {stats.totalUsers}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Registered users
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/50">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Active Events</h3>
+                  <Calendar className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {stats.activeEvents}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Events running
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/50">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Organizations</h3>
+                  <Building2 className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {stats.totalTenants}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Active tenants
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/50">
+            <CardContent className="p-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Inventory</h3>
+                  <Coins className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {stats.totalInventory}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Items available
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <StatsCards />
-        <RecentActivities />
-        <QuickActions />
-
-        {user?.firstLogin && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+        {/* Recent Activities */}
+        <Card className="bg-muted/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Recent Activities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-background"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-blue-900">
-                  Welcome to MSF Msafiri!
-                </h3>
-                <p className="text-blue-700 mt-1">
-                  This is your first time logging in. Take a moment to explore
-                  the admin dashboard and familiarize yourself with the
-                  available features.
-                </p>
-              </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Activity className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm capitalize">
+                        {activity.type.replace("_", " ")}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {activity.description}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant={activity.status === "completed" ? "default" : "secondary"}>
+                      {activity.status}
+                    </Badge>
+                    <div className="text-xs mt-1 text-muted-foreground">
+                      {new Date(activity.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
       </div>
-    </DashboardLayout>
+    );
+  }
+  
+  // If user is super admin with tenant access but no admin roles, show SuperAdminDashboard
+  if (user?.role === "SUPER_ADMIN" || user?.role === "super_admin") {
+    console.log('🔧 Super admin detected');
+    return (
+      <NavbarOnlyLayout>
+        <SuperAdminDashboard />
+      </NavbarOnlyLayout>
+    );
+  }
+
+  // Other users get the tenant dashboard with sidebar
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  return (
+    <div className="p-6">
+      <p className="text-center text-gray-600 dark:text-gray-400">
+        Welcome to your dashboard. Please contact your administrator for access.
+      </p>
+    </div>
   );
 }

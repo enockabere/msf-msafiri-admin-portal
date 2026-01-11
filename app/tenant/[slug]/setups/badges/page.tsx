@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth, useAuthenticatedApi } from '@/lib/auth'
 import { toast } from 'sonner'
-import DashboardLayout from '@/components/layout/dashboard-layout'
+
 import Swal from 'sweetalert2'
 import { useTheme } from 'next-themes'
 
@@ -72,7 +72,6 @@ function BadgePreview({
   logoUrl: string
   avatarUrl: string
 }) {
-  console.log('BadgePreview component rendering with props:', { size, orientation, showQR, showAvatar });
   const getDimensions = () => {
     const sizes = {
       small: { portrait: { width: 200, height: 280 }, landscape: { width: 280, height: 200 } },
@@ -281,10 +280,7 @@ function BadgePreview({
                   lineHeight: '1.2'
                 }}
               >
-                {(() => {
-                  console.log('Rendering participantName template variable');
-                  return `{{participantName}}`;
-                })()}
+                {`{{participantName}}`}
               </h3>
               <p
                 className="text-gray-600 text-center font-medium"
@@ -355,14 +351,12 @@ function BadgePreview({
 }
 
 export default function BadgeDesignPage() {
-  console.log('BadgeDesignPage component starting to render');
   const params = useParams()
   const tenantSlug = params.slug as string
   const { user, loading: authLoading } = useAuth()
   const { apiClient } = useAuthenticatedApi()
   const { resolvedTheme } = useTheme()
 
-  console.log('BadgeDesignPage: Initial state setup');
   const [templates, setTemplates] = useState<BadgeTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -373,7 +367,6 @@ export default function BadgeDesignPage() {
   const logoInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  console.log('BadgeDesignPage: Setting up formData state');
   // Form state for live preview
   const [formData, setFormData] = useState<BadgeFormData>({
     name: '',
@@ -388,8 +381,6 @@ export default function BadgeDesignPage() {
     logo_url: '',
     avatar_url: ''
   })
-
-  console.log('BadgeDesignPage: formData initialized:', formData);
 
   const canEdit = Boolean(user?.role && ['super_admin', 'SUPER_ADMIN', 'mt_admin', 'hr_admin', 'event_admin'].includes(user.role))
 
@@ -831,34 +822,36 @@ export default function BadgeDesignPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Award className="w-8 h-8 text-blue-600 animate-pulse" />
-              </div>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Award className="w-6 h-6 text-red-600 animate-pulse" />
             </div>
-            <p className="text-xs font-medium text-gray-600">Loading badge templates...</p>
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading badge templates...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Award className="w-6 h-6 text-white" />
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Award className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Badge Templates</h1>
-                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Design and manage event badge templates with live preview</p>
+              <div className="min-w-0">
+                <h1 className={`text-sm sm:text-base font-medium ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Badge Templates</h1>
+                <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'} hidden sm:block`}>Design and manage event badge templates with live preview</p>
               </div>
             </div>
             {canEdit && (
@@ -867,9 +860,10 @@ export default function BadgeDesignPage() {
                 if (!open) resetForm()
               }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 text-xs">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Template
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 text-xs w-full sm:w-auto">
+                    <Plus className="w-3 h-3 mr-2" />
+                    <span className="sm:hidden">Create</span>
+                    <span className="hidden sm:inline">Create Template</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="sm:max-w-[1200px] shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col" showCloseButton={false}>
@@ -1142,76 +1136,92 @@ export default function BadgeDesignPage() {
               </Dialog>
             )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
-          <CardContent className="p-4">
-            {templates.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-10 h-10 text-gray-400" />
-                </div>
-                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">No badge templates yet</h3>
-                <p style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs mb-3">Create your first badge template</p>
+      <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
+        <CardContent className="p-3 overflow-x-auto">
+          {templates.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3" style={{
+                backgroundColor: resolvedTheme === 'dark' ? '#1f2937' : '#f9fafb'
+              }}>
+                <Award className="w-8 h-8" style={{
+                  color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280'
+                }} />
               </div>
+              <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">No badge templates yet</h3>
+              <p style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs mb-2">Create your first badge template</p>
+            </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs font-medium text-gray-700">Name</TableHead>
-                    <TableHead className="text-xs font-medium text-gray-700">Created</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-gray-700">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium text-xs">{template.name}</TableCell>
-                      <TableCell className="text-xs text-gray-600">{new Date(template.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => {
-                              setEditingTemplate(template)
-                              setFormData({
-                                name: template.name || '',
-                                description: template.description || '',
-                                template_content: template.template_content || '',
-                                badge_size: template.badge_size as 'small' | 'standard' | 'large' || 'standard',
-                                orientation: template.orientation as 'portrait' | 'landscape' || 'portrait',
-                                enable_qr_code: template.enable_qr_code ?? true,
-                                include_avatar: template.include_avatar ?? false,
-                                contact_phone: template.contact_phone || '',
-                                website_url: template.website_url || '',
-                                logo_url: template.logo_url || '',
-                                avatar_url: template.avatar_url || ''
-                              })
-                              setModalOpen(true)
-                            }}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDelete(template.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="min-w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs font-medium text-gray-700 min-w-[120px]">Name</TableHead>
+                      <TableHead className="text-xs font-medium text-gray-700 min-w-[100px] hidden sm:table-cell">Created</TableHead>
+                      <TableHead className="text-right text-xs font-medium text-gray-700 min-w-[100px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {templates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium text-xs">
+                          <div className="max-w-[120px] truncate" title={template.name}>
+                            {template.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600 hidden sm:table-cell">
+                          {new Date(template.created_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setEditingTemplate(template)
+                                setFormData({
+                                  name: template.name || '',
+                                  description: template.description || '',
+                                  template_content: template.template_content || '',
+                                  badge_size: template.badge_size as 'small' | 'standard' | 'large' || 'standard',
+                                  orientation: template.orientation as 'portrait' | 'landscape' || 'portrait',
+                                  enable_qr_code: template.enable_qr_code ?? true,
+                                  include_avatar: template.include_avatar ?? false,
+                                  contact_phone: template.contact_phone || '',
+                                  website_url: template.website_url || '',
+                                  logo_url: template.logo_url || '',
+                                  avatar_url: template.avatar_url || ''
+                                })
+                                setModalOpen(true)
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDelete(template.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

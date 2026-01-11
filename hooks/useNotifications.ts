@@ -24,7 +24,10 @@ export function useNotifications() {
   };
 
   const fetchNotifications = useCallback(async () => {
-    if (!isAuthenticated || !accessToken) return;
+    if (!isAuthenticated || !accessToken) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setError(null);
@@ -33,15 +36,15 @@ export function useNotifications() {
 
       // Fetch notifications and stats separately to handle errors independently
       const [notificationsResult, statsResult] = await Promise.allSettled([
-        apiClient.getNotifications(),
-        apiClient.getNotificationStats(),
+        apiClient.getNotifications().catch(() => []),
+        apiClient.getNotificationStats().catch(() => ({ total: 0, unread: 0, urgent: 0 })),
       ]);
 
       // Handle notifications result
       if (notificationsResult.status === 'fulfilled') {
         setNotifications(notificationsResult.value);
       } else {
-        console.error("Failed to fetch notifications:", notificationsResult.reason);
+        console.warn("Failed to fetch notifications, using empty array");
         setNotifications([]);
       }
 
@@ -49,8 +52,7 @@ export function useNotifications() {
       if (statsResult.status === 'fulfilled') {
         setStats(statsResult.value);
       } else {
-        console.error("Failed to fetch notification stats:", statsResult.reason);
-        // Set default stats instead of failing
+        console.warn("Failed to fetch notification stats, using defaults");
         setStats({
           total: 0,
           unread: 0,
@@ -58,20 +60,9 @@ export function useNotifications() {
         });
       }
     } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to fetch notifications";
-
-      if (
-        errorMessage.includes("Session expired") ||
-        errorMessage.includes("please log in again")
-      ) {
-        await handleSessionExpiry();
-        return;
-      }
-
-      setError(errorMessage);
-      // Set defaults on error
+      console.warn("Notification fetch error (non-critical):", err);
+      // Set defaults on any error to prevent UI breaking
+      setNotifications([]);
       setStats({
         total: 0,
         unread: 0,

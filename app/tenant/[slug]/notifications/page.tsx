@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NotificationProvider } from "@/context/NotificationContext";
-import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/lib/auth";
 
 import {
@@ -134,47 +133,44 @@ function NotificationsContent() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Header - Simplified like Vendor Hotels */}
-      <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-start space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Bell className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Notifications</h1>
-              <p className="text-sm text-gray-600">Manage system alerts and updates</p>
-              <div className="flex items-center gap-4 mt-2">
-                <span className="text-xs text-gray-500">{stats?.total || 0} Total</span>
-                <span className="text-xs text-gray-500">{stats?.unread || 0} Unread</span>
+    <div className="space-y-4">
+      {/* Header Section - Match badges page design */}
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Bell className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h1 className="text-base font-medium text-gray-900 dark:text-white">Notifications</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Manage system alerts and updates</p>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={loading || refreshing}
-              className="border-gray-300 hover:bg-gray-50 h-10 px-4 text-sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading || refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            {(stats?.unread ?? 0) > 0 && (
+            <div className="flex items-center gap-2">
               <Button
-                onClick={markAllAsRead}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 text-sm font-medium"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={loading || refreshing}
+                className="border-gray-300 hover:bg-gray-50 px-3 py-2 text-xs"
               >
-                <CheckCheck className="h-4 w-4 mr-2" />
-                Mark All Read
+                <RefreshCw className={`w-3 h-3 mr-2 ${loading || refreshing ? "animate-spin" : ""}`} />
+                Refresh
               </Button>
-            )}
+              {(stats?.unread ?? 0) > 0 && (
+                <Button
+                  onClick={markAllAsRead}
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 text-xs"
+                >
+                  <CheckCheck className="w-3 h-3 mr-2" />
+                  Mark All Read
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-gray-200 bg-white shadow-sm">
@@ -394,9 +390,7 @@ function NotificationsContent() {
 export default function TenantNotificationsPage() {
   return (
     <NotificationProvider>
-      <DashboardLayout>
-        <NotificationsContent />
-      </DashboardLayout>
+      <NotificationsContent />
     </NotificationProvider>
   );
 }

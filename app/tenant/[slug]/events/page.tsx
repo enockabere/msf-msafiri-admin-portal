@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import DashboardLayout from "@/components/layout/dashboard-layout";
-import Navbar from "@/components/layout/navbar";
-import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
 import { useTheme } from "next-themes";
 
 
@@ -124,6 +123,7 @@ export default function TenantEventsPage() {
   const [vendorHotels, setVendorHotels] = useState<{id: number, vendor_name: string, location: string, latitude?: string, longitude?: string}[]>([]);
   const [, setAccommodationSetups] = useState<{id: number, event_name: string, single_rooms: number, double_rooms: number}[]>([]);
   const [selectedVendorId, setSelectedVendorId] = useState<string>("");
+  const [showFirstEventModal, setShowFirstEventModal] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -303,35 +303,36 @@ export default function TenantEventsPage() {
       // Check if user is tenant admin (owner) and get tenant data
       try {
         const tenant = await apiClient.request<{ admin_email: string; country?: string }>(`/tenants/slug/${tenantSlug}`);
-        setIsTenantAdmin(tenant.admin_email === user.email);
+        const isAdmin = tenant.admin_email === user.email;
+        setIsTenantAdmin(isAdmin);
 
         // Get timezone from country
         const timezone = getTimezoneFromCountry(tenant.country || '');
         setTenantData({ country: tenant.country, timezone });
+        
+        // Only fetch vendor hotels for users who can manage events
+        if (isAdmin || roleNames.some(role => 
+          ["SUPER_ADMIN", "super_admin", "MT_ADMIN", "mt_admin", "HR_ADMIN", "hr_admin", "EVENT_ADMIN", "event_admin"].includes(role)
+        )) {
+          await fetchVendorHotels();
+        }
       } catch {
         setIsTenantAdmin(false);
         setTenantData(null);
       }
 
       await fetchEvents();
-      
-      // Only fetch vendor hotels for users who can manage events
-      if (isTenantAdmin || roleNames.some(role => 
-        ["SUPER_ADMIN", "super_admin", "MT_ADMIN", "mt_admin", "HR_ADMIN", "hr_admin", "EVENT_ADMIN", "event_admin"].includes(role)
-      )) {
-        await fetchVendorHotels();
-      }
     } catch (error) {
       console.error("Access check error:", error);
       toast.error("Failed to load events");
     }
-  }, [user?.id, user?.email, user?.role, apiClient, fetchEvents, tenantSlug, fetchVendorHotels, isTenantAdmin]);
+  }, [user?.id, user?.email, user?.role, apiClient, tenantSlug, fetchEvents, fetchVendorHotels]);
 
   useEffect(() => {
-    if (!authLoading && user?.email) {
+    if (!authLoading && user?.email && user?.id) {
       checkAccess();
     }
-  }, [user?.email, authLoading, checkAccess]);
+  }, [authLoading, user?.email, user?.id, tenantSlug]);
 
   useEffect(() => {
     if (selectedVendorId) {
@@ -355,17 +356,6 @@ export default function TenantEventsPage() {
       userRoles.every(role => ['vetting_committee', 'VETTING_COMMITTEE', 'vetting_approver', 'VETTING_APPROVER'].includes(role)) &&
       !isTenantAdmin;
   };
-
-  // Layout for vetting-only users (topbar and footer, no sidebar)
-  const VettingOnlyLayout = ({ children }: { children: React.ReactNode }) => (
-    <div className="flex flex-col min-h-screen">
-      <Navbar showLogo={true} />
-      <main className="flex-1 bg-gray-50 p-6">
-        {children}
-      </main>
-      <SuperAdminFooter tenantName={tenantSlug} />
-    </div>
-  );
 
   const calculateDuration = (startDate: string, endDate: string) => {
     if (!startDate || !endDate) return "";
@@ -835,30 +825,114 @@ export default function TenantEventsPage() {
   const startIndex = (currentPage - 1) * eventsPerPage;
   const paginatedEvents = filteredEvents.slice(startIndex, startIndex + eventsPerPage);
 
-  // Use different layout based on user type
-  const Layout = isVettingOnly() ? VettingOnlyLayout : DashboardLayout;
-
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Calendar className="w-6 h-6 text-white" />
+    <div className="space-y-2 px-6">
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Calendar className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Events Management</h1>
-                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Manage events for your organization</p>
+                <h1 className={`text-base font-medium ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Events Management</h1>
+                <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Manage events for your organization</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (!isVettingOnly()) {
+                      setStatusFilter('upcoming');
+                      setCurrentPage(1);
+                    }
+                  }}
+                  disabled={isVettingOnly()}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    isVettingOnly() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    statusFilter === 'upcoming' 
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300' 
+                      : 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                  }`}
+                >
+                  <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-medium text-blue-900 dark:text-blue-300">
+                    Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (!isVettingOnly()) {
+                      setStatusFilter('ongoing');
+                      setCurrentPage(1);
+                    }
+                  }}
+                  disabled={isVettingOnly()}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    isVettingOnly() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    statusFilter === 'ongoing' 
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-300' 
+                      : 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30'
+                  }`}
+                >
+                  <Play className="w-3 h-3 text-green-600 dark:text-green-400" />
+                  <span className="text-xs font-medium text-green-900 dark:text-green-300">
+                    Ongoing: {events.filter(e => e.event_status === 'ongoing').length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (!isVettingOnly()) {
+                      setStatusFilter('ended');
+                      setCurrentPage(1);
+                    }
+                  }}
+                  disabled={isVettingOnly()}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    isVettingOnly() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    statusFilter === 'ended' 
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300' 
+                      : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <CheckCircle className="w-3 h-3 text-gray-600 dark:text-gray-400" />
+                  <span className="text-xs font-medium text-gray-900 dark:text-gray-300">
+                    Ended: {events.filter(e => e.event_status === 'ended').length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (!isVettingOnly()) {
+                      setStatusFilter('all');
+                      setCurrentPage(1);
+                    }
+                  }}
+                  disabled={isVettingOnly()}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    isVettingOnly() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                  } ${
+                    statusFilter === 'all' 
+                      ? 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-300' 
+                      : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  <span className="text-xs font-medium text-red-900 dark:text-red-300">
+                    All: {events.length}
+                  </span>
+                </button>
+              </div>
+              <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                 <Button
                   variant={viewMode === 'card' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('card')}
-                  className={viewMode === 'card' ? 'h-7 px-2 bg-white shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 text-xs'}
+                  className={viewMode === 'card' ? 'h-7 px-2 bg-white dark:bg-gray-700 shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs'}
                 >
                   <Grid3X3 className="w-3 h-3" />
                 </Button>
@@ -866,7 +940,7 @@ export default function TenantEventsPage() {
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className={viewMode === 'list' ? 'h-7 px-2 bg-white shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 text-xs'}
+                  className={viewMode === 'list' ? 'h-7 px-2 bg-white dark:bg-gray-700 shadow-sm text-xs' : 'h-7 px-2 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs'}
                 >
                   <List className="w-3 h-3" />
                 </Button>
@@ -874,170 +948,131 @@ export default function TenantEventsPage() {
               {canManageEvents() && !isVettingOnly() && (
                 <Button
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 h-8 px-4 text-xs"
+                  className="bg-red-600 hover:bg-red-700 text-white shadow-lg font-medium h-10 px-4 text-sm"
                 >
-                  <Plus className="w-3 h-3 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Create Event
                 </Button>
               )}
             </div>
           </div>
         </div>
+      </Card>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => { setStatusFilter('upcoming'); setCurrentPage(1); }}
-            className={statusFilter === 'upcoming' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-100 text-blue-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-blue-50 text-blue-700 hover:bg-blue-100'}
-          >
-            <Clock className="w-3 h-3" />
-            <span className="text-xs font-medium">
-              Upcoming: {events.filter(e => e.event_status === 'upcoming').length}
-            </span>
-          </button>
-          <button
-            onClick={() => { setStatusFilter('ongoing'); setCurrentPage(1); }}
-            className={statusFilter === 'ongoing' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-100 text-green-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-green-50 text-green-700 hover:bg-green-100'}
-          >
-            <Play className="w-3 h-3" />
-            <span className="text-xs font-medium">
-              Ongoing: {events.filter(e => e.event_status === 'ongoing').length}
-            </span>
-          </button>
-          <button
-            onClick={() => { setStatusFilter('ended'); setCurrentPage(1); }}
-            className={statusFilter === 'ended' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-100 text-gray-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
-          >
-            <CheckCircle className="w-3 h-3" />
-            <span className="text-xs font-medium">
-              Ended: {events.filter(e => e.event_status === 'ended').length}
-            </span>
-          </button>
-          <button
-            onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-            className={statusFilter === 'all' ? 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-red-100 text-red-900' : 'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-gray-50 text-gray-700 hover:bg-gray-100'}
-          >
-            <Calendar className="w-3 h-3" />
-            <span className="text-xs font-medium">
-              All: {events.length}
-            </span>
-          </button>
-        </div>
-
-        {viewMode === 'list' && (
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
-              <Input
-                placeholder="Search events..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-8 text-xs border-gray-200"
-              />
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => exportEventsToCSV(filteredEvents)} 
-              className="h-8 px-3 text-xs"
-            >
-              <Download className="w-3 h-3 mr-1" />
-              Export CSV
-            </Button>
+      {viewMode === 'list' && (
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
+            <Input
+              placeholder="Search events..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-8 text-xs border-gray-200"
+            />
           </div>
-        )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => exportEventsToCSV(filteredEvents)} 
+            className="h-8 px-3 text-xs"
+          >
+            <Download className="w-3 h-3 mr-1" />
+            Export CSV
+          </Button>
+        </div>
+      )}
 
-        {filteredEvents.length > 0 ? (
-          <>
-            {viewMode === 'card' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                {paginatedEvents.map((event) => (
-                  <EventCard 
-                    key={event.id} 
-                    event={event} 
-                    canManageEvents={canManageEvents()} 
-                    isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
-                    isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
-                    onEdit={(e) => openEditModal(e)} 
-                    onDelete={(e) => handleDeleteEvent(e)} 
-                    onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
-                    onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
-                    onRegistrationForm={(e) => handleRegistrationForm(e)}
-                  />
+      {filteredEvents.length > 0 ? (
+        <>
+          {viewMode === 'card' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+              {paginatedEvents.map((event) => (
+                <EventCard 
+                  key={event.id} 
+                  event={event} 
+                  canManageEvents={canManageEvents()} 
+                  isVettingCommitteeOnly={userRoles.some(role => ['vetting_committee', 'VETTING_COMMITTEE'].includes(role)) && isVettingOnly()}
+                  isApproverOnly={userRoles.some(role => ['vetting_approver', 'VETTING_APPROVER'].includes(role)) && isVettingOnly()}
+                  onEdit={(e) => openEditModal(e)} 
+                  onDelete={(e) => handleDeleteEvent(e)} 
+                  onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
+                  onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }} 
+                  onRegistrationForm={(e) => handleRegistrationForm(e)}
+                />
+              ))}
+            </div>
+          ) : (
+            <EventTable
+              data={paginatedEvents}
+              canManageEvents={canManageEvents()}
+              onEdit={(e) => openEditModal(e)}
+              onDelete={(e) => handleDeleteEvent(e)}
+              onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
+              onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
+              onRegistrationForm={canManageEvents() && !isVettingOnly() ? (e) => handleRegistrationForm(e) : undefined}
+              sortField={sortField as any}
+              sortDirection={sortDirection}
+              onSort={(field) => {
+                if (sortField === field) {
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortField(field as keyof Event | string);
+                  setSortDirection('desc');
+                }
+              }}
+            />
+          )}
+          
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-8">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
+                  >
+                    {page}
+                  </Button>
                 ))}
               </div>
-            ) : (
-              <EventTable
-                data={paginatedEvents}
-                canManageEvents={canManageEvents()}
-                onEdit={(e) => openEditModal(e)}
-                onDelete={(e) => handleDeleteEvent(e)}
-                onUnpublish={canManageEvents() ? (e) => handleUnpublishEvent(e) : undefined}
-                onViewDetails={(e) => { setDetailsEvent(e); setShowDetailsModal(true); }}
-                onRegistrationForm={canManageEvents() && !isVettingOnly() ? (e) => handleRegistrationForm(e) : undefined}
-                sortField={sortField as any}
-                sortDirection={sortDirection}
-                onSort={(field) => {
-                  if (sortField === field) {
-                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    setSortField(field as keyof Event | string);
-                    setSortDirection('desc');
-                  }
-                }}
-              />
-            )}
-            
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                
-                <div className="flex gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <Button
-                      key={page}
-                      variant={currentPage === page ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={currentPage === page ? "bg-red-600 hover:bg-red-700" : ""}
-                    >
-                      {page}
-                    </Button>
-                  ))}
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-            <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">
-              No {statusFilter === 'all' ? '' : statusFilter} events found
-            </h3>
-            <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-xs">
-              {statusFilter === 'all' 
-                ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
-                : "No " + statusFilter + " events at the moment"
-              }
-            </p>
-          </div>
-        )}
-      </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+          <h3 className="text-xs font-medium text-gray-900 mb-1">
+            No {statusFilter === 'all' ? '' : statusFilter} events found
+          </h3>
+          <p className="text-xs text-gray-600">
+            {statusFilter === 'all' 
+              ? canManageEvents() ? "Get started by creating your first event" : "No events have been created yet"
+              : "No " + statusFilter + " events at the moment"
+            }
+          </p>
+        </div>
+      )}
 
       <EventFormModal
         isOpen={showCreateModal}
@@ -1077,6 +1112,63 @@ export default function TenantEventsPage() {
         tenantSlug={tenantSlug}
         canManageEvents={canManageEvents()}
       />
-    </Layout>
+
+      {/* Before Creating Your First Event Modal */}
+      <Dialog open={showFirstEventModal && events.length === 0} onOpenChange={setShowFirstEventModal}>
+        <DialogContent className="sm:max-w-[500px] bg-white border border-gray-200 shadow-2xl">
+          <div className="p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Before Creating Your First Event</h2>
+                <p className="text-gray-600 text-sm">Important information to get started</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4 text-sm text-gray-700">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="font-semibold text-blue-900 mb-2">📋 Before You Begin</h3>
+                <ul className="space-y-1 text-blue-800">
+                  <li>• Ensure you have venue accommodations set up</li>
+                  <li>• Prepare your event details and description</li>
+                  <li>• Have participant capacity estimates ready</li>
+                  <li>• Set appropriate registration deadlines</li>
+                </ul>
+              </div>
+              
+              <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                <h3 className="font-semibold text-amber-900 mb-2">⚠️ Important Notes</h3>
+                <ul className="space-y-1 text-amber-800">
+                  <li>• Events cannot be deleted once published</li>
+                  <li>• Registration deadlines cannot exceed event start date</li>
+                  <li>• Accommodation details are required for all events</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowFirstEventModal(false)}
+                className="px-4 py-2 text-sm"
+              >
+                Got it
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowFirstEventModal(false);
+                  setShowCreateModal(true);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-sm"
+              >
+                Create First Event
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

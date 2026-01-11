@@ -19,6 +19,47 @@ import { Plus, Loader2, Save, X, Search, Download, Printer, Edit, Trash2, Chevro
 import EditVendorModal from "@/components/accommodation/EditVendorModal";
 import { Checkbox } from "@/components/ui/checkbox";
 
+// Add responsive styles for SweetAlert2
+if (typeof window !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    .swal-responsive-popup {
+      width: 90% !important;
+      max-width: 500px !important;
+      margin: 0 auto !important;
+    }
+    .swal-responsive-select {
+      width: 100% !important;
+      padding: 8px 12px !important;
+      font-size: 14px !important;
+      line-height: 1.4 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    .swal-responsive-select option {
+      padding: 8px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      max-width: 100% !important;
+    }
+    @media (max-width: 640px) {
+      .swal-responsive-popup {
+        width: 95% !important;
+        margin: 10px auto !important;
+      }
+      .swal2-title {
+        font-size: 18px !important;
+      }
+      .swal2-html-container {
+        font-size: 14px !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 interface VendorAccommodation {
   id: number;
   vendor_name: string;
@@ -60,7 +101,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
   const [templateId, setTemplateId] = useState<number | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
-  const [tenantData, setTenantData] = useState<{ country?: string } | null>(null);
+  const [tenantData, setTenantData] = useState<{ country?: string; name?: string } | null>(null);
   const [vendorForm, setVendorForm] = useState({
     vendor_name: "",
     location: "",
@@ -116,7 +157,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
         );
         if (response.ok) {
           const tenant = await response.json();
-          setTenantData({ country: tenant.country });
+          setTenantData({ country: tenant.country, name: tenant.name });
         }
       } catch (error) {
         console.error('Failed to fetch tenant data:', error);
@@ -228,33 +269,47 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
       }
 
       const events = await response.json();
+      
+      // Filter out ended events (events where end_date is in the past)
+      const currentDate = new Date();
+      const activeEvents = events.filter((event: any) => {
+        const endDate = new Date(event.end_date);
+        return endDate >= currentDate;
+      });
 
-      if (!events || events.length === 0) {
+      if (!activeEvents || activeEvents.length === 0) {
         await Swal.fire({
-          title: "No Events Found",
-          text: `No events are currently using "${vendor.vendor_name}". Please assign this vendor to an event first.`,
+          title: "No Active Events Found",
+          text: `No active events are currently using "${vendor.vendor_name}". Please assign this vendor to an active event first.`,
           icon: "info",
           confirmButtonColor: "#3b82f6",
         });
         return;
       }
 
-      // Create options for event selection
+      // Create options for event selection with better formatting
       const eventOptions: { [key: string]: string } = {};
-      events.forEach((event: any) => {
-        eventOptions[event.id] = `${event.title} (${new Date(event.start_date).toLocaleDateString()})`;
+      activeEvents.forEach((event: any) => {
+        const startDate = new Date(event.start_date).toLocaleDateString();
+        const endDate = new Date(event.end_date).toLocaleDateString();
+        const eventTitle = event.title.length > 40 ? event.title.substring(0, 40) + '...' : event.title;
+        eventOptions[event.id] = `${eventTitle} (${startDate} - ${endDate})`;
       });
 
       const { value: selectedEventId } = await Swal.fire({
         title: "Select Event",
-        text: `Choose an event to generate proof of accommodation documents for "${vendor.vendor_name}"`,
+        text: `Choose an active event to generate proof of accommodation documents for "${vendor.vendor_name}"`,
         input: "select",
         inputOptions: eventOptions,
         inputPlaceholder: "Select an event",
         showCancelButton: true,
         confirmButtonText: "Generate Proofs",
-        confirmButtonColor: "#8b5cf6",
+        confirmButtonColor: "#dc2626",
         cancelButtonColor: "#6b7280",
+        customClass: {
+          popup: 'swal-responsive-popup',
+          select: 'swal-responsive-select'
+        },
         inputValidator: (value) => {
           if (!value) {
             return "You need to select an event!";
@@ -563,8 +618,14 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
           new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'),
           imageTag
         );
-        setTemplateContent(updatedContent);
+      } else {
+        // If variable doesn't exist, replace any existing image of this type
+        const existingImageRegex = new RegExp(`<img[^>]*data-type="${type}"[^>]*>`, 'g');
+        if (existingImageRegex.test(templateContent)) {
+          updatedContent = templateContent.replace(existingImageRegex, imageTag);
+        }
       }
+      setTemplateContent(updatedContent);
 
       toast({ title: "Success", description: `${type === 'logo' ? 'Logo' : 'Signature'} uploaded successfully` });
     } catch (error) {
@@ -1028,7 +1089,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                               variant="ghost"
                               size="sm"
                               onClick={() => handleGenerateProof(vendor)}
-                              className="text-purple-600 hover:text-purple-700 p-1"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
                               title="Generate POA"
                             >
                               <FileText className="w-4 h-4" />
@@ -1295,7 +1356,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                     className="text-xs mb-4"
                     style={{ color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280' }}
                   >
-                    Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, etc.
+                    Use template variables like {'{'}{'{'}{'}'}participantName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelName{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkInDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}checkOutDate{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}qrCode{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}hotelLogo{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}signature{'}'}{'}'}{'}'}, {'{'}{'{'}{'}'}tenantName{'}'}{'}'}{'}'}, etc.
                   </p>
                   <AccommodationTemplateEditor
                     value={templateContent}
@@ -1322,6 +1383,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                     Preview how the template will look with sample data
                   </p>
                   <div 
+                    key={`preview-${uploadedImages.logo}-${uploadedImages.signature}`}
                     className="border rounded-lg p-4 h-[450px] overflow-y-auto bg-white"
                     style={{
                       borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
@@ -1342,6 +1404,7 @@ export default function VendorHotelsSetup({ tenantSlug, addButtonOnly, onVendorA
                           .replace(/\{\{eventName\}\}/g, 'Sample Conference')
                           .replace(/\{\{eventDates\}\}/g, 'January 15-20, 2026')
                           .replace(/\{\{confirmationNumber\}\}/g, 'MSF-EVENT1-PART1-A1B2')
+                          .replace(/\{\{tenantName\}\}/g, tenantData?.name || 'Sample Organization')
                           .replace(/\{\{hotelLogo\}\}/g, uploadedImages.logo ? `<img src="${uploadedImages.logo}" alt="Hotel Logo" style="max-width: 200px; height: auto; margin: 10px 0;" />` : '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0;">Hotel Logo will appear here</div>')
                           .replace(/\{\{signature\}\}/g, uploadedImages.signature ? `<img src="${uploadedImages.signature}" alt="Signature" style="max-width: 150px; height: auto; margin: 10px 0;" />` : '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0;">Signature will appear here</div>')
                           .replace(/\{\{qrCode\}\}/g, '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center; color: #999; margin: 10px 0; width: 150px; height: 150px; display: flex; align-items: center; justify-content: center;">QR Code will appear here</div>')

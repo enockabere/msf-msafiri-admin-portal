@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuthenticatedApi } from "@/lib/auth";
+import { toast } from "sonner";
 import ParticipantAnalytics from "@/components/events/ParticipantAnalytics";
 import { FeedbackMessage } from "./components/FeedbackMessage";
 import { ParticipantControls } from "./components/ParticipantControls";
@@ -123,16 +124,16 @@ export default function EventParticipants({
   const [participantComments, setParticipantComments] = useState<Record<number, string>>({});
   const [submittingVetting, setSubmittingVetting] = useState(false);
   const [emailSubject, setEmailSubject] = useState('Event Selection Results - {{EVENT_TITLE}}');
-  const [emailBody, setEmailBody] = useState('Default email body...');
+  const [emailBody, setEmailBody] = useState('');
   const [showEmailTemplate, setShowEmailTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const normalizeStatus = (status: string | undefined) => {
-    if (status === 'pending') return 'pending_approval';
+    // No normalization needed - status is already in correct format
     return status;
   };
   
-  const actualStatus = normalizeStatus(committeeStatus || vettingMode?.submissionStatus);
+  const actualStatus = committeeStatus || vettingMode?.submissionStatus;
   
   const effectiveVettingMode = vettingMode ? {
     ...vettingMode,
@@ -143,6 +144,238 @@ export default function EventParticipants({
       : vettingMode.canEdit,
     submissionStatus: actualStatus as 'open' | 'pending_approval' | 'approved'
   } : undefined;
+
+  // Fetch email template when vetting mode changes
+  useEffect(() => {
+    const fetchEmailTemplate = async () => {
+      console.log('🔍 fetchEmailTemplate called with:', {
+        isVettingApprover: effectiveVettingMode?.isVettingApprover,
+        currentEmailBody: emailBody,
+        emailBodyLength: emailBody?.length || 0
+      });
+      
+      if (!effectiveVettingMode?.isVettingApprover) {
+        console.log('❌ Not vetting approver, setting default template');
+        // Set default template even if not vetting approver for display purposes
+        if (!emailBody || emailBody === '') {
+          console.log('✅ Setting default template because emailBody is empty');
+          setEmailBody(`<p><strong>Event Selection Results - {{EVENT_TITLE}}</strong></p>
+<p>Dear {{PARTICIPANT_NAME}},</p>
+<p>We have completed the selection process for {{EVENT_TITLE}}.</p>
+
+{{#if_selected}}
+<p>🎉 <strong>Congratulations! You have been selected to participate.</strong></p>
+<p><strong>Event Details:</strong><br>
+• Event: {{EVENT_TITLE}}<br>
+• Location: {{EVENT_LOCATION}}<br>
+• Date: {{EVENT_DATE_RANGE}}</p>
+<p><strong>Next Steps:</strong><br>
+1. Download the Msafiri mobile app<br>
+2. Login using your work email<br>
+3. Accept the invitation from the app notifications<br>
+4. Submit required documents through the mobile app</p>
+<p><strong>Important:</strong> Please use the Msafiri mobile application to accept your invitation and access all event details.</p>
+<p>We look forward to your participation!</p>
+{{/if_selected}}
+
+{{#if_not_selected}}
+<p>Thank you for your interest in participating in {{EVENT_TITLE}}.</p>
+<p>After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.</p>
+<p>We encourage you to apply for future events and appreciate your continued engagement with our programs.</p>
+{{/if_not_selected}}
+
+<p>Best regards,<br>
+The Event Organization Team</p>`);
+        } else {
+          console.log('⚠️ EmailBody already has content, not overriding');
+        }
+        return;
+      }
+      
+      console.log('🔄 Fetching email template from API...');
+      try {
+        const pathParts = window.location.pathname.split('/');
+        console.log('🛣️ Path parts:', pathParts);
+        
+        // URL structure: /portal/tenant/[slug]/events/[eventId]/...
+        // pathParts: ['', 'portal', 'tenant', 'slug', 'events', 'eventId', ...]
+        const tenantSlug = pathParts[3]; // Changed from pathParts[2] to pathParts[3]
+        
+        console.log('🏢 Tenant slug:', tenantSlug);
+        
+        if (!tenantSlug || tenantSlug === 'tenant' || tenantSlug === '') {
+          console.log('❌ Invalid tenant slug, trying alternative method');
+          
+          // Try to get tenant slug from params or other source
+          const urlParams = new URLSearchParams(window.location.search);
+          const paramTenant = urlParams.get('tenant');
+          
+          if (paramTenant) {
+            console.log('✅ Found tenant in URL params:', paramTenant);
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${paramTenant}/vetting-notification`;
+            console.log('📡 API URL (from params):', apiUrl);
+            
+            const response = await fetch(apiUrl, {
+              headers: {
+                'Authorization': `Bearer ${apiClient.getToken()}`
+              }
+            });
+            
+            console.log('📥 API Response status:', response.status);
+            
+            if (response.ok) {
+              const template = await response.json();
+              console.log('✅ Template fetched successfully:', {
+                hasSubject: !!template.subject,
+                hasBody: !!template.body,
+                subjectLength: template.subject?.length || 0,
+                bodyLength: template.body?.length || 0
+              });
+              
+              if (template.subject) {
+                console.log('📝 Setting email subject:', template.subject);
+                setEmailSubject(template.subject);
+              }
+              if (template.body) {
+                console.log('📝 Setting email body from API');
+                setEmailBody(template.body);
+                return; // Exit early if we got the template
+              }
+            }
+          }
+          
+          console.log('⚠️ Setting default template due to invalid tenant slug');
+          setEmailBody(`<p><strong>Event Selection Results - {{EVENT_TITLE}}</strong></p>
+<p>Dear {{PARTICIPANT_NAME}},</p>
+<p>We have completed the selection process for {{EVENT_TITLE}}.</p>
+
+{{#if_selected}}
+<p>🎉 <strong>Congratulations! You have been selected to participate.</strong></p>
+<p><strong>Event Details:</strong><br>
+• Event: {{EVENT_TITLE}}<br>
+• Location: {{EVENT_LOCATION}}<br>
+• Date: {{EVENT_DATE_RANGE}}</p>
+<p><strong>Next Steps:</strong><br>
+1. Download the Msafiri mobile app<br>
+2. Login using your work email<br>
+3. Accept the invitation from the app notifications<br>
+4. Submit required documents through the mobile app</p>
+<p><strong>Important:</strong> Please use the Msafiri mobile application to accept your invitation and access all event details.</p>
+<p>We look forward to your participation!</p>
+{{/if_selected}}
+
+{{#if_not_selected}}
+<p>Thank you for your interest in participating in {{EVENT_TITLE}}.</p>
+<p>After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.</p>
+<p>We encourage you to apply for future events and appreciate your continued engagement with our programs.</p>
+{{/if_not_selected}}
+
+<p>Best regards,<br>
+The Event Organization Team</p>`);
+          return;
+        }
+        
+        const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${tenantSlug}/vetting-notification`;
+        console.log('📡 API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${apiClient.getToken()}`
+          }
+        });
+        
+        console.log('📥 API Response status:', response.status);
+        
+        if (response.ok) {
+          const template = await response.json();
+          console.log('✅ Template fetched successfully:', {
+            hasSubject: !!template.subject,
+            hasBody: !!template.body,
+            subjectLength: template.subject?.length || 0,
+            bodyLength: template.body?.length || 0
+          });
+          
+          if (template.subject) {
+            console.log('📝 Setting email subject:', template.subject);
+            setEmailSubject(template.subject);
+          }
+          if (template.body) {
+            console.log('📝 Setting email body from API');
+            setEmailBody(template.body);
+          }
+        } else if (!emailBody || emailBody === '') {
+          console.log('⚠️ API failed, setting default template because emailBody is empty');
+          setEmailBody(`<p><strong>Event Selection Results - {{EVENT_TITLE}}</strong></p>
+<p>Dear {{PARTICIPANT_NAME}},</p>
+<p>We have completed the selection process for {{EVENT_TITLE}}.</p>
+
+{{#if_selected}}
+<p>🎉 <strong>Congratulations! You have been selected to participate.</strong></p>
+<p><strong>Event Details:</strong><br>
+• Event: {{EVENT_TITLE}}<br>
+• Location: {{EVENT_LOCATION}}<br>
+• Date: {{EVENT_DATE_RANGE}}</p>
+<p><strong>Next Steps:</strong><br>
+1. Download the Msafiri mobile app<br>
+2. Login using your work email<br>
+3. Accept the invitation from the app notifications<br>
+4. Submit required documents through the mobile app</p>
+<p><strong>Important:</strong> Please use the Msafiri mobile application to accept your invitation and access all event details.</p>
+<p>We look forward to your participation!</p>
+{{/if_selected}}
+
+{{#if_not_selected}}
+<p>Thank you for your interest in participating in {{EVENT_TITLE}}.</p>
+<p>After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.</p>
+<p>We encourage you to apply for future events and appreciate your continued engagement with our programs.</p>
+{{/if_not_selected}}
+
+<p>Best regards,<br>
+The Event Organization Team</p>`);
+        } else {
+          console.log('⚠️ API failed but emailBody already has content, not overriding');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching email template:', error);
+        // Set comprehensive default template on error only if emailBody is empty
+        if (!emailBody || emailBody === '') {
+          console.log('🔧 Setting default template due to error and empty emailBody');
+          setEmailBody(`<p><strong>Event Selection Results - {{EVENT_TITLE}}</strong></p>
+<p>Dear {{PARTICIPANT_NAME}},</p>
+<p>We have completed the selection process for {{EVENT_TITLE}}.</p>
+
+{{#if_selected}}
+<p>🎉 <strong>Congratulations! You have been selected to participate.</strong></p>
+<p><strong>Event Details:</strong><br>
+• Event: {{EVENT_TITLE}}<br>
+• Location: {{EVENT_LOCATION}}<br>
+• Date: {{EVENT_DATE_RANGE}}</p>
+<p><strong>Next Steps:</strong><br>
+1. Download the Msafiri mobile app<br>
+2. Login using your work email<br>
+3. Accept the invitation from the app notifications<br>
+4. Submit required documents through the mobile app</p>
+<p><strong>Important:</strong> Please use the Msafiri mobile application to accept your invitation and access all event details.</p>
+<p>We look forward to your participation!</p>
+{{/if_selected}}
+
+{{#if_not_selected}}
+<p>Thank you for your interest in participating in {{EVENT_TITLE}}.</p>
+<p>After careful consideration, we regret to inform you that you have not been selected for this event. Due to limited capacity and specific requirements, we were unable to accommodate all applicants.</p>
+<p>We encourage you to apply for future events and appreciate your continued engagement with our programs.</p>
+{{/if_not_selected}}
+
+<p>Best regards,<br>
+The Event Organization Team</p>`);
+        } else {
+          console.log('⚠️ Error occurred but emailBody already has content, not overriding');
+        }
+      }
+    };
+    
+    console.log('🚀 Starting fetchEmailTemplate useEffect');
+    fetchEmailTemplate();
+  }, [effectiveVettingMode?.isVettingApprover, apiClient]);
 
   const showFeedback = (type: 'success' | 'error', message: string) => {
     setFeedbackMessage({ type, message });
@@ -181,7 +414,23 @@ export default function EventParticipants({
             'role': 'Role',
             'oc': 'OC',
             'position': 'Position',
+            'country': 'Nationality',
             'country_of_work': 'Country of Work',
+            'contract_status': 'Contract Status',
+            'contract_type': 'Contract Type',
+            'gender_identity': 'Gender Identity',
+            'phone_number': 'Phone',
+            'travelling_internationally': 'International Travel',
+            'accommodation_preference': 'Accommodation Preference',
+            'has_dietary_requirements': 'Has Dietary Requirements',
+            'dietary_requirements': 'Dietary Requirements',
+            'has_accommodation_needs': 'Has Accommodation Needs',
+            'accommodation_needs': 'Accommodation Needs',
+            'certificate_name': 'Certificate Name',
+            'badge_name': 'Badge Name',
+            'personal_email': 'Personal Email',
+            'msf_email': 'MSF Email',
+            'line_manager_email': 'Line Manager Email',
             'vetting_comments': 'Vetting Comments',
             'actions': 'Actions'
           };
@@ -191,7 +440,8 @@ export default function EventParticipants({
           
           Object.entries(coreColumns).forEach(([key, label]) => {
             columnDefs[key] = label;
-            defaultVisible[key] = true;
+            // Show core columns by default, hide detailed ones
+            defaultVisible[key] = ['full_name', 'email', 'status', 'role', 'oc', 'position', 'country', 'country_of_work', 'vetting_comments', 'actions'].includes(key);
           });
 
           setAvailableColumns(columnDefs);
@@ -319,6 +569,82 @@ export default function EventParticipants({
     }
   };
 
+  const handleBulkStatusChange = async (newStatus: string) => {
+    try {
+      const promises = selectedParticipants.map(participantId =>
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/event-registration/participant/${participantId}/status`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: newStatus }),
+          }
+        )
+      );
+
+      const responses = await Promise.all(promises);
+      const successCount = responses.filter(r => r.ok).length;
+      
+      if (successCount === selectedParticipants.length) {
+        await fetchParticipants();
+        setSelectedParticipants([]);
+        const message = `${successCount} participant(s) status updated to ${newStatus}.`;
+        showFeedback('success', message);
+        toast.success(message);
+      } else {
+        await fetchParticipants();
+        const message = `Only ${successCount} of ${selectedParticipants.length} participants were updated.`;
+        showFeedback('error', message);
+        toast.error(message);
+      }
+    } catch (error) {
+      const message = 'Failed to update participant statuses.';
+      showFeedback('error', message);
+      toast.error(message);
+    }
+  };
+
+  const handleBulkRoleChange = async (newRole: string) => {
+    try {
+      const promises = selectedParticipants.map(participantId =>
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}/participants/${participantId}/role`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${apiClient.getToken()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ role: newRole }),
+          }
+        )
+      );
+
+      const responses = await Promise.all(promises);
+      const successCount = responses.filter(r => r.ok).length;
+      
+      if (successCount === selectedParticipants.length) {
+        await fetchParticipants();
+        setSelectedParticipants([]);
+        const message = `${successCount} participant(s) role updated to ${newRole}.`;
+        showFeedback('success', message);
+        toast.success(message);
+      } else {
+        await fetchParticipants();
+        const message = `Only ${successCount} of ${selectedParticipants.length} participants were updated.`;
+        showFeedback('error', message);
+        toast.error(message);
+      }
+    } catch (error) {
+      const message = 'Failed to update participant roles.';
+      showFeedback('error', message);
+      toast.error(message);
+    }
+  };
+
   const handleViewParticipant = (participant: Participant) => {
     const index = filteredParticipants.findIndex(p => p.id === participant.id);
     setViewingParticipantIndex(index);
@@ -381,8 +707,8 @@ export default function EventParticipants({
             <BulkActions
               selectedParticipants={selectedParticipants}
               effectiveVettingMode={effectiveVettingMode}
-              onBulkStatusChange={() => {}}
-              onBulkRoleChange={() => {}}
+              onBulkStatusChange={handleBulkStatusChange}
+              onBulkRoleChange={handleBulkRoleChange}
             />
             
             <ColumnSelector

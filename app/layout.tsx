@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { ConditionalProviders } from "@/components/ConditionalProviders";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import ErrorBoundary from "@/components/error-boundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,9 +34,11 @@ export default function RootLayout({
           disableTransitionOnChange={false}
           storageKey="msafiri-theme"
         >
-          <div className="relative z-10">
-            <ConditionalProviders>{children}</ConditionalProviders>
-          </div>
+          <ErrorBoundary>
+            <div className="relative z-10">
+              <ConditionalProviders>{children}</ConditionalProviders>
+            </div>
+          </ErrorBoundary>
           <Toaster
             position="top-right"
             richColors

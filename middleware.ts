@@ -37,12 +37,24 @@ export default withAuth(
             "mt_admin",
             "hr_admin",
             "event_admin",
+            "vetting_committee",
+            "vetting_approver",
+            "SUPER_ADMIN",
+            "MT_ADMIN",
+            "HR_ADMIN",
+            "EVENT_ADMIN",
+            "VETTING_COMMITTEE",
+            "VETTING_APPROVER",
           ];
 
           const hasAdminRole = !!(
             token?.role && adminRoles.includes(token.role as string)
           );
-          // Admin route check completed
+          
+          if (!hasAdminRole) {
+            console.log('Access denied for role:', token?.role, 'to path:', pathname);
+          }
+          
           return hasAdminRole;
         }
 

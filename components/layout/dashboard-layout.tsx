@@ -304,6 +304,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 md:h-9 md:w-9 rounded-full p-0">
                   <Avatar className="h-7 w-7 md:h-8 md:w-8">
+                    {fullUserData?.avatar_url && (
+                      <AvatarImage src={fullUserData.avatar_url} alt="Avatar" className="object-cover" />
+                    )}
                     <AvatarFallback className="bg-black text-white font-semibold text-xs md:text-sm">
                       {getUserInitials(displayName)}
                     </AvatarFallback>
@@ -321,6 +324,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="flex items-center space-x-2">
                       <div className="relative group">
                         <Avatar className="h-10 w-10">
+                          {fullUserData?.avatar_url && (
+                            <AvatarImage src={fullUserData.avatar_url} alt="Avatar" className="object-cover" />
+                          )}
                           <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
                             {getUserInitials(displayName)}
                           </AvatarFallback>

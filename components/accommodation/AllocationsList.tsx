@@ -370,9 +370,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 w-full max-w-full">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card
           className="border-l-4 border-l-purple-500 hover:shadow-md transition-all cursor-pointer"
           onClick={() => {
@@ -466,17 +466,17 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
 
       {/* Search and Filters Bar */}
       <Card>
-        <CardContent className="p-6">
-          <div className="space-y-4">
+        <CardContent className="p-4">
+          <div className="space-y-3">
             {/* Search Bar */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="Search by name, email, accommodation, room, or event..."
+                placeholder="Search by name, email, accommodation..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 h-12 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500"
+                className="pl-9 pr-10 h-10 text-sm border-gray-300 focus:border-red-500 focus:ring-red-500"
               />
               {searchQuery && (
                 <button
@@ -594,9 +594,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
 
             {/* Advanced Filters */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4 border-t border-gray-200">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-gray-200">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Accommodation Type</label>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Type</label>
                   <Select value={filters.occupancy} onValueChange={(value) => setFilters({...filters, occupancy: value})}>
                     <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
@@ -609,9 +609,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Room</label>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Room</label>
                   <Select value={filters.room} onValueChange={(value) => setFilters({...filters, room: value})}>
-                    <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
+                    <SelectTrigger className="h-9 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -624,9 +624,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Event</label>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Event</label>
                   <Select value={filters.event} onValueChange={(value) => setFilters({...filters, event: value})}>
-                    <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
+                    <SelectTrigger className="h-9 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -640,9 +640,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Gender</label>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Gender</label>
                   <Select value={filters.gender} onValueChange={(value) => setFilters({...filters, gender: value})}>
-                    <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
+                    <SelectTrigger className="h-9 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -654,9 +654,9 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   </Select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-700 mb-2 block">Status</label>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Status</label>
                   <Select value={filters.status} onValueChange={(value) => setFilters({...filters, status: value})}>
-                    <SelectTrigger className="h-10 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
+                    <SelectTrigger className="h-9 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="All" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-gray-200 shadow-lg">
@@ -705,10 +705,10 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
       {/* Table */}
       <Card className="overflow-hidden border-2 border-gray-200 shadow-sm">
         <div className="overflow-x-auto">
-        <table className="w-full divide-y divide-gray-200">
+        <table className="w-full min-w-[800px] divide-y divide-gray-200">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left">
+              <th className="px-3 py-2 text-left">
                 <input
                   type="checkbox"
                   checked={selectedRows.length === paginatedAllocations.length && paginatedAllocations.length > 0}
@@ -717,40 +717,31 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                 />
               </th>
               <th
-                className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                 onClick={() => handleSort('guest_name')}
               >
                 <div className="flex items-center">
-                  Guest Name
+                  Guest
                   {getSortIcon('guest_name')}
                 </div>
               </th>
               <th
-                className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                 onClick={() => handleSort('accommodation_type')}
               >
                 <div className="flex items-center">
-                  Occupancy
+                  Type
                   {getSortIcon('accommodation_type')}
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+              <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Room
               </th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Shared
+              <th className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Event
               </th>
               <th
-                className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
-                onClick={() => handleSort('event')}
-              >
-                <div className="flex items-center">
-                  Event
-                  {getSortIcon('event')}
-                </div>
-              </th>
-              <th
-                className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                 onClick={() => handleSort('days')}
               >
                 <div className="flex items-center">
@@ -758,11 +749,8 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   {getSortIcon('days')}
                 </div>
               </th>
-              <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                Gender
-              </th>
               <th
-                className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
+                className="px-3 py-2 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors select-none"
                 onClick={() => handleSort('status')}
               >
                 <div className="flex items-center">
@@ -770,7 +758,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   {getSortIcon('status')}
                 </div>
               </th>
-              <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
+              <th className="px-3 py-2 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -778,7 +766,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedAllocations.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-6 py-16 text-center">
+                <td colSpan={8} className="px-6 py-16 text-center">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
                       <Search className="w-8 h-8 text-gray-400" />
@@ -803,7 +791,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                   <tr key={allocation.id} className={`hover:bg-gray-50 transition-all ${
                     selectedRows.includes(allocation.id) ? 'bg-blue-50 hover:bg-blue-100' : ''
                   }`}>
-                    <td className="px-6 py-3">
+                    <td className="px-3 py-2">
                       <input
                         type="checkbox"
                         checked={selectedRows.includes(allocation.id)}
@@ -811,7 +799,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                         className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                       />
                     </td>
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-lg flex items-center justify-center flex-shrink-0">
                           <User className="w-3 h-3 text-blue-700" />
@@ -827,7 +815,7 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                       </div>
                     </td>
 
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-green-100 to-emerald-200 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Icon className="w-3 h-3 text-green-700" />
@@ -839,25 +827,19 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                       </div>
                     </td>
 
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <div className="text-xs font-medium text-gray-900">
                         {accommodationInfo.room}
                       </div>
                     </td>
 
-                    <td className="px-6 py-2">
-                      <Badge variant={accommodationInfo.shared.startsWith("Yes") ? "default" : "outline"} className="text-[10px] font-medium px-1 py-0.5">
-                        {accommodationInfo.shared}
-                      </Badge>
-                    </td>
-
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <div className="text-xs font-medium text-gray-900">
                         {allocation.event?.title || '-'}
                       </div>
                     </td>
 
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <div className="text-xs font-medium text-gray-900">
                         {allocation.check_in_date && allocation.check_out_date ?
                           <><span className="text-sm font-bold text-red-600">{calculateDays(allocation.check_in_date, allocation.check_out_date)}</span> <span className="text-gray-500">days</span></> : '-'
@@ -865,19 +847,13 @@ export default function AllocationsList({ allocations, onDelete, deleting, onChe
                       </div>
                     </td>
 
-                    <td className="px-6 py-2">
-                      <div className="text-xs font-medium text-gray-900 capitalize">
-                        {allocation.participant?.gender || '-'}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-2">
+                    <td className="px-3 py-2">
                       <Badge className={`${getStatusBadge(allocation.status)} font-medium text-[10px] px-1 py-0.5`}>
                         {allocation.status.replace('_', ' ')}
                       </Badge>
                     </td>
 
-                    <td className="px-6 py-2 text-right">
+                    <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {allocation.status === 'booked' && onCheckIn && (
                           <Button

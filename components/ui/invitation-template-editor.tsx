@@ -26,15 +26,6 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
   const { apiClient } = useAuthenticatedApi();
   const { resolvedTheme } = useTheme();
   
-  // Debug logging
-  console.log('Template data received:', template);
-  if (template?.address_fields) {
-    console.log('Address fields:', template.address_fields);
-  }
-  if (template?.signature_footer_fields) {
-    console.log('Signature footer fields:', template.signature_footer_fields);
-  }
-  
   const [formData, setFormData] = useState({
     name: template?.name || '',
     subject: template?.subject || 'Letter of Invitation',
@@ -73,7 +64,6 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
         type = 'phone';
       }
       const result = { text, type };
-      console.log('Address field processed:', field, '->', result);
       return result;
     }) : [{ text: 'Médecins Sans Frontières', type: 'text' }],
     signatureFooterFields: template?.signature_footer_fields ? template.signature_footer_fields.map((field: any) => {
@@ -88,7 +78,6 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
         type = 'phone';
       }
       const result = { text, type };
-      console.log('Signature field processed:', field, '->', result);
       return result;
     }) : []
   });
@@ -162,9 +151,6 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
   };
 
   const generatePreview = () => {
-    console.log('=== GENERATE PREVIEW DEBUG ===');
-    console.log('Template content:', formData.content.substring(0, 500) + '...');
-    
     const sampleData = {
       participant_name: 'John Doe',
       passport_number: 'A12345678',
@@ -179,12 +165,10 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
       accommodation_details: 'The Heron Hotel',
       organization_name: 'MSF Kenya Office',
       organization_address: (() => {
-        console.log('Address fields for preview:', formData.addressFields);
         const filteredFields = formData.addressFields.filter(field => {
           const text = field.text || field;
           return text && typeof text === 'string' && text.trim();
         });
-        console.log('Filtered address fields:', filteredFields);
         
         const addressHtml = filteredFields.map((field, index) => {
           const text = field.text || field;
@@ -202,12 +186,10 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
               break;
             default: result = `<p${classAttr}>${text}</p>`;
           }
-          console.log(`Field ${index}: text="${text}", type="${type}", className="${className}", result="${result}"`);
           return result;
         }).join('');
         
         const finalAddress = addressHtml || '<p class="org">Médecins Sans Frontières</p><p>P.O. Box 14500-00800</p><p>Nairobi, Kenya</p><p class="tel">Tel: +254 20 123 4567</p><a href="https://www.msf.org">www.msf.org</a>';
-        console.log('Final address HTML:', finalAddress);
         return finalAddress;
       })(),
       signature_footer: formData.signatureFooterFields.filter(field => {
@@ -247,8 +229,6 @@ export function InvitationTemplateEditor({ template, onSave, onCancel }: Invitat
       preview = preview.replace(regex, value);
     });
 
-    console.log('Final preview HTML:', preview.substring(0, 1000) + '...');
-    console.log('=== END PREVIEW DEBUG ===');
     return preview;
   };
 

@@ -7,6 +7,7 @@ import { CheckCircle, Mail } from "lucide-react";
 import { EmailTemplateEditor } from "@/components/ui/email-template-editor";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface VettingMode {
   isVettingCommittee: boolean;
@@ -76,35 +77,49 @@ export function VettingControls({
     setSavingTemplate(true);
     try {
       const pathParts = window.location.pathname.split('/');
-      const tenantSlug = pathParts[2];
+      console.log('🛣️ Save Template - Path parts:', pathParts);
       
-      if (!tenantSlug || tenantSlug === 'tenant') {
-        showFeedback('error', 'Invalid tenant context.');
+      // URL structure: /portal/tenant/[slug]/events/[eventId]/...
+      // pathParts: ['', 'portal', 'tenant', 'slug', 'events', 'eventId', ...]
+      const tenantSlug = pathParts[3]; // Changed from pathParts[2] to pathParts[3]
+      
+      console.log('🏢 Save Template - Tenant slug:', tenantSlug);
+      
+      if (!tenantSlug || tenantSlug === 'tenant' || tenantSlug === '') {
+        console.log('❌ Save Template - Invalid tenant slug');
+        toast.error('Invalid tenant context.');
         return;
       }
       
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${tenantSlug}/vetting-notification`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${apiClient.getToken()}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            subject: emailSubject,
-            body: emailBody
-          })
-        }
-      );
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/email-templates/tenant/${tenantSlug}/vetting-notification`;
+      console.log('📡 Save Template - API URL:', apiUrl);
+      console.log('📝 Save Template - Payload:', { subject: emailSubject, body: emailBody });
+      
+      const response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${apiClient.getToken()}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject: emailSubject,
+          body: emailBody
+        })
+      });
+      
+      console.log('📥 Save Template - Response status:', response.status);
       
       if (response.ok) {
-        showFeedback('success', 'Email template saved successfully!');
+        console.log('✅ Save Template - Success');
+        toast.success('Email template saved successfully!');
       } else {
-        showFeedback('error', 'Failed to save email template.');
+        const errorText = await response.text();
+        console.log('❌ Save Template - Error response:', errorText);
+        toast.error('Failed to save email template.');
       }
     } catch (error) {
-      showFeedback('error', 'Failed to save email template.');
+      console.error('❌ Save Template - Exception:', error);
+      toast.error('Failed to save email template.');
     } finally {
       setSavingTemplate(false);
     }
@@ -225,10 +240,11 @@ export function VettingControls({
                   <EmailTemplateEditor
                     value={emailBody}
                     onChange={setEmailBody}
-                    eventTitle=""
-                    placeholder="Dear participant, you have been selected..."
+                    eventTitle={event?.title || ''}
+                    placeholder="Write your email content here..."
                     height={300}
                     registrationUrl=""
+                    key={emailBody} // Force re-render when emailBody changes
                   />
                 </div>
                 <div className="flex gap-2">

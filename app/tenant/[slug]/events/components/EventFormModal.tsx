@@ -102,14 +102,14 @@ export default function EventFormModal({
                     <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Conference">Conference</SelectItem>
-                      <SelectItem value="Workshop">Workshop</SelectItem>
-                      <SelectItem value="Training">Training</SelectItem>
-                      <SelectItem value="Meeting">Meeting</SelectItem>
-                      <SelectItem value="Seminar">Seminar</SelectItem>
-                      <SelectItem value="Webinar">Webinar</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                      <SelectItem value="Conference" className="hover:bg-gray-100 focus:bg-gray-100">Conference</SelectItem>
+                      <SelectItem value="Workshop" className="hover:bg-gray-100 focus:bg-gray-100">Workshop</SelectItem>
+                      <SelectItem value="Training" className="hover:bg-gray-100 focus:bg-gray-100">Training</SelectItem>
+                      <SelectItem value="Meeting" className="hover:bg-gray-100 focus:bg-gray-100">Meeting</SelectItem>
+                      <SelectItem value="Seminar" className="hover:bg-gray-100 focus:bg-gray-100">Seminar</SelectItem>
+                      <SelectItem value="Webinar" className="hover:bg-gray-100 focus:bg-gray-100">Webinar</SelectItem>
+                      <SelectItem value="Other" className="hover:bg-gray-100 focus:bg-gray-100">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -169,9 +169,9 @@ export default function EventFormModal({
                     <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                       <SelectValue placeholder="Select venue hotel" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
                       {vendorHotels.map((hotel) => (
-                        <SelectItem key={hotel.id} value={hotel.id.toString()}>
+                        <SelectItem key={hotel.id} value={hotel.id.toString()} className="hover:bg-gray-100 focus:bg-gray-100">
                           {hotel.vendor_name} - {hotel.location}
                         </SelectItem>
                       ))}

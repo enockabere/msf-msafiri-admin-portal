@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
   --color-msf-red: #ee0000;
@@ -10,6 +13,10 @@
   --color-muted-foreground: #718096;
   --color-border: #e2e8f0;
   --radius: 0.5rem;
+
+  /* Sidebar width variables */
+  --sidebar-width: 16rem;
+  --sidebar-width-icon: 3rem;
 
   /* Shadcn CSS Variables */
   --background: 0 0% 100%;
@@ -31,6 +38,14 @@
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
   --ring: 222.2 84% 4.9%;
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 .dark {
@@ -60,6 +75,14 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
 }
 
 @layer base {
@@ -70,8 +93,13 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-inter), sans-serif;
+    font-family: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
+
+  * {
+    font-family: inherit;
+  }
+
 
   .card-title {
     @apply text-lg font-semibold;
@@ -105,6 +133,107 @@
 
   .text-msf-red {
     color: var(--color-msf-red);
+  }
+
+  /* Sidebar active state with red-600 */
+  [data-sidebar="menu-button"][data-active="true"] {
+    background-color: rgb(220 38 38) !important;
+    color: white !important;
+  }
+
+  [data-sidebar="menu-sub-button"][data-active="true"] {
+    background-color: rgb(220 38 38) !important;
+    color: white !important;
+  }
+
+  /* Alternative selectors for sidebar active states */
+  .sidebar-menu-button[data-active="true"],
+  .sidebar-menu-button[aria-current="page"] {
+    background-color: rgb(220 38 38) !important;
+    color: white !important;
+  }
+
+  .sidebar-menu-sub-button[data-active="true"],
+  .sidebar-menu-sub-button[aria-current="page"] {
+    background-color: rgb(220 38 38) !important;
+    color: white !important;
+  }
+
+  /* Reduce sidebar menu font sizes */
+  [data-sidebar="menu-button"] {
+    font-size: 0.875rem !important; /* text-sm */
+    color: rgb(0 0 0) !important; /* black in light mode */
+  }
+
+  [data-sidebar="menu-sub-button"] {
+    font-size: 0.8125rem !important; /* text-xs */
+    color: rgb(0 0 0) !important; /* black in light mode */
+  }
+
+  .sidebar-menu-button {
+    font-size: 0.875rem !important; /* text-sm */
+    color: rgb(0 0 0) !important; /* black in light mode */
+  }
+
+  .sidebar-menu-sub-button {
+    font-size: 0.8125rem !important; /* text-xs */
+    color: rgb(0 0 0) !important; /* black in light mode */
+  }
+
+  /* Dark mode colors */
+  .dark [data-sidebar="menu-button"] {
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark [data-sidebar="menu-sub-button"] {
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .sidebar-menu-button {
+    color: rgb(255 255 255) !important;
+  }
+
+  .dark .sidebar-menu-sub-button {
+    color: rgb(255 255 255) !important;
+  }
+
+
+
+  /* Collapsed sidebar styling */
+  [data-sidebar][data-state="collapsed"] [data-sidebar="menu-button"] {
+    justify-content: center !important;
+    padding: 0.5rem !important;
+    min-height: 2.5rem !important;
+  }
+
+  [data-sidebar][data-state="collapsed"] [data-sidebar="menu-button"] svg {
+    width: 1.125rem !important;
+    height: 1.125rem !important;
+  }
+
+  [data-sidebar][data-state="collapsed"] [data-sidebar="menu-button"] span {
+    display: none !important;
+  }
+
+  [data-sidebar][data-state="collapsed"] [data-sidebar="group-label"] {
+    display: none !important;
+  }
+
+  /* Tooltip styling */
+  [role="tooltip"] {
+    background-color: rgb(0 0 0 / 0.9) !important;
+    color: white !important;
+    border: 1px solid rgb(64 64 64) !important;
+    border-radius: 6px !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    z-index: 9999 !important;
+  }
+
+  .dark [role="tooltip"] {
+    background-color: rgb(255 255 255 / 0.95) !important;
+    color: rgb(0 0 0) !important;
+    border: 1px solid rgb(229 231 235) !important;
   }
 
   /* Custom Scrollbar Utilities */
@@ -239,4 +368,22 @@
 
 [data-sonner-toast] {
   z-index: 9999 !important;
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
 }

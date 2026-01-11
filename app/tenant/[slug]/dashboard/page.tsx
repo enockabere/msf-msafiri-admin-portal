@@ -33,7 +33,6 @@ import {
   Plus,
 } from "lucide-react";
 import { LoadingScreen } from "@/components/ui/loading";
-import { FloatingQuickLinks } from "@/components/floating-quick-links";
 import { SetupWizard } from "@/components/setup-wizard";
 
 export default function TenantDashboardPage() {
@@ -76,25 +75,28 @@ export default function TenantDashboardPage() {
     if (!user) return false;
     
     // Check if user has admin roles
-    const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
-    const hasAdminRole = adminRoles.includes(user.role) || 
-      (user.all_roles && user.all_roles.some((role: string) => adminRoles.includes(role)));
+    const adminRoles = ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+    const allRoles = user.all_roles || user.allRoles || [];
+    const allUserRoles = [user.role, ...allRoles].filter(Boolean);
+    
+    const hasAdminRole = allUserRoles.some((role: string) => adminRoles.includes(role));
+    const hasSuperAdminRole = allUserRoles.some((role: string) => ['SUPER_ADMIN', 'super_admin'].includes(role));
     
     // Check if user has vetting roles
     const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
-    const hasVettingRole = vettingRoles.includes(user.role) ||
-      (user.all_roles && user.all_roles.some((role: string) => vettingRoles.includes(role)));
+    const hasVettingRole = allUserRoles.some((role: string) => vettingRoles.includes(role));
     
-    // Return true if user has vetting roles but no admin roles
-    return hasVettingRole && !hasAdminRole;
+    // Only redirect if user has ONLY vetting roles without any admin or super admin roles
+    return hasVettingRole && !hasAdminRole && !hasSuperAdminRole;
   };
 
   // Redirect vetting-only users to events page
   useEffect(() => {
     if (user && isVettingOnlyUser() && !loading) {
-      router.replace(`/tenant/${tenantSlug}/events`);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      window.location.href = `${baseUrl}/tenant/${tenantSlug}/events`;
     }
-  }, [user, loading, router, tenantSlug]);
+  }, [user, loading, tenantSlug]);
 
   const fetchRecentActivities = useCallback(async () => {
     try {
@@ -387,10 +389,10 @@ export default function TenantDashboardPage() {
     <div className="p-4 md:p-6 max-w-full overflow-x-hidden">
       {/* Greeting Section */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
           Hello, <span className="text-red-600">{user?.name || user?.email?.split('@')[0] || 'User'}</span>! 👋
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Welcome back to your {tenant.name} dashboard. Here's what's happening today.
         </p>
       </div>
@@ -639,13 +641,6 @@ export default function TenantDashboardPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Floating Quick Links - Hide when setup wizard is open and on mobile */}
-      {!showSetupWizard && (
-        <div className="hidden lg:block">
-          <FloatingQuickLinks />
-        </div>
-      )}
     </div>
   );
 }

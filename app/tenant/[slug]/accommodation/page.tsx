@@ -78,13 +78,21 @@ export default function AccommodationPage() {
       setEvents(eventsData);
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Handle authentication errors gracefully
+      if (error instanceof Error && error.message.includes('credentials')) {
+        toast({ 
+          title: "Authentication Error", 
+          description: "Please refresh the page or log in again", 
+          variant: "destructive" 
+        });
+      }
     } finally {
       setLoading(false);
     }
   }, [authLoading, user, apiClient, tenantSlug]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && user.accessToken) {
       fetchData();
     }
   }, [authLoading, user, fetchData]);

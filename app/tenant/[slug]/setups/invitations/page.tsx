@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
 import { toast } from "sonner";
-import DashboardLayout from "@/components/layout/dashboard-layout";
+
 import Swal from 'sweetalert2';
 import { useTheme } from "next-themes";
 
@@ -208,42 +208,45 @@ export default function InvitationsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center space-y-4">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Mail className="w-8 h-8 text-blue-600 animate-pulse" />
-              </div>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Mail className="w-6 h-6 text-red-600 animate-pulse" />
             </div>
-            <p className="text-xs font-medium text-gray-600">Loading invitation templates...</p>
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading invitation templates...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : 'linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff)', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '2px solid #f3f4f6' }} className="rounded-2xl p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Mail className="w-6 h-6 text-white" />
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Mail className="w-4 h-4 text-white" />
               </div>
-              <div>
-                <h1 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-2xl font-semibold mb-2">Letter of Invitation Templates</h1>
-                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-sm">Design invitation letter templates for events and meetings</p>
+              <div className="min-w-0">
+                <h1 className={`text-sm sm:text-base font-medium ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Letter of Invitation Templates</h1>
+                <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'} hidden sm:block`}>Design invitation letter templates for events and meetings</p>
               </div>
             </div>
             {canEdit && (
               <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Template
+                  <Button className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-xs px-3 py-2 w-full sm:w-auto">
+                    <Plus className="w-3 h-3 mr-2" />
+                    <span className="sm:hidden">Create</span>
+                    <span className="hidden sm:inline">Create Template</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }} className="sm:max-w-[1200px] shadow-2xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
@@ -290,88 +293,105 @@ export default function InvitationsPage() {
               </Dialog>
             )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
-          <CardContent className="p-4 text-sm">
-            {templates.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-white" />
-                </div>
-                <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-base font-semibold mb-2">No invitation templates yet</h3>
-                <p style={{ color: resolvedTheme === 'dark' ? '#d1d5db' : '#4b5563' }} className="text-xs mb-4">Create your first invitation letter template</p>
-                {canEdit && (
-                  <Button
-                    onClick={() => setModalOpen(true)}
-                    className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Template
-                  </Button>
-                )}
+      <Card style={{ background: resolvedTheme === 'dark' ? '#000000' : '#ffffff', border: resolvedTheme === 'dark' ? '1px solid #ffffff' : '1px solid #e5e7eb' }}>
+        <CardContent className="p-3 text-xs overflow-x-auto">
+          {templates.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3" style={{
+                backgroundColor: resolvedTheme === 'dark' ? '#1f2937' : '#f9fafb'
+              }}>
+                <Mail className="w-8 h-8" style={{
+                  color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280'
+                }} />
               </div>
+              <h3 style={{ color: resolvedTheme === 'dark' ? '#ffffff' : '#111827' }} className="text-xs font-medium mb-1">No invitation templates yet</h3>
+              <p style={{ color: resolvedTheme === 'dark' ? '#9ca3af' : '#6b7280' }} className="text-xs mb-3">Create your first invitation letter template</p>
+              {canEdit && (
+                <Button
+                  onClick={() => setModalOpen(true)}
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-2" />
+                  Create First Template
+                </Button>
+              )}
+            </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Template Name</TableHead>
-                    <TableHead>Created Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    {canEdit && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium text-xs">{template.name}</TableCell>
-                      <TableCell className="text-xs">{new Date(template.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-xs">
-                        {template.is_active ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            Inactive
-                          </span>
-                        )}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                console.log('Setting editing template:', template);
-                                setEditingTemplate(template);
-                                setModalOpen(true);
-                              }}
-                              title="Edit Template"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(template.id)}
-                              className="text-red-600 hover:text-red-700"
-                              title="Delete Template"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+              <div className="min-w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[120px]">Template Name</TableHead>
+                      <TableHead className="min-w-[100px] hidden sm:table-cell">Created Date</TableHead>
+                      <TableHead className="min-w-[80px] hidden md:table-cell">Status</TableHead>
+                      {canEdit && <TableHead className="text-right min-w-[100px]">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium text-xs">
+                          <div className="max-w-[120px] truncate" title={template.name}>
+                            {template.name}
                           </div>
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <TableCell className="text-xs hidden sm:table-cell">
+                          {new Date(template.created_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </TableCell>
+                        <TableCell className="text-xs hidden md:table-cell">
+                          {template.is_active ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              Inactive
+                            </span>
+                          )}
+                        </TableCell>
+                        {canEdit && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  console.log('Setting editing template:', template);
+                                  setEditingTemplate(template);
+                                  setModalOpen(true);
+                                }}
+                                title="Edit Template"
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(template.id)}
+                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                                title="Delete Template"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

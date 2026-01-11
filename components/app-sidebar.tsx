@@ -32,7 +32,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth, AuthUtils, useAuthenticatedApi } from "@/lib/auth";
 import { useUserData } from "@/hooks/useUserData";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -477,6 +477,9 @@ export function CustomSidebar({ isCollapsed, onToggle, isMobile = false }: Custo
             ) : displayUser ? (
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
+                  {fullUserData?.avatar_url && (
+                    <AvatarImage src={fullUserData.avatar_url} alt="Avatar" className="object-cover" />
+                  )}
                   <AvatarFallback className="bg-black text-white font-semibold text-sm">
                     {getUserInitials(displayName)}
                   </AvatarFallback>

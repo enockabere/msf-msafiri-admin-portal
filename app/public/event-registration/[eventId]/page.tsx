@@ -10,9 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReactSelect from "react-select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { toast } from "sonner";
 import {
   Loader2,
   Calendar,
@@ -112,15 +112,54 @@ export default function PublicEventRegistrationPage() {
         console.log('✅ Form fields:', fieldsData);
         console.log('✅ Can register:', registrationData.can_register);
 
+        // Filter out unwanted fields and auto-configure field types
+        const unwantedFields = [
+          "travellingInternationally",
+          "travellingFromCountry", 
+          "accommodationType",
+          "accommodationNeeds",
+          "dietaryRequirements",
+          "certificateName",
+          "badgeName",
+          "travelRequirementsConfirmation"
+        ];
+        
+        const filteredFields = fieldsData
+          .filter((field: FormField) => !unwantedFields.includes(field.field_name))
+          .map((field: FormField) => {
+            // Auto-configure pronouns field
+            if (field.field_name === "pronouns" && field.field_type === "text") {
+              return {
+                ...field,
+                field_type: "select",
+                field_options: ["Mr", "Mrs", "Miss", "Ms", "Dr", "Prof", "Prefer not to say"]
+              };
+            }
+            // Auto-configure Code of Conduct field
+            if (field.field_name === "codeOfConductConfirm" && field.field_type === "checkbox") {
+              return {
+                ...field,
+                field_type: "select",
+                field_options: ["I agree", "I do not agree"]
+              };
+            }
+            return field;
+          });
+
         setEvent(eventData);
-        setFormFields(fieldsData);
+        setFormFields(filteredFields);
         setCanRegister(registrationData.can_register);
         setRegistrationMessage(registrationData.reason || "");
         setCountries(countriesData.countries || []);
 
         const initialData: FormData = {};
-        fieldsData.forEach((field: FormField) => {
-          initialData[field.field_name] = field.field_type === 'checkbox' ? [] : '';
+        filteredFields.forEach((field: FormField) => {
+          if (field.field_type === 'checkbox') {
+            // For single checkbox fields, initialize as empty string
+            initialData[field.field_name] = field.field_options?.length === 1 ? '' : [];
+          } else {
+            initialData[field.field_name] = '';
+          }
         });
         setFormData(initialData);
 
@@ -147,6 +186,9 @@ export default function PublicEventRegistrationPage() {
         console.error("🔴 ============ ERROR FETCHING EVENT DATA ============");
         console.error("🔴 Error:", err);
         console.error("🔴 ============ END ERROR ============");
+        toast.error('Failed to load event', {
+          description: 'Unable to load event details. Please refresh the page and try again.'
+        });
         setError("Failed to load event details");
       } finally {
         setLoading(false);
@@ -214,8 +256,16 @@ export default function PublicEventRegistrationPage() {
       if (field.is_required) {
         const value = formData[field.field_name];
         if (field.field_type === 'checkbox') {
-          if (!value || value.length === 0) {
-            newErrors[field.field_name] = `${field.field_label} is required`;
+          // For single checkbox fields (like codeOfConductConfirm), check if string is not empty
+          if (field.field_options?.length === 1) {
+            if (!value || value.toString().trim() === '') {
+              newErrors[field.field_name] = `${field.field_label} is required`;
+            }
+          } else {
+            // For multiple checkbox fields, check if array is not empty
+            if (!value || value.length === 0) {
+              newErrors[field.field_name] = `${field.field_label} is required`;
+            }
           }
         } else {
           if (!value || value.toString().trim() === '') {
@@ -256,7 +306,9 @@ export default function PublicEventRegistrationPage() {
     
     // If deadline passed and not submitting travel section only, prevent submission
     if (isDeadlinePassed && !showTravelSection) {
-      setError('Registration deadline has passed. New registrations are no longer accepted.');
+      toast.error('Registration deadline has passed', {
+        description: 'New registrations are no longer accepted.'
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -305,10 +357,15 @@ export default function PublicEventRegistrationPage() {
       }
       
       console.log('✅ Registration successful!');
+      toast.success('Registration submitted successfully!', {
+        description: `Thank you for registering for ${event?.title}. You will receive communication once the selection committee finishes selecting event participants.`
+      });
       setSubmitSuccess(true);
     } catch (err: any) {
       console.error("❌ Registration error:", err);
-      setError(err.message || 'Failed to submit registration');
+      toast.error('Registration failed', {
+        description: err.message || 'Failed to submit registration. Please try again.'
+      });
     } finally {
       setSubmitting(false);
       console.log('🔵 ============ FORM SUBMISSION ENDED ============');
@@ -337,20 +394,20 @@ export default function PublicEventRegistrationPage() {
     if (field.field_name === 'codeOfConductConfirm' && codeOfConduct?.document_url) {
       return (
         <div className="space-y-4">
-          <Card className="border-2 border-blue-200 bg-blue-50">
-            <CardHeader className="pb-3">
+          <div className="border border-gray-200 rounded-lg bg-blue-50">
+            <div className="px-4 py-3 border-b border-blue-200 bg-blue-100 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileCheck className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                  <FileCheck className="h-5 w-5" />
                   Code of Conduct Document
-                </CardTitle>
+                </h3>
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(codeOfConduct.document_url, '_blank')}
-                    className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                    className="text-blue-700 border-blue-300 hover:bg-blue-200 bg-white"
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
                     Open
@@ -360,34 +417,40 @@ export default function PublicEventRegistrationPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(codeOfConduct.document_url, '_blank')}
-                    className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                    className="text-blue-700 border-blue-300 hover:bg-blue-200 bg-white"
                   >
                     <Download className="h-4 w-4 mr-1" />
                     Download
                   </Button>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full h-[400px] border-2 border-gray-300 rounded-lg overflow-hidden shadow-inner bg-white">
+            </div>
+            <div className="p-4">
+              <div className="w-full h-[400px] border border-gray-300 rounded-lg overflow-hidden shadow-inner bg-white">
                 <iframe
                   src={`${codeOfConduct.document_url}#toolbar=1&navpanes=1&scrollbar=1`}
                   className="w-full h-full"
                   title="Code of Conduct PDF"
                 />
               </div>
-              <p className="text-sm text-gray-600 mt-3">
+              <p className="text-sm text-blue-700 mt-3">
                 Please review the Code of Conduct document above before confirming.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           <Select value={value} onValueChange={(val) => handleInputChange(field.field_name, val)}>
-            <SelectTrigger {...commonProps}>
-              <SelectValue placeholder="Select to confirm..." />
+            <SelectTrigger className={`h-11 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg ${error ? 'border-red-500' : ''}`}>
+              <SelectValue placeholder="Select to confirm..." className="text-gray-500" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg">
               {field.field_options?.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+                <SelectItem 
+                  key={option} 
+                  value={option}
+                  className="hover:bg-red-50 focus:bg-red-50 cursor-pointer rounded-md"
+                >
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -405,18 +468,31 @@ export default function PublicEventRegistrationPage() {
             value={value}
             onChange={(e) => handleInputChange(field.field_name, e.target.value)}
             onBlur={(e) => { if (field.field_type === 'email') handleEmailBlur(e.target.value); }}
+            className={`h-11 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg ${error ? 'border-red-500' : ''}`}
+            placeholder={`Enter ${field.field_label.toLowerCase()}...`}
           />
         );
       case 'textarea':
-        return <Textarea {...commonProps} value={value} onChange={(e) => handleInputChange(field.field_name, e.target.value)} rows={4} />;
+        return (
+          <Textarea 
+            {...commonProps} 
+            value={value} 
+            onChange={(e) => handleInputChange(field.field_name, e.target.value)} 
+            rows={4}
+            className={`border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg resize-none ${error ? 'border-red-500' : ''}`}
+            placeholder={`Enter ${field.field_label.toLowerCase()}...`}
+          />
+        );
       case 'richtext':
         return (
-          <RichTextEditor
-            value={value}
-            onChange={(content) => handleInputChange(field.field_name, content)}
-            placeholder={`Enter ${field.field_label.toLowerCase()}...`}
-            height={300}
-          />
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
+            <RichTextEditor
+              value={value}
+              onChange={(content) => handleInputChange(field.field_name, content)}
+              placeholder={`Enter ${field.field_label.toLowerCase()}...`}
+              height={300}
+            />
+          </div>
         );
       case 'select':
         // Use countries API for nationality and country fields
@@ -439,19 +515,25 @@ export default function PublicEventRegistrationPage() {
               placeholder={`Select ${field.field_label.toLowerCase()}...`}
               isClearable
               isSearchable
-              className={error ? 'border-red-500 rounded' : ''}
+              className={error ? 'border-red-500 rounded-lg' : ''}
               styles={{
                 control: (base, state) => ({
                   ...base,
-                  borderColor: error ? '#ef4444' : state.isFocused ? '#dc2626' : '#d1d5db',
-                  '&:hover': { borderColor: error ? '#ef4444' : '#dc2626' },
-                  boxShadow: state.isFocused ? '0 0 0 1px #dc2626' : 'none',
+                  minHeight: '44px',
+                  borderRadius: '8px',
+                  borderColor: error ? '#ef4444' : state.isFocused ? '#ef4444' : '#d1d5db',
+                  '&:hover': { borderColor: error ? '#ef4444' : '#ef4444' },
+                  boxShadow: state.isFocused ? '0 0 0 1px #ef4444' : 'none',
                 }),
                 option: (base, state) => ({
                   ...base,
                   backgroundColor: state.isSelected ? '#dc2626' : state.isFocused ? '#fee2e2' : 'white',
                   color: state.isSelected ? 'white' : '#1f2937',
                   '&:hover': { backgroundColor: state.isSelected ? '#dc2626' : '#fee2e2' },
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: '#9ca3af',
                 }),
               }}
             />
@@ -461,23 +543,29 @@ export default function PublicEventRegistrationPage() {
         // Use regular select for fields with fewer options
         return (
           <Select value={value} onValueChange={(val) => handleInputChange(field.field_name, val)}>
-            <SelectTrigger {...commonProps}>
-              <SelectValue placeholder={`Select ${field.field_label.toLowerCase()}...`} />
+            <SelectTrigger className={`h-11 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg ${error ? 'border-red-500' : ''}`}>
+              <SelectValue placeholder={`Select ${field.field_label.toLowerCase()}...`} className="text-gray-500" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white border border-gray-200 shadow-lg rounded-lg">
               {selectOptions?.map((option) => (
-                <SelectItem key={option} value={option}>{option}</SelectItem>
+                <SelectItem 
+                  key={option} 
+                  value={option}
+                  className="hover:bg-red-50 focus:bg-red-50 cursor-pointer rounded-md"
+                >
+                  {option}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
       case 'radio':
         return (
-          <RadioGroup value={value} onValueChange={(val) => handleInputChange(field.field_name, val)}>
+          <RadioGroup value={value} onValueChange={(val) => handleInputChange(field.field_name, val)} className="space-y-3">
             {field.field_options?.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`${field.field_name}-${option}`} />
-                <Label htmlFor={`${field.field_name}-${option}`}>{option}</Label>
+              <div key={option} className="flex items-center space-x-3">
+                <RadioGroupItem value={option} id={`${field.field_name}-${option}`} className="border-gray-300 text-red-600" />
+                <Label htmlFor={`${field.field_name}-${option}`} className="text-sm font-medium text-gray-700 cursor-pointer">{option}</Label>
               </div>
             ))}
           </RadioGroup>
@@ -485,26 +573,49 @@ export default function PublicEventRegistrationPage() {
       case 'checkbox':
         const checkboxValues = Array.isArray(value) ? value : [];
         return (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {field.field_options?.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
+              <div key={option} className="flex items-center space-x-3">
                 <Checkbox
                   id={`${field.field_name}-${option}`}
-                  checked={checkboxValues.includes(option)}
+                  checked={field.field_options?.length === 1 ? value === option : checkboxValues.includes(option)}
                   onCheckedChange={(checked) => {
-                    const newValues = checked ? [...checkboxValues, option] : checkboxValues.filter((v) => v !== option);
-                    handleInputChange(field.field_name, newValues);
+                    // For single checkbox fields like codeOfConductConfirm, store as string
+                    if (field.field_options?.length === 1) {
+                      handleInputChange(field.field_name, checked ? option : '');
+                    } else {
+                      // For multiple checkbox fields, store as array
+                      const newValues = checked ? [...checkboxValues, option] : checkboxValues.filter((v) => v !== option);
+                      handleInputChange(field.field_name, newValues);
+                    }
                   }}
+                  className="border-gray-300 text-red-600"
                 />
-                <Label htmlFor={`${field.field_name}-${option}`}>{option}</Label>
+                <Label htmlFor={`${field.field_name}-${option}`} className="text-sm font-medium text-gray-700 cursor-pointer">{option}</Label>
               </div>
             ))}
           </div>
         );
       case 'date':
-        return <Input {...commonProps} type="date" value={value} onChange={(e) => handleInputChange(field.field_name, e.target.value)} />;
+        return (
+          <Input 
+            {...commonProps} 
+            type="date" 
+            value={value} 
+            onChange={(e) => handleInputChange(field.field_name, e.target.value)}
+            className={`h-11 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg ${error ? 'border-red-500' : ''}`}
+          />
+        );
       default:
-        return <Input {...commonProps} value={value} onChange={(e) => handleInputChange(field.field_name, e.target.value)} />;
+        return (
+          <Input 
+            {...commonProps} 
+            value={value} 
+            onChange={(e) => handleInputChange(field.field_name, e.target.value)}
+            className={`h-11 border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-lg ${error ? 'border-red-500' : ''}`}
+            placeholder={`Enter ${field.field_label.toLowerCase()}...`}
+          />
+        );
     }
   };
 
@@ -598,75 +709,67 @@ export default function PublicEventRegistrationPage() {
   const isDeadlinePassed = event?.registration_deadline && new Date() > new Date(event.registration_deadline);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-2">
-      <div className="w-full space-y-3 px-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">MSF</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">{event?.title}</h1>
+                <p className="text-sm text-gray-600">Event Registration Form</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                <span className="hidden sm:inline">{new Date(event!.start_date).toLocaleDateString()} - {new Date(event!.end_date).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MapPin className="w-4 h-4" />
+                <span className="hidden sm:inline">{event?.location}</span>
+              </div>
+            </div>
+          </div>
+          {event?.registration_deadline && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-800">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm font-medium">Registration Deadline: {new Date(event.registration_deadline).toLocaleString()} (Africa/Nairobi)</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {isDeadlinePassed && !showTravelSection && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800 font-medium">
-              Registration deadline has passed. New registrations are no longer accepted. Only selected participants can submit travel information.
-            </AlertDescription>
-          </Alert>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertCircle className="w-5 h-5" />
+              <span className="font-medium">Registration deadline has passed. New registrations are no longer accepted.</span>
+            </div>
+          </div>
         )}
         
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-indigo-50">
-          <CardHeader className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-sm sm:text-lg">MSF</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <CardTitle className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 break-words">{event?.title}</CardTitle>
-                <p className="text-gray-600 mt-1 text-sm sm:text-base">Event Registration Form</p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 bg-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm min-w-0">
-                <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
-                <span className="truncate">{new Date(event!.start_date).toLocaleDateString()} - {new Date(event!.end_date).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm min-w-0">
-                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
-                <span className="truncate">{event?.location}</span>
-              </div>
-              {event?.registration_deadline && (
-                <div className="flex items-center gap-2 bg-amber-50 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm text-amber-700 min-w-0">
-                  <Clock className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="truncate">Deadline: {new Date(event.registration_deadline).toLocaleString()} (Africa/Nairobi)</span>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-        </Card>
-
         {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
-          </Alert>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertCircle className="w-5 h-5" />
+              <span>{error}</span>
+            </div>
+          </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {sectionedFields.map(({ name, title, icon: Icon, fields }) => {
+            // Completely hide travel section if not available
             if (name === 'travel' && !showTravelSection) {
-              return (
-                <Card key={name} className="border-dashed border-2 border-gray-300 bg-gray-50">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-6 h-6 text-gray-400" />
-                      <CardTitle className="text-xl text-gray-500">{title}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Alert className="border-blue-200 bg-blue-50">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-blue-800">
-                        This section will be available after you are selected for the event.
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
-                </Card>
-              );
+              return null;
             }
             
             // Hide non-travel sections if deadline passed and user is not selected
@@ -675,54 +778,62 @@ export default function PublicEventRegistrationPage() {
             }
 
             return (
-              <Card key={name} className="border-0 shadow-lg">
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" />
-                    <CardTitle className="text-lg sm:text-xl lg:text-2xl">{title}</CardTitle>
+              <div key={name} className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-red-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4 p-4 sm:p-6">
+                </div>
+                <div className="p-6 space-y-6">
                   {fields.map((field) => (
                     <div key={field.id} className="space-y-2">
-                      <Label htmlFor={`field-${field.field_name}`} className="text-sm font-medium">
-                        <span className="text-gray-500 text-xs mr-2">#{field.order_index}</span>
+                      <label htmlFor={`field-${field.field_name}`} className="block text-sm font-medium text-gray-700">
                         {field.field_label}
                         {field.is_required && <span className="text-red-500 ml-1">*</span>}
-                      </Label>
-                      {renderField(field)}
+                      </label>
+                      <div className="relative">
+                        {renderField(field)}
+                      </div>
                       {errors[field.field_name] && (
-                        <p className="text-red-500 text-sm">{errors[field.field_name]}</p>
+                        <p className="text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {errors[field.field_name]}
+                        </p>
                       )}
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
 
-          {/* Only show submit button if deadline not passed OR if user is selected and can submit travel info */}
+          {/* Submit Button */}
           {(!isDeadlinePassed || showTravelSection) && (
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-blue-50">
-              <CardContent className="p-4 sm:p-6">
-                <Button type="submit" disabled={submitting} className="w-full bg-green-600 hover:bg-green-700 text-white text-base sm:text-lg py-4 sm:py-6">
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      Submitting {showTravelSection ? 'Travel Information' : 'Registration'}...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-5 h-5 mr-2" />
-                      Submit {showTravelSection ? 'Travel Information' : 'Registration'}
-                    </>
-                  )}
-                </Button>
-                <p className="text-center text-sm text-gray-600 mt-4">
-                  By submitting, you confirm that all information provided is accurate and complete.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <Button 
+                type="submit" 
+                disabled={submitting} 
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-4 text-base rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Submitting {showTravelSection ? 'Travel Information' : 'Registration'}...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 mr-2" />
+                    Submit {showTravelSection ? 'Travel Information' : 'Registration'}
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-sm text-gray-500 mt-3">
+                By submitting, you confirm that all information provided is accurate and complete.
+              </p>
+            </div>
           )}
         </form>
 
@@ -730,11 +841,11 @@ export default function PublicEventRegistrationPage() {
         {showScrollTop && (
           <Button
             onClick={scrollToTop}
-            className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-2xl transition-all duration-300 hover:scale-110"
+            className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg transition-all duration-300 hover:scale-110"
             size="icon"
             aria-label="Scroll to top"
           >
-            <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
+            <ArrowUp className="h-5 w-5" />
           </Button>
         )}
       </div>

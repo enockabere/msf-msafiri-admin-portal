@@ -37,7 +37,6 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
   const formSections = [
     { id: 'personal', title: 'Personal Information', range: '101-199' },
     { id: 'contact', title: 'Contact Details', range: '201-299' },
-    { id: 'travel', title: 'Travel & Accommodation', range: '301-399' },
     { id: 'final', title: 'Final Details', range: '401-499' }
   ];
 
@@ -81,7 +80,40 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
         }
       } else {
         console.log("✅ Setting fields to state");
-        setFields(response);
+        
+        // Filter out unwanted fields and auto-configure pronouns fields
+        const unwantedFields = [
+          "travellingInternationally",
+          "travellingFromCountry", 
+          "accommodationType",
+          "accommodationNeeds",
+          "dietaryRequirements",
+          "certificateName",
+          "badgeName",
+          "travelRequirementsConfirmation"
+        ];
+        
+        const configuredFields = response
+          .filter(field => !unwantedFields.includes(field.field_name))
+          .map(field => {
+            if (field.field_name === "pronouns" && field.field_type === "text") {
+              return {
+                ...field,
+                field_type: "select",
+                field_options: ["Mr", "Mrs", "Miss", "Ms", "Dr", "Prof", "Prefer not to say"]
+              };
+            }
+            if (field.field_name === "codeOfConductConfirm" && field.field_type === "checkbox") {
+              return {
+                ...field,
+                field_type: "select",
+                field_options: ["I agree", "I do not agree"]
+              };
+            }
+            return field;
+          });
+        
+        setFields(configuredFields);
         
         // Auto-fix duplicates and missing fields
         await autoFixFormIssues();
@@ -130,7 +162,40 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
       
       // Reload fields if any changes were made
       const updatedResponse = await apiClient.request<FormField[]>(`/form-fields/events/${eventId}/form-fields`);
-      setFields(updatedResponse);
+      
+      // Filter out unwanted fields and auto-configure pronouns fields after reload
+      const unwantedFields = [
+        "travellingInternationally",
+        "travellingFromCountry", 
+        "accommodationType",
+        "accommodationNeeds",
+        "dietaryRequirements",
+        "certificateName",
+        "badgeName",
+        "travelRequirementsConfirmation"
+      ];
+      
+      const configuredFields = updatedResponse
+        .filter(field => !unwantedFields.includes(field.field_name))
+        .map(field => {
+          if (field.field_name === "pronouns" && field.field_type === "text") {
+            return {
+              ...field,
+              field_type: "select",
+              field_options: ["Mr", "Mrs", "Miss", "Ms", "Dr", "Prof", "Prefer not to say"]
+            };
+          }
+          if (field.field_name === "codeOfConductConfirm" && field.field_type === "checkbox") {
+            return {
+              ...field,
+              field_type: "select",
+              field_options: ["I agree", "I do not agree"]
+            };
+          }
+          return field;
+        });
+      
+      setFields(configuredFields);
       
     } catch (error) {
       console.log("ℹ️ Auto-fix completed with some issues:", error);
@@ -259,13 +324,13 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
     console.log("🔵 Add Field button clicked!");
     console.log("Current fields count:", fields.length);
 
-    // Find the highest order_index in the personal section
-    const personalFields = fields.filter(f => f.section === 'personal');
-    console.log("Personal section fields:", personalFields.length);
+    // Find the highest order_index in the contact section
+    const contactFields = fields.filter(f => f.section === 'contact');
+    console.log("Contact section fields:", contactFields.length);
 
-    const maxOrderIndex = personalFields.length > 0
-      ? Math.max(...personalFields.map(f => f.order_index))
-      : 100;
+    const maxOrderIndex = contactFields.length > 0
+      ? Math.max(...contactFields.map(f => f.order_index))
+      : 200;
 
     console.log("Max order index:", maxOrderIndex);
 
@@ -276,7 +341,7 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
       field_type: "text",
       is_required: false,
       order_index: maxOrderIndex + 1,
-      section: 'personal',
+      section: 'contact',
       is_protected: false,
       is_active: true,
     };
@@ -297,6 +362,17 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
 
   const updateField = (index: number, updates: Partial<FormField>) => {
     const updatedFields = [...fields];
+    
+    // Auto-configure pronouns field when field_name is "pronouns"
+    if (updatedFields[index].field_name === "pronouns" && updates.field_type === "select" && !updates.field_options) {
+      updates.field_options = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Prof", "Prefer not to say"];
+    }
+    
+    // Auto-configure Code of Conduct field when field_name is "codeOfConductConfirm"
+    if (updatedFields[index].field_name === "codeOfConductConfirm" && updates.field_type === "select" && !updates.field_options) {
+      updates.field_options = ["I agree", "I do not agree"];
+    }
+    
     updatedFields[index] = { ...updatedFields[index], ...updates };
     setFields(updatedFields);
   };
@@ -313,10 +389,6 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
       "genderIdentity",
       "personalEmail",
       "phoneNumber",
-      "travellingInternationally",
-      "travellingFromCountry",
-      "accommodationType",
-      "dietaryRequirements",
       "codeOfConductConfirm"  // Code of Conduct field must not be deleted
     ];
     if (protectedFields.includes(field.field_name) || field.is_protected) {
@@ -423,8 +495,7 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
     
     // Update order_index for section fields
     const sectionStart = field.section === 'personal' ? 101 : 
-                        field.section === 'contact' ? 201 :
-                        field.section === 'travel' ? 301 : 401;
+                        field.section === 'contact' ? 201 : 401;
     
     reordered.forEach((f, i) => {
       f.order_index = sectionStart + i;
@@ -446,8 +517,7 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
     formSections.forEach(section => {
       const sectionFields = fieldList.filter(f => f.section === section.id).sort((a, b) => a.order_index - b.order_index);
       const sectionStart = section.id === 'personal' ? 101 : 
-                          section.id === 'contact' ? 201 :
-                          section.id === 'travel' ? 301 : 401;
+                          section.id === 'contact' ? 201 : 401;
       
       sectionFields.forEach((field, i) => {
         field.order_index = sectionStart + i;
@@ -598,12 +668,12 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                   size="sm"
                   onClick={() => removeField(index)}
                   className={`${
-                    field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber", "travellingInternationally", "travellingFromCountry", "accommodationType", "dietaryRequirements"].includes(field.field_name)
+                    field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber"].includes(field.field_name)
                       ? "text-gray-400 cursor-not-allowed"
                       : "text-red-500 hover:text-red-700"
                   }`}
-                  disabled={field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber", "travellingInternationally", "travellingFromCountry", "accommodationType", "dietaryRequirements"].includes(field.field_name)}
-                  title={field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber", "travellingInternationally", "travellingFromCountry", "accommodationType", "dietaryRequirements"].includes(field.field_name) ? "This field cannot be deleted" : "Delete field"}
+                  disabled={field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber"].includes(field.field_name)}
+                  title={field.is_protected || ["firstName", "lastName", "oc", "contractStatus", "genderIdentity", "personalEmail", "phoneNumber"].includes(field.field_name) ? "This field cannot be deleted" : "Delete field"}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -635,15 +705,15 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="textarea">Textarea</SelectItem>
-                        <SelectItem value="richtext">Rich Text Editor</SelectItem>
-                        <SelectItem value="select">Select Dropdown</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="radio">Radio Buttons</SelectItem>
-                        <SelectItem value="date">Date Picker</SelectItem>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                        <SelectItem value="text" className="hover:bg-gray-100 focus:bg-gray-100">Text</SelectItem>
+                        <SelectItem value="email" className="hover:bg-gray-100 focus:bg-gray-100">Email</SelectItem>
+                        <SelectItem value="textarea" className="hover:bg-gray-100 focus:bg-gray-100">Textarea</SelectItem>
+                        <SelectItem value="richtext" className="hover:bg-gray-100 focus:bg-gray-100">Rich Text Editor</SelectItem>
+                        <SelectItem value="select" className="hover:bg-gray-100 focus:bg-gray-100">Select Dropdown</SelectItem>
+                        <SelectItem value="checkbox" className="hover:bg-gray-100 focus:bg-gray-100">Checkbox</SelectItem>
+                        <SelectItem value="radio" className="hover:bg-gray-100 focus:bg-gray-100">Radio Buttons</SelectItem>
+                        <SelectItem value="date" className="hover:bg-gray-100 focus:bg-gray-100">Date Picker</SelectItem>
                       </SelectContent>
                     </Select>
                     {field.field_options && field.field_options.includes('API_COUNTRIES') && (
@@ -662,7 +732,6 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                       const sectionRanges = {
                         'personal': 150,
                         'contact': 250,
-                        'travel': 350,
                         'final': 450
                       };
                       updateField(index, { 
@@ -674,9 +743,9 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-gray-200 shadow-lg">
                       {formSections.map(section => (
-                        <SelectItem key={section.id} value={section.id}>
+                        <SelectItem key={section.id} value={section.id} className="hover:bg-gray-100 focus:bg-gray-100">
                           {section.title} ({section.range})
                         </SelectItem>
                       ))}
@@ -693,8 +762,7 @@ export default function FormBuilder({ eventId, onSave }: FormBuilderProps) {
                       const newPos = parseInt(e.target.value);
                       if (newPos && newPos > 0) {
                         const sectionStart = field.section === 'personal' ? 101 : 
-                                            field.section === 'contact' ? 201 :
-                                            field.section === 'travel' ? 301 : 401;
+                                            field.section === 'contact' ? 201 : 401;
                         updateField(index, { order_index: sectionStart + newPos - 1 });
                       } else if (!e.target.value) {
                         updateField(index, { order_index: 0 });

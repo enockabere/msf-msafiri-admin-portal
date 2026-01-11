@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
@@ -218,31 +218,28 @@ export default function UsefulContactsPage() {
     user?.role && ["super_admin", "mt_admin", "hr_admin"].includes(user.role);
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header - Simplified like Vendor Hotels */}
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <User className="w-6 h-6 text-white" />
+    <div className="space-y-4">
+      {/* Header Section - Match badges page design */}
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <User className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 mb-1">
-                  Useful Contacts
-                </h1>
-                <p className="text-sm text-gray-600">
-                  Manage important organizational contacts
-                </p>
+                <h1 className="text-base font-medium text-gray-900 dark:text-white">Useful Contacts</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Manage important organizational contacts</p>
               </div>
             </div>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button
                   onClick={resetForm}
-                  className="bg-red-600 hover:bg-red-700 text-white shadow-lg font-medium h-10 px-4 text-sm"
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 text-xs"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="w-3 h-3 mr-2" />
                   Add Contact
                 </Button>
               </DialogTrigger>
@@ -422,9 +419,10 @@ export default function UsefulContactsPage() {
             </Dialog>
           </div>
         </div>
+      </Card>
 
-        {/* Contact Cards */}
-        {loading ? (
+      {/* Contact Cards */}
+      {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="text-center space-y-4">
               <div className="relative inline-block">
@@ -561,7 +559,6 @@ export default function UsefulContactsPage() {
             ))}
           </div>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import DashboardLayout from '@/components/layout/dashboard-layout';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -177,115 +177,115 @@ export default function CodeOfConductPage() {
 
   if (isLoading || (loading && !currentCode)) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[600px]">
-          <div className="text-center">
-            <RefreshCw className="h-12 w-12 text-red-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 text-lg">Loading Code of Conduct...</p>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <FileCheck className="w-6 h-6 text-red-600 animate-pulse" />
+            </div>
+          </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading Code of Conduct...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header Section - matching vendor hotels design */}
-        <Card className="rounded-2xl p-6 border-2" style={{
-          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #f3e8ff 100%)',
-          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-        }}>
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <FileCheck className="w-6 h-6 text-blue-600" />
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <FileCheck className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold mb-2" style={{
-                  color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
-                }}>Code of Conduct</h1>
-                <p className="text-sm" style={{
-                  color: mounted && theme === 'dark' ? '#d1d5db' : '#4b5563'
-                }}>Manage your organization's code of conduct document</p>
+                <h1 className={`text-base font-medium ${mounted && theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Code of Conduct</h1>
+                <p className={`text-xs ${mounted && theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Manage your organization's code of conduct document</p>
               </div>
             </div>
             {currentCode?.document_url && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800 border border-green-300">
-                <CheckCircle className="h-4 w-4 mr-2" />
+              <Badge variant="secondary" className="bg-green-100 text-green-800 border border-green-300 text-xs">
+                <CheckCircle className="h-3 w-3 mr-1" />
                 Document Active
               </Badge>
             )}
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {/* Document Info Card - Only show if document exists */}
-        {currentCode && (
-          <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
-            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
-            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-          }}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4 text-red-600" />
-                Document Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 rounded-lg p-2 mt-0.5">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium mb-1" style={{
-                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                    }}>Created</p>
-                    <p className="text-sm" style={{
-                      color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
-                    }}>{formatDate(currentCode.created_at)}</p>
-                    <p className="text-xs mt-0.5" style={{
-                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                    }}>by {currentCode.created_by}</p>
-                  </div>
+      {/* Document Info Card - Only show if document exists */}
+      {currentCode && (
+        <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <FileText className="h-3 w-3 text-red-600" />
+              Document Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-start gap-2">
+                <div className="bg-red-100 rounded-lg p-1.5 mt-0.5">
+                  <Calendar className="h-3 w-3 text-red-600" />
                 </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="bg-purple-100 rounded-lg p-2 mt-0.5">
-                    <Clock className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium mb-1" style={{
-                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                    }}>Last Updated</p>
-                    <p className="text-sm" style={{
-                      color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
-                    }}>{formatDate(currentCode.updated_at)}</p>
-                    {currentCode.updated_by && (
-                      <p className="text-xs mt-0.5" style={{
-                        color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                      }}>by {currentCode.updated_by}</p>
-                    )}
-                  </div>
+                <div>
+                  <p className="text-xs font-medium mb-0.5" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                  }}>Created</p>
+                  <p className="text-xs" style={{
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                  }}>{formatDate(currentCode.created_at)}</p>
+                  <p className="text-xs mt-0.5" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                  }}>by {currentCode.created_by}</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Upload Section */}
-          <Card className="lg:col-span-1 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
-            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
-            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-          }}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Upload className="h-4 w-4 text-red-600" />
-                Document Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
+              <div className="flex items-start gap-2">
+                <div className="bg-red-100 rounded-lg p-1.5 mt-0.5">
+                  <Clock className="h-3 w-3 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium mb-0.5" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                  }}>Last Updated</p>
+                  <p className="text-xs" style={{
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#111827'
+                  }}>{formatDate(currentCode.updated_at)}</p>
+                  {currentCode.updated_by && (
+                    <p className="text-xs mt-0.5" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }}>by {currentCode.updated_by}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Upload Section */}
+        <Card className="lg:col-span-1 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Upload className="h-3 w-3 text-red-600" />
+              Document Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 space-y-3">
               {!currentCode?.document_url ? (
                 <div className="border-2 border-dashed rounded-xl p-6 text-center transition-colors" style={{
                   borderColor: mounted && theme === 'dark' ? '#4b5563' : '#d1d5db',
@@ -394,81 +394,80 @@ export default function CodeOfConductPage() {
             </CardContent>
           </Card>
 
-          {/* PDF Viewer */}
-          <Card className="lg:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
-            background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #dbeafe 100%)',
-            borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-          }}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-4 w-4 text-red-600" />
-                  Document Preview
-                </CardTitle>
-                {currentCode?.document_url && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => window.open(currentCode.document_url, '_blank')}
-                    className="text-blue-600 hover:text-blue-800 text-xs"
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Open in new tab
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-4">
-              {currentCode?.document_url ? (
-                <div className="w-full h-[600px] border-2 rounded-xl overflow-hidden shadow-inner" style={{
-                  borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
-                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
-                }}>
-                  <iframe
-                    src={`${currentCode.document_url}#toolbar=1&navpanes=1`}
-                    className="w-full h-full"
-                    title="Code of Conduct PDF"
-                    onError={() => {
-                      console.error('Failed to load PDF in iframe');
-                      toast.error('Failed to load PDF preview. Try opening in a new tab.');
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="w-full h-[600px] border-2 border-dashed rounded-xl flex items-center justify-center" style={{
-                  borderColor: mounted && theme === 'dark' ? '#4b5563' : '#d1d5db',
-                  backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
-                }}>
-                  <div className="text-center max-w-md">
-                    <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4" style={{
-                      backgroundColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
-                    }}>
-                      <AlertCircle className="h-8 w-8" style={{
-                        color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
-                      }} />
-                    </div>
-                    <h3 className="text-base font-semibold mb-2" style={{
-                      color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
-                    }}>No Document Available</h3>
-                    <p className="text-sm mb-4" style={{
-                      color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
-                    }}>Upload a PDF document to preview it here</p>
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                      size="sm"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload Now
-                    </Button>
-                  </div>
-                </div>
+        {/* PDF Viewer */}
+        <Card className="lg:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-0" style={{
+          background: mounted && theme === 'dark' ? '#000000' : 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)',
+          borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+        }}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <FileText className="h-3 w-3 text-red-600" />
+                Document Preview
+              </CardTitle>
+              {currentCode?.document_url && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => window.open(currentCode.document_url, '_blank')}
+                  className="text-red-600 hover:text-red-800 text-xs"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Open in new tab
+                </Button>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3">
+            {currentCode?.document_url ? (
+              <div className="w-full h-[500px] border-2 rounded-xl overflow-hidden shadow-inner" style={{
+                borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
+                backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+              }}>
+                <iframe
+                  src={`${currentCode.document_url}#toolbar=1&navpanes=1`}
+                  className="w-full h-full"
+                  title="Code of Conduct PDF"
+                  onError={() => {
+                    console.error('Failed to load PDF in iframe');
+                    toast.error('Failed to load PDF preview. Try opening in a new tab.');
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-[500px] border-2 border-dashed rounded-xl flex items-center justify-center" style={{
+                borderColor: mounted && theme === 'dark' ? '#4b5563' : '#d1d5db',
+                backgroundColor: mounted && theme === 'dark' ? '#1f2937' : '#f9fafb'
+              }}>
+                <div className="text-center max-w-md">
+                  <div className="rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3" style={{
+                    backgroundColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb'
+                  }}>
+                    <AlertCircle className="h-6 w-6" style={{
+                      color: mounted && theme === 'dark' ? '#9ca3af' : '#6b7280'
+                    }} />
+                  </div>
+                  <h3 className="text-sm font-semibold mb-2" style={{
+                    color: mounted && theme === 'dark' ? '#d1d5db' : '#374151'
+                  }}>No Document Available</h3>
+                  <p className="text-xs mb-3" style={{
+                    color: mounted && theme === 'dark' ? '#9ca3af' : '#4b5563'
+                  }}>Upload a PDF document to preview it here</p>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                    size="sm"
+                  >
+                    <Upload className="h-3 w-3 mr-2" />
+                    Upload Now
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

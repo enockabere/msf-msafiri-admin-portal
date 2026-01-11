@@ -30,6 +30,7 @@ const TEMPLATE_VARIABLES = [
   { variable: '{{eventName}}', description: 'Event name' },
   { variable: '{{eventDates}}', description: 'Event dates' },
   { variable: '{{confirmationNumber}}', description: 'Booking confirmation number' },
+  { variable: '{{tenantName}}', description: 'Organization/Tenant name' },
   { variable: '{{hotelLogo}}', description: 'Hotel logo image' },
   { variable: '{{signature}}', description: 'Signature image' },
   { variable: '{{qrCode}}', description: 'QR code for verification' },
@@ -55,6 +56,9 @@ export function AccommodationTemplateEditor({
   useEffect(() => {
     if (editorRef.current) {
       const isDark = theme === 'dark';
+      
+      // Only update if the content is significantly different to avoid cursor jumping
+      const currentContent = editorRef.current.innerHTML;
       
       if (!value || value.trim() === '') {
         const defaultTemplate = `
@@ -104,7 +108,7 @@ export function AccommodationTemplateEditor({
 
           <p style="color: ${isDark ? '#ffffff' : '#000000'};">Please present this document along with your ID at the hotel reception upon check-in.</p>
 
-          <p style="margin-top: 40px; color: ${isDark ? '#ffffff' : '#000000'};">Best regards,<br>\{\{signature\}\}<br><strong>MSF Event Team</strong></p>
+          <p style="margin-top: 40px; color: ${isDark ? '#ffffff' : '#000000'};">Best regards,<br>\{\{signature\}\}<br><strong>\{\{tenantName\}\} Event Team</strong></p>
           
           <div style="position: relative; margin-top: 50px;">
             <div style="position: absolute; bottom: 0; right: 0;">\{\{qrCode\}\}</div>
@@ -112,59 +116,15 @@ export function AccommodationTemplateEditor({
         `;
         editorRef.current.innerHTML = defaultTemplate;
         onChange(defaultTemplate);
-      } else {
-        // Update existing content colors for theme changes
-        let updatedContent = value;
-        
-        // Update accommodation details background
-        updatedContent = updatedContent.replace(
-          /background:\s*#f3f4f6/g,
-          `background: ${isDark ? '#000000' : '#f3f4f6'}`
-        );
-        
-        updatedContent = updatedContent.replace(
-          /background:\s*#374151/g,
-          `background: ${isDark ? '#000000' : '#f3f4f6'}`
-        );
-        
-        // Update text colors in accommodation details
-        updatedContent = updatedContent.replace(
-          /color:\s*#1f2937/g,
-          `color: ${isDark ? '#ffffff' : '#1f2937'}`
-        );
-        
-        // Update general text colors
-        updatedContent = updatedContent.replace(
-          /<p style="([^"]*)"/g,
-          (match, styles) => {
-            if (!styles.includes('color:')) {
-              return `<p style="${styles}; color: ${isDark ? '#ffffff' : '#000000'}"`;
-            }
-            return match;
-          }
-        );
-        
-        // Update table cell colors
-        updatedContent = updatedContent.replace(
-          /<td style="padding: 8px 0;([^"]*)"/g,
-          (match, styles) => {
-            const hasColor = styles.includes('color:');
-            if (!hasColor) {
-              return `<td style="padding: 8px 0;${styles} color: ${isDark ? '#ffffff' : '#000000'}"`;
-            }
-            return match;
-          }
-        );
-        
-        if (updatedContent !== value) {
-          editorRef.current.innerHTML = updatedContent;
-          onChange(updatedContent);
-        } else {
+      } else if (currentContent !== value) {
+        // Only update if content is different and not currently being edited
+        const isEditing = document.activeElement === editorRef.current;
+        if (!isEditing) {
           editorRef.current.innerHTML = value;
         }
       }
     }
-  }, dependencies);
+  }, [value, hotelName, theme, onChange]);
 
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -249,7 +209,26 @@ export function AccommodationTemplateEditor({
 
   const handleInput = () => {
     if (editorRef.current) {
+      // Save cursor position before updating
+      const selection = window.getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      const cursorOffset = range ? range.startOffset : 0;
+      const cursorNode = range ? range.startContainer : null;
+      
       onChange(editorRef.current.innerHTML);
+      
+      // Restore cursor position after update
+      if (cursorNode && selection && range) {
+        try {
+          range.setStart(cursorNode, Math.min(cursorOffset, cursorNode.textContent?.length || 0));
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } catch (e) {
+          // If cursor restoration fails, just focus the editor
+          editorRef.current?.focus();
+        }
+      }
     }
   };
 

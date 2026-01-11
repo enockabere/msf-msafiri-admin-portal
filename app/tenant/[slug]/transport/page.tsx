@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth, useAuthenticatedApi } from "@/lib/auth";
-import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -603,75 +602,71 @@ export default function TransportPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-6">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto shadow-lg"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Car className="w-8 h-8 text-blue-600 animate-pulse" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-lg font-bold text-gray-900">Loading Transport Data</p>
-              <p className="text-sm text-gray-600">Please wait while we fetch your transport requests...</p>
+      <div className="w-full h-full flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="relative inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-100 border-t-red-600"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Car className="w-6 h-6 text-red-600 animate-pulse" />
             </div>
           </div>
+          <div>
+            <p className="text-base font-medium text-gray-900 dark:text-white">Loading transport data...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Please wait while we fetch the data</p>
+          </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header - Simplified like Vendor Hotels */}
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-gray-100">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                <Car className="w-6 h-6 text-white" />
+    <div className="space-y-4">
+      {/* Header Section - Match badges page design */}
+      <Card className="relative overflow-hidden bg-white dark:bg-gray-900 border-0 shadow-lg hover:shadow-xl transition-all duration-300 ring-1 ring-gray-200 dark:ring-gray-800">
+        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-400/20 dark:via-red-400/10 dark:to-transparent"></div>
+        <div className="relative p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-red-500/25 group-hover:scale-110 transition-all duration-300">
+                <Car className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">Transport Management</h1>
-                <p className="text-sm text-gray-600">Manage and coordinate transport booking requests</p>
-                <div className="flex items-center gap-4 mt-2">
-                  <span className="text-xs text-gray-500">{transportStats.total} Total Requests</span>
-                  <span className="text-xs text-gray-500">{transportStats.new} New</span>
-                </div>
+                <h1 className="text-base font-medium text-gray-900 dark:text-white">Transport Management</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Manage and coordinate transport booking requests</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
               <Button
                 onClick={fetchData}
                 disabled={loading}
                 variant="outline"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50 h-10 px-4 text-sm"
+                className="border-gray-300 hover:bg-gray-50 px-3 py-2 text-xs"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3 h-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
               {transportProvider?.is_enabled && poolingSuggestions.length > 0 && (
                 <Button
                   onClick={() => setShowPoolingModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 text-sm font-medium"
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 text-xs"
                 >
-                  <Combine className="w-4 h-4 mr-2" />
+                  <Combine className="w-3 h-3 mr-2" />
                   Pool Requests ({poolingSuggestions.length})
                 </Button>
               )}
               {!transportProvider?.is_enabled && (
                 <Button
                   onClick={() => window.location.href = `/tenant/${tenantSlug}/transport-setup`}
-                  className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4 text-sm font-medium"
+                  className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 text-xs"
                 >
-                  <Settings className="w-4 h-4 mr-2" />
+                  <Settings className="w-3 h-3 mr-2" />
                   Setup Transport
                 </Button>
               )}
             </div>
           </div>
         </div>
+      </Card>
 
         {/* Transport Provider Status */}
         {!transportProvider?.is_enabled && (
@@ -1670,6 +1665,5 @@ export default function TransportPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
-  );
-}
+    );
+  }

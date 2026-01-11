@@ -7,6 +7,7 @@ import { signIn, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -52,6 +53,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "next-themes";
 import { SuperAdminFooter } from "@/components/layout/SuperAdminFooter";
+import { LoadingScreen } from "@/components/ui/loading";
 
 // API URL helper
 const getApiUrl = (): string => {
@@ -106,8 +108,6 @@ export default function LoginComponent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
-  console.log('LoginComponent theme:', theme);
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -138,16 +138,11 @@ export default function LoginComponent() {
     const observer = new MutationObserver(() => {
       const htmlClass = document.documentElement.className;
       const bodyClass = document.body.className;
-      console.log('HTML classes:', htmlClass);
-      console.log('Body classes:', bodyClass);
-      console.log('Has dark class:', htmlClass.includes('dark'));
       
       // Check if Tailwind dark mode is working
       const testElement = document.querySelector('.dark\\:text-slate-100');
       if (testElement) {
         const computedStyle = window.getComputedStyle(testElement);
-        console.log('Test element color:', computedStyle.color);
-        console.log('Test element classes:', testElement.className);
       }
     });
     
@@ -164,16 +159,16 @@ export default function LoginComponent() {
       const healthUrl = `${url.replace("/api/v1", "")}/health`;
       const response = await fetch(healthUrl, {
         method: "GET",
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(3000), // Reduced timeout
       });
 
       if (response.ok) {
         setIsApiConnected(true);
       } else {
-        setIsApiConnected(false);
+        setIsApiConnected(true); // Allow login attempt even if health check fails
       }
     } catch (error) {
-      setIsApiConnected(false);
+      setIsApiConnected(true); // Allow login attempt even if health check fails
     }
   };
 
@@ -231,9 +226,13 @@ export default function LoginComponent() {
 
       if (result?.error) {
         if (result.error === "CredentialsSignin") {
-          throw new Error(
-            "Invalid email or password. Please check your credentials."
-          );
+          // Check if it's a server error vs invalid credentials
+          const lastError = sessionStorage.getItem('lastLoginError');
+          if (lastError && lastError.includes('500')) {
+            throw new Error("Database connection error. Please try again later.");
+          } else {
+            throw new Error("Invalid email or password. Please check your credentials.");
+          }
         }
         throw new Error("Login failed. Please try again.");
       }
@@ -265,16 +264,7 @@ export default function LoginComponent() {
     };
 
   if (!mounted || status === "loading") {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white border shadow-xl rounded-lg p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-slate-600" />
-            <p className="text-slate-600">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Loading..." />;
   }
 
   return (
@@ -335,9 +325,16 @@ export default function LoginComponent() {
             
             {/* Alert Messages */}
             {error && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className={theme === 'dark' ? 'bg-red-900/20 border-red-800 text-red-200' : 'bg-red-50 border-red-200 text-red-800'}>
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription className={theme === 'dark' ? 'text-red-200' : 'text-red-800'}>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {!isApiConnected && (
+              <Alert className="border-yellow-500 bg-yellow-50 text-yellow-900">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>API health check failed, but you can still try to login.</AlertDescription>
               </Alert>
             )}
 
@@ -390,12 +387,12 @@ export default function LoginComponent() {
               <Button 
                 onClick={handleCredentialLogin}
                 disabled={isLoading || !isApiConnected}
-                className={`font-medium ${theme === 'dark' ? 'bg-white text-black hover:bg-gray-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                className={`font-medium transition-colors ${theme === 'dark' ? 'bg-white text-black hover:bg-gray-200' : 'bg-black text-white hover:bg-gray-800'}`}
               >
                 {isLoading && loginMethod === "credentials" ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin text-white dark:text-slate-900" />Signing in...</>
                 ) : (
-                  "Sign In"
+                  <><LogIn className="mr-2 h-4 w-4" />Sign In</>
                 )}
               </Button>
               <div className="flex items-center gap-4 before:h-px before:flex-1 before:bg-slate-300 after:h-px after:flex-1 after:bg-slate-300">

@@ -373,22 +373,23 @@ export default function EventDetailsModal({
           if (response.ok) {
             const data = await response.json();
             const apiStatus = data.vetting_status;
-            // Map API enum values to frontend expected values
-            let mappedStatus = 'pending';
-            if (apiStatus === 'SUBMITTED_FOR_APPROVAL') {
-              mappedStatus = 'submitted';
+            
+            // Simplified mapping: only Open, Pending Approval, Approved
+            let mappedStatus = 'open';
+            if (apiStatus === 'SUBMITTED_FOR_APPROVAL' || apiStatus === 'PENDING_APPROVAL') {
+              mappedStatus = 'pending_approval';
             } else if (apiStatus === 'APPROVED') {
               mappedStatus = 'approved';
-            } else if (apiStatus === 'REJECTED') {
-              mappedStatus = 'rejected';
             }
             setVettingStatus(mappedStatus);
+          } else {
+            setVettingStatus('open');
           }
-        } catch {
-          setVettingStatus('pending');
+        } catch (error) {
+          setVettingStatus('open');
         }
         
-        // Check if vetting committee exists for this event
+        // Check if vetting committee exists for this event and get its status
         try {
           const committeeResponse = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/api/v1/vetting-committee/event/${event.id}`,
@@ -400,15 +401,27 @@ export default function EventDetailsModal({
           );
           
           if (committeeResponse.ok) {
+            const committeeData = await committeeResponse.json();
             setVettingCommitteeExists(true);
-            console.log('Vetting committee exists for event', event.id);
+            
+            // If we have committee data with status, use that to override vetting status
+            if (committeeData.status) {
+              // Simplified mapping: only Open, Pending Approval, Approved
+              if (committeeData.status === 'SUBMITTED_FOR_APPROVAL' || 
+                  committeeData.status === 'PENDING_APPROVAL' ||
+                  committeeData.status === 'pending_approval') {
+                setVettingStatus('pending_approval');
+              } else if (committeeData.status === 'APPROVED' || committeeData.status === 'approved') {
+                setVettingStatus('approved');
+              } else {
+                setVettingStatus('open');
+              }
+            }
           } else {
             setVettingCommitteeExists(false);
-            console.log('No vetting committee found for event', event.id);
           }
-        } catch {
+        } catch (error) {
           setVettingCommitteeExists(false);
-          console.log('Error checking vetting committee for event', event.id);
         }
         
         await Promise.all([
@@ -581,7 +594,7 @@ export default function EventDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[98vw] sm:w-[95vw] lg:w-[90vw] xl:w-[85vw] h-[95vh] sm:h-[90vh] max-w-[98vw] sm:max-w-[95vw] lg:max-w-[90vw] xl:max-w-[85vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-2xl">
+      <DialogContent className="w-[99vw] sm:w-[98vw] lg:w-[96vw] xl:w-[95vw] h-[98vh] sm:h-[96vh] max-w-[99vw] sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[95vw] overflow-hidden bg-white border-0 shadow-2xl p-0 rounded-2xl">
         {/* Enhanced Header with Gradient Background */}
         <DialogHeader className="px-4 sm:px-6 lg:px-8 py-6 border-b-2 border-gray-100 bg-gradient-to-br from-red-50 via-orange-50 to-pink-50 rounded-t-2xl relative overflow-hidden">
           {/* Decorative Background Elements */}
@@ -655,18 +668,24 @@ export default function EventDetailsModal({
               </TabsTrigger>
 
               {(() => {
-                // Check if user is vetting-only
-                const adminRoles = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+                // Check if user should only see Overview and Participants tabs
+                const adminRoles = ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
                 const vettingRoles = ['VETTING_COMMITTEE', 'VETTING_APPROVER'];
+                const superAdminRoles = ['SUPER_ADMIN', 'super_admin'];
+                const guestRoles = ['GUEST', 'guest'];
                 
-                const hasAdminRole = adminRoles.includes(user?.role || '') ||
-                  (user?.all_roles && user.all_roles.some((role: string) => adminRoles.includes(role)));
-                const hasVettingRole = vettingRoles.includes(user?.role || '') ||
-                  (user?.all_roles && user.all_roles.some((role: string) => vettingRoles.includes(role)));
+                // Get all user roles (from userRoles state and user.role)
+                const allUserRoles = [...userRoles, user?.role].filter(Boolean);
                 
-                const isVettingOnlyUser = hasVettingRole && !hasAdminRole;
+                const hasAdminRole = allUserRoles.some(role => adminRoles.includes(role));
+                const hasVettingRole = allUserRoles.some(role => vettingRoles.includes(role));
+                const hasSuperAdminRole = allUserRoles.some(role => superAdminRoles.includes(role));
+                const hasGuestRole = allUserRoles.some(role => guestRoles.includes(role));
                 
-                return !isVettingOnlyUser;
+                // Show limited tabs if user only has super admin, vetting, or guest roles (no other admin roles)
+                const shouldShowLimitedTabs = (hasSuperAdminRole || hasVettingRole || hasGuestRole) && !hasAdminRole;
+                
+                return !shouldShowLimitedTabs;
               })() && (
                 <>
                   <TabsTrigger
@@ -1209,27 +1228,32 @@ export default function EventDetailsModal({
                   onParticipantsChange={handleParticipantsChange}
                   eventHasEnded={eventHasEnded}
                   vettingMode={(() => {
+                    const adminRoles = ['MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN'];
+                    const superAdminRoles = ['SUPER_ADMIN', 'super_admin'];
                     const isVettingCommittee = userRoles.some(role => ['VETTING_COMMITTEE'].includes(role));
                     const isVettingApprover = userRoles.some(role => ['VETTING_APPROVER'].includes(role));
+                    const hasAdminRole = userRoles.some(role => adminRoles.includes(role)) || user?.role && adminRoles.includes(user.role);
+                    const hasSuperAdminRole = userRoles.some(role => superAdminRoles.includes(role)) || user?.role && superAdminRoles.includes(user.role);
                     
-                    // If user has vetting roles, enable vetting mode regardless of vettingCommitteeExists
+                    // Enable vetting mode if user has vetting roles, regardless of admin roles
                     if (!isVettingCommittee && !isVettingApprover) {
                       return undefined;
                     }
 
-                    const committeeCanEdit = isVettingCommittee && vettingStatus !== 'submitted' && vettingStatus !== 'approved';
-                    const approverCanEdit = isVettingApprover && vettingStatus === 'submitted';
+                    const committeeCanEdit = isVettingCommittee && vettingStatus === 'open';
+                    const approverCanEdit = isVettingApprover && vettingStatus === 'pending_approval';
 
-                    const mappedStatus = vettingStatus === 'submitted' ? 'pending_approval' as const : 
-                                       vettingStatus === 'approved' ? 'approved' as const : 
-                                       'open' as const;
+                    // Direct mapping - no intermediate conversion needed
+                    const submissionStatus = vettingStatus as 'open' | 'pending_approval' | 'approved';
 
-                    return {
+                    const vettingModeResult = {
                       isVettingCommittee,
                       isVettingApprover,
                       canEdit: committeeCanEdit || approverCanEdit,
-                      submissionStatus: mappedStatus
+                      submissionStatus: submissionStatus
                     };
+                    
+                    return vettingModeResult;
                   })()}
                 />
               </TabsContent>

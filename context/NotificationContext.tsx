@@ -31,13 +31,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const statsData = await apiClient.getNotificationStats();
       setStats(statsData);
     } catch (error) {
-      console.error("Failed to fetch notification stats:", error);
-      console.error("Error details:", {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        isAuthenticated,
-        hasToken: !!accessToken
-      });
-      // Set default stats to prevent UI breaking
+      // Silently handle errors to prevent console spam
       setStats({
         total: 0,
         unread: 0,

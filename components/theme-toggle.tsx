@@ -7,36 +7,20 @@ import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
-    console.log('ThemeToggle mounted')
     setMounted(true)
   }, [])
 
-  React.useEffect(() => {
-    console.log('Current theme:', theme)
-  }, [theme])
-
   const handleToggle = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    console.log('Toggling theme from', theme, 'to', newTheme)
-    
-    // Force clear localStorage and set new theme
-    localStorage.removeItem('msafiri-theme')
-    localStorage.setItem('msafiri-theme', newTheme)
-    
+    const currentTheme = resolvedTheme || theme
+    const newTheme = currentTheme === "light" ? "dark" : "light"
     setTheme(newTheme)
-    
-    // Force DOM update
-    setTimeout(() => {
-      document.documentElement.className = newTheme
-    }, 0)
   }
 
   if (!mounted) {
-    console.log('ThemeToggle not mounted yet')
     return (
       <Button
         variant="outline"
@@ -48,19 +32,19 @@ export function ThemeToggle() {
     )
   }
 
-  console.log('ThemeToggle rendering with theme:', theme)
+  const currentTheme = resolvedTheme || theme
 
   return (
     <Button
       variant="outline"
       size="sm"
       onClick={handleToggle}
-      className="rounded-full p-2 border-slate-300"
+      className="rounded-full p-2 bg-red-600 border-white dark:border-black hover:bg-red-700"
     >
-      {theme === 'dark' ? (
-        <Moon className="h-4 w-4" />
+      {currentTheme === 'dark' ? (
+        <Moon className="h-4 w-4 text-white" />
       ) : (
-        <Sun className="h-4 w-4" />
+        <Sun className="h-4 w-4 text-white" />
       )}
       <span className="sr-only">Toggle theme</span>
     </Button>

@@ -403,42 +403,48 @@ export default function AppSidebar() {
 
   return (
     <Sidebar 
-      className="text-white border-r scrollbar-hide"
+      className="text-gray-900 border-r scrollbar-hide font-sans"
       style={{
-        backgroundColor: isDark ? '#000000' : '#dc2626',
-        borderColor: isDark ? '#333333' : '#dc2626',
+        backgroundColor: isDark ? '#000000' : 'hsl(60, 4.8%, 95.9%)',
+        borderColor: isDark ? '#333333' : '#e5e7eb',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}
     >
       <SidebarHeader 
-        className="border-b bg-black/10 dark:bg-black/20 h-16 flex items-center px-4"
+        className="border-b flex items-center pl-0 py-1 min-h-0 font-sans"
         style={{
-          borderColor: isDark ? '#333333' : '#dc2626'
+          borderColor: isDark ? '#333333' : '#e5e7eb',
+          backgroundColor: isDark ? '#000000' : 'hsl(60, 4.8%, 95.9%)',
+          minHeight: 0,
+          paddingTop: 0,
+          paddingBottom: 0
         }}
       >
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden bg-white p-2 shadow-sm">
+        <div className="flex items-start py-1 w-full ml-4 font-sans" style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+          <div className="w-9 h-9 overflow-hidden bg-white p-1.5 shadow-sm mr-2" style={{ borderRadius: 0 }}>
             <Image
               src="/portal/icon/favicon.png"
               alt="MSF Logo"
-              width={32}
-              height={32}
+              width={28}
+              height={28}
               className="w-full h-full object-contain"
               style={{ width: "auto", height: "auto" }}
             />
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-white">MSF Msafiri</h1>
-            <p className="text-xs text-red-200">{tenantName || "Admin Portal"}</p>
+          <div className="w-full text-left">
+            <h1 className="text-sm font-normal leading-tight" style={{ color: isDark ? '#ffffff' : '#000000', marginBottom: 0, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>MSF Msafiri</h1>
+            <p className="text-[11px] leading-tight font-normal" style={{ color: isDark ? '#9ca3af' : '#000000', marginTop: 0, fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{tenantName || "Admin Portal"}</p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarGroup 
-        className="border-b bg-black/10 dark:bg-black/20 p-4"
+        className="border-b p-4"
         style={{
-          borderColor: isDark ? '#333333' : '#dc2626'
+          borderColor: isDark ? '#333333' : '#e5e7eb',
+          backgroundColor: isDark ? '#000000' : 'hsl(60, 4.8%, 95.9%)'
         }}
       >
         {authLoading || userDataLoading ? (
@@ -452,24 +458,24 @@ export default function AppSidebar() {
         ) : displayUser ? (
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-black text-white font-semibold">
+              <AvatarFallback className="bg-black text-white font-semibold text-base rounded-full border-2 border-white shadow" style={{ letterSpacing: 1 }}>
                 {getUserInitials(displayName)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">
+              <p className="text-sm font-semibold truncate" style={{ color: isDark ? '#ffffff' : '#000000' }}>
                 {displayName || "User"}
               </p>
               <div className="flex items-center space-x-1 mt-1">
-                <Shield className="h-3 w-3 text-red-200" />
-                <p className="text-xs text-red-200 truncate">
+                <Shield className="h-3 w-3" style={{ color: isDark ? '#9ca3af' : '#000000' }} />
+                <p className="text-xs truncate" style={{ color: isDark ? '#9ca3af' : '#000000' }}>
                   {AuthUtils.getRoleDisplayName(user?.role || "")}
                 </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center text-red-200 text-sm py-2">
+          <div className="text-center text-sm py-2" style={{ color: isDark ? '#9ca3af' : '#000000' }}>
             No user data available
           </div>
         )}
@@ -478,8 +484,8 @@ export default function AppSidebar() {
       <SidebarContent className="scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {navigationItems.map((section, idx) => (
           <SidebarGroup key={idx}>
-            <SidebarGroupLabel className="text-white/90 font-semibold">
-              {section.title}
+            <SidebarGroupLabel className="font-semibold text-xs" style={{ color: isDark ? '#d1d5db' : '#000000' }}>
+              <span className="font-normal">{section.title}</span>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -495,7 +501,14 @@ export default function AppSidebar() {
                         <>
                           <SidebarMenuButton
                             isActive={isActive}
-                            className="text-red-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white"
+                            className="hover:bg-gray-100 dark:hover:bg-gray-800 data-[active=true]:bg-red-50 dark:data-[active=true]:bg-gray-700 pl-2 !ml-0 font-normal"
+                            style={{
+                              color: isActive ? (isDark ? '#d1d5db' : '#dc2626') : (isDark ? '#d1d5db' : '#000000'),
+                              fontSize: '0.92rem',
+                              fontWeight: 400,
+                              marginLeft: 0,
+                              paddingLeft: 8
+                            }}
                           >
                             <item.icon className="h-4 w-4" />
                             <span>{item.label}</span>
@@ -505,13 +518,17 @@ export default function AppSidebar() {
                             {(item as any).children?.map((child: any, childIndex: number) => {
                               const normalizedChildHref = child.href.replace('/portal', '');
                               const childIsActive = normalizedPathname === normalizedChildHref || normalizedPathname?.startsWith(normalizedChildHref + '/');
-                              
                               return (
                                 <SidebarMenuSubItem key={childIndex}>
                                   <SidebarMenuSubButton
                                     asChild
                                     isActive={childIsActive}
-                                    className="text-red-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/25 data-[active=true]:text-white"
+                                    className="hover:bg-gray-100 dark:hover:bg-gray-800 data-[active=true]:bg-red-50 dark:data-[active=true]:bg-gray-700 font-normal"
+                                    style={{
+                                      color: childIsActive ? (isDark ? '#d1d5db' : '#dc2626') : (isDark ? '#d1d5db' : '#000000'),
+                                      fontSize: '0.9rem',
+                                      fontWeight: 400
+                                    }}
                                   >
                                     <Link href={child.href}>
                                       <child.icon className="h-3.5 w-3.5" />
@@ -527,13 +544,17 @@ export default function AppSidebar() {
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
-                          className="text-red-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white"
+                          className="hover:bg-gray-100 dark:hover:bg-gray-800 data-[active=true]:bg-red-50 dark:data-[active=true]:bg-gray-700 font-normal"
+                          style={{
+                            color: isActive ? (isDark ? '#d1d5db' : '#dc2626') : (isDark ? '#d1d5db' : '#000000'),
+                            fontWeight: 400
+                          }}
                         >
                           <Link href={item.href}>
                             <item.icon className="h-4 w-4" />
-                            <span>{item.label}</span>
+                            <span className="text-sm">{item.label}</span>
                             {badgeCount !== null && badgeCount > 0 && (
-                              <SidebarMenuBadge className="bg-white text-red-900">
+                              <SidebarMenuBadge className="text-xs bg-black text-white px-2 py-0.5 rounded" style={{ backgroundColor: '#000', color: '#fff', fontWeight: 600 }}>
                                 {badgeCount > 99 ? "99+" : badgeCount}
                               </SidebarMenuBadge>
                             )}
@@ -551,7 +572,7 @@ export default function AppSidebar() {
         {(isSuperAdmin || isTenantPath) && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-white/90 font-semibold">
-              System
+              <span className="font-normal">System</span>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -559,7 +580,8 @@ export default function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === "/admin/system" || pathname?.startsWith("/admin/system/")}
-                    className="text-red-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white"
+                    className="hover:bg-gray-100 dark:hover:bg-gray-800 data-[active=true]:bg-red-50 dark:data-[active=true]:bg-gray-700 font-normal"
+                    style={{ color: isDark ? '#000000' : '#000000', fontSize: '0.92rem', fontWeight: 400 }}
                   >
                     <Link href="/admin/system">
                       <Settings className="h-4 w-4" />
@@ -576,7 +598,8 @@ export default function AppSidebar() {
       <SidebarFooter
         className="border-t bg-black/10 dark:bg-black/20 py-[6px] px-4"
         style={{
-          borderColor: isDark ? '#333333' : '#dc2626'
+          borderColor: isDark ? '#333333' : '#dc2626',
+          color: '#000000'
         }}
       >
 
@@ -584,7 +607,10 @@ export default function AppSidebar() {
           variant="ghost"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="w-full justify-start text-red-200 hover:bg-red-500/20 hover:text-red-100 transition-colors"
+          className="w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          style={{
+            color: isDark ? '#d1d5db' : '#000000'
+          }}
         >
           {isLoggingOut ? (
             <Loader2 className="h-5 w-5 animate-spin" />

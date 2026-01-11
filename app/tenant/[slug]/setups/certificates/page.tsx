@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -347,11 +347,12 @@ export default function CertificatesPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent 
-                  className="w-[95vw] max-w-[1200px] max-h-[90vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
+                  className="w-[98vw] h-[95vh] border shadow-lg scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 overflow-y-auto"
                   style={{
                     backgroundColor: mounted && theme === 'dark' ? '#000000' : '#ffffff',
                     borderColor: mounted && theme === 'dark' ? '#374151' : '#e5e7eb',
-                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000'
+                    color: mounted && theme === 'dark' ? '#ffffff' : '#000000',
+                    maxWidth: 'none'
                   }}
                 >
                   <DialogHeader>
@@ -363,9 +364,9 @@ export default function CertificatesPage() {
                         <DialogTitle>
                           {editingTemplate ? 'Edit Certificate Template' : 'Create Certificate Template'}
                         </DialogTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <DialogDescription>
                           Design a reusable certificate template for events
-                        </p>
+                        </DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
@@ -512,10 +513,18 @@ export default function CertificatesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-xs hidden md:table-cell">
-                          {new Date(template.created_at).toLocaleDateString()}
+                          {new Date(template.created_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
                         </TableCell>
                         <TableCell className="text-xs hidden lg:table-cell">
-                          {new Date(template.updated_at).toLocaleDateString()}
+                          {new Date(template.updated_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
                         </TableCell>
                         {canEdit && (
                           <TableCell className="text-right">

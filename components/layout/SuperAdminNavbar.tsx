@@ -51,7 +51,7 @@ export function SuperAdminNavbar({
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  const { user: fullUserData } = useUserData();
+  const { user: fullUserData, loading: userDataLoading } = useUserData();
   const {
     notifications,
     stats,
@@ -60,6 +60,12 @@ export function SuperAdminNavbar({
     markAllAsRead,
     refetch: refetchNotifications,
   } = useNotifications();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('SuperAdminNavbar - fullUserData:', fullUserData);
+    console.log('SuperAdminNavbar - avatar_url:', fullUserData?.avatar_url);
+  }, [fullUserData]);
 
   useEffect(() => {
     setMounted(true);
@@ -257,9 +263,17 @@ export function SuperAdminNavbar({
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-gradient-to-r from-red-600 to-red-600 text-white font-semibold">
-                {getUserInitials(displayName)}
-              </AvatarFallback>
+              {fullUserData?.avatar_url ? (
+                <img 
+                  src={fullUserData.avatar_url} 
+                  alt={displayName || "Super Administrator"}
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+              ) : (
+                <AvatarFallback className="bg-gradient-to-r from-red-600 to-red-600 text-white font-semibold">
+                  {getUserInitials(displayName)}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate" style={{ color: '#111827' }}>
@@ -479,9 +493,17 @@ export function SuperAdminNavbar({
                   }}
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-black text-white font-semibold text-sm">
-                      {getUserInitials(displayName)}
-                    </AvatarFallback>
+                    {fullUserData?.avatar_url ? (
+                      <img 
+                        src={fullUserData.avatar_url} 
+                        alt={displayName || "User"}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-black text-white font-semibold text-sm">
+                        {getUserInitials(displayName)}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

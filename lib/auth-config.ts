@@ -7,64 +7,51 @@ import { JWT } from "next-auth/jwt";
 const ALLOWED_ROLES = ['SUPER_ADMIN', 'MT_ADMIN', 'HR_ADMIN', 'EVENT_ADMIN', 'VETTING_COMMITTEE', 'VETTING_APPROVER', 'vetting_approver', 'super_admin', 'mt_admin', 'hr_admin', 'event_admin', 'vetting_committee'];
 
 // Token refresh function with improved error handling
-let refreshInProgress = false;
-let refreshPromise: Promise<JWT> | null = null;
-
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  // If a refresh is already in progress, wait for it instead of starting a new one
-  if (refreshInProgress && refreshPromise) {
-    return refreshPromise;
-  }
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const refreshUrl = apiUrl.endsWith('/api/v1')
+      ? `${apiUrl}/auth/refresh`
+      : `${apiUrl}/api/v1/auth/refresh`;
 
-  refreshInProgress = true;
-  refreshPromise = (async () => {
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const refreshUrl = apiUrl.endsWith('/api/v1')
-        ? `${apiUrl}/auth/refresh`
-        : `${apiUrl}/api/v1/auth/refresh`;
+    console.log('🔄 Attempting token refresh...');
+    const response = await fetch(refreshUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token.accessToken}`,
+      },
+      // Add timeout to prevent hanging
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
 
-      const response = await fetch(refreshUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token.accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.warn(`⚠️ Token refresh failed (${response.status})`);
-        // Return the existing token - don't force logout
-        return {
-          ...token,
-          error: undefined, // Don't mark as error yet, let the API handle it
-        };
-      }
-
-      const refreshedTokens = await response.json();
-      console.log('✅ Token refreshed successfully');
-
+    if (!response.ok) {
+      console.warn(`⚠️ Token refresh failed (${response.status})`);
+      // Mark for re-authentication on any refresh failure
       return {
         ...token,
-        accessToken: refreshedTokens.access_token,
-        accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 86400) * 1000, // 24 hours default
-        refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-        error: undefined,
+        error: 'RefreshAccessTokenError',
       };
-    } catch (error) {
-      console.warn('⚠️ Token refresh error:', error instanceof Error ? error.message : 'Unknown error');
-      // Return the existing token - don't force logout
-      return {
-        ...token,
-        error: undefined, // Don't mark as error to avoid sudden logout
-      };
-    } finally {
-      refreshInProgress = false;
-      refreshPromise = null;
     }
-  })();
 
-  return refreshPromise;
+    const refreshedTokens = await response.json();
+    console.log('✅ Token refreshed successfully');
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + (refreshedTokens.expires_in || 86400) * 1000, // 24 hours default
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
+      error: undefined,
+    };
+  } catch (error) {
+    console.warn('⚠️ Token refresh error:', error instanceof Error ? error.message : 'Unknown error');
+    // Mark for re-authentication on any error
+    return {
+      ...token,
+      error: 'RefreshAccessTokenError',
+    };
+  }
 }
 
 export const authOptions: NextAuthOptions = {
@@ -306,25 +293,22 @@ export const authOptions: NextAuthOptions = {
         token.error = undefined; // Clear any previous errors
       }
 
-      // If refresh failed too many times, mark for logout (but don't logout immediately)
+      // If refresh failed, mark for logout
       if (token.error === 'RefreshAccessTokenError') {
-        // Keep the existing token data so user can continue working
-        // They'll be prompted to re-login when they try to make an authenticated request
-        return token;
+        return token; // Keep token but with error flag
       }
 
-      // Return previous token if the access token has not expired yet (with 2 hour buffer)
-      const bufferTime = 2 * 60 * 60 * 1000; // 2 hour buffer - refresh when token has 2 hours left
-      if (Date.now() < ((token.accessTokenExpires as number) - bufferTime)) {
-        return token;
-      }
-
-      // Access token will expire within 1 hour, try to refresh it
-      return await refreshAccessToken(token);
+      // Don't auto-refresh tokens - let the API client handle it
+      // This prevents conflicts between NextAuth and API client refresh logic
+      return token;
     },
     async session({ session, token }) {
-      // Don't immediately logout on errors - let the user continue their work
-      // The API will handle invalid tokens appropriately
+      // If token refresh failed, clear the session to force re-login
+      if (token.error === 'RefreshAccessTokenError') {
+        console.log('🚪 Token refresh failed, clearing session');
+        return null as any; // This will force NextAuth to clear the session
+      }
+      
       if (token && session?.user) {
         session.user.id = token.sub || '';
         session.user.role = (token.role as string) || '';
@@ -334,11 +318,6 @@ export const authOptions: NextAuthOptions = {
         session.user.accessToken = (token.accessToken as string) || '';
         session.user.firstLogin = (token.firstLogin as boolean) || false;
         session.user.mustChangePassword = (token.mustChangePassword as boolean) || false;
-
-        // Add error state to session if refresh failed (for UI to display warning)
-        if (token.error) {
-          session.error = token.error as string;
-        }
       }
       return session;
     },
